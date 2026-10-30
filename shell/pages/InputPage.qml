@@ -10,6 +10,7 @@ Item {
     property var palette
     property var prefs
     property var strings
+    property string tab: "keyboard"
     property string newLayout: "us"
     property string newVariant: ""
 
@@ -58,6 +59,8 @@ Item {
         return entries
     }
 
+    onTabChanged: scroller.contentY = 0
+
     function labelFor(options, key) {
         for (var i = 0; i < options.length; i++) {
             if (options[i].key === key)
@@ -90,136 +93,158 @@ Item {
         return value === undefined ? key : value
     }
 
-    Flickable {
+    ColumnLayout {
         anchors.fill: parent
-        contentHeight: column.implicitHeight
-        boundsBehavior: Flickable.StopAtBounds
-        clip: true
+        spacing: VitrailTokens.gap("lg")
 
-        ColumnLayout {
-            id: column
+        VitrailTabs {
+            Layout.fillWidth: true
+            tabs: [
+                { key: "keyboard", label: page.t("input.keyboard") },
+                { key: "mouse", label: page.t("input.mouse") }
+            ]
+            current: page.tab
+            foreground: page.palette.foreground
+            accent: page.palette.primary
+            onSelected: page.tab = key
+        }
 
-            width: parent.width
-            spacing: VitrailTokens.gap("xl")
+        Flickable {
+            id: scroller
 
-            Section {
-                Layout.fillWidth: true
-                icon: "keyboard"
-                title: page.t("input.keyboard")
-                foreground: page.palette.foreground
-                accent: page.palette.primary
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            contentHeight: column.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
 
-                Text {
+            ColumnLayout {
+                id: column
+
+                width: parent.width
+                spacing: VitrailTokens.gap("xl")
+
+                Section {
                     Layout.fillWidth: true
-                    text: page.t("keyboard.help")
-                    color: page.palette.muted
-                    font.pixelSize: 12
-                    font.family: VitrailTokens.fontFamily
-                    wrapMode: Text.WordWrap
+                    visible: page.tab === "keyboard"
+                    icon: "keyboard"
+                    title: page.t("input.keyboard")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: page.t("keyboard.help")
+                        color: page.palette.muted
+                        font.pixelSize: 12
+                        font.family: VitrailTokens.fontFamily
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: page.layouts.length === 0
+                        text: page.t("keyboard.empty")
+                        color: page.palette.muted
+                        font.pixelSize: 12
+                        font.family: VitrailTokens.fontFamily
+                        opacity: 0.8
+                    }
+
+                    Repeater {
+                        model: page.layouts
+
+                        delegate: VitrailSettingRow {
+                            id: row
+
+                            required property var modelData
+                            required property int index
+
+                            icon: "language"
+                            label: page.labelFor(page.layoutOptions, row.modelData.layout)
+                            description: row.modelData.variant !== "" ? page.labelFor(page.variantOptions, row.modelData.variant) : ""
+                            foreground: page.palette.foreground
+                            muted: page.palette.muted
+
+                            VitrailButton {
+                                variant: "plain"
+                                tone: "secondary"
+                                size: "sm"
+                                icon: "close"
+                                onClicked: page.removeLayout(row.index)
+                            }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: VitrailTokens.gap("sm")
+
+                        VitrailSelect {
+                            Layout.fillWidth: true
+                            label: page.t("keyboard.layout")
+                            options: page.layoutOptions
+                            current: page.newLayout
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            panel: page.palette.surfaceHigh
+                            onSelected: page.newLayout = key
+                        }
+
+                        VitrailSelect {
+                            Layout.fillWidth: true
+                            label: page.t("keyboard.variant")
+                            options: page.variantOptions
+                            current: page.newVariant
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            panel: page.palette.surfaceHigh
+                            onSelected: page.newVariant = key
+                        }
+
+                        VitrailButton {
+                            Layout.alignment: Qt.AlignBottom
+                            variant: "tonal"
+                            icon: "add"
+                            text: page.t("action.add")
+                            onClicked: page.addLayout()
+                        }
+                    }
+
+                    VitrailSelect {
+                        Layout.fillWidth: true
+                        Layout.topMargin: VitrailTokens.gap("xs")
+                        label: page.t("keyboard.switch")
+                        options: page.switchOptions
+                        current: page.prefs.keyboardSwitch
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        panel: page.palette.surfaceHigh
+                        onSelected: page.prefs.keyboardSwitch = key
+                    }
                 }
 
-                Text {
+                Section {
                     Layout.fillWidth: true
-                    visible: page.layouts.length === 0
-                    text: page.t("keyboard.empty")
-                    color: page.palette.muted
-                    font.pixelSize: 12
-                    font.family: VitrailTokens.fontFamily
-                    opacity: 0.8
-                }
+                    visible: page.tab === "mouse"
+                    icon: "mouse"
+                    title: page.t("input.mouse")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
 
-                Repeater {
-                    model: page.layouts
-
-                    delegate: VitrailSettingRow {
-                        id: row
-
-                        required property var modelData
-                        required property int index
-
-                        icon: "language"
-                        label: page.labelFor(page.layoutOptions, row.modelData.layout)
-                        description: row.modelData.variant !== "" ? page.labelFor(page.variantOptions, row.modelData.variant) : ""
+                    VitrailSettingRow {
+                        icon: "ads_click"
+                        label: page.t("windows.focusFollows")
+                        description: page.t("input.mouseHelp")
                         foreground: page.palette.foreground
                         muted: page.palette.muted
 
-                        VitrailButton {
-                            variant: "plain"
-                            tone: "secondary"
-                            size: "sm"
-                            icon: "close"
-                            onClicked: page.removeLayout(row.index)
+                        VitrailSwitch {
+                            checked: page.prefs.focusFollowsMouse
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.focusFollowsMouse = value }
                         }
-                    }
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: VitrailTokens.gap("sm")
-
-                    VitrailSelect {
-                        Layout.fillWidth: true
-                        label: page.t("keyboard.layout")
-                        options: page.layoutOptions
-                        current: page.newLayout
-                        foreground: page.palette.foreground
-                        accent: page.palette.primary
-                        panel: page.palette.surfaceHigh
-                        onSelected: page.newLayout = key
-                    }
-
-                    VitrailSelect {
-                        Layout.fillWidth: true
-                        label: page.t("keyboard.variant")
-                        options: page.variantOptions
-                        current: page.newVariant
-                        foreground: page.palette.foreground
-                        accent: page.palette.primary
-                        panel: page.palette.surfaceHigh
-                        onSelected: page.newVariant = key
-                    }
-
-                    VitrailButton {
-                        Layout.alignment: Qt.AlignBottom
-                        variant: "tonal"
-                        icon: "add"
-                        text: page.t("action.add")
-                        onClicked: page.addLayout()
-                    }
-                }
-
-                VitrailSelect {
-                    Layout.fillWidth: true
-                    Layout.topMargin: VitrailTokens.gap("xs")
-                    label: page.t("keyboard.switch")
-                    options: page.switchOptions
-                    current: page.prefs.keyboardSwitch
-                    foreground: page.palette.foreground
-                    accent: page.palette.primary
-                    panel: page.palette.surfaceHigh
-                    onSelected: page.prefs.keyboardSwitch = key
-                }
-            }
-
-            Section {
-                Layout.fillWidth: true
-                icon: "mouse"
-                title: page.t("input.mouse")
-                foreground: page.palette.foreground
-                accent: page.palette.primary
-
-                VitrailSettingRow {
-                    icon: "ads_click"
-                    label: page.t("windows.focusFollows")
-                    description: page.t("input.mouseHelp")
-                    foreground: page.palette.foreground
-                    muted: page.palette.muted
-
-                    VitrailSwitch {
-                        checked: page.prefs.focusFollowsMouse
-                        foreground: page.palette.foreground
-                        accent: page.palette.primary
-                        onToggled: function (value) { page.prefs.focusFollowsMouse = value }
                     }
                 }
             }

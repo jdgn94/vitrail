@@ -14,24 +14,35 @@ No bell, no history: incoming notifications show as toasts and go away.
 - `bar/shell.qml` — `NotificationServer.onNotification` sets `tracked` and
   pushes; a full-screen Overlay layer (`vitrail-notifications`, mask = stack,
   `keyboardFocus: OnDemand` for replies) places the stack with
-  `Frame.stackRect()`.
+  `Frame.stackRect()`. It opens and closes with `stackLiquid` like a popup
+  (see popups.md): a liquid tab in glass, a smooth fade in solid; floating, an
+  island with a neck to the bar when the bar is on its edge.
 
 ## Look
 
 - Position pref `notificationPosition` = `top|bottom` + `-left|-center|-right`
   (default `top-right`); `notificationMax` from `tokens.ranges.notifications`.
-- Docked bar: the stack is one tab of the frame (flush with the hole, takes
-  the corner it touches); toasts are separated by a 1 px divider.
-- Floating bar: each toast is its own `VitrailSurface` island, a `gap(md)`
-  clear of the bar and the frame.
-- Toast: app icon (`appIcon` / `desktopEntry` via `Quickshell.iconPath`, then
-  `image`, then the app initial on a tinted disc), bold summary, app name,
-  body `StyledText` (HTML subset) with `maximumLineCount: 2` + elide.
+- One container holds the cards: a frame tab when docked, a `VitrailSurface`
+  island when floating. Cards: `surfaceHigh` at the surface variant's `raised` alpha
+  (`raisedHover` hovered; opaque cards take a tint), radius
+  0.85 × token, app icon in a 10 % foreground circle (`info` glyph fallback).
+- Collapsed: title • age (`now`, `%1 min`, `%1 h`, ticking every 30 s) and one
+  body line; expanded: app • age, title, body up to 6 lines (StyledText),
+  actions as `text` buttons (app actions, reply, mark as read).
+- The newest card is expanded; the chevron sets `userExpanded`, which wins.
+
+## Which monitor
+
+- `shell.notificationScreen`: the focused monitor, unless its active workspace
+  has a fullscreen window; then the primary screen, any other screen without
+  one, and only if all are fullscreen the focused one anyway. The layer and
+  the frame tab of the stack both follow it. Docked on an islands bar the
+  stack hangs from `layout.dock` (below the islands) where it overlaps an island,
+  and from the thin frame where it does not (`Frame.stackRect(..., islands)`).
 
 ## Behaviour
 
-- Click anywhere → the `default` action (focus the app). The ⋮ button sits
-  above and opens chips: mark as read (`dismiss`), reply (if
-  `hasInlineReply`; inline field, Enter sends), the app's other actions.
-- Expires (`expire()`) after 5 s; hover, open menu or a reply in progress
+- Click → the `default` action (focus the app); middle click or a sideways
+  flick past a third of the width → `dismiss()` (mark read).
+- Expires (`expire()`) after 5 s; hover, a swipe in progress or a reply
   hold it, and the countdown restarts from zero when released.

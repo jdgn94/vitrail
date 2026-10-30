@@ -17,6 +17,10 @@ class KindTests(unittest.TestCase):
         self.assertEqual(wallpaper.kind_of("/w/videos/rain.webm"), "video")
         self.assertIsNone(wallpaper.kind_of("/w/notes.txt"))
 
+    def test_requests_drop_their_nonce(self) -> None:
+        self.assertEqual(wallpaper.request_paths("1730000000|/a.png|/b c.png"), ["/a.png", "/b c.png"])
+        self.assertEqual(wallpaper.request_paths(""), [])
+
     def test_folders_are_created_per_kind(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             folders = wallpaper.ensure_folders(Path(tmp))
@@ -47,6 +51,60 @@ class SelectionTests(unittest.TestCase):
     def test_a_single_wallpaper_stays(self) -> None:
         self.assertEqual(wallpaper.next_wallpaper(["a"], "a", "random"), "a")
         self.assertIsNone(wallpaper.next_wallpaper([], "a", "sequential"))
+
+
+class LibraryTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.settings = self.root / "config" / "vitrail" / "settings.ini"
+        self.settings.parent.mkdir(parents=True)
+        self.library = self.settings.parent / "wallpapers"
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def test_the_library_lives_in_the_config_folder(self) -> None:
+        self.assertEqual(wallpaper.library({}, self.settings), self.library)
+        self.assertEqual(wallpaper.library({"wallpaperDir": "/elsewhere"}, self.settings), Path("/elsewhere"))
+
+    def test_imports_are_copied_into_their_kind_folder(self) -> None:
+        photo = self.root / "photo.png"
+        photo.write_bytes(b"png")
+        clip = self.root / "clip.webm"
+        clip.write_bytes(b"webm")
+        notes = self.root / "notes.txt"
+        notes.write_text("no")
+        self.settings.write_text(
+            f"[appearance]\nwallpaperImport=17|{photo}|{clip}|{notes}\n", encoding="utf-8")
+        wallpaper.sync(self.settings)
+        self.assertEqual((self.library / "images" / "photo.png").read_bytes(), b"png")
+        self.assertTrue((self.library / "videos" / "clip.webm").exists())
+        self.assertTrue(photo.exists(), "the original stays where it was")
+        self.assertEqual(wallpaper.read_prefs(self.settings)["wallpaperImport"], "")
+
+    def test_an_import_never_overwrites(self) -> None:
+        (self.library / "images").mkdir(parents=True)
+        (self.library / "images" / "photo.png").write_bytes(b"old")
+        photo = self.root / "photo.png"
+        photo.write_bytes(b"new")
+        self.settings.write_text(f"[appearance]\nwallpaperImport=1|{photo}\n", encoding="utf-8")
+        wallpaper.sync(self.settings)
+        self.assertEqual((self.library / "images" / "photo.png").read_bytes(), b"old")
+        self.assertEqual((self.library / "images" / "photo-2.png").read_bytes(), b"new")
+
+    def test_removal_only_deletes_inside_the_library(self) -> None:
+        inside = self.library / "svg" / "waves.svg"
+        inside.parent.mkdir(parents=True)
+        inside.write_text("<svg/>")
+        outside = self.root / "keep.svg"
+        outside.write_text("<svg/>")
+        self.settings.write_text(
+            f"[appearance]\nwallpaperRemove=9|{inside}|{outside}\n", encoding="utf-8")
+        wallpaper.sync(self.settings)
+        self.assertFalse(inside.exists())
+        self.assertTrue(outside.exists())
+        self.assertEqual(wallpaper.read_prefs(self.settings)["wallpaperRemove"], "")
 
 
 class SvgTests(unittest.TestCase):

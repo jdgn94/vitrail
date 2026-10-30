@@ -53,7 +53,7 @@ def _parser() -> argparse.ArgumentParser:
     style_actions.add_parser("show", help="print the current style")
 
     paper = sub.add_parser("wallpaper", help="theme the wallpaper or rotate to the next one")
-    paper.add_argument("action", choices=("apply", "next"))
+    paper.add_argument("action", choices=("apply", "next", "sync"))
 
     mode = sub.add_parser("theme", help="apply light or dark to GTK, Qt and Hyprland")
     mode.add_argument("action", choices=("apply",))
@@ -131,12 +131,16 @@ def _config_home() -> Path:
 
 def _wallpaper(args: argparse.Namespace) -> int:
     settings = _config_home() / "vitrail" / "settings.ini"
+    if args.action == "sync":
+        imported, removed = wallpaper.sync(settings)
+        _say(f"Wallpapers: {len(imported)} imported, {len(removed)} removed")
+        return 0
     if args.action == "next":
         chosen = wallpaper.advance(settings)
         _say(f"Wallpaper: {chosen}" if chosen else "Wallpaper: nothing to rotate")
         return 0
     try:
-        themed = wallpaper.apply(settings, colors.cache_dir(), Path.home())
+        themed = wallpaper.apply(settings, colors.cache_dir())
     except (colors.ColorExtractionError, OSError, subprocess.CalledProcessError) as error:
         _say(f"Could not theme the wallpaper: {error}")
         return 1

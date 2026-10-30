@@ -11,6 +11,8 @@ QtObject {
     property ListModel shown: ListModel {}
     property var waiting: []
     property var byId: ({})
+    // When each one arrived (ms), for the "5 min" next to its title.
+    property var arrived: ({})
 
     onMaximumChanged: root.pump()
 
@@ -18,6 +20,7 @@ QtObject {
         if (root.byId[notification.id])
             return
         root.byId[notification.id] = notification
+        root.arrived[notification.id] = Date.now()
         notification.closed.connect(function () { root.drop(notification.id) })
         root.waiting.push(notification.id)
         root.pump()
@@ -25,6 +28,7 @@ QtObject {
 
     function drop(id) {
         delete root.byId[id]
+        delete root.arrived[id]
         var at = root.waiting.indexOf(id)
         if (at >= 0)
             root.waiting.splice(at, 1)

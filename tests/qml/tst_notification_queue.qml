@@ -80,4 +80,13 @@ TestCase {
         compare(queue.shown.count, 3)
         compare(queue.waiting, [])
     }
+
+    function test_arrival_time_is_kept_until_it_closes() {
+        var queue = createTemporaryObject(queueComponent, this, { maximum: 5 })
+        var before = Date.now()
+        var list = make(queue, 1)
+        verify(queue.arrived[1] >= before)
+        list[0].closed(1)
+        compare(queue.arrived[1], undefined)
+    }
 }

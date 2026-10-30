@@ -26,6 +26,8 @@ layer contract.
    - `references/components.md` — type, icons, button variants, indicators,
      slider, settings window layout, popup rows.
    - `references/wallpapers.md` — library, adaptive SVG, colour pipeline.
+   - `references/dialogs.md` — polkit and Hyprland dialogs in the bar.
+   - `references/session.md` — power button, session menu and popout.
 2. Geometry goes in `kit/frame.js` (pure, tested in `tests/qml/tst_frame.qml`);
    QML only binds to it. Write the test first.
 3. Literal values only in `kit/tokens.js`; new looks become a variant in

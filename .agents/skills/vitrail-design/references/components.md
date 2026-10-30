@@ -31,7 +31,7 @@ gap each side (`tokens.slider`: `sm 8 / md 16 / lg 28`, `handle`, `gap`).
 ## VitrailButton (`kit/base`)
 
 `variant` = emphasis, `tone` = colour family (`primary`, `secondary` =
-inverse neutral, `info` = tertiary, `error`), `size` sm / md / lg. Icon-only
+inverse neutral, `info` = tertiary, `error`), `size` sm / md / lg / xl (xl: display-size icon, the session menu's round actions). Icon-only
 buttons are circles; `enabled: false` fades to 45 %.
 
 | variant  | look                               | use it for                              |
@@ -45,6 +45,32 @@ buttons are circles; `enabled: false` fades to 45 %.
 | plain    | no fill, no hover tint, opacity    | toolbar / window icons (close, menu)    |
 
 Elevation uses `RectangularShadow` (a `MultiEffect` layer blanks the fill).
+
+## VitrailField (`kit/base`)
+
+One text field everywhere (dialogs, toast reply, lock/login). `variant`
+outline (label floats into a notch of an animated `Shape` outline from
+`shapes.outlinePath`) or filled (fill, label rides inside, bottom indicator
+grows from the centre); `size` sm / md / lg; `label`, `placeholder`,
+`leadingIcon`, `supportingText`, `error` + `errorText`, `shake()` on a new
+error, `forceActiveFocus()` (it is a FocusScope).
+
+`type: "password"` draws one random shape per character from `Shapes.distinct` (circle, square, triangle, clover4, flower, burst: the ones that stay distinct at text size; `VitrailBusy` uses all `names`) (`shapes.js`,
+`VitrailShape`) over the real TextInput, which stays invisible but keeps the
+text, cursor and selection. `sync()` on `textChanged`: growth inserts at
+`cursorPosition - added`, shrinking removes at `cursorPosition`, so paste and
+select-all-delete work. Pop in is scale 0 to 1 `OutBack` plus rotation
+-45 to 0; leaving ones shrink out. The eye (`plain` button) cross-fades shapes
+and text and keeps the focus.
+
+## VitrailBusy (`kit/base`)
+
+Loading indicator: a shape from `shapes.js` that turns and morphs into
+another random one every `motion.cycle`, outgoing shrinks out, incoming pops in
+(`OutBack`). `running`, `size`, `color`, `contained` (tinted disc). It fades
+out and stops its timers when not running. `VitrailButton { busy }` swaps the
+icon (or starts the label) with it and ignores clicks; use it for anything that
+waits (polkit check, connecting).
 
 ## Selection indicators
 
@@ -61,8 +87,10 @@ close. `VitrailSidebar`: collapse toggle, `tonal` lg "Config file" action,
 items grouped (`group` key → `groups` labels: look / desktop / system),
 sliding pill, icons fill when active. Content sits in a `surfaceHigh` card.
 Pages: `Flickable` → `Section { icon; title }` → `VitrailSettingRow { icon;
-label; description; <control> }`; sliders full width inside a Section. Tabs
-only when a page would not fit (WindowsPage).
+label; description; <control> }`; sliders full width inside a Section. A page with
+more than one topic splits them into `VitrailTabs` subcategories
+(`property string tab`, sections `visible: page.tab === key`, scroll reset
+on tab change); single-topic pages (Colors, Language, Plugins) have none.
 
 ## Popup content (bar/network/NetworkPanel.qml)
 

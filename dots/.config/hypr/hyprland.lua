@@ -64,8 +64,10 @@ hl.bind(mod .. " + SHIFT + Q", hl.dsp.exit(), { description = "shell/exit" })
 
 -- Applications.
 hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("kitty"), { description = "apps/terminal" })
-hl.bind(mod .. " + D", hl.dsp.exec_cmd("fuzzel"), { description = "apps/launcher" })
-hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd("fuzzel"), { description = "apps/launcher" })
+-- Super pressed and released on its own is the only launcher key, like the
+-- bar button. Super + Space stays with the keyboard layout switch.
+local launcher = home .. "/.local/bin/vitrail-bar ipc call launcher toggle"
+hl.bind(mod .. " + SUPER_L", hl.dsp.exec_cmd(launcher), { release = true, description = "apps/launcher" })
 hl.bind(mod .. " + comma", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-settings"), { description = "shell/settings" })
 hl.bind(mod .. " + L", hl.dsp.exec_cmd("hyprlock"), { description = "shell/lock" })
 hl.bind(mod .. " + P", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call panel toggle full"), { description = "shell/panel" })
@@ -120,6 +122,18 @@ hl.window_rule({
     match = { class = "^org\\.qt-project\\.qml$", title = "Vitrail" },
     float = true,
     center = true,
+})
+
+-- Glass: every Vitrail surface is a Quickshell layer, and Hyprland blurs a
+-- layer only through a rule. ignore_alpha keeps the fully transparent pixels
+-- of these full-screen layers out of the blur, so only the drawn surfaces get
+-- it. scripts/apply-settings.sh redefines this rule (same name) with blur off
+-- when the surface style is solid.
+hl.layer_rule({
+    name = "vitrail-glass",
+    match = { namespace = "^vitrail-(bar|popup|notifications|dialog|session)$" },
+    blur = true,
+    ignore_alpha = 0.01,
 })
 
 

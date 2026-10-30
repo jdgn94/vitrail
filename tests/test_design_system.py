@@ -86,7 +86,7 @@ def style_defaults() -> dict[str, str]:
 class VariantContractTests(unittest.TestCase):
     def test_frame_and_bar_variants_exist(self) -> None:
         self.assertEqual(variant_names("frame"), {"full", "corners", "none"})
-        self.assertEqual(variant_names("bar"), {"docked", "floating"})
+        self.assertEqual(variant_names("bar"), {"docked", "floating", "islands", "floatingIslands"})
 
     def test_panel_and_wallpaper_variants_exist(self) -> None:
         self.assertEqual(variant_names("panel"), {"full", "overlay"})
@@ -130,6 +130,25 @@ class ComposedLayerTests(unittest.TestCase):
             for primitive in ("Text {", "Rectangle {", "MouseArea {"):
                 with self.subTest(file=path.name, primitive=primitive):
                     self.assertNotIn(primitive, text)
+
+
+class SurfaceInheritanceTests(unittest.TestCase):
+    """Every surface takes glass / solid and its opacity from one source."""
+
+    def test_no_fixed_surface_alpha(self) -> None:
+        files = [*KIT.rglob("*.qml"), *(ROOT / "bar").rglob("*.qml")]
+        for path in files:
+            if path.is_symlink() or any(p.is_symlink() for p in path.parents if p != ROOT):
+                continue
+            text = path.read_text(encoding="utf-8")
+            with self.subTest(file=str(path.relative_to(ROOT))):
+                self.assertNotRegex(text, r"(?m)opacityLevel:\s*[0-9.]+\s*$", "use shell.barOpacity or VitrailTokens.opacity")
+                self.assertNotRegex(text, r"style:\s*\"(glass|solid)\"", "use VitrailTokens.surfaceMode")
+
+    def test_surface_variants_define_the_raised_layer(self) -> None:
+        text = VARIANTS.read_text(encoding="utf-8")
+        for key in ("raised", "raisedHover"):
+            self.assertEqual(len(re.findall(rf"\b{key}:", text)), 2, key)
 
 
 if __name__ == "__main__":

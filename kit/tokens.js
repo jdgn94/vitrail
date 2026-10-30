@@ -42,7 +42,46 @@ var motion = {
     fast: 120,
     base: 180,
     slow: 260,
+    // Caret blink, one turn of a busy indicator, and how long it keeps a shape.
+    blink: 530,
+    spin: 2400,
+    cycle: 650,
     easing: "outCubic"
+}
+
+// How popups and the notification stack open (see frame.js liquid / smooth).
+// Glass: a drop of liquid. open / close are ms for the whole timeline; the
+// rest are fractions of it (spreadEnd, swellEnd, snapAt, contentAt) or
+// ratios: overshoot of the spring, swell of the fillets, pull of a floating
+// card in gaps, stretch of a card gliding to another button.
+motion.liquid = {
+    open: 460,
+    close: 280,
+    overshoot: 1.1,
+    spreadEnd: 0.7,
+    swellEnd: 0.8,
+    swell: 0.9,
+    pull: 0.9,
+    snapAt: 0.45,
+    contentAt: 0.55,
+    stretch: 0.12
+}
+
+// Solid: a short fade and slide from the bar, no overshoot (shift in px).
+motion.smooth = {
+    open: motion.base,
+    close: motion.fast,
+    contentAt: 0.4,
+    scale: 0.96,
+    shift: 6,
+    stretch: 0
+}
+
+// Text field: box height per size, and the password shape as a fraction of
+// the font size.
+var field = {
+    height: { sm: 40, md: 52, lg: 64 },
+    shape: 0.9
 }
 
 // Slider track thickness per size; the handle and the gaps around it.

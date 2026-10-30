@@ -12,8 +12,11 @@ outer corners, same tint as the frame, no seam or edge line at the base).
   on any edges: fillet radius `min(R, depth)`, outer corners
   `min(R, depth/2, length/2)`. Each edge is walked in a frame turned so it is
   the left side (`turn` / `unturn`); left, top, right, bottom is clockwise.
-- `VitrailBar.popupReveal` animates 0→1 (`fast`): the tab grows out of the bar.
-  Callers own the reveal of their own tabs.
+- Tab entries are `{ edge, rect, reveal, base, swell }`: `reveal` scales the
+  depth past `base` (px; an islands bar starts the popup at the island's
+  depth, so it grows out of the island), `swell` multiplies the fillet radius.
+  `VitrailBar.popupLook` (a `VitrailLiquid.look`, null while closed) drives the
+  popup tab; callers own the look of their own tabs.
 - The popup layer draws only the content; its `VitrailSurface` is hidden.
 - Placement (`bar/shell.qml`, `popupCard`): cross-axis flush at
   `hole[edge]`; along the bar `Frame.popupAlong()`: centred on the anchor;
@@ -22,8 +25,89 @@ outer corners, same tint as the frame, no seam or edge line at the base).
   a hole end takes that corner — no rounded hole corner there, the tab's free
   side joins the perpendicular frame edge with a concave fillet instead.
 
+- Islands bar: the card hangs from `layout.dock[edge]` (the bar thickness), so
+  it rises out of the island; the overlap merges in `holePath`. The tab's
+  `base` is the island's depth, so the reveal starts there.
+
+## Open / close motion (`VitrailLiquid`, `Frame.liquid` / `Frame.smooth`)
+
+One linear timeline `progress` (0 closed .. 1 open, `motion.liquid` / `smooth`
+durations) feeds pure curves in frame.js; closing runs them backwards. Per
+monitor: `popupLiquid` and `stackLiquid` in bar/shell.qml; their windows stay
+up while `shown`. Tokens: `motion.liquid` (overshoot, fractions of the
+timeline, ratios), `motion.smooth`.
+
+- Glass, docked / islands: the tab's length grows from the button's width to
+  the card's (`Frame.liquidRect`, spread), its depth springs with a small
+  overshoot (`reveal`), fillets swell while it moves (`swell`), the content
+  fades in after `contentAt` and out first when closing. Gliding to another
+  button stretches the tab ahead of the motion (`popupLag * stretch`).
+- Glass, floating / floatingIslands: `VitrailLiquidSkin` draws an island
+  (`Frame.floatRect`) leaving the bar face (it detaches further than at rest
+  by `pull`, then settles), joined to the bar or island under the anchor
+  (`Frame.nearestRect`) by `VitrailNeck`: an hourglass (`Frame.neck`) whose
+  waist thins with `bond` and which is gone once it snaps (`snapAt`).
+- Solid: no overshoot, stretch or neck. Docked: the tab grows with an out-cubic
+  and the content fades; floating: the island fades, scales from 0.96 and
+  slides in from the bar.
+- Glass / solid and the opacity come from `VitrailTokens.surfaceMode` /
+  `shell.barOpacity`; `VitrailSurface` reads alpha and edge from
+  `VitrailVariants.surface`, which also defines the `raised` / `raisedHover`
+  alpha of cards inside a container. Never pass a literal `opacityLevel`.
+
+## Per monitor
+
+- Every monitor has its own bar. `shell.openPopup(kind, item, screen)` stores
+  `shell.popupScreen`; only that screen's popup layer and frame tab show.
+  Bar elements pass `monitor.modelData`; IPC (`network toggle`) passes none and
+  gets the focused monitor (`shell.focusedScreen`, via
+  `Hyprland.monitorFor(screen) === Hyprland.focusedMonitor`).
+
 ## Floating bar → island
 
 - Own `VitrailSurface`, cross-axis at `reserve[edge] + gap(md)` (a gap past
   the bar), along the bar `Frame.popupAlong()` clamps to `hole + gap(md)` so
   it never touches the frame lines.
+
+## Bar slots
+
+- start: `LauncherButton` (tonal `apps`) → `launcher.startDetached()`
+  (`pkill -x fuzzel || fuzzel`). The same through
+  `vitrail-bar ipc call launcher toggle`, bound to Super alone (release bind
+  `SUPER + SUPER_L`), the only launcher key, in hyprland.lua.
+- center: `ClockButton` (SystemClock; "HH\nMM" on a vertical bar) → popup
+  kind `clock` → `ClockPanel` (time, localized date, MonthGrid calendar with
+  month paging and a "today" button).
+- end: `BarItems` (network). Hovering another bar button while a popup is
+  open moves the popup to it (`openPopup(kind, item)`).
+
+## Popouts (after caelestia-dots/shell)
+
+- Every element with a popout reports `(kind, item)`; `shell.openPopup` anchors
+  (`shell.popupAnchor`, the item's rect) on that exact item; without one (IPC)
+  on that popup's own button on the target screen (`monitor.anchorFor`), `shell.hoverPopup` moves an open popout to a hovered
+  element. Kinds: `network`, `clock`, `tray:<id>`.
+- `bar/Popout.qml`: one named `Loader` per kind. Becoming current: load, then
+  fade in (`slow`); leaving: fade out (`fast`), then unload. Closing the
+  popup clears the current name, so menus reload fresh on the next open.
+- The card (`popupCard`) is sized to the current popout + margin and animates
+  x / y / width / height with `slow` + `Easing.OutQuint`: it glides to the
+  next element while the contents cross-fade. Docked, the frame tab follows.
+- Opening from closed sets `shell.popupOpening` for a `fast` beat: the
+  Behaviors are off, so the card appears at its button instead of gliding
+  from wherever the last popout was.
+
+## Tray (bar/tray)
+
+- `TrayItems`: a `plain` chevron folds the icons (animated implicit size;
+  an `error` dot on the chevron when a folded app needs attention);
+  `SystemTray.items` minus Passive; left = activate (or menu
+  when `onlyMenu`), right = menu popout, middle = secondaryActivate, wheel =
+  scroll; NeedsAttention shows an `error` dot.
+- The chevron comes after the icons (between them and the network button), so
+  folding moves only the icons; its glyph points to where the icons come from
+  (collapsed) or go to (expanded).
+- `TrayMenu`: StackView of `MenuLevel`s over `QsMenuOpener`; plain rows
+  (pill hover), 1 px separators, disabled at 45 %, check / radio glyphs,
+  `chevron_right` pushes a submenu with a tonal "Back" row; DBusMenu
+  mnemonics (`_`) are stripped. Triggering closes the popout.

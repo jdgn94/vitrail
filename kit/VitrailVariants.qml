@@ -42,14 +42,25 @@ QtObject {
         error: { role: "error", on: "errorForeground" }
     })
 
+    // Text field looks. `fill` is the box fill alpha, `hover` the state layer
+    // alpha under the pointer, `border` / `focus` the
+    // outline (or bottom line) width at rest and when focused or in error,
+    // `notch` opens the outline behind the floating label, `indicator` grows
+    // the bottom line from the centre on focus.
+    //   outline  no fill, the label floats into a notch of the outline
+    //   filled   surfaceHigh fill, top corners rounded, label rides inside
     readonly property var field: ({
-        outline: { role: "surfaceHigh", text: "foreground", alpha: 0.85, border: 1, motion: "fast" },
-        filled: { role: "surfaceHigh", text: "foreground", alpha: 1.0, border: 0, motion: "fast" }
+        outline: { role: "surfaceHigh", text: "foreground", fill: 0.0, hover: 0.06, border: 1, focus: 2, notch: true, indicator: false, motion: "base" },
+        filled: { role: "surfaceHigh", text: "foreground", fill: 1.0, hover: 0.08, border: 1, focus: 2, notch: false, indicator: true, motion: "base" }
     })
 
+    // Surface styles, the one source for every container. `alpha` multiplies
+    // the user's opacity, `edge` is the light edge, `raised` / `raisedHover`
+    // the alpha of a card inside a container (notification cards, rows):
+    // glass keeps them translucent, solid makes them opaque.
     readonly property var surface: ({
-        glass: { alpha: 0.62, border: 1, edge: 0.18, blur: true },
-        solid: { alpha: 1.0, border: 0, edge: 0.0, blur: false }
+        glass: { alpha: 0.62, border: 1, edge: 0.18, blur: true, raised: 0.7, raisedHover: 0.9 },
+        solid: { alpha: 1.0, border: 0, edge: 0.0, blur: false, raised: 1.0, raisedHover: 1.0 }
     })
 
     // Screen frame: a border around the whole screen whose inner corners
@@ -61,9 +72,14 @@ QtObject {
     })
 
     // System bar: docked melts into the frame, floating is an island inside it.
+    // The islands variants split the bar by slot group: docked, the frame stays
+    // thin and rises into an island under each group; floating, each group is
+    // its own pill.
     readonly property var bar: ({
-        docked: { docked: true, gap: "sm", motion: "base" },
-        floating: { docked: false, gap: "sm", motion: "base" }
+        docked: { docked: true, islands: false, gap: "sm", motion: "base" },
+        floating: { docked: false, islands: false, gap: "sm", motion: "base" },
+        islands: { docked: true, islands: true, gap: "sm", motion: "base" },
+        floatingIslands: { docked: false, islands: true, gap: "sm", motion: "base" }
     })
 
     // Side panels: full grows out of the frame along a whole edge; overlay

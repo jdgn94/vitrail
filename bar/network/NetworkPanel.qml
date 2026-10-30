@@ -400,10 +400,10 @@ Item {
 
             VitrailButton {
                 visible: entry.action !== ""
-                enabled: !entry.busy
+                busy: entry.busy
                 variant: entry.active ? "outlined" : "tonal"
                 tone: entry.active ? "secondary" : "primary"
-                text: entry.busy ? root.t("network.connecting") : entry.action
+                text: entry.action
                 onClicked: entry.triggered()
             }
         }

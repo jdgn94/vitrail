@@ -425,9 +425,11 @@ link_binaries() {
     local bin_dir="${HOME_DIR}/.local/bin"
     local name source target
     mkdir -p -- "$bin_dir"
-    for name in vitrail-settings vitrail-preview vitrail-bar vitrail-apply-settings; do
+    for name in vitrail-settings vitrail-preview vitrail-bar vitrail-apply-settings hyprland-dialog; do
         case "$name" in
             vitrail-apply-settings) source="$ROOT_DIR/scripts/apply-settings.sh" ;;
+            # Ahead of /usr/bin in PATH: Hyprland's dialogs open in the bar.
+            hyprland-dialog) source="$ROOT_DIR/scripts/hyprland-dialog.sh" ;;
             *) source="$ROOT_DIR/bin/$name" ;;
         esac
         [[ -f "$source" ]] || continue

@@ -1,6 +1,11 @@
 """Wallpaper library: one folder per kind, a selection of a single kind that
 rotates, and adaptive SVGs whose colours come from the palette.
 
+The library lives next to settings.ini (~/.config/vitrail/wallpapers), apart
+from the user's own pictures. The settings window cannot touch files, so it
+asks: `wallpaperImport` / `wallpaperRemove` hold "<nonce>|path|path…" and
+sync() copies or deletes, then clears the request.
+
 Kinds never mix: the selection holds images, SVGs or videos, and the colour
 extraction follows the wallpaper on screen (a video lends one frame, an SVG
 its seed colour).
@@ -12,6 +17,7 @@ import configparser
 import json
 import random
 import re
+import shutil
 import subprocess
 from collections import Counter
 from pathlib import Path
@@ -119,8 +125,48 @@ def write_pref(settings: Path, key: str, value: str) -> None:
     settings.write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
-def library(prefs: dict[str, str], home: Path) -> Path:
-    return Path(prefs.get("wallpaperDir") or home / "Pictures" / "Wallpapers").expanduser()
+def library(prefs: dict[str, str], settings: Path) -> Path:
+    custom = prefs.get("wallpaperDir")
+    return Path(custom).expanduser() if custom else settings.parent / "wallpapers"
+
+
+def request_paths(value: str) -> list[str]:
+    """The paths of a request; the leading nonce only makes it a new value."""
+    return parse_selection(value)[1:]
+
+
+def _free_name(target: Path) -> Path:
+    counter = 2
+    candidate = target
+    while candidate.exists():
+        candidate = target.with_name(f"{target.stem}-{counter}{target.suffix}")
+        counter += 1
+    return candidate
+
+
+def sync(settings: Path) -> tuple[list[Path], list[Path]]:
+    """Carries out the settings window's import and removal requests."""
+    prefs = read_prefs(settings)
+    folders = ensure_folders(library(prefs, settings))
+    imported: list[Path] = []
+    removed: list[Path] = []
+    for path in request_paths(prefs.get("wallpaperImport", "")):
+        source, kind = Path(path), kind_of(path)
+        if kind and source.is_file():
+            target = _free_name(folders[kind] / source.name)
+            shutil.copy2(source, target)
+            imported.append(target)
+    root = library(prefs, settings).resolve()
+    for path in request_paths(prefs.get("wallpaperRemove", "")):
+        target = Path(path).resolve()
+        # Only the library's own copies: never a file of the user's.
+        if target.is_file() and target.is_relative_to(root):
+            target.unlink()
+            removed.append(target)
+    for key in ("wallpaperImport", "wallpaperRemove"):
+        if prefs.get(key):
+            write_pref(settings, key, "")
+    return imported, removed
 
 
 def advance(settings: Path) -> str | None:
@@ -138,7 +184,6 @@ def advance(settings: Path) -> str | None:
 def apply(
     settings: Path,
     cache: Path,
-    home: Path,
     run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
 ) -> str | None:
     """Regenerates the palette when the wallpaper or the SVG seed changed.
@@ -146,7 +191,7 @@ def apply(
     Returns the wallpaper it themed, or None when nothing had to change.
     """
     prefs = read_prefs(settings)
-    ensure_folders(library(prefs, home))
+    ensure_folders(library(prefs, settings))
     path = prefs.get("wallpaper", "")
     kind = kind_of(path)
     if not path or kind is None or not Path(path).is_file():

@@ -94,6 +94,9 @@ Window {
         property string wallpaperOrder: "sequential"
         // Adaptive SVGs: seed colour of the palette, "" takes the SVG's own.
         property string wallpaperSeed: ""
+        // Requests for `vitrail wallpaper sync`: "<nonce>|path|path…".
+        property string wallpaperImport: ""
+        property string wallpaperRemove: ""
         // Written by the smoke test, never by the UI.
         property string selftest: ""
     }
@@ -350,7 +353,7 @@ Window {
                                     palette: palette
                                     prefs: prefs
                                     strings: app.strings
-                                    home: Args.value("--home", "")
+                                    configDir: app.configFile.substring(0, app.configFile.lastIndexOf("/"))
                                 }
 
                                 BarPage {

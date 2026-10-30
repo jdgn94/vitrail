@@ -5,7 +5,8 @@ import ".."
 // Button primitive. `variant` sets the emphasis (elevated, flat, inset,
 // tonal, outlined, text, plain: see VitrailVariants.button for when to use
 // each), `tone` the colour family (primary, secondary, info, error).
-// Icon-only buttons are circles; disabled ones fade.
+// Icon-only buttons are circles; disabled ones fade. A busy button swaps its
+// icon (or starts its label) with a busy indicator and ignores clicks.
 Item {
     id: root
 
@@ -14,8 +15,10 @@ Item {
     property string text: ""
     // Optional Material Symbol name, before the label.
     property string icon: ""
-    // sm / md / lg: label size and padding grow together.
+    // sm / md / lg / xl: label size and padding grow together.
     property string size: "md"
+    // Waiting for something: shows the busy indicator, takes no clicks.
+    property bool busy: false
 
     signal clicked()
 
@@ -30,7 +33,8 @@ Item {
     readonly property var scaleBySize: ({
         sm: { label: "label", icon: "body", pad: "xs" },
         md: { label: "label", icon: "subtitle", pad: "sm" },
-        lg: { label: "body", icon: "title", pad: "md" }
+        lg: { label: "body", icon: "title", pad: "md" },
+        xl: { label: "body", icon: "display", pad: "xl" }
     })[root.size] || ({ label: "label", icon: "subtitle", pad: "sm" })
     readonly property real lift: root.style.shadow * (root.hovered && !root.pressed ? 2 : 1)
 
@@ -88,9 +92,16 @@ Item {
 
         Behavior on opacity { NumberAnimation { duration: root.duration } }
 
+        VitrailBusy {
+            anchors.verticalCenter: parent.verticalCenter
+            running: root.busy
+            size: VitrailTokens.size(root.scaleBySize.icon)
+            color: root.ink
+        }
+
         VitrailText {
             anchors.verticalCenter: parent.verticalCenter
-            visible: root.icon !== ""
+            visible: root.icon !== "" && !root.busy
             variant: "icon"
             font.pixelSize: VitrailTokens.size(root.scaleBySize.icon)
             text: root.icon
@@ -115,6 +126,7 @@ Item {
 
         anchors.fill: parent
         hoverEnabled: true
+        enabled: !root.busy
         cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
         onClicked: root.clicked()
     }

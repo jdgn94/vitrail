@@ -97,6 +97,21 @@ if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}
         }
     })"
 
+    # The layer rule from hyprland.lua, redefined by name: blur follows the
+    # surface style, so glass/solid changes the bar, popups, notifications,
+    # dialogs and session menu live.
+    layer_lua="hl.layer_rule({
+        name = \"vitrail-glass\",
+        match = { namespace = \"^vitrail-(bar|popup|notifications|dialog|session)\$\" },
+        blur = ${blur_enabled},
+        ignore_alpha = 0.01
+    })"
+    if [[ "$(hyprctl eval "$layer_lua" 2>&1)" == "ok" ]]; then
+        printf 'Hyprland layers: vitrail-glass blur=%s\n' "$blur_enabled"
+    else
+        printf 'Hyprland layers: vitrail-glass rule not applied (needs the Lua config)\n'
+    fi
+
     if [[ "$(hyprctl eval "$lua" 2>&1)" == "ok" ]]; then
         printf 'Hyprland (eval): radius=%s border=%s follow_mouse=%s blur=%s size=%s opacity=%s/%s\n' \
             "$radius" "$border_width" "$follow_mouse" "$blur_enabled" "$blur_strength" \
@@ -183,5 +198,6 @@ printf 'Language: %s (%s, next session)\n' "$language" "$locale"
 vitrail_cli() {
     PYTHONPATH="$(dirname -- "${SELF}")/.." python3 -m vitrail.cli "$@"
 }
+vitrail_cli wallpaper sync || true
 vitrail_cli wallpaper apply || true
 vitrail_cli theme apply --mode "$system_mode" || true

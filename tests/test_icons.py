@@ -31,7 +31,10 @@ NOT_ICONS = {"body", "subtitle", "title", "label", "content", "display"}
 def icon_names() -> set[str]:
     names: set[str] = set()
     for folder in QML_DIRS:
-        for path in (ROOT / folder).rglob("*.qml"):
+        sources = list((ROOT / folder).rglob("*.qml"))
+        if folder == "bar":
+            sources += (ROOT / "bar" / "session").glob("*.js")
+        for path in sources:
             if path.is_relative_to(ROOT / "bar" / "kit"):
                 continue
             open_value = False

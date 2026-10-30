@@ -2,12 +2,19 @@
 
 ## Library
 
-`<wallpaperDir or ~/Pictures/Wallpapers>/{images,svg,videos}` (created by
-`vitrail wallpaper apply`). Prefs: `wallpaperType` (one kind at a time),
-`wallpaperSelection` ("|"-joined, same kind), `wallpaper` (on screen),
-`wallpaperInterval` (min), `wallpaperOrder` (sequential / random),
-`wallpaperSeed` (SVG seed, "" = the drawing's own colour), `wallpaperMode`
-(frame / screen fit, shared by all kinds).
+`~/.config/vitrail/wallpapers/{images,svg,videos}` (Vitrail's own copies,
+apart from the user's pictures; `wallpaperDir` overrides it). Prefs:
+`wallpaperType` (one kind at a time), `wallpaperSelection` ("|"-joined, same
+kind), `wallpaper` (on screen), `wallpaperInterval` (min), `wallpaperOrder`
+(sequential / random), `wallpaperSeed` (SVG seed, "" = the drawing's own
+colour), `wallpaperMode` (frame / screen fit, shared by all kinds).
+
+The settings window (qml6) cannot touch files: it writes requests
+`wallpaperImport` / `wallpaperRemove` = "<nonce>|path|path…" (the nonce makes
+a repeat a new value) and `vitrail wallpaper sync` copies them in (never
+overwriting: name-2.ext) or deletes them, only inside the library, then
+clears the key. The window updates the selection itself before asking for a
+removal. Delete on a tile is two clicks (arm, confirm).
 
 - Picking another kind replaces the selection; same kind toggles (one stays).
 - The bar rotates (`vitrail wallpaper next` rewrites `wallpaper=`) when more
@@ -25,7 +32,7 @@ bin/vitrail-settings). Example: `examples/wallpapers/waves.svg`.
 ## Pipeline
 
 settings.ini change → systemd path unit → scripts/apply-settings.sh →
-`vitrail wallpaper apply` (stamp: only a new wallpaper / seed extracts;
+`vitrail wallpaper sync` → `vitrail wallpaper apply` (stamp: only a new wallpaper / seed extracts;
 video → ffmpeg frame) → `vitrail theme apply --mode dark|light`
 (vitrail/system_theme.py): gtk-{3,4}.0/gtk.css, gtk-3.0 prefer-dark, gsettings
 color-scheme, qt5ct/qt6ct `colors/vitrail.conf` + conf keys,

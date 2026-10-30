@@ -18,6 +18,7 @@ Window {
     readonly property var panels: Object.keys(VitrailVariants.panel)
     readonly property var fits: Object.keys(VitrailVariants.wallpaper)
     readonly property var buttons: Object.keys(VitrailVariants.button)
+    readonly property var fields: Object.keys(VitrailVariants.field)
     readonly property var edges: ["left", "top", "right", "bottom"]
     // Optional image or video to preview the wallpaper fits with.
     readonly property string wallpaperFile: Args.value("--wallpaper", "")
@@ -175,6 +176,138 @@ Window {
 
         VitrailText {
             variant: "title"
+            text: "VitrailField · variant × text, password, icon, error, disabled"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("xl")
+
+            Repeater {
+                model: app.fields
+
+                delegate: ColumnLayout {
+                    id: fieldColumn
+
+                    required property string modelData
+
+                    Layout.alignment: Qt.AlignTop
+                    spacing: VitrailTokens.gap("md")
+
+                    VitrailText {
+                        variant: "label"
+                        text: fieldColumn.modelData
+                    }
+
+                    VitrailField {
+                        Layout.preferredWidth: 300
+                        variant: fieldColumn.modelData
+                        label: "Username"
+                        text: "juan"
+                        supportingText: "As it appears on the lock screen"
+                    }
+
+                    VitrailField {
+                        Layout.preferredWidth: 300
+                        variant: fieldColumn.modelData
+                        label: "Search"
+                        placeholder: "Type to search"
+                    }
+
+                    VitrailField {
+                        Layout.preferredWidth: 300
+                        variant: fieldColumn.modelData
+                        label: "Password"
+                        type: "password"
+                        text: "hunter2!"
+                    }
+
+                    VitrailField {
+                        Layout.preferredWidth: 300
+                        variant: fieldColumn.modelData
+                        label: "Email"
+                        leadingIcon: "mail"
+                        text: "juan@example.com"
+                    }
+
+                    VitrailField {
+                        Layout.preferredWidth: 300
+                        variant: fieldColumn.modelData
+                        label: "Password"
+                        type: "password"
+                        text: "wrong"
+                        error: true
+                        errorText: "Wrong password, try again"
+                    }
+
+                    VitrailField {
+                        Layout.preferredWidth: 300
+                        variant: fieldColumn.modelData
+                        label: "Disabled"
+                        text: "read only text"
+                        enabled: false
+                    }
+
+                    VitrailField {
+                        id: focusedField
+
+                        Layout.preferredWidth: 300
+                        variant: fieldColumn.modelData
+                        size: "sm"
+                        label: "Small, focused"
+                        text: "sm"
+                        Component.onCompleted: if (fieldColumn.modelData === "outline") focusedField.forceActiveFocus()
+                    }
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "VitrailBusy · plain, contained, sizes · busy buttons"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("lg")
+
+            Repeater {
+                model: [
+                    { size: "title", contained: false },
+                    { size: "display", contained: false },
+                    { size: "title", contained: true },
+                    { size: "display", contained: true }
+                ]
+
+                delegate: VitrailBusy {
+                    required property var modelData
+
+                    running: true
+                    size: VitrailTokens.size(modelData.size) * 1.5
+                    contained: modelData.contained
+                }
+            }
+
+            VitrailButton {
+                busy: true
+                text: "Connect"
+                variant: "tonal"
+            }
+
+            VitrailButton {
+                busy: true
+                icon: "download"
+                variant: "flat"
+            }
+
+            VitrailButton {
+                busy: true
+                text: "Checking"
+                variant: "outlined"
+                tone: "secondary"
+            }
+        }
+
+        VitrailText {
+            variant: "title"
             text: "VitrailBar · frame × bar × edge"
         }
 
@@ -244,6 +377,36 @@ Window {
 
         VitrailText {
             variant: "title"
+            text: "VitrailBar · popup motion × bar × progress (top edge)"
+        }
+
+        Repeater {
+            model: app.bars
+
+            delegate: RowLayout {
+                id: motionRow
+
+                required property string modelData
+
+                spacing: VitrailTokens.gap("lg")
+
+                Repeater {
+                    model: [0.15, 0.3, 0.5, 1]
+
+                    delegate: Preview {
+                        required property real modelData
+
+                        edge: "top"
+                        bar: motionRow.modelData
+                        cards: true
+                        progress: modelData
+                    }
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
             text: "VitrailBar · panel × wallpaper × edge"
         }
 
@@ -295,6 +458,25 @@ Window {
         // An open bar popup and a notification stack; docked bars grow
         // them out of the frame.
         property bool cards: false
+        // Where the liquid motion of the popup is, 0 closed .. 1 open.
+        property real progress: 1
+        readonly property var look: VitrailTokens.glass ? Frame.liquid(tile.progress, VitrailTokens.motion.liquid)
+                                                        : Frame.smooth(tile.progress, VitrailTokens.motion.smooth)
+        // The popup at rest: docked, flush with the frame; floating, a gap past the bar.
+        readonly property rect restRect: {
+            var h = screen.layout.dock, r = screen.layout.reserve
+            var g = VitrailTokens.gap("md")
+            var o = screen.style.docked ? h : { left: r.left + g, top: r.top + g, right: r.right + g, bottom: r.bottom + g }
+            var w = tile.card.width, ht = tile.card.height
+            var midX = (app.screenSize.width - w) / 2, midY = (app.screenSize.height - ht) / 2
+            switch (screen.layout.edge) {
+            case "right": return Qt.rect(app.screenSize.width - o.right - w, midY, w, ht)
+            case "top": return Qt.rect(midX, o.top, w, ht)
+            case "bottom": return Qt.rect(midX, app.screenSize.height - o.bottom - ht, w, ht)
+            default: return Qt.rect(o.left, midY, w, ht)
+            }
+        }
+        readonly property rect button: Qt.rect(app.screenSize.width / 2 - 15, app.screenSize.height / 2 - 15, 30, 30)
         readonly property size card: Qt.size(320, 180)
         readonly property var stack: Frame.stackRect(tile.edge === "top" ? "bottom-right" : "top-right",
                                                      app.screenSize.width, app.screenSize.height,
@@ -339,20 +521,11 @@ Window {
             panelVariant: tile.panel
             panelOpen: tile.panel !== ""
             panelPush: tile.fit !== "screen"
-            popupOpen: tile.cards && screen.style.docked
-            popup: {
-                var h = screen.layout.hole
-                var w = tile.card.width, ht = tile.card.height
-                var midX = (app.screenSize.width - w) / 2, midY = (app.screenSize.height - ht) / 2
-                switch (screen.layout.edge) {
-                case "right": return Qt.rect(app.screenSize.width - h.right - w, midY, w, ht)
-                case "top": return Qt.rect(midX, h.top, w, ht)
-                case "bottom": return Qt.rect(midX, app.screenSize.height - h.bottom - ht, w, ht)
-                default: return Qt.rect(h.left, midY, w, ht)
-                }
-            }
+            popupLook: tile.cards && screen.style.docked ? tile.look : null
+            popupOrigin: tile.button
+            popup: tile.restRect
             tabs: tile.cards && screen.style.docked
-                  ? [{ edge: tile.stack.edge, reveal: 1,
+                  ? [{ edge: tile.stack.edge, reveal: 1, swell: 1,
                        rect: Qt.rect(tile.stack.x, tile.stack.y, tile.card.width, tile.card.height) }]
                   : []
 
@@ -367,6 +540,23 @@ Window {
                 VitrailText { text: "◆" }
             ]
             panelContent: VitrailText { variant: "title"; text: tile.panel }
+        }
+
+        // A floating bar leaves its popup to an island that grows out of it.
+        VitrailLiquidSkin {
+            width: app.screenSize.width
+            height: app.screenSize.height
+            scale: app.scale
+            transformOrigin: Item.TopLeft
+            visible: tile.cards && !screen.style.docked
+            edge: screen.layout.edge
+            rect: tile.restRect
+            origin: tile.button
+            source: screen.islands ? Frame.nearestRect(screen.islandRects, app.screenSize.width / 2, app.screenSize.height / 2)
+                                   : Qt.rect(screen.area.x, screen.area.y, screen.area.width, screen.area.height)
+            look: tile.look
+            gap: VitrailTokens.gap("md")
+            opacityLevel: VitrailTokens.opacity
         }
     }
 }

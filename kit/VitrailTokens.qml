@@ -25,6 +25,7 @@ QtObject {
     readonly property var font: Tokens.font
     readonly property var motion: Tokens.motion
     readonly property var slider: Tokens.slider
+    readonly property var field: Tokens.field
     readonly property string fontFamily: Tokens.font.family
     readonly property string iconFamily: Tokens.font.icons
 

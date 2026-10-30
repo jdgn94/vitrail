@@ -1,6 +1,6 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
+import "base"
 
 // Shared base for the login and lock screens.
 //
@@ -28,7 +28,6 @@ Item {
     readonly property color textColor: root.palette.foreground || "#e2e2e9"
     readonly property color mutedColor: root.palette.muted || "#c4c6d0"
     readonly property color accentColor: root.palette.primary || "#a8c7fa"
-    readonly property color panelColor: root.palette.surfaceHigh || "#282a2f"
 
     Rectangle {
         id: background
@@ -64,10 +63,10 @@ Item {
         anchors.centerIn: parent
         width: 380
         height: cardContent.implicitHeight + 56
-        style: "glass"
+        style: VitrailTokens.surfaceMode
         radius: 22
         tint: root.surfaceColor
-        opacityLevel: 0.94
+        opacityLevel: VitrailTokens.opacity
 
         ColumnLayout {
             id: cardContent
@@ -123,32 +122,14 @@ Item {
             font.family: VitrailTokens.fontFamily
         }
 
-        TextField {
+        VitrailField {
             id: userField
 
             Layout.fillWidth: true
             visible: root.editableUsername
+            label: root.userLabel
             text: root.username
-            color: root.textColor
-            placeholderText: root.userLabel
-            placeholderTextColor: Qt.rgba(root.mutedColor.r, root.mutedColor.g, root.mutedColor.b, 0.6)
-            font.pixelSize: 14
-            font.family: VitrailTokens.fontFamily
-            leftPadding: 14
-            rightPadding: 14
-            topPadding: 10
-            bottomPadding: 10
-            selectionColor: root.accentColor
-            onTextEdited: root.username = text
-
-            background: Rectangle {
-                radius: 12
-                color: Qt.rgba(root.panelColor.r, root.panelColor.g, root.panelColor.b, 0.75)
-                border.width: 1
-                border.color: userField.activeFocus
-                             ? root.accentColor
-                             : Qt.rgba(root.textColor.r, root.textColor.g, root.textColor.b, 0.14)
-            }
+            onTextChanged: root.username = text
         }
 
         Text {
@@ -161,40 +142,14 @@ Item {
             leftPadding: 2
         }
 
-        Text {
-            Layout.fillWidth: true
-            Layout.topMargin: 2
-            text: root.passwordLabel
-            color: root.mutedColor
-            font.pixelSize: 12
-            font.family: VitrailTokens.fontFamily
-        }
-
-        TextField {
+        VitrailField {
             id: passwordField
 
             Layout.fillWidth: true
-            echoMode: TextInput.Password
-            placeholderText: root.passwordLabel
-            placeholderTextColor: Qt.rgba(root.mutedColor.r, root.mutedColor.g, root.mutedColor.b, 0.6)
-            color: root.textColor
-            font.pixelSize: 14
-            font.family: VitrailTokens.fontFamily
-            leftPadding: 14
-            rightPadding: 14
-            topPadding: 10
-            bottomPadding: 10
-            selectionColor: root.accentColor
+            Layout.topMargin: 2
+            type: "password"
+            label: root.passwordLabel
             onAccepted: root.submitted(root.username, text)
-
-            background: Rectangle {
-                radius: 12
-                color: Qt.rgba(root.panelColor.r, root.panelColor.g, root.panelColor.b, 0.75)
-                border.width: 1
-                border.color: passwordField.activeFocus
-                             ? root.accentColor
-                             : Qt.rgba(root.textColor.r, root.textColor.g, root.textColor.b, 0.14)
-            }
         }
 
         Rectangle {
@@ -240,6 +195,8 @@ Item {
     }
 
     Component.onCompleted: {
+        // The fields take their colours from the tokens, so give them this palette.
+        VitrailTokens.configure(root.palette, true, "glass", ({}))
         if (root.editableUsername)
             userField.forceActiveFocus()
         else
