@@ -1,0 +1,12 @@
+[SddmGreeterTheme]
+Name=Vitrail
+Description=Vitrail login theme
+Author=Vitrail
+Copyright=2026
+License=MIT
+Type=sddm-theme
+Version=1.0
+Website=https://github.com/vitrail
+Screenshot=
+MainScript=Main.qml
+ConfigFile=theme.conf

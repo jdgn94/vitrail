@@ -1,0 +1,11 @@
+[Unit]
+Description=Watch the Vitrail settings file
+
+[Path]
+PathChanged=%h/.config/vitrail/settings.ini
+Unit=vitrail-settings.service
+TriggerLimitIntervalSec=1
+TriggerLimitBurst=50
+
+[Install]
+WantedBy=default.target

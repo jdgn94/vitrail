@@ -1,0 +1,260 @@
+import QtQuick
+import QtQuick.Layouts
+import "../../kit"
+
+// Bar category: where the system bar docks, its style, the screen frame,
+// the side panels and where notifications appear. An empty preference
+// inherits the family default from VitrailStyle.
+Item {
+    id: page
+
+    property var palette
+    property var prefs
+    property var strings
+
+    function t(key) {
+        var value = page.strings[key]
+        return value === undefined ? key : value
+    }
+
+    function options(prefix, keys) {
+        return keys.map(function (key) {
+            return { key: key, label: page.t(prefix + key) }
+        })
+    }
+
+    Flickable {
+        anchors.fill: parent
+        contentHeight: column.implicitHeight
+        boundsBehavior: Flickable.StopAtBounds
+        clip: true
+
+        ColumnLayout {
+            id: column
+
+            width: parent.width
+            spacing: VitrailTokens.gap("xl")
+
+            Section {
+                Layout.fillWidth: true
+                icon: "toolbar"
+                title: page.t("bar.section.layout")
+                foreground: page.palette.foreground
+                accent: page.palette.primary
+
+                VitrailSettingRow {
+                    icon: "dock_to_left"
+                    label: page.t("bar.edge")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSegmented {
+                        options: page.options("bar.edge.", ["left", "top", "right", "bottom"])
+                        current: page.prefs.barEdge
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onSelected: page.prefs.barEdge = key
+                    }
+                }
+
+                VitrailSettingRow {
+                    icon: "style"
+                    label: page.t("bar.style")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSegmented {
+                        options: page.options("bar.style.", Object.keys(VitrailVariants.bar))
+                        current: page.prefs.barStyle || VitrailStyle.defaults.bar
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onSelected: page.prefs.barStyle = key
+                    }
+                }
+
+                VitrailSettingRow {
+                    icon: "desktop_windows"
+                    label: page.t("bar.screens")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSegmented {
+                        options: page.options("bar.screens.", ["primary", "all"])
+                        current: page.prefs.barScreens
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onSelected: page.prefs.barScreens = key
+                    }
+                }
+
+                VitrailSettingRow {
+                    icon: "opacity"
+                    label: page.t("bar.opacity")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSegmented {
+                        options: [
+                            { key: "follow", label: page.t("bar.opacity.follow") },
+                            { key: "own", label: page.t("bar.opacity.own") }
+                        ]
+                        current: page.prefs.barOpacityFollow ? "follow" : "own"
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onSelected: page.prefs.barOpacityFollow = key === "follow"
+                    }
+                }
+
+                VitrailSlider {
+                    Layout.fillWidth: true
+                    visible: !page.prefs.barOpacityFollow
+                    label: page.t("bar.opacity.value")
+                    suffix: "%"
+                    from: VitrailTokens.ranges.opacity.min * 100
+                    to: VitrailTokens.ranges.opacity.max * 100
+                    stepSize: VitrailTokens.ranges.opacity.step * 100
+                    value: page.prefs.barOpacity * 100
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.barOpacity = value / 100
+                }
+
+                VitrailSlider {
+                    Layout.fillWidth: true
+                    label: page.t("bar.size")
+                    suffix: " px"
+                    from: VitrailTokens.ranges.bar.min
+                    to: VitrailTokens.ranges.bar.max
+                    stepSize: VitrailTokens.ranges.bar.step
+                    value: page.prefs.barSize
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.barSize = value
+                }
+            }
+
+            Section {
+                Layout.fillWidth: true
+                icon: "crop_free"
+                title: page.t("bar.frame")
+                foreground: page.palette.foreground
+                accent: page.palette.primary
+
+                VitrailSettingRow {
+                    icon: "rounded_corner"
+                    label: page.t("bar.frame")
+                    description: page.t("bar.help")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSegmented {
+                        options: page.options("bar.frame.", Object.keys(VitrailVariants.frame))
+                        current: page.prefs.frameStyle || VitrailStyle.defaults.frame
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onSelected: page.prefs.frameStyle = key
+                    }
+                }
+
+                VitrailSlider {
+                    Layout.fillWidth: true
+                    label: page.t("bar.frameSize")
+                    suffix: " px"
+                    from: VitrailTokens.ranges.frame.min
+                    to: VitrailTokens.ranges.frame.max
+                    stepSize: VitrailTokens.ranges.frame.step
+                    value: page.prefs.frameSize
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.frameSize = value
+                }
+            }
+
+            Section {
+                Layout.fillWidth: true
+                icon: "view_sidebar"
+                title: page.t("bar.section.panels")
+                foreground: page.palette.foreground
+                accent: page.palette.primary
+
+                VitrailSettingRow {
+                    icon: "open_in_full"
+                    label: page.t("bar.panelPush")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSwitch {
+                        checked: page.prefs.panelPush
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onToggled: function (value) {
+                            page.prefs.panelPush = value
+                        }
+                    }
+                }
+
+                VitrailSlider {
+                    Layout.fillWidth: true
+                    label: page.t("bar.panelSize")
+                    suffix: " px"
+                    from: VitrailTokens.ranges.panel.min
+                    to: VitrailTokens.ranges.panel.max
+                    stepSize: VitrailTokens.ranges.panel.step
+                    value: page.prefs.panelSize
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.panelSize = value
+                }
+            }
+
+            Section {
+                Layout.fillWidth: true
+                icon: "notifications"
+                title: page.t("bar.section.notifications")
+                foreground: page.palette.foreground
+                accent: page.palette.primary
+
+                // "top-right" and friends: one segment picks the edge, the
+                // other where along it.
+                VitrailSettingRow {
+                    icon: "vertical_align_center"
+                    label: page.t("bar.notifications")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSegmented {
+                        options: page.options("bar.edge.", ["top", "bottom"])
+                        current: page.prefs.notificationPosition.split("-")[0]
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onSelected: page.prefs.notificationPosition = key + "-" + page.prefs.notificationPosition.split("-")[1]
+                    }
+
+                    VitrailSegmented {
+                        options: [
+                            { key: "left", label: page.t("bar.edge.left") },
+                            { key: "center", label: page.t("bar.notifications.center") },
+                            { key: "right", label: page.t("bar.edge.right") }
+                        ]
+                        current: page.prefs.notificationPosition.split("-")[1]
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onSelected: page.prefs.notificationPosition = page.prefs.notificationPosition.split("-")[0] + "-" + key
+                    }
+                }
+
+                VitrailSlider {
+                    Layout.fillWidth: true
+                    label: page.t("bar.notifications.max")
+                    from: VitrailTokens.ranges.notifications.min
+                    to: VitrailTokens.ranges.notifications.max
+                    stepSize: VitrailTokens.ranges.notifications.step
+                    value: page.prefs.notificationMax
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.notificationMax = value
+                }
+            }
+        }
+    }
+}

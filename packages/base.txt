@@ -1,0 +1,36 @@
+# Base system: terminal, audio, generic Wayland and Qt for Vitrail.
+base-devel
+git
+zsh
+starship
+fzf
+zoxide
+bat
+eza
+ripgrep
+fd
+wl-clipboard
+xdg-desktop-portal-gtk
+polkit-gnome
+grim
+slurp
+playerctl
+brightnessctl
+gnome-keyring
+libsecret
+fuzzel
+pipewire
+pipewire-pulse
+wireplumber
+noto-fonts
+noto-fonts-emoji
+ttf-jetbrains-mono-nerd
+qt6-base
+qt6-declarative
+qt6-wayland
+
+# Runtime for `vitrail colors` (standard library only)
+python
+
+# Color engine: Material You from an image
+matugen

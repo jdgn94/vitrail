@@ -1,0 +1,66 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+sdist/
+
+# --- Virtual environment (uv) ---
+.venv/
+venv/
+env/
+# uv.lock and .python-version ARE versioned: they reproduce the exact env.
+
+# --- Tool caches ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+
+# --- graphify graph (regenerated) ---
+graphify-out/
+.graphify-cache/
+*.graph.json.tmp
+
+# --- Vitrail installer ---
+# Backups created by ./install.sh before touching $HOME
+.backup/
+*.log
+
+# --- Qt / QML ---
+*.qmlc
+*.jsc
+.qmake.stash
+CMakeCache.txt
+CMakeFiles/
+
+# --- Secrets and local overrides ---
+.env
+.env.*
+!.env.example
+*.local
+
+# --- Editors ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- Operating system ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Patches and merge leftovers ---
+*.orig
+*.rej

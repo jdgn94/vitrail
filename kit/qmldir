@@ -1,0 +1,14 @@
+singleton VitrailTokens 1.0 VitrailTokens.qml
+singleton VitrailVariants 1.0 VitrailVariants.qml
+singleton VitrailStyle 1.0 VitrailStyle.qml
+AuthScreen 1.0 AuthScreen.qml
+Section 1.0 Section.qml
+VitrailPalette 1.0 VitrailPalette.qml
+VitrailSegmented 1.0 VitrailSegmented.qml
+VitrailSelect 1.0 VitrailSelect.qml
+VitrailSidebar 1.0 VitrailSidebar.qml
+VitrailSettingRow 1.0 VitrailSettingRow.qml
+VitrailSlider 1.0 VitrailSlider.qml
+VitrailSurface 1.0 VitrailSurface.qml
+VitrailSwitch 1.0 VitrailSwitch.qml
+VitrailTabs 1.0 VitrailTabs.qml

@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Launches the Vitrail settings window.
+#
+# Paths and the wallpaper palette are injected here: the QML runtime cannot
+# read environment variables or local files, and QtCore cannot be imported
+# alongside Qt.labs.settings in the same file (Qt 6.11 fails to load).
+set -euo pipefail
+
+HERE="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
+SHELL_DIR="$(cd -- "${HERE}/../shell" && pwd)"
+
+CONFIG="${XDG_CONFIG_HOME:-${HOME}/.config}/vitrail/settings.ini"
+
+mkdir -p -- "$(dirname -- "${CONFIG}")"
+
+plugins="[]"
+if command -v python3 >/dev/null 2>&1; then
+    plugins="$(PYTHONPATH="${HERE}/.." python3 -m vitrail.plugins index 2>/dev/null || printf '[]')"
+fi
+
+i18n='{"languages":[],"strings":{}}'
+if command -v python3 >/dev/null 2>&1; then
+    i18n="$(python3 "${HERE}/../scripts/i18n-bundle.py" 2>/dev/null || printf '{"languages":[],"strings":{}}')"
+fi
+
+palette="{}"
+if command -v python3 >/dev/null 2>&1; then
+    palette="$(python3 "${HERE}/../scripts/palette-json.py" 2>/dev/null || printf '{}')"
+fi
+
+# Adaptive SVG previews read the files to fill their {{role}} placeholders.
+export QML_XHR_ALLOW_FILE_READ=1
+
+exec qml6 -I "${HERE}/.." "${SHELL_DIR}/main.qml" -- \
+    --config "${CONFIG}" \
+    --palette "${palette}" \
+    --i18n "${i18n}" \
+    --plugins "${plugins}" \
+    --home "${HOME}" \
+    "$@"

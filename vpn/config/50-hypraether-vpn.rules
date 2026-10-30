@@ -1,0 +1,33 @@
+// /etc/polkit-1/rules.d/50-hypraether-vpn.rules
+//
+// Let the desktop user control this project's VPN from the user session
+// without a password prompt, strictly scoped:
+//   1. start/stop the split-tunnel instances (hypraether-vpn@<id>.service)
+//   2. switch the global traffic mode (split/full) via pkexec on the real
+//      root-owned helper /etc/hypraether/vpn/vpn-mode.sh
+//   3. apply the tunnel's domain list (resolve IPs + nftables sets) via
+//      pkexec on /etc/hypraether/vpn/vpn-domain.sh
+//
+// @VPN_USER@ is substituted by install.sh with the user that ran it.
+polkit.addRule(function (action, subject) {
+  if (
+    action.id == "org.freedesktop.systemd1.manage-units" &&
+    subject.user == "@VPN_USER@"
+  ) {
+    var unit = action.lookup("unit");
+    if (unit && /^hypraether-vpn@[a-zA-Z0-9-]+\.service$/.test(unit)) {
+      return polkit.Result.YES;
+    }
+  }
+});
+
+polkit.addRule(function (action, subject) {
+  if (
+    action.id == "org.freedesktop.policykit.exec" &&
+    subject.user == "@VPN_USER@" &&
+    (action.lookup("program") == "/etc/hypraether/vpn/vpn-mode.sh" ||
+      action.lookup("program") == "/etc/hypraether/vpn/vpn-domain.sh")
+  ) {
+    return polkit.Result.YES;
+  }
+});

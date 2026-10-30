@@ -1,0 +1,9 @@
+# Hyprland, complete for a fresh install.
+hyprland
+hyprlock
+hypridle
+hyprpolkitagent
+# System bar and screen frame (bin/vitrail-bar).
+quickshell
+xdg-desktop-portal-hyprland
+qt5-wayland

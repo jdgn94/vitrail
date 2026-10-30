@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Starts the Vitrail system bar and screen frame (Quickshell).
+set -euo pipefail
+
+HERE="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
+
+exec quickshell --path "${HERE}/../bar/shell.qml" "$@"

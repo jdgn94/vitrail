@@ -1,0 +1,7 @@
+{
+  "name": "hello",
+  "version": "1.0.0",
+  "description": "Minimal Vitrail plugin: a live clock.",
+  "author": "Vitrail",
+  "entry": "Hello.qml"
+}

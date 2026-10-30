@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Renders the design-system gallery: every component × every variant.
+#   vitrail-gallery [--theme dark|light] [--surface glass|solid] [--grab out.png] [--wallpaper file]
+set -euo pipefail
+
+HERE="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
+
+palette="{}"
+if command -v python3 >/dev/null 2>&1; then
+    palette="$(python3 "${HERE}/../scripts/palette-json.py" 2>/dev/null || printf '{}')"
+fi
+
+exec qml6 "${HERE}/../gallery/Main.qml" -- --palette "$palette" "$@"

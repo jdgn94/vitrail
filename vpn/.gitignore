@@ -1,0 +1,12 @@
+# Credentials — never commit these!
+*.ovpn
+auth.txt
+
+# Local secrets / temp files
+*.pass
+password.txt
+vault.db
+
+# Python bytecode
+__pycache__/
+*.pyc

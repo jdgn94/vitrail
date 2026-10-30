@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Renders the login or lock screen for preview. No authentication involved.
+set -euo pipefail
+
+HERE="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
+MODE="${1:-login}"
+[[ $# -gt 0 ]] && shift
+
+case "$MODE" in
+    login) ENTRY="${HERE}/../login/Main.qml" ;;
+    lock) ENTRY="${HERE}/../lock/Main.qml" ;;
+    *)
+        printf 'usage: vitrail-preview <login|lock> [extra args]\n' >&2
+        exit 2
+        ;;
+esac
+
+i18n='{"languages":[],"strings":{}}'
+if command -v python3 >/dev/null 2>&1; then
+    i18n="$(python3 "${HERE}/../scripts/i18n-bundle.py" 2>/dev/null || printf '{"languages":[],"strings":{}}')"
+fi
+
+palette="{}"
+if command -v python3 >/dev/null 2>&1; then
+    palette="$(python3 "${HERE}/../scripts/palette-json.py" 2>/dev/null || printf '{}')"
+fi
+
+exec qml6 "$ENTRY" -- \
+    --palette "$palette" \
+    --language "${VITRAIL_LANG:-en}" \
+    --user "$(id -un)" \
+    "$@"

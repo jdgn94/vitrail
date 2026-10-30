@@ -1,0 +1,26 @@
+# /etc/systemd/system/vpn-auth-watchdog.service
+#
+# Watches the OpenVPN services for connection problems (AUTH_FAILED, TLS
+# failures, start failures, units stuck in a failed state), notifies the
+# desktop user, and restarts the active tunnels when the credentials vault
+# changes (hypraether-vpn creds <id>).
+
+[Unit]
+Description=VPN connection watchdog (problem notifications + credential rotation)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/etc/hypraether/vpn/vpn-auth-watchdog.sh
+Environment=COOLDOWN_SECONDS=900
+Restart=always
+RestartSec=15
+# Needs root to read the journal and restart systemd services.
+User=root
+Group=root
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

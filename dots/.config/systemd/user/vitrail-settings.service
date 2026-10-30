@@ -1,0 +1,7 @@
+[Unit]
+Description=Apply Vitrail settings to the running session
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/vitrail-apply-settings
