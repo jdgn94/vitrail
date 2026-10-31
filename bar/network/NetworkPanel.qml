@@ -1,18 +1,17 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import Quickshell.Networking
 import "../kit"
 import "../kit/base"
+import "network.js" as Network
 
-// Network popup: a status header, then Ethernet + Wi-Fi and VPN as tabs.
+// Network popup: a status header, then Ethernet and Wi-Fi.
 // Sized to its content; the caller places it in the bar popup.
 Item {
     id: root
 
     property var strings: ({})
-    property string tab: "network"
 
     // --- state ---------------------------------------------------------------
     readonly property var wifiDevice: root.deviceOf(DeviceType.Wifi, false)
@@ -23,16 +22,6 @@ Item {
         for (var i = 0; i < networks.length; i++) {
             if (networks[i].connected)
                 return networks[i]
-        }
-        return null
-    }
-    property var vpnConnections: []
-    // VPN id being connected or disconnected, until the list catches up.
-    property string vpnPending: ""
-    readonly property var activeVpn: {
-        for (var i = 0; i < root.vpnConnections.length; i++) {
-            if (root.vpnConnections[i].active)
-                return root.vpnConnections[i]
         }
         return null
     }
@@ -49,11 +38,6 @@ Item {
         return value === undefined ? key : value
     }
 
-    function runCommand(argv) {
-        command.command = argv
-        command.running = true
-    }
-
     // First device of a type, or the first connected one when asked.
     function deviceOf(type, connected) {
         var devices = Networking.devices.values
@@ -62,25 +46,6 @@ Item {
                 return devices[i]
         }
         return null
-    }
-
-    // Signal bars, from empty to full.
-    function wifiGlyph(strength) {
-        var glyphs = ["signal_wifi_0_bar", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar", "signal_wifi_4_bar"]
-        return glyphs[Math.max(0, Math.min(4, Math.round((strength || 0) * 4)))]
-    }
-
-    // "us-free-12.protonvpn.udp.ovpn" reads as "us-free-12" over
-    // "protonvpn · udp".
-    function vpnTitle(name) {
-        return name.replace(/\.(ovpn|conf)$/, "").split(".")[0]
-    }
-
-    function vpnDetail(connection) {
-        var parts = connection.name.replace(/\.(ovpn|conf)$/, "").split(".").slice(1)
-        if (connection.region)
-            parts.push(connection.region)
-        return parts.join(" · ")
     }
 
     ColumnLayout {
@@ -107,7 +72,7 @@ Item {
                     anchors.centerIn: parent
                     variant: "icon"
                     text: root.wiredDevice ? "lan"
-                          : root.wifiNetwork ? root.wifiGlyph(root.wifiNetwork.signalStrength)
+                          : root.wifiNetwork ? Network.wifiGlyph(root.wifiNetwork.signalStrength)
                           : root.online ? "lan" : "signal_wifi_off"
                     color: root.online ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
                 }
@@ -131,56 +96,11 @@ Item {
                           : root.online ? root.t("network.connected") : root.t("network.offline")
                 }
             }
-
-            // The tunnel at a glance, whichever tab is open.
-            Rectangle {
-                visible: root.activeVpn !== null
-                implicitWidth: vpnBadge.implicitWidth + 2 * VitrailTokens.gap("sm")
-                implicitHeight: vpnBadge.implicitHeight + VitrailTokens.gap("xs")
-                radius: height / 2
-                color: Qt.rgba(VitrailTokens.color("primary").r, VitrailTokens.color("primary").g,
-                               VitrailTokens.color("primary").b, 0.18)
-
-                Row {
-                    id: vpnBadge
-
-                    anchors.centerIn: parent
-                    spacing: VitrailTokens.gap("xs")
-
-                    VitrailText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        variant: "icon"
-                        font.pixelSize: VitrailTokens.size("label")
-                        text: "shield_lock"
-                        filled: true
-                        color: VitrailTokens.color("primary")
-                    }
-
-                    VitrailText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        variant: "label"
-                        text: root.t("network.vpn")
-                        color: VitrailTokens.color("primary")
-                        opacity: 1
-                    }
-                }
-            }
         }
 
-        VitrailTabs {
-            Layout.fillWidth: true
-            tabs: [
-                { key: "network", label: root.t("network.network") },
-                { key: "vpn", label: root.t("network.vpn") }
-            ]
-            current: root.tab
-            onSelected: function (key) { root.tab = key }
-        }
-
-        // --- network (ethernet + wifi) ---------------------------------------
+        // --- ethernet + wifi -------------------------------------------------
         ColumnLayout {
             Layout.fillWidth: true
-            visible: root.tab === "network"
             spacing: VitrailTokens.gap("xs")
 
             Repeater {
@@ -257,7 +177,7 @@ Item {
                         required property var modelData
 
                         width: parent.width
-                        icon: root.wifiGlyph(wifi.modelData.signalStrength)
+                        icon: Network.wifiGlyph(wifi.modelData.signalStrength)
                         active: wifi.modelData.connected
                         busy: wifi.modelData.stateChanging
                         title: wifi.modelData.name
@@ -274,194 +194,5 @@ Item {
                 }
             }
         }
-
-        // --- vpn -------------------------------------------------------------
-        ColumnLayout {
-            Layout.fillWidth: true
-            visible: root.tab === "vpn"
-            spacing: VitrailTokens.gap("xs")
-
-            VitrailText {
-                Layout.fillWidth: true
-                Layout.leftMargin: VitrailTokens.gap("sm")
-                variant: "content"
-                elide: Text.ElideRight
-                text: root.activeVpn
-                      ? root.t("network.vpnActive") + " " + root.vpnTitle(root.activeVpn.name)
-                      : root.t("network.vpnInactive")
-            }
-
-            Scroller {
-                visible: root.vpnConnections.length > 0
-
-                Repeater {
-                    model: root.vpnConnections
-
-                    delegate: Entry {
-                        id: vpn
-
-                        required property var modelData
-
-                        width: parent.width
-                        icon: vpn.modelData.active ? "shield_lock" : "shield"
-                        active: vpn.modelData.active
-                        busy: root.vpnPending === vpn.modelData.id
-                        title: root.vpnTitle(vpn.modelData.name)
-                        subtitle: root.vpnDetail(vpn.modelData)
-                        action: vpn.modelData.active ? root.t("network.disconnect") : root.t("network.connect")
-                        onTriggered: {
-                            root.vpnPending = vpn.modelData.id
-                            if (vpn.modelData.active)
-                                root.runCommand(["hypraether-vpn", "disconnect"])
-                            else
-                                root.runCommand(["hypraether-vpn", "connect", vpn.modelData.id])
-                        }
-                    }
-                }
-            }
-
-            VitrailText {
-                Layout.fillWidth: true
-                Layout.leftMargin: VitrailTokens.gap("sm")
-                visible: root.vpnConnections.length === 0
-                variant: "content"
-                text: root.t("network.vpnEmpty")
-            }
-        }
-    }
-
-    // One connection: icon, name and detail, and its connect button. The
-    // active one is tinted; the others light up under the pointer.
-    component Entry: Item {
-        id: entry
-
-        property string icon: ""
-        property string title: ""
-        property string subtitle: ""
-        property string action: ""
-        property bool active: false
-        property bool busy: false
-
-        signal triggered()
-
-        Layout.fillWidth: true
-        implicitHeight: line.implicitHeight + 2 * VitrailTokens.gap("xs")
-
-        Rectangle {
-            anchors.fill: parent
-            radius: VitrailTokens.radius / 2
-            color: entry.active ? VitrailTokens.color("primary") : VitrailTokens.color("foreground")
-            opacity: entry.active ? 0.14 : (hover.hovered ? 0.06 : 0)
-
-            Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("fast") } }
-        }
-
-        HoverHandler {
-            id: hover
-        }
-
-        RowLayout {
-            id: line
-
-            anchors.verticalCenter: parent.verticalCenter
-            x: VitrailTokens.gap("sm")
-            width: parent.width - 2 * VitrailTokens.gap("sm")
-            spacing: VitrailTokens.gap("sm")
-
-            VitrailText {
-                // Glyphs differ in width; a fixed slot keeps the names aligned.
-                Layout.preferredWidth: VitrailTokens.size("display")
-                horizontalAlignment: Text.AlignHCenter
-                variant: "icon"
-                text: entry.icon
-                color: entry.active ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 0
-
-                VitrailText {
-                    Layout.fillWidth: true
-                    variant: "body"
-                    font.weight: entry.active ? Font.DemiBold : Font.Normal
-                    elide: Text.ElideRight
-                    text: entry.title
-                }
-
-                VitrailText {
-                    Layout.fillWidth: true
-                    visible: entry.subtitle !== ""
-                    variant: "label"
-                    elide: Text.ElideRight
-                    text: entry.subtitle
-                }
-            }
-
-            VitrailButton {
-                visible: entry.action !== ""
-                busy: entry.busy
-                variant: entry.active ? "outlined" : "tonal"
-                tone: entry.active ? "secondary" : "primary"
-                text: entry.action
-                onClicked: entry.triggered()
-            }
-        }
-    }
-
-    // A list that scrolls past a handful of rows, so the popup stays small.
-    component Scroller: Flickable {
-        default property alias rows: column.data
-
-        Layout.fillWidth: true
-        Layout.preferredHeight: Math.min(column.implicitHeight, VitrailTokens.size("display") * 8)
-        contentHeight: column.implicitHeight
-        boundsBehavior: Flickable.StopAtBounds
-        clip: true
-
-        Column {
-            id: column
-
-            width: parent.width
-            spacing: VitrailTokens.gap("xs")
-        }
-    }
-
-    // --- backends -------------------------------------------------------------
-    Process {
-        id: command
-
-        running: false
-        onExited: vpnRefresh.restart()
-    }
-
-    Process {
-        id: vpnList
-
-        command: ["hypraether-vpn", "list", "--json"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    root.vpnConnections = JSON.parse(this.text)
-                } catch (error) {
-                    root.vpnConnections = []
-                }
-                root.vpnPending = ""
-            }
-        }
-    }
-
-    Timer {
-        id: vpnRefresh
-        interval: 1200
-        onTriggered: vpnList.running = true
-    }
-
-    Timer {
-        interval: 5000
-        running: root.visible
-        repeat: true
-        onTriggered: vpnList.running = true
     }
 }

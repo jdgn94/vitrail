@@ -511,4 +511,20 @@ TestCase {
         compare(Frame.stackRect("bottom-right", 1000, 800, 300, 200, l, true, 12, [Qt.rect(800, 0, 200, 36)]),
                 { x: 1000 - 6 - 300, y: 800 - 6 - 200, edge: "bottom" })
     }
+
+    // A tooltip sits a gap past the bar, on the side away from its edge,
+    // centred on the element and kept a gap inside the screen.
+    function test_tooltip_hangs_away_from_the_bar_edge() {
+        var target = Qt.rect(500, 0, 40, 36)
+        compare(Frame.tooltipAt("top", target, 100, 30, 36, 8, 1000, 800), { x: 470, y: 44 })
+        compare(Frame.tooltipAt("bottom", Qt.rect(500, 764, 40, 36), 100, 30, 36, 8, 1000, 800), { x: 470, y: 800 - 36 - 8 - 30 })
+        compare(Frame.tooltipAt("left", Qt.rect(0, 300, 36, 40), 100, 30, 36, 8, 1000, 800), { x: 44, y: 305 })
+        compare(Frame.tooltipAt("right", Qt.rect(964, 300, 36, 40), 100, 30, 36, 8, 1000, 800), { x: 1000 - 36 - 8 - 100, y: 305 })
+    }
+
+    function test_tooltip_stays_inside_the_screen() {
+        compare(Frame.tooltipAt("top", Qt.rect(0, 0, 20, 36), 100, 30, 36, 8, 1000, 800).x, 8)
+        compare(Frame.tooltipAt("top", Qt.rect(980, 0, 20, 36), 100, 30, 36, 8, 1000, 800).x, 1000 - 100 - 8)
+        compare(Frame.tooltipAt("left", Qt.rect(0, 0, 36, 20), 100, 30, 36, 8, 1000, 800).y, 8)
+    }
 }

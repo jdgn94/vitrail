@@ -5,8 +5,8 @@ import "network"
 import "session"
 import "tray"
 
-// The bar's end group: background apps (tray), the network button and the
-// power button.
+// The bar's end group: background apps (tray), the network and VPN buttons and
+// the power button.
 // Every element that has a popout reports its own kind and item, so the
 // popout opens on, and glides to, that exact element.
 GridLayout {
@@ -15,8 +15,10 @@ GridLayout {
     property bool vertical: false
     property string openKind: ""
     property bool open: false
+    property var strings: ({})
     // The buttons of the popouts that open without a click (IPC).
     readonly property Item networkButton: network
+    readonly property Item vpnButton: vpn
     readonly property Item powerButton: power
 
     // The power button's left click opens the session menu; its right click
@@ -24,6 +26,8 @@ GridLayout {
     signal sessionRequested()
     signal clicked(string kind, Item item)
     signal hovered(string kind, Item item)
+    // The pointer entered or left an element: its tooltip.
+    signal tipHovered(Item item, bool on)
 
     flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
     rowSpacing: VitrailTokens.gap("xs")
@@ -32,25 +36,49 @@ GridLayout {
     TrayItems {
         vertical: root.vertical
         openKind: root.open ? root.openKind : ""
+        strings: root.strings
         onMenuRequested: function (kind, item) { root.clicked(kind, item) }
         onHovered: function (kind, item) { root.hovered(kind, item) }
+        onTipHovered: function (item, on) { root.tipHovered(item, on) }
     }
 
     NetworkButton {
         id: network
 
-        vertical: root.vertical
+        strings: root.strings
         opened: root.open && root.openKind === "network"
         onClicked: root.clicked("network", network)
-        onHoveredChanged: if (hovered) root.hovered("network", network)
+        onHoveredChanged: {
+            root.tipHovered(network, hovered)
+            if (hovered)
+                root.hovered("network", network)
+        }
+    }
+
+    VpnButton {
+        id: vpn
+
+        strings: root.strings
+        opened: root.open && root.openKind === "vpn"
+        onClicked: root.clicked("vpn", vpn)
+        onHoveredChanged: {
+            root.tipHovered(vpn, hovered)
+            if (hovered)
+                root.hovered("vpn", vpn)
+        }
     }
 
     PowerButton {
         id: power
 
+        strings: root.strings
         opened: root.open && root.openKind === "power"
         onClicked: root.sessionRequested()
         onMenuRequested: root.clicked("power", power)
-        onHoveredChanged: if (hovered) root.hovered("power", power)
+        onHoveredChanged: {
+            root.tipHovered(power, hovered)
+            if (hovered)
+                root.hovered("power", power)
+        }
     }
 }

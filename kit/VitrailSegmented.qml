@@ -2,7 +2,9 @@ import QtQuick
 import QtQuick.Layouts
 
 // Single-choice segmented control. One pill marks the choice and slides to
-// the new one when it changes.
+// the new one when it changes. An option is { key, label, icon }: `icon` is an
+// optional Material Symbol before the label (alone when the label is empty),
+// drawn in the label's colour and filled when the option is chosen.
 Rectangle {
     id: root
 
@@ -59,19 +61,44 @@ Rectangle {
 
                 required property var modelData
 
-                Layout.fillHeight: true
-                implicitWidth: label.implicitWidth + 28
+                readonly property bool chosen: root.current === segment.modelData.key
+                readonly property color ink: segment.chosen ? root.onAccent : root.foreground
 
-                Text {
-                    id: label
+                Layout.fillHeight: true
+                implicitWidth: content.implicitWidth + (label.text === "" ? 20 : 28)
+
+                Row {
+                    id: content
 
                     anchors.centerIn: parent
-                    text: segment.modelData.label
-                    color: root.current === segment.modelData.key ? root.onAccent : root.foreground
-                    font.pixelSize: 13
-                    font.family: VitrailTokens.fontFamily
+                    spacing: 6
 
-                    Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
+                    Text {
+                        id: glyph
+
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: text !== ""
+                        text: segment.modelData.icon || ""
+                        color: segment.ink
+                        font.family: VitrailTokens.iconFamily
+                        font.variableAxes: ({ "FILL": segment.chosen ? 1 : 0 })
+                        font.pixelSize: 18
+
+                        Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
+                    }
+
+                    Text {
+                        id: label
+
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: text !== ""
+                        text: segment.modelData.label || ""
+                        color: segment.ink
+                        font.pixelSize: 13
+                        font.family: VitrailTokens.fontFamily
+
+                        Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
+                    }
                 }
 
                 MouseArea {

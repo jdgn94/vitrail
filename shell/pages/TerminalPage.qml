@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import "../../kit"
 
 // Terminal category: kitty's tab bar and typography.
-// Values land in settings.ini; apply-settings.sh turns them into
+// Values land in terminal.ini; apply-settings.sh turns them into
 // ~/.config/vitrail/header.conf and ~/.config/vitrail/kitty-user.conf.
 Item {
     id: page
@@ -67,9 +67,9 @@ Item {
 
                         VitrailSegmented {
                             options: [
-                                { key: "capsule", label: page.t("terminal.capsule") },
-                                { key: "tonal", label: page.t("terminal.tonal") },
-                                { key: "minimal", label: page.t("terminal.minimal") }
+                                { key: "capsule", icon: "crop_16_9", label: page.t("terminal.capsule") },
+                                { key: "tonal", icon: "tonality", label: page.t("terminal.tonal") },
+                                { key: "minimal", icon: "minimize", label: page.t("terminal.minimal") }
                             ]
                             current: page.prefs.tabStyle
                             foreground: page.palette.foreground
@@ -123,9 +123,9 @@ Item {
 
                         VitrailSegmented {
                             options: [
-                                { key: "system", label: page.t("terminal.system") },
-                                { key: "light", label: page.t("theme.light") },
-                                { key: "dark", label: page.t("theme.dark") }
+                                { key: "system", icon: "computer", label: page.t("terminal.system") },
+                                { key: "light", icon: "light_mode", label: page.t("theme.light") },
+                                { key: "dark", icon: "dark_mode", label: page.t("theme.dark") }
                             ]
                             current: page.prefs.terminalScheme
                             foreground: page.palette.foreground

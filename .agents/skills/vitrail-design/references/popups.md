@@ -71,14 +71,15 @@ timeline, ratios), `motion.smooth`.
 
 ## Bar slots
 
-- start: `LauncherButton` (tonal `apps`) → `launcher.startDetached()`
-  (`pkill -x fuzzel || fuzzel`). The same through
-  `vitrail-bar ipc call launcher toggle`, bound to Super alone (release bind
-  `SUPER + SUPER_L`), the only launcher key, in hyprland.lua.
+- start: `LauncherButton` (tonal `apps`): left click → the full-screen
+  launcher, right click → popout kind `launcher` (`references/launcher.md`).
+  Through `vitrail-bar ipc call launcher toggle` (full screen), `open <mode>`
+  or `popout`. Super alone (release bind `SUPER + SUPER_L`) is the only
+  launcher key, in hyprland.lua.
 - center: `ClockButton` (SystemClock; "HH\nMM" on a vertical bar) → popup
   kind `clock` → `ClockPanel` (time, localized date, MonthGrid calendar with
   month paging and a "today" button).
-- end: `BarItems` (network). Hovering another bar button while a popup is
+- end: `BarItems` (tray, network, vpn, power). Hovering another bar button while a popup is
   open moves the popup to it (`openPopup(kind, item)`).
 
 ## Popouts (after caelestia-dots/shell)
@@ -86,7 +87,7 @@ timeline, ratios), `motion.smooth`.
 - Every element with a popout reports `(kind, item)`; `shell.openPopup` anchors
   (`shell.popupAnchor`, the item's rect) on that exact item; without one (IPC)
   on that popup's own button on the target screen (`monitor.anchorFor`), `shell.hoverPopup` moves an open popout to a hovered
-  element. Kinds: `network`, `clock`, `tray:<id>`.
+  element. Kinds: `network`, `vpn`, `clock`, `power`, `tray:<id>`.
 - `bar/Popout.qml`: one named `Loader` per kind. Becoming current: load, then
   fade in (`slow`); leaving: fade out (`fast`), then unload. Closing the
   popup clears the current name, so menus reload fresh on the next open.
@@ -99,7 +100,9 @@ timeline, ratios), `motion.smooth`.
 
 ## Tray (bar/tray)
 
-- `TrayItems`: a `plain` chevron folds the icons (animated implicit size;
+- `TrayItems`: collapsed by default; app icons are tinted with the theme
+  foreground (primary on hover / open menu) by a `MultiEffect` colorization,
+  the NeedsAttention dot stays `error`. A `plain` chevron folds the icons (animated implicit size;
   an `error` dot on the chevron when a folded app needs attention);
   `SystemTray.items` minus Passive; left = activate (or menu
   when `onlyMenu`), right = menu popout, middle = secondaryActivate, wheel =

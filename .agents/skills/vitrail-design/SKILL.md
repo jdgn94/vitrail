@@ -27,7 +27,12 @@ layer contract.
      slider, settings window layout, popup rows.
    - `references/wallpapers.md` — library, adaptive SVG, colour pipeline.
    - `references/dialogs.md` — polkit and Hyprland dialogs in the bar.
+   - `references/datetime.md` — time zone world map, NTP, system language.
    - `references/session.md` — power button, session menu and popout.
+   - `references/tooltips.md` — bar tooltips: contract, host, contents.
+   - `references/osd.md` — volume / microphone / brightness OSD: edge, hot zone,
+     sliders, device cards, keys, IPC.
+   - `references/launcher.md` — application launcher: modes, files, data flow.
 2. Geometry goes in `kit/frame.js` (pure, tested in `tests/qml/tst_frame.qml`);
    QML only binds to it. Write the test first.
 3. Literal values only in `kit/tokens.js`; new looks become a variant in

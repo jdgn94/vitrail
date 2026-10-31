@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from vitrail import colors, plugins, style, system_theme, wallpaper
+from vitrail import brightness, colors, plugins, prefs, style, system_theme, wallpaper
 
 
 def _say(message: str = "") -> None:
@@ -53,11 +53,22 @@ def _parser() -> argparse.ArgumentParser:
     style_actions.add_parser("show", help="print the current style")
 
     paper = sub.add_parser("wallpaper", help="theme the wallpaper or rotate to the next one")
-    paper.add_argument("action", choices=("apply", "next", "sync"))
+    paper.add_argument("action", choices=("apply", "next", "sync", "import"))
+    paper.add_argument("paths", nargs="*", help="import: files or folders to add")
+    paper.add_argument("--force", action="store_true", help="apply: extract even if unchanged")
 
     mode = sub.add_parser("theme", help="apply light or dark to GTK, Qt and Hyprland")
     mode.add_argument("action", choices=("apply",))
     mode.add_argument("--mode", choices=("dark", "light"), required=True)
+
+    setter = sub.add_parser("set", help="change one setting (appearance, surfaceStyle)")
+    setter.add_argument("key", choices=tuple(prefs.CHOICES))
+    setter.add_argument("value")
+
+    sub.add_parser("migrate", help="split a legacy settings.ini into one file per area")
+
+    light = sub.add_parser("brightness", help="list the monitors the OSD can dim, as JSON")
+    light.add_argument("action", choices=("list",))
 
     plugin_parser = sub.add_parser("plugins", help="list or lock plugins")
     plugin_parser.add_argument(
@@ -130,17 +141,25 @@ def _config_home() -> Path:
 
 
 def _wallpaper(args: argparse.Namespace) -> int:
-    settings = _config_home() / "vitrail" / "settings.ini"
+    settings = prefs.config_dir()
     if args.action == "sync":
         imported, removed = wallpaper.sync(settings)
         _say(f"Wallpapers: {len(imported)} imported, {len(removed)} removed")
+        return 0
+    if args.action == "import":
+        folders = wallpaper.ensure_folders(wallpaper.library(prefs.read_prefs(settings), settings))
+        added = wallpaper.import_paths(
+            folders, [Path(path).expanduser() for path in args.paths], say=_say)
+        for path in added:
+            _say(f"  {path}")
+        _say(f"Wallpapers: {len(added)} imported")
         return 0
     if args.action == "next":
         chosen = wallpaper.advance(settings)
         _say(f"Wallpaper: {chosen}" if chosen else "Wallpaper: nothing to rotate")
         return 0
     try:
-        themed = wallpaper.apply(settings, colors.cache_dir())
+        themed = wallpaper.apply(settings, colors.cache_dir(), force=args.force)
     except (colors.ColorExtractionError, OSError, subprocess.CalledProcessError) as error:
         _say(f"Could not theme the wallpaper: {error}")
         return 1
@@ -158,6 +177,27 @@ def _theme(args: argparse.Namespace) -> int:
     return 0
 
 
+def _set(args: argparse.Namespace) -> int:
+    try:
+        prefs.set_pref(args.key, args.value)
+    except ValueError as error:
+        _say(str(error))
+        return 1
+    _say(f"{args.key} = {args.value}")
+    return 0
+
+
+def _migrate(args: argparse.Namespace) -> int:
+    if prefs.migrate(prefs.config_dir()):
+        _say("Settings split into one file per area (backup: settings.ini.before-split)")
+    return 0
+
+
+def _brightness(args: argparse.Namespace) -> int:
+    _say(json.dumps(brightness.collect()))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
@@ -172,6 +212,12 @@ def main(argv: list[str] | None = None) -> int:
         return _wallpaper(args)
     if args.command == "theme":
         return _theme(args)
+    if args.command == "set":
+        return _set(args)
+    if args.command == "migrate":
+        return _migrate(args)
+    if args.command == "brightness":
+        return _brightness(args)
     if args.command == "plugins":
         return plugins.main([args.action])
     parser.print_help()

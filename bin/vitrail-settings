@@ -9,9 +9,14 @@ set -euo pipefail
 HERE="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
 SHELL_DIR="$(cd -- "${HERE}/../shell" && pwd)"
 
-CONFIG="${XDG_CONFIG_HOME:-${HOME}/.config}/vitrail/settings.ini"
+CONFIG="${XDG_CONFIG_HOME:-${HOME}/.config}/vitrail"
 
-mkdir -p -- "$(dirname -- "${CONFIG}")"
+mkdir -p -- "${CONFIG}"
+
+# A legacy settings.ini becomes one file per area before the window reads them.
+if command -v python3 >/dev/null 2>&1; then
+    PYTHONPATH="${HERE}/.." python3 -m vitrail.cli migrate >/dev/null 2>&1 || true
+fi
 
 plugins="[]"
 if command -v python3 >/dev/null 2>&1; then
@@ -28,6 +33,19 @@ if command -v python3 >/dev/null 2>&1; then
     palette="$(python3 "${HERE}/../scripts/palette-json.py" 2>/dev/null || printf '{}')"
 fi
 
+# The time zone page: every zone with its UTC offset, and what the system uses
+# now. The window cannot read tzdata or run commands.
+zone=""
+ntp="yes"
+zones="[]"
+if command -v timedatectl >/dev/null 2>&1; then
+    zone="$(timedatectl show -p Timezone --value 2>/dev/null || true)"
+    ntp="$(timedatectl show -p NTP --value 2>/dev/null || printf yes)"
+fi
+if command -v python3 >/dev/null 2>&1; then
+    zones="$(PYTHONPATH="${HERE}/.." python3 -m vitrail.timezones index "${zone}" 2>/dev/null || printf '[]')"
+fi
+
 # Adaptive SVG previews read the files to fill their {{role}} placeholders.
 export QML_XHR_ALLOW_FILE_READ=1
 
@@ -36,5 +54,8 @@ exec qml6 -I "${HERE}/.." "${SHELL_DIR}/main.qml" -- \
     --palette "${palette}" \
     --i18n "${i18n}" \
     --plugins "${plugins}" \
+    --zones "${zones}" \
+    --timezone "${zone}" \
+    --ntp "${ntp}" \
     --home "${HOME}" \
     "$@"

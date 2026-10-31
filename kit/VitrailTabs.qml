@@ -21,6 +21,8 @@ Item {
     property bool settled: false
 
     implicitHeight: 40
+    // What the tabs need; a caller with many tabs scrolls them.
+    implicitWidth: row.implicitWidth
 
     Component.onCompleted: Qt.callLater(function () { root.settled = true })
 

@@ -443,6 +443,71 @@ link_binaries() {
     done
 }
 
+# The root helper behind "apply the language to the system". pkexec runs it as
+# root, so it is installed root-owned: a file the user can edit must not be one.
+install_locale_helper() {
+    local source="$ROOT_DIR/scripts/vitrail-locale-helper.sh"
+    [[ -f "$source" ]] || return 0
+    run sudo install -D -m 0755 -o root -g root "$source" /usr/local/libexec/vitrail-locale-helper \
+        || warn "could not install the locale helper; the system language will not be generated"
+}
+
+# The brightness slider of the OSD dims external monitors with ddcutil, over
+# the i2c buses: it needs the i2c-dev module loaded at boot, a udev rule that
+# lets the user open /dev/i2c-*, and membership of the i2c group. A new
+# session picks the group up, so the user must log out and back in.
+setup_display_control() {
+    [[ $SKIP_PACKAGES -eq 1 ]] && return 0
+    local system="$ROOT_DIR/scripts/system" user="${SUDO_USER:-${USER:-$(id -un)}}" etc="${ETC_DIR:-/etc}" changed=0
+    local -a files=("i2c-dev.conf:$etc/modules-load.d/i2c-dev.conf" "60-ddcutil-i2c.rules:$etc/udev/rules.d/60-ddcutil-i2c.rules")
+    local pair
+    for pair in "${files[@]}"; do
+        if ! cmp -s "$system/${pair%%:*}" "${pair#*:}"; then
+            run sudo install -D -m 0644 "$system/${pair%%:*}" "${pair#*:}" \
+                || { warn "could not install ${pair#*:}; brightness of external monitors may not work"; return 0; }
+            changed=1
+        fi
+    done
+    getent group i2c >/dev/null 2>&1 || run sudo groupadd --system i2c || true
+    if ! id -nG "$user" 2>/dev/null | grep -qw i2c; then
+        run sudo usermod -aG i2c "$user" || warn "could not add $user to the i2c group"
+        changed=1
+    fi
+    [[ $changed -eq 1 ]] || return 0
+    run sudo modprobe i2c-dev || true
+    run sudo udevadm control --reload || true
+    run sudo udevadm trigger --subsystem-match=i2c-dev || true
+    info "  Brightness of external monitors: log out and back in so the i2c access applies."
+}
+
+# Copies the bundled wallpapers into the user's library. `vitrail wallpaper
+# import` verifies and optimizes them, converts SVGs, never overwrites and skips
+# what is already there, so running the installer again adds nothing.
+import_wallpapers() {
+    local assets="${ROOT_DIR}/assets" kind
+    local -a paths=()
+    for kind in wallpapers adaptive-wallpapers animation-wallpapers; do
+        [[ -d "${assets}/${kind}" ]] && paths+=("${assets}/${kind}")
+    done
+    [[ ${#paths[@]} -gt 0 ]] || return 0
+    if [[ $DRY_RUN -eq 1 ]]; then
+        printf '  %s$ vitrail wallpaper import %s%s\n' "$DIM" "${paths[*]}" "$RESET"
+        return 0
+    fi
+    info "Importing wallpapers (videos are re-encoded, this can take a while)..."
+    PYTHONPATH="$ROOT_DIR" XDG_CONFIG_HOME="${HOME_DIR}/.config" \
+        python3 -m vitrail.cli wallpaper import "${paths[@]}" \
+        || warn "could not import the bundled wallpapers; add them from the settings window"
+}
+
+# The launcher's file mode (`/`) reads plocate's database; its timer keeps it
+# fresh. Without it the launcher falls back to fd.
+enable_file_index() {
+    [[ $SKIP_PACKAGES -eq 1 ]] && return 0
+    run sudo systemctl enable --now plocate-updatedb.timer \
+        || warn "could not enable plocate-updatedb.timer; file search falls back to fd"
+}
+
 enable_settings_watch() {
     if [[ $EUID -eq 0 ]]; then
         warn "run the installer as your user to enable the settings watcher"
@@ -456,6 +521,8 @@ enable_settings_watch() {
     if ! systemctl --user enable --now vitrail-settings.path >/dev/null 2>&1; then
         warn "could not enable vitrail-settings.path; settings will apply on demand"
     fi
+    # A running watcher keeps the files it was started with.
+    systemctl --user try-restart vitrail-settings.path >/dev/null 2>&1 || true
 }
 
 # --------------------------------------------------------------------- flow
@@ -613,6 +680,10 @@ main() {
         die "some dotfiles could not be linked"
     fi
     link_binaries
+    install_locale_helper
+    import_wallpapers
+    enable_file_index
+    setup_display_control
     enable_settings_watch
     setup_vpn
 

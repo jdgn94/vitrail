@@ -54,8 +54,41 @@ the wallpaper palette (matugen, light/dark) and to the surface style
 Each variant declares its own motion profile (`fast` / `base` / `slow` and an
 easing), so animations travel with the style rather than with the component.
 
+### Bar elements
+
+Every bar element declares an informative tooltip (`tooltip` for the title,
+`tooltipDetail` for the optional second line), kept live from real data, and
+reports hover to the monitor's one tooltip host (`bar/TooltipLayer.qml`, which
+shows a `kit/base/VitrailTooltip`). A new element without a tooltip is
+incomplete; see `.agents/skills/vitrail-design/references/tooltips.md`.
+
+### Preferences
+
+Preferences live in one INI file per area under `~/.config/vitrail/`;
+`vitrail/prefs.map` says which file holds each key. A new key is added there
+first, then in `shell/Prefs.qml`; callers read and write it by key. See the
+README's "Preference files".
+
+### Dependencies
+
+Every external program or library Vitrail calls at runtime (a `Process`
+command, `subprocess`, a shell script, a Hyprland `exec_cmd`) must be declared
+in the installer's package manifest (`packages/*.txt`, installed by
+`install.sh`) and documented in the README's "Runtime dependencies" table. A
+program that is not packaged by Vitrail (`hypraether-vpn`) is allowlisted with
+a comment in `tests/test_dependencies.py`.
+
 ### Enforcement
 
+- `tests/test_tooltips.py` fails if a clickable bar element (`*Button.qml`,
+  anything emitting `clicked`, the tray's delegates) sets no `tooltip`.
+- `tests/test_prefs_map.py` fails if a key used in Python, QML or the apply
+  script is not in `vitrail/prefs.map`, if `shell/Prefs.qml` declares a key in
+  another file, or if the path unit does not watch exactly the map's files.
+- `tests/test_dependencies.py` scans `bar/`, `kit/`, `shell/`, `scripts/`,
+  `vitrail/`, `bin/` and the Hyprland config for invoked programs and fails on
+  any that is neither in the base system, allowlisted, nor provided by a
+  package in the manifest.
 - `tests/test_design_system.py` fails if `kit/composed/` contains raw visual
   primitives, if a `kit/` file hardcodes a color or duration, or if a variant
   used in QML is missing from `VitrailVariants`.

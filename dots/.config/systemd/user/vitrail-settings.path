@@ -1,8 +1,19 @@
 [Unit]
-Description=Watch the Vitrail settings file
+Description=Watch the Vitrail settings files
 
 [Path]
-PathChanged=%h/.config/vitrail/settings.ini
+# One line per file of vitrail/prefs.map (tests/test_prefs_map.py checks it).
+# The directory is not watched: apply-settings writes its own files there.
+PathChanged=%h/.config/vitrail/appearance.ini
+PathChanged=%h/.config/vitrail/bar.ini
+PathChanged=%h/.config/vitrail/wallpaper.ini
+PathChanged=%h/.config/vitrail/windows.ini
+PathChanged=%h/.config/vitrail/input.ini
+PathChanged=%h/.config/vitrail/terminal.ini
+PathChanged=%h/.config/vitrail/launcher.ini
+PathChanged=%h/.config/vitrail/language.ini
+PathChanged=%h/.config/vitrail/datetime.ini
+PathChanged=%h/.config/vitrail/misc.ini
 Unit=vitrail-settings.service
 TriggerLimitIntervalSec=1
 TriggerLimitBurst=50

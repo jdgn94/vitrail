@@ -8,14 +8,25 @@ Item {
     id: root
 
     property bool opened: false
+    property var strings: ({})
 
     signal clicked()
     signal menuRequested()
 
     readonly property alias hovered: hover.hovered
+    readonly property alias pressed: area.pressed
+
+    // What the pointer reads: the button and what each click does.
+    property string tooltip: root.t("tooltip.power")
+    property string tooltipDetail: root.t("tooltip.powerHint")
 
     implicitWidth: glyph.implicitWidth + VitrailTokens.gap("sm")
     implicitHeight: glyph.implicitHeight + VitrailTokens.gap("xs")
+
+    function t(key) {
+        var value = root.strings[key]
+        return value === undefined ? key : value
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -42,6 +53,8 @@ Item {
     }
 
     MouseArea {
+        id: area
+
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor

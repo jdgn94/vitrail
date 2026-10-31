@@ -20,8 +20,10 @@ QML_DIRS = ("bar", "kit", "shell", "gallery")
 RUNNER = Path("/usr/lib/qt6/bin/qmltestrunner")
 # The value of an icon / glyph property, up to the next comma or brace, and
 # the ternary branches that continue it on the following lines.
-ICON_VALUE = re.compile(r"\b(?:icon|glyph|endIcon|actionIcon)\s*:\s*([^,}]*)")
+ICON_VALUE = re.compile(r"\b(?:icon|glyph|endIcon)\s*:\s*([^,}]*)")
 GLYPH_LIST = re.compile(r"\bglyphs\s*=\s*\[(.*)\]")
+# A table of icons: `icons: ({ left: "arrow", ... })`, possibly over several lines.
+ICON_MAP = re.compile(r"\b\w*[iI]cons\s*:\s*\(\{(.*)")
 CONTINUATION = re.compile(r"^\s*:\s*(.*)")
 NAME = re.compile(r'"([a-z][a-z0-9_]*)"')
 # Size tables reuse the `icon` key for a text variant.
@@ -38,7 +40,12 @@ def icon_names() -> set[str]:
             if path.is_relative_to(ROOT / "bar" / "kit"):
                 continue
             open_value = False
+            in_map = False
             for line in path.read_text(encoding="utf-8").splitlines():
+                if in_map or ICON_MAP.search(line):
+                    names |= set(NAME.findall(line.split("({", 1)[-1]))
+                    in_map = "})" not in line
+                    continue
                 match = ICON_VALUE.search(line) or GLYPH_LIST.search(line)
                 if match:
                     names |= set(NAME.findall(match.group(1)))
@@ -47,10 +54,21 @@ def icon_names() -> set[str]:
                     names |= set(NAME.findall(match.group(1)))
                 else:
                     open_value = False
+    # The OSD's icon table returns its names.
+    for line in (ROOT / "bar" / "osd" / "icons.js").read_text(encoding="utf-8").splitlines():
+        if "return" in line:
+            names |= set(NAME.findall(line))
     return names - NOT_ICONS
 
 
 class IconTests(unittest.TestCase):
+    def test_icon_tables_and_segmented_options_are_collected(self) -> None:
+        names = icon_names()
+        self.assertIn("left_panel_open", names)  # BarPage icons table
+        self.assertIn("filter_frames", names)  # one-line table
+        self.assertIn("light_mode", names)  # { key, icon, label } option
+        self.assertIn("volume_off", names)  # bar/osd/icons.js
+
     def test_every_icon_name_is_a_material_symbol(self) -> None:
         if not RUNNER.exists() or not shutil.which("fc-list"):
             self.skipTest("qmltestrunner or fontconfig missing")

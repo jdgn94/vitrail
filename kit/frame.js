@@ -451,3 +451,21 @@ function nearestRect(rects, x, y) {
     })
     return best
 }
+
+// Where a tooltip of w x h sits for a bar element (`target`, a screen rect):
+// `offset` past the screen edge (the bar's inner face) plus a gap, on the side
+// away from the bar's edge, centred on the element along the bar and kept a
+// gap inside the screen.
+function tooltipAt(edge, target, w, h, offset, gap, width, height) {
+    var along = function (centre, size, extent) {
+        return Math.max(gap, Math.min(centre - size / 2, extent - size - gap))
+    }
+    var x = along(target.x + target.width / 2, w, width)
+    var y = along(target.y + target.height / 2, h, height)
+    switch (edge) {
+    case "bottom": return { x: x, y: height - offset - gap - h }
+    case "left": return { x: offset + gap, y: y }
+    case "right": return { x: width - offset - gap - w, y: y }
+    default: return { x: x, y: offset + gap }
+    }
+}

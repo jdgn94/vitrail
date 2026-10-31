@@ -222,6 +222,21 @@ Item {
                         panel: page.palette.surfaceHigh
                         onSelected: page.prefs.keyboardSwitch = key
                     }
+
+                    VitrailSettingRow {
+                        icon: "dialpad"
+                        label: page.t("keyboard.numlock")
+                        description: page.t("keyboard.numlock.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.numlockOnStart
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.numlockOnStart = value }
+                        }
+                    }
                 }
 
                 Section {

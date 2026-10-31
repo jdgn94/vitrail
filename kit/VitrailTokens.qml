@@ -11,7 +11,7 @@ QtObject {
     property bool dark: true
     property string surfaceMode: "glass"
 
-    // User-tunable values, mirrored from settings.ini.
+    // User-tunable values, mirrored from the preference files.
     property real spacing: Tokens.ranges.spacing.value
     property real radius: Tokens.ranges.radius.value
     property real blur: Tokens.ranges.blur.value
@@ -25,7 +25,9 @@ QtObject {
     readonly property var font: Tokens.font
     readonly property var motion: Tokens.motion
     readonly property var slider: Tokens.slider
+    readonly property var osd: Tokens.osd
     readonly property var field: Tokens.field
+    readonly property var launcher: Tokens.launcher
     readonly property string fontFamily: Tokens.font.family
     readonly property string iconFamily: Tokens.font.icons
 

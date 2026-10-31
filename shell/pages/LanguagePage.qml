@@ -49,6 +49,21 @@ Item {
                 }
 
                 VitrailSettingRow {
+                    icon: "settings_suggest"
+                    label: page.t("language.system")
+                    description: page.t("language.system.help")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSwitch {
+                        checked: page.prefs.languageSystem
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onToggled: function (value) { page.prefs.languageSystem = value }
+                    }
+                }
+
+                VitrailSettingRow {
                     icon: "restart_alt"
                     label: page.t("language.help")
                     foreground: page.palette.foreground

@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt.labs.settings 1.1
 import "../kit"
 import "../kit/base"
 import "../kit/args.js" as Args
@@ -21,12 +20,18 @@ Window {
     flags: Qt.Window | Qt.FramelessWindowHint
     title: app.t("app.title")
 
-    readonly property string configFile: Args.value("--config", "settings.ini")
+    // The folder with one preference file per area (see Prefs.qml).
+    readonly property string configDir: Args.value("--config", ".")
     readonly property var i18n: Args.json("--i18n", ({ languages: [], strings: {} }))
     readonly property var languages: app.i18n.languages || []
     readonly property var strings: (app.i18n.strings || {})[prefs.language] || ({})
     readonly property var palettes: Args.json("--palette", ({}))
     readonly property var plugins: Args.json("--plugins", ([]))
+    // Read once at startup (the window cannot run commands): every time zone,
+    // the system's zone, and whether it syncs its clock over the network.
+    readonly property var zones: Args.json("--zones", ([]))
+    readonly property string systemZone: Args.value("--timezone", "")
+    readonly property bool systemNtp: Args.value("--ntp", "yes") === "yes"
     readonly property bool daytime: {
         var hour = new Date().getHours()
         return hour >= 7 && hour < 19
@@ -42,63 +47,10 @@ Window {
     property string category: Args.value("--category", "appearance")
     property bool sidebarCollapsed: false
 
-    Settings {
+    Prefs {
         id: prefs
 
-        fileName: app.configFile
-        category: "appearance"
-
-        property string appearance: "auto"
-        property string surfaceStyle: "glass"
-        property real surfaceOpacity: 0.9
-        property real radius: 14
-        property real opacityFocused: 0.97
-        property real opacityUnfocused: 0.88
-        property int blurStrength: 6
-        property bool focusFollowsMouse: true
-        property int borderWidth: 2
-        property string language: "en"
-        property string keyboardLayouts: "us:"
-        property string keyboardSwitch: "grp:alt_shift_toggle"
-        property string windowLayout: "dwindle"
-        property int visibleColumns: 2
-        property string tabStyle: "capsule"
-        property bool tabIcons: true
-        property bool tabNumbers: false
-        property string terminalScheme: "system"
-        property int fontSize: 13
-        property int terminalPadding: 6
-        property bool followFocus: true
-        property bool wrapFocus: false
-        property int spacing: 12
-        property int fontBase: 13
-        property string barEdge: "left"
-        property string barScreens: "primary"
-        property string barStyle: ""
-        property string frameStyle: ""
-        property int barSize: VitrailTokens.ranges.bar.value
-        property int frameSize: VitrailTokens.ranges.frame.value
-        property int panelSize: VitrailTokens.ranges.panel.value
-        property bool panelPush: false
-        property bool barOpacityFollow: true
-        property real barOpacity: VitrailTokens.ranges.opacity.value
-        property string notificationPosition: "top-right"
-        property int notificationMax: VitrailTokens.ranges.notifications.value
-        property string wallpaper: ""
-        property string wallpaperMode: ""
-        property string wallpaperDir: ""
-        // One kind at a time; several of it rotate every wallpaperInterval min.
-        property string wallpaperType: ""
-        property string wallpaperSelection: ""
-        property int wallpaperInterval: 30
-        property string wallpaperOrder: "sequential"
-        // Adaptive SVGs: seed colour of the palette, "" takes the SVG's own.
-        property string wallpaperSeed: ""
-        // Requests for `vitrail wallpaper sync`: "<nonce>|path|path…".
-        property string wallpaperImport: ""
-        property string wallpaperRemove: ""
-        // Written by the smoke test, never by the UI.
-        property string selftest: ""
+        directory: app.configDir
     }
 
     // Settings that are not applied live: edited here, written on Save.
@@ -125,8 +77,10 @@ Window {
         { key: "bar", group: "desktop", glyph: "toolbar", label: app.t("section.bar"), badge: app.t("badge.live") },
         { key: "windows", group: "desktop", glyph: "view_quilt", label: app.t("section.windows"), badge: app.t("badge.live") },
         { key: "terminal", group: "desktop", glyph: "terminal", label: app.t("section.terminal"), badge: app.t("badge.live") },
+        { key: "launcher", group: "desktop", glyph: "apps", label: app.t("section.launcher"), badge: app.t("badge.live") },
         { key: "input", group: "system", glyph: "keyboard", label: app.t("section.input"), badge: app.t("badge.live") },
         { key: "language", group: "system", glyph: "translate", label: app.t("section.language"), badge: app.t("badge.saved") },
+        { key: "datetime", group: "system", glyph: "schedule", label: app.t("section.datetime"), badge: "" },
         { key: "plugins", group: "system", glyph: "extension", label: app.t("section.plugins"), badge: "" }
     ]
     readonly property var groups: ({
@@ -176,9 +130,8 @@ Window {
 
         interval: 600
         onTriggered: {
-            var directory = app.configFile.substring(0, app.configFile.lastIndexOf("/"))
             frame.grabToImage(function (result) {
-                result.saveToFile(directory + "/selftest.png")
+                result.saveToFile(app.configDir + "/selftest.png")
                 Qt.quit()
             })
         }
@@ -248,13 +201,10 @@ Window {
                     groups: app.groups
                     current: app.category
                     collapsed: app.sidebarCollapsed
-                    action: app.t("action.configFile")
-                    actionIcon: "edit"
                     foreground: palette.foreground
                     accent: palette.primary
                     onSelected: app.category = key
                     onCollapsedChanged: app.sidebarCollapsed = collapsed
-                    onActionTriggered: Qt.openUrlExternally("file://" + app.configFile)
                 }
 
                 // Content card: the category's icon and name, then its page.
@@ -353,7 +303,7 @@ Window {
                                     palette: palette
                                     prefs: prefs
                                     strings: app.strings
-                                    configDir: app.configFile.substring(0, app.configFile.lastIndexOf("/"))
+                                    configDir: app.configDir
                                 }
 
                                 BarPage {
@@ -374,9 +324,29 @@ Window {
                                     languages: app.languages
                                 }
 
+                                DateTimePage {
+                                    anchors.fill: parent
+                                    visible: app.category === "datetime"
+                                    palette: palette
+                                    prefs: prefs
+                                    strings: app.strings
+                                    zones: app.zones
+                                    systemZone: app.systemZone
+                                    systemNtp: app.systemNtp
+                                }
+
                                 TerminalPage {
                                     anchors.fill: parent
                                     visible: app.category === "terminal"
+                                    palette: palette
+                                    prefs: prefs
+                                    strings: app.strings
+                                }
+
+                                LauncherPage {
+                                    anchors.fill: parent
+                                    visible: app.category === "launcher"
+                                    tab: Args.value("--tab", "general")
                                     palette: palette
                                     prefs: prefs
                                     strings: app.strings

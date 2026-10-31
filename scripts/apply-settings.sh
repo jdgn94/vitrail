@@ -7,13 +7,21 @@
 # legacy `hyprctl keyword` path is kept as a fallback.
 set -euo pipefail
 
-CONFIG="${XDG_CONFIG_HOME:-${HOME}/.config}/vitrail/settings.ini"
+CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/vitrail"
 LANG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/environment.d"
 
 # Resolve symlinks: the systemd unit calls ~/.local/bin/vitrail-apply-settings,
 # which points here, so BASH_SOURCE alone would look for lib/ in ~/.local/bin.
 SELF="$(readlink -f -- "${BASH_SOURCE[0]}")"
 source "$(dirname -- "${SELF}")/lib/ini.sh"
+source "$(dirname -- "${SELF}")/lib/system.sh"
+
+vitrail_cli() {
+    PYTHONPATH="$(dirname -- "${SELF}")/.." python3 -m vitrail.cli "$@"
+}
+
+# A settings.ini from before the split becomes one file per area first.
+vitrail_cli migrate || true
 
 style="$(read_ini surfaceStyle glass)"
 radius="$(read_ini radius 14)"
@@ -40,6 +48,11 @@ column_width="$(awk -v n="$visible_columns" 'BEGIN {
 follow_focus="$(read_ini followFocus true)"
 wallpaper="$(read_ini wallpaper '')"
 wrap_focus="$(read_ini wrapFocus false)"
+numlock="$(read_ini numlockOnStart true)"
+[[ "$numlock" == "false" ]] || numlock=true
+language_system="$(read_ini languageSystem true)"
+time_zone="$(read_ini timezone '')"
+ntp="$(read_ini ntp '')"
 
 case "$language" in
     en) locale="en_US.UTF-8" ;;
@@ -93,7 +106,8 @@ if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}
             follow_mouse = ${follow_mouse},
             kb_layout = \"${kb_layout}\",
             kb_variant = \"${kb_variant}\",
-            kb_options = \"${kb_switch}\"
+            kb_options = \"${kb_switch}\",
+            numlock_by_default = ${numlock}
         }
     })"
 
@@ -102,7 +116,7 @@ if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}
     # dialogs and session menu live.
     layer_lua="hl.layer_rule({
         name = \"vitrail-glass\",
-        match = { namespace = \"^vitrail-(bar|popup|notifications|dialog|session)\$\" },
+        match = { namespace = \"^vitrail-(bar|popup|notifications|dialog|session|tooltip|launcher|osd)\$\" },
         blur = ${blur_enabled},
         ignore_alpha = 0.01
     })"
@@ -130,12 +144,13 @@ if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}
         hyprctl keyword input:kb_layout "$kb_layout" >/dev/null
         hyprctl keyword input:kb_variant "$kb_variant" >/dev/null
         hyprctl keyword input:kb_options "$kb_switch" >/dev/null
+        hyprctl keyword input:numlock_by_default "$numlock" >/dev/null
         printf 'Hyprland (keywords): radius=%s border=%s blur=%s size=%s\n' \
             "$radius" "$border_width" "$blur_enabled" "$blur_strength"
     fi
 
-    printf 'Keyboard: layout=%s variant=%s options=%s\n' \
-        "$kb_layout" "$kb_variant" "$kb_switch"
+    printf 'Keyboard: layout=%s variant=%s options=%s numlock=%s\n' \
+        "$kb_layout" "$kb_variant" "$kb_switch" "$numlock"
 else
     printf 'Hyprland is not running; settings were only saved.\n'
 fi
@@ -162,27 +177,26 @@ flag() {
     if [[ "$1" == "true" ]]; then printf 1; else printf 0; fi
 }
 
-config_dir="$(dirname -- "$CONFIG")"
-mkdir -p -- "$config_dir"
+mkdir -p -- "$CONFIG_DIR"
 # A leftover symlink into the repo (from an older install) makes the redirect
 # below fail with ENOENT; the file belongs to the user now, not to the repo.
 for generated in header.conf kitty-user.conf; do
-    if [[ -L "$config_dir/$generated" ]]; then
-        rm -f -- "$config_dir/$generated"
+    if [[ -L "$CONFIG_DIR/$generated" ]]; then
+        rm -f -- "$CONFIG_DIR/$generated"
     fi
 done
-cat >"$config_dir/header.conf" <<EOF
+cat >"$CONFIG_DIR/header.conf" <<EOF
 tabStyle=$tab_style
 tabIcons=$(flag "$tab_icons")
 tabNumbers=$(flag "$tab_numbers")
 colorScheme=$term_scheme
 EOF
-cat >"$config_dir/kitty-user.conf" <<EOF
+cat >"$CONFIG_DIR/kitty-user.conf" <<EOF
 font_size $font_size
 window_padding_width $term_padding
 EOF
 cache_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/vitrail/generated"
-cat >"$config_dir/kitty-colors.conf" <<EOF
+cat >"$CONFIG_DIR/kitty-colors.conf" <<EOF
 include $cache_dir/terminal/kitty-$term_scheme.conf
 EOF
 pkill -USR1 -x kitty >/dev/null 2>&1 || true
@@ -195,9 +209,15 @@ printf 'Language: %s (%s, next session)\n' "$language" "$locale"
 # The bar draws the wallpaper; the palette follows it (a video lends one frame,
 # an adaptive SVG its seed colour), and only a new wallpaper or seed extracts
 # again. Then light or dark, with that palette, reaches GTK, Qt and Hyprland.
-vitrail_cli() {
-    PYTHONPATH="$(dirname -- "${SELF}")/.." python3 -m vitrail.cli "$@"
-}
 vitrail_cli wallpaper sync || true
 vitrail_cli wallpaper apply || true
 vitrail_cli theme apply --mode "$system_mode" || true
+
+# --- system -----------------------------------------------------------------
+# Last, because each of these may wait for a password: the live settings above
+# are already applied. Every one acts only when its value changed.
+apply_timezone "$time_zone"
+apply_ntp "$ntp"
+if [[ "$language_system" == "true" ]]; then
+    apply_system_locale "$locale"
+fi

@@ -17,6 +17,7 @@ FocusScope {
     property string label: ""
     property string placeholder: ""
     property alias text: input.text
+    property alias cursorPosition: input.cursorPosition
     // "text" or "password".
     property string type: "text"
     // Optional Material Symbol name, before the text.
@@ -31,6 +32,9 @@ FocusScope {
 
     signal accepted()
     signal escaped()
+    // Every key, before the text takes it: a caller that wants some keys for
+    // itself (Tab, Ctrl+E, the arrows) sets `event.accepted`.
+    signal keyPressed(var event)
 
     readonly property int shapeCount: shapes.count
     readonly property var style: VitrailStyle.resolve("field", root.variant)
@@ -270,6 +274,8 @@ FocusScope {
             echoMode: root.hidden && input.opacity === 0 ? TextInput.Password : TextInput.Normal
             inputMethodHints: root.password ? Qt.ImhSensitiveData | Qt.ImhNoPredictiveText : Qt.ImhNone
             cursorDelegate: root.hidden ? noCaret : null
+            Keys.priority: Keys.BeforeItem
+            Keys.onPressed: function (event) { root.keyPressed(event) }
             Keys.onEscapePressed: root.escaped()
             onAccepted: root.accepted()
             onTextChanged: if (root.ready) root.sync()

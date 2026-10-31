@@ -42,7 +42,7 @@ else
     not_ok "window loads and exits" "exit code $?"
 fi
 
-settings="$tmp/config/vitrail/settings.ini"
+settings="$tmp/config/vitrail/misc.ini"
 if grep -q '^selftest=' "$settings" 2>/dev/null; then
     ok "settings are persisted"
 else

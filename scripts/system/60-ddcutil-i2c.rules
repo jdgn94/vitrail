@@ -1,0 +1,8 @@
+# Vitrail: the OSD dims external monitors over DDC/CI (ddcutil), which needs
+# read/write access to the /dev/i2c-* buses of the graphics adapters.
+# Same name as the rule ddcutil ships, so this one replaces it.
+# The user at the seat gets the bus through logind (uaccess) ...
+SUBSYSTEM=="i2c-dev", KERNEL=="i2c-[0-9]*", ATTRS{class}=="0x03*", TAG+="uaccess"
+# ... and members of the i2c group get it everywhere else (the installer adds
+# the user to it).
+SUBSYSTEM=="i2c-dev", KERNEL=="i2c-[0-9]*", GROUP="i2c", MODE="0660"

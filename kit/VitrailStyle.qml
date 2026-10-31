@@ -12,7 +12,8 @@ QtObject {
         frame: "full",
         bar: "docked",
         panel: "full",
-        wallpaper: "frame"
+        wallpaper: "frame",
+        launcher: "popout"
     })
 
     function resolve(kind, name) {

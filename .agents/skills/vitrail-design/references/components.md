@@ -26,6 +26,17 @@ gap each side (`tokens.slider`: `sm 8 / md 16 / lg 28`, `handle`, `gap`).
 - `icon` sits inside the fill (on `accentForeground`), or just past the
   handle while the fill is too short; `endIcon` at the far end.
 - `readOnly`: no handle, but the gap between filled and empty stays.
+- `orientation: Qt.Vertical` stands it up (minimum at the bottom, `length` px
+  tall by default); `pressed` says the pointer holds the handle. The slider is
+  drawn along x and the whole thing turned a quarter, so input follows.
+- `wheelStep` (0 = off, so sliders in scrolling pages keep scrolling): value
+  units per wheel notch, up / right more. `kit/wheel.js` accumulates notches
+  (120 angle units, or touchpad pixels) into whole `stepSize` steps clamped to
+  from / to and emits `moved`; the owner follows it like a drag.
+  Under Wayland the wheel arrives as a TouchPad device, and a `WheelHandler`
+  accepts only Mouse by default: set `acceptedDevices: Mouse | TouchPad` on any
+  new one. QtTest's `mouseWheel` sends a mouse, so it cannot catch this; only a
+  real wheel over a real layer-shell surface does.
 - Outer ends are pills, ends at the handle nearly square (per-corner radii).
 
 ## VitrailButton (`kit/base`)
@@ -74,6 +85,13 @@ waits (polkit check, connecting).
 
 ## Selection indicators
 
+`VitrailSegmented` options are `{ key, label, icon }`: the optional `icon`
+(Material Symbol) sits before the label in the label's colour and fills when
+chosen; an empty label makes the segment icon-only. Every segmented control in
+the settings pages carries icons (theme `light_mode` / `dark_mode` / `contrast`,
+alignment `align_horizontal_*` / `vertical_align_*`, bar edge `*_panel_open`…).
+Icon tables written as `icons: ({ … })` are checked by `tests/test_icons.py`.
+
 `VitrailSegmented` (pill) and `VitrailTabs` (underline) draw ONE indicator
 bound to `repeater.itemAt(currentIndex)` geometry and animate x / width
 (`base`); `settled` skips the animation on first layout. Reuse that pattern
@@ -83,25 +101,30 @@ for any single-choice control (the settings rail does the same).
 
 Frameless, floated + centred by the Hyprland rule `vitrail-float` (class
 `org.qt-project.qml`, title contains "Vitrail"). Title centred, `plain`
-close. `VitrailSidebar`: collapse toggle, `tonal` lg "Config file" action,
-items grouped (`group` key → `groups` labels: look / desktop / system),
+close. `VitrailSidebar`: collapse toggle, items grouped (`group` key → `groups` labels: look / desktop / system),
 sliding pill, icons fill when active. Content sits in a `surfaceHigh` card.
-Pages: `Flickable` → `Section { icon; title }` → `VitrailSettingRow { icon;
+Categories: appearance, wallpaper, colors, design | bar, windows, terminal |
+input, language, datetime, plugins. Pages: `Flickable` → `Section { icon; title }` → `VitrailSettingRow { icon;
 label; description; <control> }`; sliders full width inside a Section. A page with
 more than one topic splits them into `VitrailTabs` subcategories
 (`property string tab`, sections `visible: page.tab === key`, scroll reset
 on tab change); single-topic pages (Colors, Language, Plugins) have none.
 
-## Popup content (bar/network/NetworkPanel.qml)
+## Popup content (bar/network/NetworkPanel.qml, VpnPanel.qml)
+
+Internet and VPN are separate bar buttons and popouts (`network`, `vpn`); they
+share `Entry.qml` and `Scroller.qml`, and `network.js` / `vpn.js` hold the
+pure helpers (tested in `tst_network.qml`, `tst_vpn.qml`).
 
 - Status header: glyph on a tinted disc (`size("display")`), `subtitle`
-  title, `content` status line, optional primary pill badge (VPN on).
+  title, `content` status line, optional primary pill badge (the VPN panel
+  shows the provider of the tunnel that is up).
 - `Entry` rows: fixed-width glyph slot (glyph widths vary), title + `label`
   detail, a `VitrailButton` (`tonal` to connect, `glass` on the active row).
   Active row tinted primary 0.14; others foreground 0.06 on hover.
 - Long lists go in a `Scroller` capped at about 8 rows.
 - State icons: Wi-Fi `signal_wifi_0_bar` → `network_wifi_{1,2,3}_bar` →
   `signal_wifi_4_bar`, offline `signal_wifi_off`, ethernet `lan`, VPN
-  `shield_lock` (filled) / `shield`, bar VPN `vpn_lock`.
+  `shield_lock` (filled) / `shield`, also on the bar's VPN button.
 - When NetworkManager lists no devices, `Networking.connectivity` (Full)
   still marks the system online.

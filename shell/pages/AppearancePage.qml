@@ -65,9 +65,9 @@ Item {
 
                         VitrailSegmented {
                             options: [
-                                { key: "light", label: page.t("theme.light") },
-                                { key: "dark", label: page.t("theme.dark") },
-                                { key: "auto", label: page.t("theme.auto") }
+                                { key: "light", icon: "light_mode", label: page.t("theme.light") },
+                                { key: "dark", icon: "dark_mode", label: page.t("theme.dark") },
+                                { key: "auto", icon: "contrast", label: page.t("theme.auto") }
                             ]
                             current: page.prefs.appearance
                             foreground: page.palette.foreground
@@ -94,8 +94,8 @@ Item {
 
                         VitrailSegmented {
                             options: [
-                                { key: "solid", label: page.t("surface.solid") },
-                                { key: "glass", label: page.t("surface.glass") }
+                                { key: "solid", icon: "square", label: page.t("surface.solid") },
+                                { key: "glass", icon: "blur_on", label: page.t("surface.glass") }
                             ]
                             current: page.prefs.surfaceStyle
                             foreground: page.palette.foreground

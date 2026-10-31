@@ -1,0 +1,78 @@
+# Where each Vitrail preference lives: one "<file> <key>" per line.
+#
+# <file> is ~/.config/vitrail/<file>.ini, named after the area of the settings
+# window that shows the key. This is the single source of truth: Python
+# (vitrail/prefs.py), the bar (bar/prefs.js), the apply script
+# (scripts/lib/ini.sh) and the systemd path unit all follow it, and
+# tests/test_prefs_map.py checks that every key used anywhere is listed here
+# exactly once. A key that is not listed is written to misc.ini.
+#
+# Keys shared by several pages (radius, blurStrength, surfaceStyle,
+# surfaceOpacity) live with the page that owns them: Appearance.
+
+appearance appearance
+appearance surfaceStyle
+appearance surfaceOpacity
+appearance radius
+appearance blurStrength
+appearance spacing
+appearance fontBase
+
+bar barEdge
+bar barScreens
+bar barStyle
+bar barSize
+bar barOpacity
+bar barOpacityFollow
+bar frameStyle
+bar frameSize
+bar panelSize
+bar panelPush
+bar notificationPosition
+bar notificationMax
+
+wallpaper wallpaper
+wallpaper wallpaperMode
+wallpaper wallpaperDir
+wallpaper wallpaperType
+wallpaper wallpaperSelection
+wallpaper wallpaperInterval
+wallpaper wallpaperOrder
+wallpaper wallpaperImport
+wallpaper wallpaperRemove
+wallpaper wallpaperSeed
+wallpaper systemColor
+
+windows windowLayout
+windows visibleColumns
+windows followFocus
+windows wrapFocus
+windows borderWidth
+windows opacityFocused
+windows opacityUnfocused
+
+input keyboardLayouts
+input keyboardSwitch
+input numlockOnStart
+input focusFollowsMouse
+
+terminal terminalScheme
+terminal terminalPadding
+terminal fontSize
+terminal tabStyle
+terminal tabIcons
+terminal tabNumbers
+
+launcher launcherEngine
+launcher launcherBangs
+launcher launcherModes
+launcher launcherView
+launcher launcherClear
+
+language language
+language languageSystem
+
+datetime timezone
+datetime ntp
+
+misc selftest

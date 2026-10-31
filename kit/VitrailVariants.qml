@@ -89,6 +89,18 @@ QtObject {
         overlay: { attached: false, gap: "md", motion: "slow" }
     })
 
+    // Application launcher: one content component, two presentations. Sizes
+    // come from tokens.launcher[`metrics`]; `field` is the search field's size,
+    // `gap` the spacing step between blocks, `label` the text variant of an app
+    // name and `lines` how many lines it may take, `fill` takes the whole
+    // screen instead of a card.
+    //   popout      compact card that grows out of the bar button
+    //   fullscreen  dimmed screen, centred field, big icon grid
+    readonly property var launcher: ({
+        popout: { metrics: "popout", field: "md", gap: "md", label: "label", lines: 1, fill: false, motion: "base" },
+        fullscreen: { metrics: "fullscreen", field: "lg", gap: "lg", label: "content", lines: 2, fill: true, motion: "slow" }
+    })
+
     // Wallpaper fit: inside the frame hole (follows panels) or the whole
     // screen (never moves).
     readonly property var wallpaper: ({

@@ -46,6 +46,16 @@ var motion = {
     blink: 530,
     spin: 2400,
     cycle: 650,
+    // Hover time before a tooltip appears.
+    tooltip: 500,
+    // How long the pointer must rest on a hot zone before its panel opens.
+    dwell: 150,
+    // How long typing in a menu keeps building the same search.
+    typeahead: 800,
+    // Typing pauses this long before a search runs; a search that never
+    // answers is given up after `timeout`.
+    debounce: 220,
+    timeout: 6000,
     easing: "outCubic"
 }
 
@@ -90,7 +100,66 @@ var slider = {
     md: 16,
     lg: 28,
     handle: 4,
-    gap: 4
+    gap: 4,
+    // How tall a vertical slider is when nothing sizes it.
+    length: 160,
+    // Wheel scrolling: angle units and touchpad pixels that make one notch.
+    wheelAngle: 120,
+    wheelPixels: 60
+}
+
+// The OSD of volume, microphone and brightness (bar/osd). `size` is the
+// slider's, `length` how long each is, `hot` how far the invisible hot zone
+// reaches past the frame border, `hide` and `extension` the pointer's grace
+// before the panel and its device card go, `key` how long a media key keeps
+// its slider up, `step` the percent a key press (or a wheel notch) moves, `write` how long a
+// slider drag waits before it reaches the monitor, `card` the device card's
+// width, `stale` how long a brightness reading is trusted.
+var osd = {
+    size: "md",
+    length: 120,
+    hot: 5,
+    hide: 600,
+    extension: 250,
+    key: 2000,
+    step: 5,
+    write: 150,
+    stale: 10000,
+    card: 300
+}
+
+// The application launcher, in its two presentations (see the `launcher`
+// variants): `popout` is the compact card under the bar, `fullscreen` the
+// screen-wide one. Each: size of the card, columns and minimum cell width of
+// the app grid, icon sizes, and for fullscreen the widest the content gets
+// (`content`), the narrower width of the field and the lists (`narrow`) and
+// the margin around it in `gap("lg")` steps. `expand` is the fraction of the
+// screen the popout takes when expanded.
+var launcher = {
+    maxFiles: 30,
+    expand: 0.8,
+    popout: {
+        width: 640,
+        height: 560,
+        columns: 6,
+        tileMin: 104,
+        tileIcon: 44,
+        rowIcon: 32,
+        content: 0,
+        narrow: 0,
+        margin: 0
+    },
+    fullscreen: {
+        width: 0,
+        height: 0,
+        columns: 6,
+        tileMin: 148,
+        tileIcon: 72,
+        rowIcon: 40,
+        content: 1320,
+        narrow: 800,
+        margin: 3
+    }
 }
 
 var space = {

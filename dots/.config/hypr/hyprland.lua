@@ -41,6 +41,7 @@ hl.config({
         follow_mouse = 1,
         kb_layout = "us",
         kb_options = "grp:alt_shift_toggle",
+        numlock_by_default = true,
         touchpad = { natural_scroll = true },
     },
 })
@@ -97,19 +98,21 @@ hl.bind(mod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }), { description
 hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "mouse/drag" })
 hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "mouse/resize" })
 
--- Media keys: wireplumber for audio, playerctl for playback, brightnessctl
--- for the panel. These work with the lid closed and the session locked.
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true, description = "media/volume-up" })
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true, description = "media/volume-down" })
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true, repeating = true, description = "media/mute" })
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true, repeating = true, description = "media/mic-mute" })
+-- Media keys. Volume, microphone and brightness go through the bar's OSD
+-- (`osd` IPC), which changes the value and shows its slider; without the bar
+-- the same key falls back to wpctl / brightnessctl. playerctl drives
+-- playback. They work with the lid closed and the session locked.
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call osd volume up || wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true, description = "media/volume-up" })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call osd volume down || wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true, description = "media/volume-down" })
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call osd volume mute || wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true, repeating = true, description = "media/mute" })
+hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call osd mic mute || wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true, repeating = true, description = "media/mic-mute" })
 hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true, description = "media/play-pause" })
 hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true, description = "media/play-pause" })
 hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true, description = "media/next" })
 hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true, description = "media/prev" })
 hl.bind("XF86AudioStop", hl.dsp.exec_cmd("playerctl stop"), { locked = true, description = "media/stop" })
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl --class=backlight set +10%"), { locked = true, repeating = true, description = "media/brightness-up" })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl --class=backlight set 10%-"), { locked = true, repeating = true, description = "media/brightness-down" })
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call osd brightness up || brightnessctl --class=backlight set +5%"), { locked = true, repeating = true, description = "media/brightness-up" })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call osd brightness down || brightnessctl --class=backlight set 5%-"), { locked = true, repeating = true, description = "media/brightness-down" })
 
 -- Screenshots.
 hl.bind("PRINT", hl.dsp.exec_cmd("grim -g \"$(slurp)\" - | wl-copy"), { description = "screenshot/region" })
@@ -131,13 +134,16 @@ hl.window_rule({
 -- when the surface style is solid.
 hl.layer_rule({
     name = "vitrail-glass",
-    match = { namespace = "^vitrail-(bar|popup|notifications|dialog|session)$" },
+    match = { namespace = "^vitrail-(bar|popup|notifications|dialog|session|tooltip|launcher|osd)$" },
     blur = true,
     ignore_alpha = 0.01,
 })
 
 
--- Autostart. The bar is also the notification daemon.
+-- Autostart. The bar is also the notification daemon. cliphist keeps what is
+-- copied (text and images) for the launcher's clipboard mode (`;`).
 hl.on("hyprland.start", function()
     hl.exec_cmd(home .. "/.local/bin/vitrail-bar")
+    hl.exec_cmd("wl-paste --type text --watch cliphist store")
+    hl.exec_cmd("wl-paste --type image --watch cliphist store")
 end)

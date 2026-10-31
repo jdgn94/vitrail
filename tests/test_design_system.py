@@ -92,6 +92,14 @@ class VariantContractTests(unittest.TestCase):
         self.assertEqual(variant_names("panel"), {"full", "overlay"})
         self.assertEqual(variant_names("wallpaper"), {"frame", "screen"})
 
+    def test_launcher_has_a_popout_and_a_fullscreen_variant_over_real_tokens(self) -> None:
+        self.assertEqual(variant_names("launcher"), {"popout", "fullscreen"})
+        text = VARIANTS.read_text(encoding="utf-8")
+        tokens = tokens_source()
+        for name in re.findall(r'metrics:\s*"(\w+)"', text):
+            with self.subTest(metrics=name):
+                self.assertRegex(tokens, rf"\b{name}:\s*\{{")
+
     def test_every_default_names_a_declared_variant(self) -> None:
         for family, name in style_defaults().items():
             with self.subTest(family=family):
@@ -104,19 +112,19 @@ class StyleFileTests(unittest.TestCase):
         from pathlib import Path
 
         with tempfile.TemporaryDirectory() as tmp:
-            target = Path(tmp) / "settings.ini"
-            target.write_text(
-                "[appearance]\nsurfaceStyle=glass\nradius=14\nlanguage=es\n",
-                encoding="utf-8",
-            )
+            config = Path(tmp)
+            (config / "appearance.ini").write_text(
+                "[appearance]\nsurfaceStyle=glass\nradius=14\n", encoding="utf-8")
+            (config / "language.ini").write_text("[language]\nlanguage=es\n", encoding="utf-8")
             style.write_style(
                 {"surface": "solid", "tokens": {"spacing": 8, "radius": 6}},
-                target,
+                config,
             )
-            text = target.read_text(encoding="utf-8")
-            self.assertIn("surfaceStyle", text)
-            self.assertIn("language", text)
+            text = (config / "appearance.ini").read_text(encoding="utf-8")
+            self.assertIn("surfaceStyle=solid", text)
+            self.assertIn("radius=6", text)
             self.assertNotIn("surfacestyle", text)
+            self.assertIn("language=es", (config / "language.ini").read_text(encoding="utf-8"))
 
 
 class ComposedLayerTests(unittest.TestCase):
@@ -130,6 +138,21 @@ class ComposedLayerTests(unittest.TestCase):
             for primitive in ("Text {", "Rectangle {", "MouseArea {"):
                 with self.subTest(file=path.name, primitive=primitive):
                     self.assertNotIn(primitive, text)
+
+
+class GlassLayerRuleTests(unittest.TestCase):
+    """Every translucent bar layer is blurred by the vitrail-glass rule, in
+    the config and in the rule apply-settings.sh redefines."""
+
+    def test_both_rules_cover_every_glass_namespace(self) -> None:
+        layers = "".join(path.read_text(encoding="utf-8") for path in sorted((ROOT / "bar").rglob("*.qml"))
+                         if not path.is_relative_to(ROOT / "bar" / "kit"))
+        used = set(re.findall(r'namespace:\s*"vitrail-(\w+)"', layers)) - {"wallpaper", "reserve"}
+        for path in (ROOT / "dots" / ".config" / "hypr" / "hyprland.lua", ROOT / "scripts" / "apply-settings.sh"):
+            match = re.search(r"\^vitrail-\(([\w|]+)\)", path.read_text(encoding="utf-8"))
+            self.assertIsNotNone(match, path.name)
+            with self.subTest(file=path.name):
+                self.assertEqual(used - set(match.group(1).split("|")), set())
 
 
 class SurfaceInheritanceTests(unittest.TestCase):

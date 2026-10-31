@@ -1,13 +1,16 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Dialogs
+import QtQuick.Effects
 import Qt.labs.folderlistmodel
 import "../../kit"
 import "../../kit/base"
+import "../reorder.js" as Reorder
 
-// Wallpaper category: a library with one folder per kind (images, adaptive
-// SVGs, videos) and settings shared by all three. The selection holds one
-// kind only: several of it take turns; picking another kind starts over.
+// Wallpaper category: the settings shared by every kind (fit, rotation, the
+// colour of the system) on top, then the library with one folder per kind
+// (images, adaptive SVGs, videos). The selection holds one kind only: several
+// of it take turns, in the order of the strip; picking another kind starts over.
 //
 // The library is Vitrail's own folder in ~/.config, apart from the user's
 // pictures. This window cannot copy or delete files: it writes a request
@@ -19,8 +22,9 @@ Item {
     property var palette
     property var prefs
     property var strings
-    property string tab: "library"
     property string configDir: ""
+
+    readonly property var fitIcons: ({ frame: "filter_frames", screen: "fullscreen" })
 
     readonly property string library: page.prefs.wallpaperDir || page.configDir + "/wallpapers"
     readonly property var kinds: [
@@ -35,11 +39,19 @@ Item {
         var list = (page.prefs.wallpaperSelection || "").split("|").filter(function (path) { return path !== "" })
         return list.length === 0 && page.prefs.wallpaper ? [page.prefs.wallpaper] : list
     }
-    // Seed presets for adaptive SVGs, besides the automatic one.
+    // Colour presets for the system, besides the automatic one.
     readonly property var seeds: ["#6750a4", "#0061a4", "#006a6a", "#386a20", "#8b5000", "#b3261e"]
     property string browse: page.activeKind || "image"
-
-    onTabChanged: scroller.contentY = 0
+    // Minutes between wallpapers; a value from an older slider stays listed.
+    readonly property var intervals: [1, 5, 10, 15, 30, 60, 120, 360, 720, 1440]
+    readonly property int intervalNow: Number(page.prefs.wallpaperInterval) || 30
+    readonly property var intervalOptions: {
+        var list = page.intervals.indexOf(page.intervalNow) >= 0
+                   ? page.intervals : page.intervals.concat([page.intervalNow]).sort(function (a, b) { return a - b })
+        return list.map(function (minutes) {
+            return { key: String(minutes), label: page.duration(minutes) }
+        })
+    }
 
     function t(key) {
         var value = page.strings[key]
@@ -63,6 +75,11 @@ Item {
         request.send()
     }
 
+    function duration(minutes) {
+        return minutes % 60 === 0 ? page.t("wallpaper.interval.hour").replace("%1", minutes / 60)
+                                  : page.t("wallpaper.interval.min").replace("%1", minutes)
+    }
+
     function request(paths) {
         return [Date.now()].concat(paths).join("|")
     }
@@ -84,6 +101,90 @@ Item {
         if (/\.(mp4|webm|mkv|mov|m4v|avi)$/i.test(path || ""))
             return "video"
         return path ? "image" : ""
+    }
+
+    // A wallpaper's picture inside a rounded tile: the whole image fits (never
+    // cropped), centred on the tile colour, and the corners really clip it.
+    // Videos keep a placeholder.
+    component Thumb: Item {
+        id: thumb
+
+        property string path: ""
+        readonly property string kind: page.kindOf(thumb.path)
+        readonly property real corner: VitrailTokens.radius * 0.75
+        property string preview: thumb.kind === "image" ? "file://" + thumb.path : ""
+
+        Component.onCompleted: {
+            if (thumb.kind === "svg")
+                page.adaptive(thumb.path, function (url) { thumb.preview = url })
+        }
+
+        Item {
+            id: art
+
+            anchors.fill: parent
+            visible: false
+            layer.enabled: true
+
+            Rectangle {
+                anchors.fill: parent
+                color: page.palette.surfaceHigh
+            }
+
+            Image {
+                anchors.fill: parent
+                visible: thumb.kind !== "video"
+                source: thumb.preview
+                sourceSize: Qt.size(thumb.width * 2, thumb.height * 2)
+                fillMode: Image.PreserveAspectFit
+                asynchronous: true
+            }
+
+            Column {
+                anchors.centerIn: parent
+                visible: thumb.kind === "video"
+                spacing: 2
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "play_circle"
+                    color: page.palette.foreground
+                    font.family: VitrailTokens.iconFamily
+                    font.pixelSize: 30
+                }
+
+                Text {
+                    width: thumb.width - 16
+                    horizontalAlignment: Text.AlignHCenter
+                    text: thumb.path.split("/").pop()
+                    color: page.palette.muted
+                    elide: Text.ElideMiddle
+                    font.pixelSize: 10
+                    font.family: VitrailTokens.fontFamily
+                }
+            }
+        }
+
+        MultiEffect {
+            anchors.fill: parent
+            source: art
+            maskEnabled: true
+            maskSource: mask
+        }
+
+        Item {
+            id: mask
+
+            anchors.fill: parent
+            visible: false
+            layer.enabled: true
+
+            Rectangle {
+                anchors.fill: parent
+                radius: thumb.corner
+                color: "black"
+            }
+        }
     }
 
     // Same kind: add or remove it (one always stays). Another kind: it
@@ -113,18 +214,6 @@ Item {
         anchors.fill: parent
         spacing: VitrailTokens.gap("lg")
 
-        VitrailTabs {
-            Layout.fillWidth: true
-            tabs: [
-                { key: "library", label: page.t("wallpaper.library") },
-                { key: "settings", label: page.t("wallpaper.tabSettings") }
-            ]
-            current: page.tab
-            foreground: page.palette.foreground
-            accent: page.palette.primary
-            onSelected: page.tab = key
-        }
-
         Flickable {
             id: scroller
 
@@ -142,7 +231,244 @@ Item {
 
                 Section {
                     Layout.fillWidth: true
-                    visible: page.tab === "library"
+                    icon: "tune"
+                    title: page.t("wallpaper.settings")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    VitrailSettingRow {
+                        icon: "fit_screen"
+                        label: page.t("wallpaper.fit")
+                        description: page.t("wallpaper.fit.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            options: Object.keys(VitrailVariants.wallpaper).map(function (key) {
+                                return { key: key, icon: page.fitIcons[key], label: page.t("wallpaper.fit." + key) }
+                            })
+                            current: page.prefs.wallpaperMode || VitrailStyle.defaults.wallpaper
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: page.prefs.wallpaperMode = key
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "shuffle"
+                        label: page.t("wallpaper.order")
+                        description: page.t("wallpaper.order.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            options: [
+                                { key: "sequential", icon: "format_list_numbered", label: page.t("wallpaper.order.sequential") },
+                                { key: "random", icon: "shuffle", label: page.t("wallpaper.order.random") }
+                            ]
+                            current: page.prefs.wallpaperOrder
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: page.prefs.wallpaperOrder = key
+                        }
+                    }
+
+                    VitrailSelect {
+                        Layout.fillWidth: true
+                        label: page.t("wallpaper.interval")
+                        options: page.intervalOptions
+                        current: String(page.intervalNow)
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        panel: page.palette.surfaceHigh
+                        onSelected: page.prefs.wallpaperInterval = Number(key)
+                    }
+
+                    // The turn of each selected wallpaper: drag to reorder.
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: page.selection.length > 1
+                        spacing: VitrailTokens.gap("sm")
+
+                        VitrailSettingRow {
+                            icon: "swap_horiz"
+                            label: page.t("wallpaper.sequence")
+                            description: page.prefs.wallpaperOrder === "random"
+                                         ? page.t("wallpaper.sequence.random") : page.t("wallpaper.sequence.help")
+                            foreground: page.palette.foreground
+                            muted: page.palette.muted
+                        }
+
+                        Item {
+                            id: strip
+
+                            objectName: "strip"
+
+                            readonly property real thumbW: 112
+                            readonly property real thumbH: 70
+                            readonly property real gap: VitrailTokens.gap("sm")
+                            readonly property int columns: Math.max(1, Math.floor((strip.width + strip.gap) / (strip.thumbW + strip.gap)))
+                            readonly property int rows: Math.ceil(page.selection.length / strip.columns)
+                            // The order shown while a chip is being dragged.
+                            property var dragOrder: null
+                            readonly property var shown: strip.dragOrder || page.selection
+
+                            // The pictures in the strip, by identity: a reorder moves
+                            // them, only a different selection builds new ones.
+                            function sync() {
+                                var have = []
+                                for (var i = 0; i < members.count; i++)
+                                    have.push(members.get(i).path)
+                                if (have.slice().sort().join("|") === page.selection.slice().sort().join("|"))
+                                    return
+                                members.clear()
+                                page.selection.forEach(function (path) { members.append({ path: path }) })
+                            }
+
+                            function commit() {
+                                if (strip.dragOrder && strip.dragOrder.join("|") !== page.selection.join("|"))
+                                    page.prefs.wallpaperSelection = strip.dragOrder.join("|")
+                                strip.dragOrder = null
+                            }
+
+                            Layout.fillWidth: true
+                            implicitHeight: strip.rows * (strip.thumbH + strip.gap) - strip.gap
+                            Component.onCompleted: strip.sync()
+
+                            ListModel {
+                                id: members
+                            }
+
+                            Connections {
+                                target: page
+
+                                function onSelectionChanged() {
+                                    strip.sync()
+                                }
+                            }
+
+                            Repeater {
+                                model: members
+
+                                delegate: Item {
+                                    id: chip
+
+                                    required property string path
+
+                                    readonly property int slot: strip.shown.indexOf(chip.path)
+                                    readonly property real slotX: (chip.slot % strip.columns) * (strip.thumbW + strip.gap)
+                                    readonly property real slotY: Math.floor(chip.slot / strip.columns) * (strip.thumbH + strip.gap)
+
+                                    objectName: "chip"
+                                    width: strip.thumbW
+                                    height: strip.thumbH
+                                    z: grab.active ? 1 : 0
+                                    scale: grab.active ? 1.06 : 1
+
+                                    Binding on x { when: !grab.active; value: chip.slotX }
+                                    Binding on y { when: !grab.active; value: chip.slotY }
+
+                                    Behavior on x { enabled: !grab.active; NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+                                    Behavior on y { enabled: !grab.active; NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+                                    Behavior on scale { NumberAnimation { duration: VitrailTokens.duration("fast") } }
+
+                                    Thumb {
+                                        anchors.fill: parent
+                                        path: chip.path
+                                    }
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: VitrailTokens.radius * 0.75
+                                        color: "transparent"
+                                        border.width: grab.active ? 2 : 0
+                                        border.color: page.palette.primary
+                                    }
+
+                                    Rectangle {
+                                        anchors.top: parent.top
+                                        anchors.left: parent.left
+                                        anchors.margins: VitrailTokens.gap("xs")
+                                        width: 22
+                                        height: 22
+                                        radius: 11
+                                        color: page.palette.primary
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: String(chip.slot + 1)
+                                            color: page.palette.accentForeground
+                                            font.family: VitrailTokens.fontFamily
+                                            font.pixelSize: 12
+                                            font.weight: Font.DemiBold
+                                        }
+                                    }
+
+                                    HoverHandler {
+                                        cursorShape: grab.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                                    }
+
+                                    DragHandler {
+                                        id: grab
+
+                                        xAxis.minimum: 0
+                                        xAxis.maximum: Math.max(0, strip.width - strip.thumbW)
+                                        yAxis.minimum: 0
+                                        yAxis.maximum: Math.max(0, strip.height - strip.thumbH)
+                                        onActiveChanged: if (!grab.active) strip.commit()
+                                        onTranslationChanged: {
+                                            if (!grab.active)
+                                                return
+                                            var column = Math.floor((chip.x + strip.thumbW / 2) / (strip.thumbW + strip.gap))
+                                            var row = Math.floor((chip.y + strip.thumbH / 2) / (strip.thumbH + strip.gap))
+                                            var target = Math.max(0, Math.min(page.selection.length - 1, row * strip.columns + column))
+                                            strip.dragOrder = Reorder.move(page.selection, page.selection.indexOf(chip.path), target)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "colorize"
+                        label: page.t("wallpaper.systemColor")
+                        description: page.t("wallpaper.systemColor.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailButton {
+                            variant: page.prefs.systemColor === "" ? "inset" : "outlined"
+                            tone: "secondary"
+                            text: page.t("wallpaper.systemColor.auto")
+                            onClicked: page.prefs.systemColor = ""
+                        }
+
+                        Repeater {
+                            model: page.seeds
+
+                            delegate: Rectangle {
+                                required property string modelData
+
+                                implicitWidth: 26
+                                implicitHeight: 26
+                                radius: 13
+                                color: modelData
+                                border.width: page.prefs.systemColor === modelData ? 3 : 0
+                                border.color: page.palette.foreground
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: page.prefs.systemColor = parent.modelData
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Section {
+                    Layout.fillWidth: true
                     icon: "photo_library"
                     title: page.t("wallpaper.library")
                     foreground: page.palette.foreground
@@ -210,54 +536,13 @@ Item {
                                 readonly property bool onScreen: page.prefs.wallpaper === tile.filePath
                                 // First click arms the delete button, the second deletes.
                                 property bool confirming: false
-                                property string preview: page.browse === "image" ? "file://" + tile.filePath : ""
-
-                                Component.onCompleted: {
-                                    if (page.browse === "svg")
-                                        page.adaptive(tile.filePath, function (url) { tile.preview = url })
-                                }
 
                                 width: 168
                                 height: 104
 
-                                Rectangle {
+                                Thumb {
                                     anchors.fill: parent
-                                    radius: VitrailTokens.radius * 0.75
-                                    color: page.palette.surfaceHigh
-                                    clip: true
-
-                                    Image {
-                                        anchors.fill: parent
-                                        visible: page.browse !== "video"
-                                        source: tile.preview
-                                        sourceSize: Qt.size(336, 208)
-                                        fillMode: Image.PreserveAspectCrop
-                                        asynchronous: true
-                                    }
-
-                                    Column {
-                                        anchors.centerIn: parent
-                                        visible: page.browse === "video"
-                                        spacing: 2
-
-                                        Text {
-                                            anchors.horizontalCenter: parent.horizontalCenter
-                                            text: "play_circle"
-                                            color: page.palette.foreground
-                                            font.family: VitrailTokens.iconFamily
-                                            font.pixelSize: 30
-                                        }
-
-                                        Text {
-                                            width: tile.width - 16
-                                            horizontalAlignment: Text.AlignHCenter
-                                            text: tile.fileName
-                                            color: page.palette.muted
-                                            elide: Text.ElideMiddle
-                                            font.pixelSize: 10
-                                            font.family: VitrailTokens.fontFamily
-                                        }
-                                    }
+                                    path: tile.filePath
                                 }
 
                                 // Selection ring, drawn over the picture.
@@ -325,101 +610,6 @@ Item {
                     }
                 }
 
-                Section {
-                    Layout.fillWidth: true
-                    visible: page.tab === "settings"
-                    icon: "tune"
-                    title: page.t("wallpaper.settings")
-                    foreground: page.palette.foreground
-                    accent: page.palette.primary
-
-                    VitrailSettingRow {
-                        icon: "fit_screen"
-                        label: page.t("wallpaper.fit")
-                        description: page.t("wallpaper.fit.help")
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailSegmented {
-                            options: Object.keys(VitrailVariants.wallpaper).map(function (key) {
-                                return { key: key, label: page.t("wallpaper.fit." + key) }
-                            })
-                            current: page.prefs.wallpaperMode || VitrailStyle.defaults.wallpaper
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            onSelected: page.prefs.wallpaperMode = key
-                        }
-                    }
-
-                    VitrailSettingRow {
-                        icon: "shuffle"
-                        label: page.t("wallpaper.order")
-                        description: page.t("wallpaper.order.help")
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailSegmented {
-                            options: [
-                                { key: "sequential", label: page.t("wallpaper.order.sequential") },
-                                { key: "random", label: page.t("wallpaper.order.random") }
-                            ]
-                            current: page.prefs.wallpaperOrder
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            onSelected: page.prefs.wallpaperOrder = key
-                        }
-                    }
-
-                    VitrailSlider {
-                        Layout.fillWidth: true
-                        label: page.t("wallpaper.interval")
-                        suffix: " min"
-                        icon: "timer"
-                        from: 1
-                        to: 120
-                        stepSize: 1
-                        value: page.prefs.wallpaperInterval
-                        foreground: page.palette.foreground
-                        accent: page.palette.primary
-                        onMoved: page.prefs.wallpaperInterval = value
-                    }
-
-                    VitrailSettingRow {
-                        icon: "colorize"
-                        label: page.t("wallpaper.seed")
-                        description: page.t("wallpaper.seed.help")
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailButton {
-                            variant: page.prefs.wallpaperSeed === "" ? "inset" : "outlined"
-                            tone: "secondary"
-                            text: page.t("wallpaper.seed.auto")
-                            onClicked: page.prefs.wallpaperSeed = ""
-                        }
-
-                        Repeater {
-                            model: page.seeds
-
-                            delegate: Rectangle {
-                                required property string modelData
-
-                                implicitWidth: 26
-                                implicitHeight: 26
-                                radius: 13
-                                color: modelData
-                                border.width: page.prefs.wallpaperSeed === modelData ? 3 : 0
-                                border.color: page.palette.foreground
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: page.prefs.wallpaperSeed = parent.modelData
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }

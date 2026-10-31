@@ -10,10 +10,18 @@ Item {
 
     property bool vertical: false
     property bool opened: false
+    property string language: "en"
 
     signal clicked()
 
     readonly property alias hovered: hover.hovered
+    readonly property alias pressed: area.pressed
+
+    // What the pointer reads: today's full date.
+    property string tooltip: {
+        var day = clock.date.toLocaleDateString(Qt.locale(root.language), "dddd d MMMM yyyy")
+        return day.charAt(0).toUpperCase() + day.slice(1)
+    }
 
     implicitWidth: label.implicitWidth + 2 * VitrailTokens.gap("sm")
     implicitHeight: label.implicitHeight + 2 * VitrailTokens.gap("xs")
@@ -55,6 +63,8 @@ Item {
     }
 
     MouseArea {
+        id: area
+
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         onClicked: root.clicked()

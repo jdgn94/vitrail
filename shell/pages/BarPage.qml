@@ -20,9 +20,17 @@ Item {
         return value === undefined ? key : value
     }
 
-    function options(prefix, keys) {
+    readonly property var icons: ({
+        edge: { left: "left_panel_open", top: "top_panel_open", right: "right_panel_open", bottom: "bottom_panel_open" },
+        style: { docked: "dock_to_bottom", floating: "bottom_navigation", islands: "splitscreen", floatingIslands: "view_agenda" },
+        screens: { primary: "monitor", all: "devices" },
+        frame: { full: "border_outer", corners: "rounded_corner", none: "border_clear" },
+        vertical: { top: "vertical_align_top", bottom: "vertical_align_bottom" }
+    })
+
+    function options(prefix, keys, icons) {
         return keys.map(function (key) {
-            return { key: key, label: page.t(prefix + key) }
+            return { key: key, icon: icons[key], label: page.t(prefix + key) }
         })
     }
 
@@ -74,7 +82,7 @@ Item {
                         muted: page.palette.muted
 
                         VitrailSegmented {
-                            options: page.options("bar.edge.", ["left", "top", "right", "bottom"])
+                            options: page.options("bar.edge.", ["left", "top", "right", "bottom"], page.icons.edge)
                             current: page.prefs.barEdge
                             foreground: page.palette.foreground
                             accent: page.palette.primary
@@ -89,7 +97,7 @@ Item {
                         muted: page.palette.muted
 
                         VitrailSegmented {
-                            options: page.options("bar.style.", Object.keys(VitrailVariants.bar))
+                            options: page.options("bar.style.", Object.keys(VitrailVariants.bar), page.icons.style)
                             current: page.prefs.barStyle || VitrailStyle.defaults.bar
                             foreground: page.palette.foreground
                             accent: page.palette.primary
@@ -104,7 +112,7 @@ Item {
                         muted: page.palette.muted
 
                         VitrailSegmented {
-                            options: page.options("bar.screens.", ["primary", "all"])
+                            options: page.options("bar.screens.", ["primary", "all"], page.icons.screens)
                             current: page.prefs.barScreens
                             foreground: page.palette.foreground
                             accent: page.palette.primary
@@ -120,8 +128,8 @@ Item {
 
                         VitrailSegmented {
                             options: [
-                                { key: "follow", label: page.t("bar.opacity.follow") },
-                                { key: "own", label: page.t("bar.opacity.own") }
+                                { key: "follow", icon: "sync", label: page.t("bar.opacity.follow") },
+                                { key: "own", icon: "tune", label: page.t("bar.opacity.own") }
                             ]
                             current: page.prefs.barOpacityFollow ? "follow" : "own"
                             foreground: page.palette.foreground
@@ -174,7 +182,7 @@ Item {
                         muted: page.palette.muted
 
                         VitrailSegmented {
-                            options: page.options("bar.frame.", Object.keys(VitrailVariants.frame))
+                            options: page.options("bar.frame.", Object.keys(VitrailVariants.frame), page.icons.frame)
                             current: page.prefs.frameStyle || VitrailStyle.defaults.frame
                             foreground: page.palette.foreground
                             accent: page.palette.primary
@@ -251,7 +259,7 @@ Item {
                         muted: page.palette.muted
 
                         VitrailSegmented {
-                            options: page.options("bar.edge.", ["top", "bottom"])
+                            options: page.options("bar.edge.", ["top", "bottom"], page.icons.vertical)
                             current: page.prefs.notificationPosition.split("-")[0]
                             foreground: page.palette.foreground
                             accent: page.palette.primary
@@ -260,9 +268,9 @@ Item {
 
                         VitrailSegmented {
                             options: [
-                                { key: "left", label: page.t("bar.edge.left") },
-                                { key: "center", label: page.t("bar.notifications.center") },
-                                { key: "right", label: page.t("bar.edge.right") }
+                                { key: "left", icon: "align_horizontal_left", label: page.t("bar.edge.left") },
+                                { key: "center", icon: "align_horizontal_center", label: page.t("bar.notifications.center") },
+                                { key: "right", icon: "align_horizontal_right", label: page.t("bar.edge.right") }
                             ]
                             current: page.prefs.notificationPosition.split("-")[1]
                             foreground: page.palette.foreground

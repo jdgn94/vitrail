@@ -4,8 +4,7 @@ import "base"
 
 // Collapsible navigation rail.
 //
-// A collapse toggle, an optional prominent action (`action`, `actionIcon`,
-// emits actionTriggered) and the items, grouped: an item whose `group`
+// A collapse toggle and the items, grouped: an item whose `group`
 // differs from the previous one opens a new labelled group. One pill marks
 // the current item and slides to the next; its icon fills. Collapsed, only
 // the icons remain.
@@ -17,13 +16,10 @@ Item {
     property var groups: ({})
     property string current: ""
     property bool collapsed: false
-    property string action: ""
-    property string actionIcon: ""
     property color foreground: VitrailTokens.color("foreground", "#e2e2e9")
     property color accent: VitrailTokens.color("primary", "#a8c7fa")
 
     signal selected(string key)
-    signal actionTriggered()
 
     readonly property int currentIndex: root.items.findIndex(function (item) {
         return item.key === root.current
@@ -69,19 +65,6 @@ Item {
                 icon: root.collapsed ? "menu" : "menu_open"
                 Layout.leftMargin: (64 - implicitWidth) / 2 - 2
                 onClicked: root.collapsed = !root.collapsed
-            }
-
-            VitrailButton {
-                visible: root.action !== ""
-                Layout.topMargin: VitrailTokens.gap("sm")
-                Layout.bottomMargin: VitrailTokens.gap("md")
-                Layout.leftMargin: root.collapsed ? (64 - implicitWidth) / 2 : 0
-                Layout.preferredWidth: root.collapsed ? implicitWidth : root.width - VitrailTokens.gap("md")
-                size: "lg"
-                variant: "tonal"
-                icon: root.actionIcon
-                text: root.collapsed ? "" : root.action
-                onClicked: root.actionTriggered()
             }
 
             Repeater {

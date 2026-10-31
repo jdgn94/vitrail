@@ -53,6 +53,33 @@ What it does:
 
 It never deletes: if a directory is in the way, it stops and says so.
 
+## Runtime dependencies
+
+Every program Vitrail starts at runtime is declared in `packages/*.txt`, which
+`install.sh` installs, and checked by `tests/test_dependencies.py` (it scans
+`bar/`, `kit/`, `shell/`, `scripts/`, `vitrail/` and the Hyprland config for
+the programs they call). Adding a call to a new program means adding its
+package to the manifest and a row here.
+
+| Package | Provides | Used for |
+|---|---|---|
+| `hyprland`, `hyprlock` | `hyprctl`, `hyprlock` | compositor control, lock screen |
+| `quickshell`, `qt6-declarative` | `quickshell`, `qml6` | the bar and the settings window |
+| `matugen` | `matugen` | Material palette from the wallpaper |
+| `ffmpeg`, `imagemagick` | `ffmpeg`, `ffprobe`, `magick` | wallpaper import and optimisation |
+| `networkmanager` | `nmcli` | wired profile, network popout |
+| `glib2` | `gsettings` | GTK light/dark |
+| `kitty` | `kitty` | terminal, launcher `>` mode |
+| `libqalculate` | `qalc` | launcher calculator and conversions (`=`) |
+| `plocate`, `fd` | `plocate`, `fd` | launcher file search (`/`); `plocate-updatedb.timer` is enabled by the installer |
+| `cliphist`, `wl-clipboard` | `cliphist`, `wl-copy`, `wl-paste` | launcher clipboard history (`;`), copying results |
+| `xdg-utils` | `xdg-open` | opening files, folders and links |
+| `wireplumber`, `playerctl`, `brightnessctl` | `wpctl`, `playerctl`, `brightnessctl` | media keys, laptop panel brightness |
+| `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
+| `grim`, `slurp` | `grim`, `slurp` | screenshots |
+
+`hypraether-vpn` comes from the VPN module (`vpn/`), not from the manifest.
+
 ## VPN
 
 `vpn/` is the domain-based split tunnel imported from Hypraether: OpenVPN,
@@ -189,8 +216,45 @@ user chose but draws no blur, so a translucent window shows the wallpaper
 unfiltered. Blur itself is a single configurable value (`blurStrength`).
 
 Applying is automatic: `vitrail-settings.path` (systemd user unit) watches
-`~/.config/vitrail/settings.ini` and runs `vitrail-apply-settings` on every
-change, so the panel is live without a button.
+every preference file (one `PathChanged=` each; the directory is not watched,
+because apply-settings writes its own files there) and runs
+`vitrail-apply-settings` on every change, so the panel is live without a button.
+
+### Preference files
+
+Preferences are split by area into `~/.config/vitrail/<file>.ini`, named after
+the category of the settings window that shows the key.
+[`vitrail/prefs.map`](vitrail/prefs.map) (`<file> <key>` per line) is the one
+source of truth: `vitrail/prefs.py`, the bar (`bar/prefs.js`), the apply script
+(`scripts/lib/ini.sh`) and `shell/Prefs.qml` all follow it, and
+`tests/test_prefs_map.py` fails when a key is used that the map does not list,
+the window declares it in another file, or the path unit watches another set.
+
+| File | Keys |
+|------|------|
+| `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase` |
+| `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax` |
+| `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `systemColor` (`wallpaperSeed`: legacy) |
+| `windows.ini` | `windowLayout`, `visibleColumns`, `followFocus`, `wrapFocus`, `borderWidth`, `opacityFocused`, `opacityUnfocused` |
+| `input.ini` | `keyboardLayouts`, `keyboardSwitch`, `numlockOnStart`, `focusFollowsMouse` |
+| `terminal.ini` | `terminalScheme`, `terminalPadding`, `fontSize`, `tabStyle`, `tabIcons`, `tabNumbers` |
+| `launcher.ini` | `launcherEngine`, `launcherBangs`, `launcherModes`, `launcherView`, `launcherClear` |
+| `language.ini` | `language`, `languageSystem` |
+| `datetime.ini` | `timezone`, `ntp` |
+| `misc.ini` | `selftest` (written by the smoke test) and any key the map does not list |
+
+A key shared by several pages (`radius`, `blurStrength`, `surfaceStyle`,
+`surfaceOpacity`) lives with the page that owns it, Appearance. To add a
+preference: add its line to `prefs.map`, declare it in `shell/Prefs.qml` (the
+file's `Settings` plus an alias), and read it by key everywhere.
+
+**Migration.** A single `settings.ini` from before the split is divided into
+these files the first time `vitrail-apply-settings`, `bin/vitrail-settings` or
+the bar runs (`vitrail migrate`). It is serialised with a lock, writes each file
+atomically (a file already split keeps its values), and renames the old file to
+`settings.ini.before-split` last, so it can be re-run after an interruption.
+The old file is removed rather than replaced by a pointer: nothing reads it
+any more, and a stale one would suggest two sources of truth.
 
 ## Settings window
 
@@ -198,7 +262,7 @@ change, so the panel is live without a button.
 ./bin/vitrail-settings
 ```
 
-Qt 6 / QML panel that edits `~/.config/vitrail/settings.ini` immediately.
+Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immediately.
 
 - **VitrailSurface** is the base container. `solid` uses the alpha you set and
   nothing else; `glass` lowers the alpha and adds a light edge. Real backdrop
@@ -331,7 +395,7 @@ radius. Everything is chosen in **Settings → Bar** and applies live:
 ### Wallpaper
 
 **Settings → Wallpaper** lists the images and videos in `~/Pictures/Wallpapers`
-(`wallpaperDir` in `settings.ini` changes the folder). The bar draws the
+(`wallpaperDir` in `wallpaper.ini` changes the folder). The bar draws the
 wallpaper itself, so it can follow the frame:
 
 - `frame`: the wallpaper fits inside the frame and makes room when a full

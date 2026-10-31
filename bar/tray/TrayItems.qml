@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.SystemTray
@@ -16,11 +17,17 @@ GridLayout {
 
     property bool vertical: false
     property string openKind: ""
-    property bool collapsed: false
+    property bool collapsed: true
+    property var strings: ({})
 
     signal menuRequested(string kind, Item item)
     signal hovered(string kind, Item item)
+    // The pointer entered or left an element (for its tooltip).
+    signal tipHovered(Item item, bool on)
 
+    readonly property int visibleCount: SystemTray.items.values.filter(function (item) {
+        return item.status !== Status.Passive
+    }).length
     readonly property bool attention: SystemTray.items.values.some(function (item) {
         return item.status === Status.NeedsAttention
     })
@@ -28,6 +35,11 @@ GridLayout {
     flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
     rowSpacing: VitrailTokens.gap("xs")
     columnSpacing: VitrailTokens.gap("xs")
+
+    function t(key) {
+        var value = root.strings[key]
+        return value === undefined ? key : value
+    }
 
     // The icons, folded into nothing along the bar.
     Item {
@@ -57,6 +69,12 @@ GridLayout {
                     required property var modelData
 
                     readonly property string kind: "tray:" + entry.modelData.id
+                    readonly property bool opened: root.openKind === entry.kind
+                    readonly property alias pressed: area.pressed
+
+                    // What the pointer reads: what the app says about itself.
+                    property string tooltip: entry.modelData.tooltipTitle || entry.modelData.title || entry.modelData.id
+                    property string tooltipDetail: entry.modelData.tooltipDescription
 
                     visible: entry.modelData.status !== Status.Passive
                     implicitWidth: VitrailTokens.size("title") + VitrailTokens.gap("sm")
@@ -66,16 +84,30 @@ GridLayout {
                         anchors.fill: parent
                         radius: VitrailTokens.radius / 2
                         color: VitrailTokens.color("primary")
-                        opacity: root.openKind === entry.kind ? 0.16 : (hover.hovered ? 0.08 : 0)
+                        opacity: entry.opened ? 0.16 : (hover.hovered ? 0.08 : 0)
 
                         Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("fast") } }
                     }
 
+                    // The app's own colours give way to the colour scheme.
                     IconImage {
+                        id: glyph
+
                         anchors.centerIn: parent
                         implicitSize: VitrailTokens.size("title")
                         source: entry.modelData.icon
                         asynchronous: true
+                        visible: false
+                    }
+
+                    MultiEffect {
+                        anchors.fill: glyph
+                        source: glyph
+                        colorization: 1
+                        colorizationColor: entry.opened || hover.hovered ? VitrailTokens.color("primary")
+                                                                          : VitrailTokens.color("foreground")
+
+                        Behavior on colorizationColor { ColorAnimation { duration: VitrailTokens.duration("fast") } }
                     }
 
                     // An app asking for attention gets a dot.
@@ -92,10 +124,16 @@ GridLayout {
                     HoverHandler {
                         id: hover
 
-                        onHoveredChanged: if (hovered) root.hovered(entry.kind, entry)
+                        onHoveredChanged: {
+                            root.tipHovered(entry, hovered)
+                            if (hovered)
+                                root.hovered(entry.kind, entry)
+                        }
                     }
 
                     MouseArea {
+                        id: area
+
                         anchors.fill: parent
                         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                         cursorShape: Qt.PointingHandCursor
@@ -119,6 +157,11 @@ GridLayout {
     // On the anchored side of the icons, between them and the network button:
     // folding moves only the icons, the chevron stays put.
     VitrailButton {
+        id: chevron
+
+        // What the pointer reads: what a click does, and how many apps.
+        property string tooltip: root.t(root.collapsed ? "tooltip.trayShow" : "tooltip.trayHide").replace("%1", root.visibleCount)
+
         visible: SystemTray.items.values.length > 0
         variant: "plain"
         tone: "secondary"
@@ -127,6 +170,7 @@ GridLayout {
         icon: root.vertical ? (root.collapsed ? "expand_less" : "expand_more")
                             : (root.collapsed ? "chevron_left" : "chevron_right")
         onClicked: root.collapsed = !root.collapsed
+        onHoveredChanged: root.tipHovered(chevron, chevron.hovered)
 
         Rectangle {
             anchors.right: parent.right

@@ -10,26 +10,32 @@ import "kit"
 import "kit/base"
 import "kit/composed"
 import "kit/frame.js" as Frame
+import "prefs.js" as Prefs
 import "clock"
 import "dialogs"
 import "launcher"
 import "network"
 import "tray"
 import "notifications"
+import "osd"
+import "osd/osd.js" as Osd
 import "session"
 import "session/actions.js" as Session
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
-// side panel. settings.ini is watched, so the settings window applies live.
+// side panel. The preference files are watched, so the settings window applies live.
 //
 //   vitrail-bar ipc call panel toggle full      (or overlay)
 //   vitrail-bar ipc call panel close
 ShellRoot {
     id: shell
 
-    readonly property string configFile: (Quickshell.env("XDG_CONFIG_HOME")
-                                          || Quickshell.env("HOME") + "/.config") + "/vitrail/settings.ini"
-    property var prefs: ({})
+    // One INI file per area (vitrail/prefs.map), merged into `prefs`.
+    readonly property string configDir: (Quickshell.env("XDG_CONFIG_HOME")
+                                         || Quickshell.env("HOME") + "/.config") + "/vitrail"
+    property var prefFiles: []
+    property var prefParts: ({})
+    readonly property var prefs: Prefs.merge(shell.prefParts, shell.prefFiles)
     property bool popupOpen: false
     property string popupKind: ""
     // The screen whose bar opened the popup: only its layer shows it.
@@ -41,6 +47,28 @@ ShellRoot {
     // Per screen name, the monitor scope that owns its bar (anchorFor).
     property var monitors: ({})
     property var strings: ({})
+
+    // The mode the next launcher opens in (see the launcher IPC).
+    property string launcherMode: ""
+    // The full-screen launcher: open, and on which screen.
+    property bool launcherOpen: false
+    property var launcherScreen: null
+
+    // Left click and Super: the full-screen launcher on that monitor (the
+    // focused one without a screen); the popout is the right click.
+    function toggleLauncher(screen, mode) {
+        var target = screen || shell.focusedScreen
+        if (shell.launcherOpen && shell.launcherScreen === target && !mode) {
+            shell.launcherOpen = false
+            return
+        }
+        shell.closePopup()
+        shell.sessionOpen = false
+        shell.launcherMode = ""
+        shell.launcherMode = mode || ""
+        shell.launcherScreen = target
+        shell.launcherOpen = true
+    }
 
     // True for the first frames after a closed popout opens: it appears in
     // place instead of gliding in from wherever the last one was.
@@ -56,6 +84,7 @@ ShellRoot {
     // the focused monitor when there is none (IPC), anchored on its own
     // button there.
     function openPopup(kind, item, screen) {
+        shell.launcherOpen = false
         var target = screen || shell.focusedScreen
         var anchor = item || shell.anchorOf(kind, target)
         if (!shell.popupOpen) {
@@ -96,6 +125,7 @@ ShellRoot {
 
     function toggleSession(screen) {
         shell.closePopup()
+        shell.launcherOpen = false
         shell.sessionScreen = screen || shell.focusedScreen
         shell.sessionOpen = !shell.sessionOpen
     }
@@ -159,6 +189,14 @@ ShellRoot {
         return best
     }
 
+    // The primary monitor's bar, which every monitor's OSD follows: one edge
+    // and one centring everywhere (see OsdLayer).
+    property var primaryBar: null
+    readonly property string osdEdge: Osd.edgeFor(shell.prefs.notificationPosition || "top-right",
+                                                  shell.primaryBar ? shell.primaryBar.layout.edge : "")
+    readonly property var osdReference: !shell.primaryBar ? ({ left: 0, top: 0, right: 0, bottom: 0 })
+        : (shell.primaryBar.style.docked ? shell.primaryBar.layout.dock : shell.primaryBar.layout.reserve)
+
     // The screen of Hyprland's focused monitor.
     readonly property var focusedScreen: {
         var focused = Hyprland.focusedMonitor
@@ -197,7 +235,7 @@ ShellRoot {
         return mode === "dark" || (mode === "auto" && (hour < 7 || hour >= 19))
     }
 
-    // settings.ini key for each token the bar uses.
+    // Preference key for each token the bar uses.
     readonly property var tokenKeys: ({
         spacing: "spacing",
         radius: "radius",
@@ -231,21 +269,10 @@ ShellRoot {
         VitrailTokens.configure(wallpaper, shell.dark, shell.prefs.surfaceStyle, shell.tokenValues)
     }
 
-    // Reads the [appearance] section; the bar needs nothing else.
-    function parseIni(text) {
-        var out = {}
-        var section = ""
-        var lines = text.split("\n")
-        for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim()
-            if (line.startsWith("[")) {
-                section = line.slice(1, -1)
-            } else if (section === "appearance" && line.indexOf("=") > 0) {
-                var at = line.indexOf("=")
-                out[line.slice(0, at).trim()] = line.slice(at + 1).trim()
-            }
-        }
-        return out
+    function setPrefPart(name, values) {
+        var parts = Object.assign({}, shell.prefParts)
+        parts[name] = values
+        shell.prefParts = parts
     }
 
     VitrailPalette {
@@ -255,12 +282,33 @@ ShellRoot {
         data: (shell.dark ? shell.palettes.dark : shell.palettes.light) || ({})
     }
 
+    // A settings.ini from before the split becomes one file per area; the
+    // watchers below pick the new files up.
+    Process {
+        running: true
+        command: ["python3", "-m", "vitrail.cli", "migrate"]
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
     FileView {
-        path: shell.configFile
-        watchChanges: true
+        path: Quickshell.shellDir + "/../vitrail/prefs.map"
         printErrors: false
-        onFileChanged: this.reload()
-        onLoaded: shell.prefs = shell.parseIni(this.text())
+        onLoaded: shell.prefFiles = Prefs.files(this.text())
+    }
+
+    Instantiator {
+        model: shell.prefFiles
+
+        delegate: FileView {
+            required property string modelData
+
+            path: shell.configDir + "/" + modelData + ".ini"
+            watchChanges: true
+            printErrors: false
+            onFileChanged: this.reload()
+            onLoaded: shell.setPrefPart(modelData, Prefs.parse(this.text()))
+            onLoadFailed: shell.setPrefPart(modelData, ({}))
+        }
     }
 
     // `vitrail colors` rewrites the theme when the wallpaper changes.
@@ -311,6 +359,12 @@ ShellRoot {
             notification.tracked = true
             toasts.push(notification)
         }
+    }
+
+    // Volume, microphone and brightness: state and the `osd` IPC, once; each
+    // monitor draws its own OsdLayer.
+    OsdController {
+        id: osdController
     }
 
     NotificationQueue {
@@ -410,19 +464,33 @@ ShellRoot {
         }
     }
 
-    // The application launcher, shared by the bar button and Super alone.
+    // The application launcher, shared by the bar button and Super alone:
+    //   vitrail-bar ipc call launcher toggle     full screen, focused monitor
+    //   vitrail-bar ipc call launcher open <web|calc|run|files|windows|actions|clipboard>
+    //   vitrail-bar ipc call launcher popout     the compact card under the bar
     IpcHandler {
         target: "launcher"
 
         function toggle(): void {
-            launcher.startDetached()
+            shell.toggleLauncher(null, "")
+        }
+
+        function open(mode: string): void {
+            shell.toggleLauncher(null, mode)
+        }
+
+        function popout(): void {
+            shell.launcherOpen = false
+            shell.launcherMode = ""
+            shell.togglePopup("launcher", null, null)
         }
     }
 
-    Process {
-        id: launcher
+    // What the launcher remembers; one for every monitor's launcher.
+    LauncherStore {
+        id: launcherStore
 
-        command: ["sh", "-c", "pkill -x fuzzel || fuzzel"]
+        clearRequest: shell.prefs.launcherClear || ""
     }
 
     IpcHandler {
@@ -430,6 +498,18 @@ ShellRoot {
 
         function toggle(): void {
             shell.togglePopup("network", null, null)
+        }
+
+        function close(): void {
+            shell.closePopup()
+        }
+    }
+
+    IpcHandler {
+        target: "vpn"
+
+        function toggle(): void {
+            shell.togglePopup("vpn", null, null)
         }
 
         function close(): void {
@@ -469,7 +549,7 @@ ShellRoot {
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
     }
 
-    // Several wallpapers of one kind take turns; settings.ini changes and the
+    // Several wallpapers of one kind take turns; wallpaper.ini changes and the
     // palette follows through apply-settings.
     Timer {
         interval: Math.max(1, Number(shell.prefs.wallpaperInterval) || 30) * 60000
@@ -499,10 +579,20 @@ ShellRoot {
                 function anchorFor(kind) {
                     switch (kind) {
                     case "network": return barItems.networkButton
+                    case "vpn": return barItems.vpnButton
                     case "power": return barItems.powerButton
+                    case "launcher": return launcherButton
                     case "clock": return clockButton
                     default: return null
                     }
+                }
+
+                Binding {
+                    target: shell
+                    property: "primaryBar"
+                    value: bar
+                    when: monitor.modelData === shell.primaryScreen
+                    restoreMode: Binding.RestoreNone
                 }
 
                 Component.onCompleted: shell.monitors[monitor.modelData.name] = monitor
@@ -587,26 +677,42 @@ ShellRoot {
                         popupLook: popupLiquid.shown ? popupLiquid.look : null
                         popupOrigin: shell.popupAnchor
                         popupLag: popupCard.lag
-                        // Docked, the notification stack is a tab of the frame too.
-                        tabs: stackHolder.docked && stackLiquid.shown && stackHolder.height > 0
+                        // Docked, the notification stack and the OSD are tabs of the frame too.
+                        tabs: (stackHolder.docked && stackLiquid.shown && stackHolder.height > 0
                               ? [{ edge: stackHolder.place.edge, reveal: stackLiquid.look.reveal,
                                    swell: stackLiquid.look.swell,
                                    rect: Frame.liquidRect(Qt.rect(stackHolder.x, stackHolder.y, stackHolder.width, stackHolder.height),
                                                           stackHolder.place.edge, stackHolder.origin,
                                                           stackLiquid.look.spread, 0, 0) }]
-                              : []
+                              : []).concat(osd.tabs)
 
                         start: LauncherButton {
-                            onClicked: launcher.startDetached()
+                            id: launcherButton
+
+                            strings: shell.strings
+                            opened: (shell.popupOpen && shell.popupKind === "launcher" && shell.popupScreen === monitor.modelData)
+                                    || (shell.launcherOpen && shell.launcherScreen === monitor.modelData)
+                            onClicked: shell.toggleLauncher(monitor.modelData, "")
+                            onMenuRequested: {
+                                shell.launcherOpen = false
+                                shell.launcherMode = ""
+                                shell.togglePopup("launcher", launcherButton, monitor.modelData)
+                            }
+                            onHoveredChanged: tooltips.hover(launcherButton, hovered)
                         }
 
                         center: ClockButton {
                             id: clockButton
 
                             vertical: bar.vertical
+                            language: shell.prefs.language || "en"
                             opened: shell.popupOpen && shell.popupKind === "clock" && shell.popupScreen === monitor.modelData
                             onClicked: shell.togglePopup("clock", clockButton, monitor.modelData)
-                            onHoveredChanged: if (hovered) shell.hoverPopup("clock", clockButton, monitor.modelData)
+                            onHoveredChanged: {
+                                tooltips.hover(clockButton, hovered)
+                                if (hovered)
+                                    shell.hoverPopup("clock", clockButton, monitor.modelData)
+                            }
                         }
 
                         end: BarItems {
@@ -615,11 +721,39 @@ ShellRoot {
                             vertical: bar.vertical
                             open: shell.popupOpen && shell.popupScreen === monitor.modelData
                             openKind: shell.popupKind
+                            strings: shell.strings
                             onClicked: function (kind, item) { shell.togglePopup(kind, item, monitor.modelData) }
                             onHovered: function (kind, item) { shell.hoverPopup(kind, item, monitor.modelData) }
+                            onTipHovered: function (item, on) { tooltips.hover(item, on) }
                             onSessionRequested: shell.toggleSession(monitor.modelData)
                         }
                     }
+                }
+
+                // Tooltips of the bar's elements: one host per monitor.
+                TooltipLayer {
+                    id: tooltips
+
+                    screen: monitor.modelData
+                    edge: bar.layout.edge
+                    offset: bar.style.docked ? bar.layout.dock[bar.layout.edge] : bar.reserve[bar.layout.edge]
+                    opacityLevel: shell.barOpacity
+                }
+
+                // Volume, microphone and brightness, on the edge opposite the
+                // notifications, at the same spot on every monitor.
+                OsdLayer {
+                    id: osd
+
+                    screen: monitor.modelData
+                    controller: osdController
+                    layout: bar.layout
+                    docked: bar.style.docked
+                    edge: shell.osdEdge
+                    reference: shell.osdReference
+                    focused: monitor.modelData === shell.focusedScreen
+                    strings: shell.strings
+                    opacityLevel: shell.barOpacity
                 }
 
                 // Popup layer: one full-screen surface so the card can sit
@@ -641,6 +775,9 @@ ShellRoot {
                     exclusionMode: ExclusionMode.Ignore
                     WlrLayershell.namespace: "vitrail-popup"
                     WlrLayershell.layer: WlrLayer.Overlay
+                    // The launcher is typed into: it takes the keyboard while open.
+                    WlrLayershell.keyboardFocus: popupLiquid.open && shell.popupKind === "launcher" ? WlrKeyboardFocus.Exclusive
+                                                                                                       : WlrKeyboardFocus.None
 
                     // Any click outside the card closes it.
                     MouseArea {
@@ -771,9 +908,21 @@ ShellRoot {
                             opacity: popupLiquid.look.content
 
                             Popout {
+                                name: "launcher"
+                                current: popouts.name
+                                sourceComponent: launcherComponent
+                            }
+
+                            Popout {
                                 name: "network"
                                 current: popouts.name
                                 sourceComponent: networkComponent
+                            }
+
+                            Popout {
+                                name: "vpn"
+                                current: popouts.name
+                                sourceComponent: vpnComponent
                             }
 
                             Popout {
@@ -812,7 +961,8 @@ ShellRoot {
                         Timer {
                             id: popupLeave
                             interval: 3000
-                            onTriggered: shell.closePopup()
+                            // The launcher stays until it is dismissed.
+                            onTriggered: if (shell.popupKind !== "launcher") shell.closePopup()
                         }
                     }
                 }
@@ -823,6 +973,22 @@ ShellRoot {
                     ClockPanel {
                         strings: shell.strings
                         language: shell.prefs.language || "en"
+                    }
+                }
+
+                Component {
+                    id: launcherComponent
+
+                    Launcher {
+                        strings: shell.strings
+                        prefs: shell.prefs
+                        store: launcherStore
+                        initialMode: shell.launcherMode
+                        screenWidth: monitor.modelData.width
+                        screenHeight: monitor.modelData.height
+                        onDone: shell.closePopup()
+                        onOpenPopup: function (kind) { shell.openPopup(kind, null, monitor.modelData) }
+                        onOpenSession: shell.toggleSession(monitor.modelData)
                     }
                 }
 
@@ -840,6 +1006,14 @@ ShellRoot {
                     id: networkComponent
 
                     NetworkPanel {
+                        strings: shell.strings
+                    }
+                }
+
+                Component {
+                    id: vpnComponent
+
+                    VpnPanel {
                         strings: shell.strings
                     }
                 }
@@ -928,6 +1102,42 @@ ShellRoot {
                                 shell.answerHyprDialog(dialogLayer.request.id, key)
                             }
                         }
+                    }
+                }
+
+                // Full-screen launcher: the same kind of layer as the session menu.
+                PanelWindow {
+                    id: launcherLayer
+
+                    readonly property bool shown: shell.launcherOpen && shell.launcherScreen === monitor.modelData
+
+                    screen: monitor.modelData
+                    // Stays up while it fades out.
+                    visible: launcherLayer.shown || launcherFull.opacity > 0
+                    anchors {
+                        top: true
+                        bottom: true
+                        left: true
+                        right: true
+                    }
+                    color: "transparent"
+                    exclusionMode: ExclusionMode.Ignore
+                    WlrLayershell.namespace: "vitrail-launcher"
+                    WlrLayershell.layer: WlrLayer.Overlay
+                    WlrLayershell.keyboardFocus: launcherLayer.shown ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+
+                    LauncherScreen {
+                        id: launcherFull
+
+                        anchors.fill: parent
+                        open: launcherLayer.shown
+                        strings: shell.strings
+                        prefs: shell.prefs
+                        store: launcherStore
+                        initialMode: shell.launcherMode
+                        onDismissed: shell.launcherOpen = false
+                        onOpenPopup: function (kind) { shell.openPopup(kind, null, monitor.modelData) }
+                        onOpenSession: shell.toggleSession(monitor.modelData)
                     }
                 }
 

@@ -160,6 +160,21 @@ Window {
             }
 
             VitrailSlider {
+                id: wheelSlider
+
+                Layout.preferredWidth: 320
+                label: "mouse wheel · 5% a notch"
+                suffix: "%"
+                from: 0
+                to: 100
+                value: 35
+                size: "md"
+                icon: "volume_up"
+                wheelStep: 5
+                onMoved: function (value) { wheelSlider.value = value }
+            }
+
+            VitrailSlider {
                 Layout.preferredWidth: 320
                 label: "read-only"
                 suffix: "%"
@@ -170,6 +185,97 @@ Window {
                 segments: [
                     { to: 0.8, color: VitrailTokens.color("primary") },
                     { to: 1, color: VitrailTokens.color("error") }
+                ]
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "VitrailSlider · vertical, size × icon × segments"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("xl")
+
+            Repeater {
+                model: ["sm", "md", "lg"]
+
+                delegate: VitrailSlider {
+                    required property string modelData
+
+                    orientation: Qt.Vertical
+                    length: 140
+                    from: 0
+                    to: 100
+                    value: 45
+                    size: modelData
+                    icon: "volume_up"
+                }
+            }
+
+            VitrailSlider {
+                orientation: Qt.Vertical
+                length: 140
+                from: 0
+                to: 100
+                value: 90
+                size: "md"
+                icon: "light_mode"
+                segments: [
+                    { to: 0.8, color: VitrailTokens.color("primary") },
+                    { to: 1, color: VitrailTokens.color("error") }
+                ]
+            }
+
+            VitrailSlider {
+                orientation: Qt.Vertical
+                length: 140
+                from: 0
+                to: 100
+                value: 62
+                size: "md"
+                readOnly: true
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "VitrailSegmented · label, icon + label, icon only"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSegmented {
+                current: "dark"
+                foreground: VitrailTokens.color("foreground")
+                accent: VitrailTokens.color("primary")
+                options: [
+                    { key: "light", label: "Light" },
+                    { key: "dark", label: "Dark" },
+                    { key: "auto", label: "Auto" }
+                ]
+            }
+
+            VitrailSegmented {
+                current: "dark"
+                foreground: VitrailTokens.color("foreground")
+                accent: VitrailTokens.color("primary")
+                options: [
+                    { key: "light", icon: "light_mode", label: "Light" },
+                    { key: "dark", icon: "dark_mode", label: "Dark" },
+                    { key: "auto", icon: "contrast", label: "Auto" }
+                ]
+            }
+
+            VitrailSegmented {
+                current: "center"
+                foreground: VitrailTokens.color("foreground")
+                accent: VitrailTokens.color("primary")
+                options: [
+                    { key: "left", icon: "align_horizontal_left" },
+                    { key: "center", icon: "align_horizontal_center" },
+                    { key: "right", icon: "align_horizontal_right" }
                 ]
             }
         }
@@ -263,6 +369,68 @@ Window {
 
         VitrailText {
             variant: "title"
+            text: "VitrailSelect · variant × value, icons, empty, disabled"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("xl")
+
+            Repeater {
+                model: app.fields
+
+                delegate: ColumnLayout {
+                    id: selectColumn
+
+                    required property string modelData
+
+                    Layout.alignment: Qt.AlignTop
+                    spacing: VitrailTokens.gap("md")
+
+                    VitrailText {
+                        variant: "label"
+                        text: selectColumn.modelData
+                    }
+
+                    VitrailSelect {
+                        Layout.preferredWidth: 300
+                        variant: selectColumn.modelData
+                        label: "Change every"
+                        current: "30"
+                        options: [{ key: "1", label: "1 min" }, { key: "30", label: "30 min" }, { key: "60", label: "1 h" }]
+                    }
+
+                    VitrailSelect {
+                        Layout.preferredWidth: 300
+                        variant: selectColumn.modelData
+                        label: "Language"
+                        current: "es"
+                        options: [
+                            { key: "en", label: "English", icon: "translate" },
+                            { key: "es", label: "Español", icon: "translate" }
+                        ]
+                    }
+
+                    VitrailSelect {
+                        Layout.preferredWidth: 300
+                        variant: selectColumn.modelData
+                        label: "Nothing chosen"
+                        options: [{ key: "a", label: "Option A" }]
+                    }
+
+                    VitrailSelect {
+                        Layout.preferredWidth: 300
+                        variant: selectColumn.modelData
+                        label: "Disabled"
+                        enabled: false
+                        current: "a"
+                        options: [{ key: "a", label: "Option A" }]
+                    }
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
             text: "VitrailBusy · plain, contained, sizes · busy buttons"
         }
 
@@ -303,6 +471,43 @@ Window {
                 text: "Checking"
                 variant: "outlined"
                 tone: "secondary"
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "VitrailTooltip · title, title + detail, long title"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("lg")
+
+            Repeater {
+                model: [
+                    { text: "Applications", detail: "Super" },
+                    { text: "eno1 · Wired", detail: "192.168.1.20" },
+                    { text: "ProtonVPN", detail: "us-free-26 · US" },
+                    { text: "No VPN", detail: "" },
+                    { text: "A very long application title that has to be elided at the maximum width", detail: "" }
+                ]
+
+                // Held in a fixed box: the pill itself appears after the hover delay.
+                delegate: Item {
+                    id: slot
+
+                    required property var modelData
+
+                    implicitWidth: tooltip.implicitWidth
+                    implicitHeight: tooltip.implicitHeight
+
+                    VitrailTooltip {
+                        id: tooltip
+
+                        active: true
+                        text: slot.modelData.text
+                        detail: slot.modelData.detail
+                    }
+                }
             }
         }
 
@@ -441,6 +646,27 @@ Window {
                             fit: panelRow.fit
                         }
                     }
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "Launcher · variant (made-up apps, real tokens)"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("lg")
+
+            Repeater {
+                model: Object.keys(VitrailVariants.launcher)
+
+                delegate: LauncherPreview {
+                    required property string modelData
+
+                    Layout.alignment: Qt.AlignTop
+                    variant: modelData
+                    zoom: modelData === "fullscreen" ? 0.4 : 0.6
                 }
             }
         }
