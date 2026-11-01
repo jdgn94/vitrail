@@ -43,31 +43,49 @@ bar's is never configured there.
 
 ## Progress bar (both looks)
 
-`[ wave ][ playhead ][ thin line ..... end dot ]`, laid out by
-`Media.progressLayout` (pure, tested): wave 0..`waveEnd`, a vertical rounded
-playhead at the played fraction, a thin line to the right, a small dot at the
-right edge, each `progress.gap` apart. All sizes in `media.progress`.
+The shell's own `VitrailSlider` (size `sm`: track, filled part, handle, gap, end
+stop), always visible and **seekable**: `from 0`, `to` the track length, `value`
+the position, `onMoved` writes `position` on the panel and on the player. It is
+`readOnly` (no handle) when there is no player, the player cannot seek or the
+length is unknown. While the handle is held the 250 ms tick stands still.
 
-- The wave is one `Canvas` over the whole bar, a sine drawn to `waveEnd`
-  (`wave` px thick, round caps, `amplitude`, `wavelength`), thicker than the
-  line (`line`). It repaints on width, height, `waveEnd`, phase and palette
-  changes, so it is correct while paused.
-- It travels one wavelength per `progress.period` (5000 ms, about 6 px/s): calm,
-  not a flicker. A `FrameAnimation` advances the phase only while playing; paused
-  there is no animation or timer for the bar, the wave stays where it was and
-  resumes from that phase.
+- The wave is one `Canvas` over the slider, drawn from the track start to
+  `bar.activeEnd` (the slider's fill end, just before the handle's gap), as thick
+  as the track (`bar.track`) so it merges with it; `amplitude`, `wavelength`,
+  round caps (`media.progress`).
+- `energy` (0 paused .. 1 playing) eases over `progress.settle` (InOutQuad) and
+  drives the wave: amplitude is `amplitude * energy`, opacity is `energy`, the
+  phase speed is multiplied by it, so it flattens, fades and slows to a stop
+  instead of freezing. The slider's `fillOpacity` is `1 - energy`, so the straight
+  fill gives way to the wave without showing through it; the empty part, the
+  handle and the end stop never fade.
+- It travels one wavelength per `progress.period` (5000 ms): calm, not a flicker.
+  The `FrameAnimation` runs only while playing or while `energy > 0`; it repaints
+  on phase, energy, width and palette changes.
 - The elapsed time keeps ticking from a 250 ms timer that runs only while
-  playing. The bar is display-only: no seeking.
+  playing.
 
 ## Controls
+
+The body is a 2-column `GridLayout` with one spacing (`unit`, `gap("md")`, the
+same as the host card's padding, so the padding is even on all sides):
+
+- row 0: the art cell (as large as the larger look, each centred in it, so
+  switching looks moves nothing) | the text column (title, artist, progress,
+  elapsed / total), centred against the art and filling the rest;
+- row 1: the controls, spanning both columns, centred;
+- row 2: the application chip, centred, and under it the players list.
 
 - Loop (`repeat`, highlighted while on; None → Track → Playlist), shuffle
   (`shuffle`), previous, play/pause, next.
 - The application is a chip under the controls: its icon, its name and a
   chevron that opens the list of players when more than one is running
-  (`shell.mprisPlayers` + `shell.mprisIndex`). The shell keeps **one entry per
-  application** (Firefox and its browser integration are the same player), so
-  a name never repeats.
+  (`shell.mprisPlayers` + `shell.mprisIndex`). The list opens **inline below the
+  chip** and pushes the card taller (it never floats over the controls); the
+  current entry is shaded, a click chooses it and collapses the list. The shell
+  keeps **one entry per application** (Firefox and its browser integration are
+  the same player), so a name never repeats. Sizes: `media.chip`; width
+  `media.panel`.
 - The title, the artist and the application name are `VitrailMarquee`: a text
   that fits stays still, and one that does not slides left like a carousel,
   with a gap between the end and the next copy so the loop reads as two lines.
@@ -87,7 +105,9 @@ preference files, so the switch is live; no reload.
 `FloatingWindow` under `quickshell -p` with `QT_QPA_PLATFORM=offscreen`, call
 `VitrailTokens.configure(palette, true, "solid")`, `grabToImage` twice a few
 hundred ms apart and diff the ring's annulus: it must differ while playing and
-be identical (dots, wave, reels) while paused.
+be identical (dots, wave, reels) while paused. Wrap the panel in a rectangle
+padded by `gap("md")` (the popout card's margin) and check that nothing leaves
+it, with the list expanded (find the `expanded` property of the chip's column).
 
 ## MPRIS notes
 

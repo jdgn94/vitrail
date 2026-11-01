@@ -190,7 +190,7 @@ Window {
 
             VitrailSlider {
                 Layout.preferredWidth: 320
-                label: "read-only · continuous, thin (media progress)"
+                label: "read-only · continuous, thin"
                 suffix: "%"
                 from: 0
                 to: 100
@@ -198,6 +198,17 @@ Window {
                 readOnly: true
                 continuous: true
                 size: "thin"
+            }
+
+            VitrailSlider {
+                Layout.preferredWidth: 320
+                label: "fillOpacity 0.35 · only the filled part fades"
+                suffix: "%"
+                from: 0
+                to: 100
+                value: 62
+                size: "sm"
+                fillOpacity: 0.35
             }
         }
 

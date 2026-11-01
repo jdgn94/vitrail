@@ -18,13 +18,6 @@ TestCase {
         compare(Media.clock("nope"), "0:00")
     }
 
-    function test_progress_is_clamped() {
-        compare(Media.progress(30, 120), 0.25)
-        compare(Media.progress(200, 120), 1)
-        compare(Media.progress(-5, 120), 0)
-        compare(Media.progress(10, 0), 0)
-    }
-
     function test_label_joins_title_and_artist() {
         compare(Media.label({ title: "Song", artist: "Band" }, "Spotify"), "Song — Band")
         compare(Media.label({ title: "Song" }, "Spotify"), "Song")
@@ -70,25 +63,5 @@ TestCase {
             var value = Media.beat(0.9, i)
             verify(value >= 0 && value <= 1)
         }
-    }
-
-    function test_progress_layout_orders_wave_head_line_dot() {
-        var parts = Media.progressLayout(200, 0.5, 4, 3, 4)
-        compare(parts.headX, 98)
-        compare(parts.waveEnd, 95)
-        compare(parts.lineStart, 105)
-        compare(parts.dotX, 196)
-        compare(parts.lineWidth, 88)
-    }
-
-    function test_progress_layout_at_the_ends() {
-        var start = Media.progressLayout(200, 0, 4, 3, 4)
-        compare(start.headX, 0)
-        compare(start.waveEnd, 0)
-        var end = Media.progressLayout(200, 1, 4, 3, 4)
-        compare(end.headX, 189)
-        compare(end.waveEnd, 186)
-        compare(end.lineWidth, 0)
-        compare(Media.progressLayout(0, 0.5, 4, 3, 4).lineWidth, 0)
     }
 }

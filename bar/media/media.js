@@ -13,14 +13,6 @@ function clock(seconds) {
     return minutes + ":" + tail
 }
 
-// 0..1, never outside; a zero length means no progress.
-function progress(position, length) {
-    var total = Number(length) || 0
-    if (total <= 0)
-        return 0
-    return Math.max(0, Math.min(1, (Number(position) || 0) / total))
-}
-
 // Browsers publish their MPRIS titles HTML-escaped: `&quot;`, `&amp;` and the
 // numeric forms come back as the characters they mean.
 function decode(text) {
@@ -75,22 +67,4 @@ function markLength(beatValue, energy, dot, longest) {
 // Its opacity: `idle` at rest, `low`..1 following the bounce while playing.
 function markOpacity(beatValue, energy, idle, low) {
     return idle + (low + (1 - low) * beatValue - idle) * energy
-}
-
-// The parts of the progress bar, left to right, for a bar `width` px wide:
-// the wave [0, waveEnd], the playhead at headX, the remaining line from
-// lineStart for lineWidth, and the end dot at dotX. `gap` separates them.
-function progressLayout(width, fraction, head, gap, dot) {
-    var total = Math.max(0, Number(width) || 0)
-    var last = Math.max(0, total - dot - gap - head)
-    var headX = Math.max(0, Math.min(last, total * Math.max(0, Math.min(1, Number(fraction) || 0)) - head / 2))
-    var lineStart = headX + head + gap
-    var dotX = Math.max(0, total - dot)
-    return {
-        waveEnd: Math.max(0, headX - gap),
-        headX: headX,
-        lineStart: lineStart,
-        lineWidth: Math.max(0, dotX - gap - lineStart),
-        dotX: dotX
-    }
 }

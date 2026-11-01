@@ -14,6 +14,11 @@ import "wheel.js" as Wheel
 //   continuous        no gap and no end stop: the filled and empty parts meet
 //                     (a hairline progress bar: size "thin")
 //   stopFilled        the end dot is hollow unless this is set
+//   fillOpacity       opacity of the filled (active) pieces only, 0..1; the
+//                     empty part, the handle and the end stop stay as they are
+//                     (a wave drawn over the fill fades it out this way)
+//   activeEnd         (read-only) where the filled part ends along the track,
+//                     px from the track's start, just before the handle's gap
 //   orientation       Qt.Vertical stands it up: the minimum at the bottom,
 //                     `length` px tall (or whatever its parent gives it)
 //   wheelStep         value units one wheel notch moves (0: the wheel is left
@@ -42,6 +47,7 @@ ColumnLayout {
     property bool readOnly: false
     property bool continuous: false
     property bool stopFilled: false
+    property real fillOpacity: 1
     property int orientation: Qt.Horizontal
     property real length: VitrailTokens.slider.length
     property real wheelStep: 0
@@ -54,6 +60,7 @@ ColumnLayout {
     readonly property bool vertical: root.orientation === Qt.Vertical
     // The pointer holds the handle.
     readonly property bool pressed: slider.pressed
+    readonly property real activeEnd: slider.activeEnd
     readonly property real handleHeight: root.track + 4 * root.gap
     readonly property var bands: {
         var list = root.segments && root.segments.length ? root.segments : [{ to: 1, color: root.accent }]
@@ -201,6 +208,7 @@ ColumnLayout {
                             width: Math.max(0, stop - band.start)
                             height: parent.height
                             visible: width > 0
+                            opacity: root.fillOpacity
                             color: band.modelData.color
                             topLeftRadius: band.start === 0 ? band.outer : 0
                             bottomLeftRadius: topLeftRadius

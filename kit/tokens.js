@@ -139,11 +139,17 @@ var osd = {
 // between dots and bars, `bounce` one bounce of the bars, `turn` one revolution
 // of the record, `tint` the record's fill opacity, `hole` the spindle hole.
 // cassette: every number is px of a tape 80 wide (the preview scales it).
-// progress: bar `height`, `wave` thickness, `amplitude` and `wavelength` of the
-// wave, `period` ms a wave takes to travel one wavelength (calm; frozen when
-// paused), `line` the remaining track's thickness, `head` / `headHeight` the
-// playhead, `gap` around it, `dot` the end dot, `rest` / `end` the opacity of
-// the remaining line / end dot, `step` px between wave samples.
+// progress: the wave drawn over the shell slider's filled part (the slider's
+// own size sets the thickness): `amplitude` and `wavelength`, `period` ms a wave
+// takes to travel one wavelength (calm), `settle` ms the wave takes to fade
+// and ease in or out when playback changes, `step` px between wave samples.
+// panel: the card's content `width`.
+// chip: the application chip and its list: `icon` / `rowIcon` app icon sizes,
+// `name` width of the name, `padY` vertical padding of the chip, `row` height
+// of a list entry, `rest` / `open` / `current` the fill opacity of the chip, of
+// the open chip and of the current entry, `listRadius` / `rowRadius` the list's
+// and an entry's corners as a fraction of the shell radius, `listGap` between
+// entries.
 // preview: the settings tile's room for a look, and how much it is scaled.
 var media = {
     disc: {
@@ -210,19 +216,27 @@ var media = {
         slotAt: 10
     },
     progress: {
-        height: 16,
-        wave: 4,
         amplitude: 3,
         wavelength: 30,
         period: 5000,
-        line: 2,
-        head: 4,
-        headHeight: 14,
-        gap: 3,
-        dot: 4,
-        rest: 0.35,
-        end: 0.6,
+        settle: 420,
         step: 2
+    },
+    panel: {
+        width: 360
+    },
+    chip: {
+        icon: 14,
+        rowIcon: 16,
+        name: 96,
+        padY: 3,
+        row: 26,
+        rest: 0.07,
+        open: 0.12,
+        current: 0.16,
+        listRadius: 0.6,
+        rowRadius: 0.4,
+        listGap: 2
     },
     preview: {
         width: 64,
