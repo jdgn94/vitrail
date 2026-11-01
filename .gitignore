@@ -64,3 +64,11 @@ desktop.ini
 # --- Patches and merge leftovers ---
 *.orig
 *.rej
+
+# --- Bundled wallpapers ---
+# Large media (about 137 MB): the installer imports them when they are there,
+# but a clone stays small. assets/emoji.json IS tracked: the clipboard's emoji
+# tab reads it at runtime.
+assets/wallpapers/
+assets/adaptive-wallpapers/
+assets/animation-wallpapers/
