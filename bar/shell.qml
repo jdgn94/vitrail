@@ -1665,6 +1665,20 @@ ShellRoot {
                             }
 
                             Popout {
+                                name: "connection"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: connectionComponent
+                            }
+
+                            Popout {
+                                name: "tray"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: trayComponent
+                            }
+
+                            Popout {
                                 name: "power"
                                 current: popouts.name
                                 handover: popouts.handover
