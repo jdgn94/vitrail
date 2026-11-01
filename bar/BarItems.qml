@@ -52,11 +52,13 @@ GridLayout {
     Rectangle {
         id: chip
 
-        implicitWidth: chipRow.implicitWidth + 2 * VitrailTokens.gap("xs")
-        implicitHeight: chipRow.implicitHeight + 2 * VitrailTokens.gap("xs")
+        implicitWidth: chipRow.implicitWidth + 2
+        implicitHeight: chipRow.implicitHeight + 2
+        Layout.alignment: Qt.AlignCenter
+        Layout.margins: 2
         radius: height / 2
-        color: Qt.rgba(VitrailTokens.color("foreground").r, VitrailTokens.color("foreground").g,
-                       VitrailTokens.color("foreground").b, 0.06)
+        // A soft primary: opaque, so it does not smear over the glass.
+        color: VitrailTokens.solid("primary", 0.14)
 
         GridLayout {
             id: chipRow

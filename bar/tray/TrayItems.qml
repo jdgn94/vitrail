@@ -41,6 +41,37 @@ GridLayout {
         return value === undefined ? key : value
     }
 
+    // The chevron comes first: it folds the icons away and back.
+    // On the anchored side of the icons, between them and the network button:
+    // folding moves only the icons, the chevron stays put.
+    VitrailButton {
+        id: chevron
+
+        // What the pointer reads: what a click does, and how many apps.
+        property string tooltip: root.t(root.collapsed ? "tooltip.trayShow" : "tooltip.trayHide").replace("%1", root.visibleCount)
+
+        visible: SystemTray.items.values.length > 0
+        variant: "plain"
+        tone: "secondary"
+        size: "sm"
+        // Points to where the icons come from, or go to.
+        icon: root.vertical ? (root.collapsed ? "expand_less" : "expand_more")
+                            : (root.collapsed ? "chevron_left" : "chevron_right")
+        Layout.alignment: Qt.AlignCenter
+        onClicked: root.collapsed = !root.collapsed
+        onHoveredChanged: root.tipHovered(chevron, chevron.hovered)
+
+        Rectangle {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            width: 6
+            height: 6
+            radius: 3
+            visible: root.collapsed && root.attention
+            color: VitrailTokens.color("error")
+        }
+    }
+
     // The icons, folded into nothing along the bar.
     Item {
         clip: true
@@ -154,32 +185,4 @@ GridLayout {
         }
     }
 
-    // On the anchored side of the icons, between them and the network button:
-    // folding moves only the icons, the chevron stays put.
-    VitrailButton {
-        id: chevron
-
-        // What the pointer reads: what a click does, and how many apps.
-        property string tooltip: root.t(root.collapsed ? "tooltip.trayShow" : "tooltip.trayHide").replace("%1", root.visibleCount)
-
-        visible: SystemTray.items.values.length > 0
-        variant: "plain"
-        tone: "secondary"
-        size: "sm"
-        // Points to where the icons come from, or go to.
-        icon: root.vertical ? (root.collapsed ? "expand_less" : "expand_more")
-                            : (root.collapsed ? "chevron_left" : "chevron_right")
-        onClicked: root.collapsed = !root.collapsed
-        onHoveredChanged: root.tipHovered(chevron, chevron.hovered)
-
-        Rectangle {
-            anchors.right: parent.right
-            anchors.top: parent.top
-            width: 6
-            height: 6
-            radius: 3
-            visible: root.collapsed && root.attention
-            color: VitrailTokens.color("error")
-        }
-    }
 }
