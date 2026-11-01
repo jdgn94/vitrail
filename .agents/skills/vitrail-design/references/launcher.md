@@ -29,11 +29,17 @@ variant table plus a token block; the gallery draws every entry
 - Typing: result rows grouped by type with headers (`Results.sections`);
   `Ctrl+1..9` run the first nine. Footer: key hints.
 - `→` / `Ctrl+K` / right click on an app: its menu (desktop actions, pin,
-  hide, open folder). Tiles and rows declare `tooltip` / `tooltipDetail`; one
-  `VitrailTooltip` inside the launcher shows them (the bar's host places
+  hide, open folder), opened beside that tile or row (`Results.menuPlace`:
+  right of it, top-aligned, flipped left or clamped to stay inside the list
+  area; it follows the list while it scrolls). The highlighted delegate
+  registers itself in `selectedItem` for the keyboard. Tiles and rows declare
+  `tooltip` / `tooltipDetail`; one `VitrailTooltip` inside the launcher shows them (the bar's host places
   tooltips by bar edge, which does not fit content in a popout).
 - Keys are caught in `VitrailField.keyPressed` (before the text takes
   Ctrl+E / Ctrl+K / Tab); the arrows move only when the caret is at an end.
+- Escape is a window `Shortcut` in `Launcher.qml`, not a field key, so it
+  works whichever item has the focus: it closes the open menu, otherwise the
+  launcher (a typed query or mode prefix does not need clearing first).
 
 ## Logic (pure, `.pragma library`, tested in `tests/qml/tst_launcher_*.qml`)
 

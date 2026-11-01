@@ -44,6 +44,12 @@ FocusScope {
     // A menu of one app, or null.
     property var menu: null
     property int menuCurrent: 0
+    // The tile or row the menu belongs to, and where it is in `body` (kept up
+    // to date while the list scrolls).
+    property Item menuAnchor: null
+    property var menuSpot: ({ x: 0, y: 0, width: 0, height: 0 })
+    // The tile or row that is highlighted: Ctrl+K opens its menu beside it.
+    property Item selectedItem: null
 
     signal done()
     signal openPopup(string kind)
@@ -253,7 +259,9 @@ FocusScope {
             root.carryOut(result.run, shift)
     }
 
-    function openMenu(item) {
+    // Opens the menu of `item` beside `anchor` (its tile or row; none: the
+    // top right corner).
+    function openMenu(item, anchor) {
         if (!item || !root.store)
             return
         var pinned = History.isPinned(root.state, item.id)
@@ -265,7 +273,18 @@ FocusScope {
         rows.push({ title: root.t("launcher.hide"), glyph: "visibility_off", run: { kind: "hide", id: item.id } })
         rows.push({ title: root.t("launcher.openFolder"), glyph: "folder_open", run: { kind: "folder", exec: item.exec } })
         root.menuCurrent = 0
+        root.menuAnchor = anchor || null
+        root.placeMenu()
         root.menu = { item: item, rows: rows }
+    }
+
+    function placeMenu() {
+        if (root.menuAnchor) {
+            var corner = root.menuAnchor.mapToItem(body, 0, 0)
+            root.menuSpot = { x: corner.x, y: corner.y, width: root.menuAnchor.width, height: root.menuAnchor.height }
+        } else {
+            root.menuSpot = { x: body.width, y: 0, width: 0, height: 0 }
+        }
     }
 
     function move(direction) {
@@ -281,15 +300,14 @@ FocusScope {
         } else if (direction === "up" || direction === "down") {
             root.current = Results.step(root.current, root.count, direction === "down" ? 1 : -1)
         } else if (direction === "right") {
-            root.openMenu(root.currentApp)
+            root.openMenu(root.currentApp, root.selectedItem)
         }
     }
 
+    // Escape: the open menu first, then the launcher itself.
     function dismiss() {
         if (root.menu)
             root.menu = null
-        else if (field.text !== "")
-            field.text = ""
         else
             root.done()
     }
@@ -317,9 +335,7 @@ FocusScope {
         var shift = (event.modifiers & Qt.ShiftModifier) !== 0
         var key = event.key
         event.accepted = true
-        if (key === Qt.Key_Escape)
-            root.dismiss()
-        else if (key === Qt.Key_Tab && !root.menu)
+        if (key === Qt.Key_Tab && !root.menu)
             root.cycleMode(1)
         else if (key === Qt.Key_Backtab && !root.menu)
             root.cycleMode(-1)
@@ -328,7 +344,7 @@ FocusScope {
         else if (ctrl && key === Qt.Key_E && !root.fullscreen)
             root.expanded = !root.expanded
         else if (ctrl && key === Qt.Key_K || key === Qt.Key_Menu)
-            root.openMenu(root.currentApp)
+            root.openMenu(root.currentApp, root.selectedItem)
         else if (ctrl && key === Qt.Key_Left)
             root.stepTab(-1)
         else if (ctrl && key === Qt.Key_Right)
@@ -473,6 +489,14 @@ FocusScope {
         restoreMode: Binding.RestoreNone
     }
 
+    // Escape from anywhere in the window: the field is not always the item
+    // with the focus (a click, the tabs, the menu), and the shortcut wins over
+    // whatever has it.
+    Shortcut {
+        sequences: ["Escape"]
+        onActivated: root.dismiss()
+    }
+
     // --- layout --------------------------------------------------------------------
     // Clicks between the blocks are not the backdrop's (fullscreen).
     MouseArea {
@@ -608,6 +632,7 @@ FocusScope {
                 contentHeight: browseColumn.implicitHeight
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
+                onContentYChanged: if (root.menu) root.placeMenu()
 
                 // The selection scrolls into view with a glide.
                 function reveal(item) {
@@ -715,7 +740,15 @@ FocusScope {
                                         onSelectedChanged: if (tile.selected) browse.reveal(tile)
                                         onHoveredChanged: root.hover(tile, tile.hovered)
                                         onClicked: root.launchApp(tile.modelData)
-                                        onContextRequested: root.openMenu(tile.modelData)
+                                        onContextRequested: root.openMenu(tile.modelData, tile)
+
+                                        Binding {
+                                            target: root
+                                            property: "selectedItem"
+                                            value: tile
+                                            when: tile.selected
+                                            restoreMode: Binding.RestoreNone
+                                        }
                                     }
                                 }
                             }
@@ -744,7 +777,15 @@ FocusScope {
                                         onSelectedChanged: if (line.selected) browse.reveal(line)
                                         onHoveredChanged: root.hover(line, line.hovered)
                                         onClicked: root.launchApp(line.modelData)
-                                        onContextRequested: root.openMenu(line.modelData)
+                                        onContextRequested: root.openMenu(line.modelData, line)
+
+                                        Binding {
+                                            target: root
+                                            property: "selectedItem"
+                                            value: line
+                                            when: line.selected
+                                            restoreMode: Binding.RestoreNone
+                                        }
                                     }
                                 }
                             }
@@ -765,6 +806,7 @@ FocusScope {
                 model: root.shown.rows
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
+                onContentYChanged: if (root.menu) root.placeMenu()
                 spacing: VitrailTokens.gap("xs") / 2
 
                 delegate: Item {
@@ -790,23 +832,31 @@ FocusScope {
                     ResultRow {
                         id: result
 
-                        readonly property var data: entry.modelData.result || ({})
+                        readonly property var payload: entry.modelData.result || ({})
 
                         visible: entry.modelData.header !== true
                         width: parent.width
                         iconSize: root.metrics.rowIcon
-                        title: result.data.title || ""
-                        subtitle: result.data.subtitle || ""
-                        appIcon: result.data.appIcon || ""
-                        glyph: result.data.icon || "apps"
-                        busy: result.data.busy === true
-                        hasMenu: result.data.group === "apps"
-                        pinned: result.data.group === "apps" && History.isPinned(root.state, result.data.item ? result.data.item.id : "")
+                        title: result.payload.title || ""
+                        subtitle: result.payload.subtitle || ""
+                        appIcon: result.payload.appIcon || ""
+                        glyph: result.payload.icon || "apps"
+                        busy: result.payload.busy === true
+                        hasMenu: result.payload.group === "apps"
+                        pinned: result.payload.group === "apps" && History.isPinned(root.state, result.payload.item ? result.payload.item.id : "")
                         hint: entry.modelData.index !== undefined && entry.modelData.index < 9 ? "Ctrl+" + (entry.modelData.index + 1) : ""
                         selected: entry.modelData.index === root.current
                         onHoveredChanged: root.hover(result, result.hovered)
-                        onClicked: root.carryOut(result.data.run, false)
-                        onContextRequested: if (result.data.run && result.data.run.kind === "app") root.openMenu(result.data.run.item)
+                        onClicked: root.carryOut(result.payload.run, false)
+                        onContextRequested: if (result.payload.run && result.payload.run.kind === "app") root.openMenu(result.payload.run.item, result)
+
+                        Binding {
+                            target: root
+                            property: "selectedItem"
+                            value: result
+                            when: result.selected
+                            restoreMode: Binding.RestoreNone
+                        }
                     }
                 }
             }
@@ -828,11 +878,15 @@ FocusScope {
                 onClicked: root.menu = null
             }
 
+            // Beside the app it belongs to.
             Item {
                 id: menuCard
 
-                anchors.top: parent.top
-                x: root.fullscreen ? (parent.width - width) / 2 : parent.width - width
+                readonly property var place: Results.menuPlace(root.menuSpot, { width: menuCard.width, height: menuCard.height },
+                                                                { width: body.width, height: body.height }, VitrailTokens.gap("xs"))
+
+                x: menuCard.place.x
+                y: menuCard.place.y
                 width: Math.min(parent.width, VitrailTokens.size("display") * 8)
                 height: menuColumn.implicitHeight + 2 * VitrailTokens.gap("sm")
                 visible: root.menu !== null

@@ -35,6 +35,19 @@ function step(index, count, delta) {
     return count <= 0 ? 0 : ((index + delta) % count + count) % count
 }
 
+// Where a menu of `size` goes: beside `spot` (the item's rectangle) with its
+// top on the item's, to the left when the right side overflows, and inside
+// `bounds` either way.
+function menuPlace(spot, size, bounds, gap) {
+    var x = spot.x + spot.width + gap
+    if (x + size.width > bounds.width)
+        x = spot.x - gap - size.width
+    return {
+        x: Math.max(0, Math.min(x, bounds.width - size.width)),
+        y: Math.max(0, Math.min(spot.y, bounds.height - size.height))
+    }
+}
+
 // --- the grid of the browse view ----------------------------------------------
 // The tiles are sections laid out `columns` wide, each starting on a new row.
 // `lengths` is the number of tiles of each section; indices run through all.

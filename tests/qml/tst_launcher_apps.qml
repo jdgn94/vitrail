@@ -254,4 +254,26 @@ TestCase {
         compare(at.row, 0)
         compare(at.column, 1)
     }
+
+    // A menu of 100 x 80 beside an item, in a 400 x 300 body, 4 px apart.
+    function test_the_menu_opens_to_the_right_of_its_item_top_aligned() {
+        var at = Results.menuPlace({ x: 50, y: 60, width: 40, height: 40 }, { width: 100, height: 80 }, { width: 400, height: 300 }, 4)
+        compare(at.x, 94)
+        compare(at.y, 60)
+    }
+
+    function test_the_menu_flips_to_the_left_when_it_overflows() {
+        var at = Results.menuPlace({ x: 330, y: 60, width: 40, height: 40 }, { width: 100, height: 80 }, { width: 400, height: 300 }, 4)
+        compare(at.x, 226)
+    }
+
+    function test_the_menu_stays_inside_the_body() {
+        var low = Results.menuPlace({ x: 50, y: 280, width: 40, height: 40 }, { width: 100, height: 80 }, { width: 400, height: 300 }, 4)
+        compare(low.y, 220)
+        var high = Results.menuPlace({ x: 50, y: -30, width: 40, height: 40 }, { width: 100, height: 80 }, { width: 400, height: 300 }, 4)
+        compare(high.y, 0)
+        // Too wide on both sides: it sits at the edge.
+        var wide = Results.menuPlace({ x: 20, y: 0, width: 360, height: 40 }, { width: 100, height: 80 }, { width: 400, height: 300 }, 4)
+        compare(wide.x, 0)
+    }
 }
