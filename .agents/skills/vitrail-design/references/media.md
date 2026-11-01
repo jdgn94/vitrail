@@ -93,18 +93,21 @@ same as the host card's padding, so the padding is even on all sides):
   switching looks moves nothing) | the text column (title, artist, progress,
   elapsed / total), centred against the art and filling the rest;
 - row 1: the controls, spanning both columns, centred;
-- row 2: the application chip, centred, and under it the players list.
+- row 2: the application chip, centred (its list opens over the card, above it).
 
 - Loop (`repeat`, highlighted while on; None → Track → Playlist), shuffle
   (`shuffle`), previous, play/pause, next.
-- The application is a chip under the controls: its icon, its name and a
-  chevron that opens the list of players when more than one is running
-  (`shell.mprisPlayers` + `shell.mprisIndex`). The list opens **inline below the
-  chip** and pushes the card taller (it never floats over the controls); the
-  current entry is shaded, a click chooses it and collapses the list. The shell
-  keeps **one entry per application** (Firefox and its browser integration are
-  the same player), so a name never repeats. Sizes: `media.chip`; width
-  `media.panel`.
+- The application is a chip under the controls: icon + gap + name + gap +
+  chevron (only when more than one player runs) + padding. The name takes its
+  text width up to `media.chip.nameMax`, then scrolls, so the chip hugs its
+  content. The chevron opens the list of players (`shell.mprisPlayers` +
+  `shell.mprisIndex`). The list is drawn **over the card, just above the chip**
+  (the card never changes size); its width is its widest row plus padding (each
+  row's name follows the same rule), centred on the chip and clamped to the
+  card, and a name that does not fit the card scrolls. The current entry is
+  shaded, a click chooses it and closes the list. The shell keeps **one entry
+  per application** (Firefox and its browser integration are the same player),
+  so a name never repeats. Sizes: `media.chip`; card width `media.panel`.
 - The title, the artist and the application name are `VitrailMarquee`: a text
   that fits stays still, and one that does not slides left like a carousel,
   with a gap between the end and the next copy so the loop reads as two lines.

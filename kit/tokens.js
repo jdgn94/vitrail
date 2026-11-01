@@ -152,8 +152,9 @@ var osd = {
 // and ease in or out when playback changes, `step` px between wave samples.
 // panel: the card's content `width`.
 // chip: the application chip and its list: `icon` / `rowIcon` app icon sizes,
-// `name` width of the name, `padY` vertical padding of the chip, `row` height
-// of a list entry, `rest` / `open` / `current` the fill opacity of the chip, of
+// `nameMax` the widest a name gets before it scrolls (a shorter one takes its
+// own width), `padY` vertical padding of the chip, `row` height of a list
+// entry, `rest` / `open` / `current` the fill opacity of the chip, of
 // the open chip and of the current entry, `listRadius` / `rowRadius` the list's
 // and an entry's corners as a fraction of the shell radius, `listGap` between
 // entries.
@@ -250,7 +251,7 @@ var media = {
     chip: {
         icon: 14,
         rowIcon: 16,
-        name: 96,
+        nameMax: 96,
         padY: 3,
         row: 26,
         rest: 0.07,

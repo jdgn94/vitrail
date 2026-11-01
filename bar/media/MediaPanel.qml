@@ -18,6 +18,8 @@ import "media.js" as Media
 // previous/play/next, and the application chip, whose list of players (when
 // more than one is running) opens upward over the card, so it never changes the
 // card's size (the popup is sized to its content and clips anything outside).
+// The chip and the list size to their content: a name takes its text width up to
+// `media.chip.nameMax`, then scrolls.
 //
 // One spacing (`unit`) separates every cell of the grid; the host card pads the
 // content by the same amount, so the padding is even on all sides.
@@ -306,7 +308,8 @@ Item {
             }
         }
 
-        // --- the application: a chip with the icon and the name. Only the chip
+        // --- the application: a chip with the icon, the name (its text width, up
+        // to `nameMax`) and a chevron when there is a list to open. Only the chip
         // takes room in the grid; its list of players (when more than one is
         // running) is drawn after the grid, over the card (see `choices`).
         Item {
@@ -348,8 +351,10 @@ Item {
                     }
 
                     VitrailMarquee {
+                        id: chipName
+
                         anchors.verticalCenter: parent.verticalCenter
-                        width: selector.chipLook.name
+                        width: Math.min(chipName.textWidth, selector.chipLook.nameMax)
                         variant: "label"
                         text: root.appName(root.current)
                     }
@@ -382,14 +387,19 @@ Item {
     }
 
     // One entry per application; the current one is shaded. It sits just above
-    // the chip, centred on it, over the cover and the controls.
+    // the chip, over the cover and the controls: as wide as its widest entry
+    // (plus padding), centred on the chip and kept inside the card. `body` fills
+    // the card from its corner, so `selector.x` is already in the card's space.
     Rectangle {
         id: choices
 
+        // The most an entry's name can take: the card's width less the padding.
+        readonly property real nameRoom: root.width - 2 * VitrailTokens.gap("xs") - 2 * VitrailTokens.gap("sm")
+
         z: 2
-        x: selector.x + (selector.width - width) / 2
+        x: Math.max(0, Math.min(root.width - width, selector.x + (selector.width - width) / 2))
         y: selector.y - height - VitrailTokens.gap("xs")
-        width: Math.max(selector.width, implicitWidth)
+        width: Math.min(implicitWidth, root.width)
         height: implicitHeight
         visible: selector.open
         implicitWidth: listColumn.implicitWidth + 2 * VitrailTokens.gap("xs")
@@ -414,7 +424,7 @@ Item {
                     required property int index
 
                     Layout.fillWidth: true
-                    implicitWidth: choiceRow.implicitWidth
+                    implicitWidth: choiceRow.implicitWidth + 2 * VitrailTokens.gap("sm")
                     implicitHeight: selector.chipLook.row
 
                     Rectangle {
@@ -432,6 +442,8 @@ Item {
                         spacing: VitrailTokens.gap("xs")
 
                         Image {
+                            id: choiceIcon
+
                             anchors.verticalCenter: parent.verticalCenter
                             width: selector.chipLook.rowIcon
                             height: selector.chipLook.rowIcon
@@ -441,8 +453,11 @@ Item {
                         }
 
                         VitrailMarquee {
+                            id: choiceName
+
                             anchors.verticalCenter: parent.verticalCenter
-                            width: selector.chipLook.name
+                            width: Math.min(choiceName.textWidth, selector.chipLook.nameMax,
+                                            choices.nameRoom - (choiceIcon.visible ? choiceIcon.width + choiceRow.spacing : 0))
                             variant: "label"
                             text: root.appName(choice.modelData)
                         }
