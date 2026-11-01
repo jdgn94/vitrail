@@ -342,5 +342,14 @@
   "clipboard.emoji.none": "Kein Emoji passt",
   "clipboard.color.none": "Noch keine Farbe",
   "clipboard.color.recent": "Zuletzt",
-  "clipboard.color.pick": "Vom Bildschirm"
+  "clipboard.color.pick": "Vom Bildschirm",
+  "connection.title": "Verbindung",
+  "connection.wifi": "WLAN",
+  "connection.bluetooth": "Bluetooth",
+  "connection.power": "Energieprofil",
+  "connection.power.saver": "Sparsam",
+  "connection.power.balanced": "Ausgeglichen",
+  "connection.power.performance": "Leistung",
+  "connection.gateway": "Gateway",
+  "connection.open": "Schnellverbindung"
 }

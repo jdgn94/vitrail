@@ -78,7 +78,7 @@ package to the manifest and a row here.
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
 | `grim`, `slurp` | `grim`, `slurp` | screenshots |
 | `pciutils` | `lspci` | GPU vendor detection in the installer and `vitrail doctor` |
-| `networkmanager`, `bluez-utils`, `wireplumber` | `nmcli`, `bluetoothctl`, `wpctl` | the panel's quick toggles (Wi-Fi, Bluetooth, microphone) |
+| `networkmanager`, `bluez-utils`, `wireplumber`, `power-profiles-daemon` | `nmcli`, `bluetoothctl`, `wpctl`, `powerprofilesctl` | the panel's quick toggles and the connection panel (networks, Bluetooth, power profile) |
 | `awww`, `mpvpaper` | `awww`, `awww-daemon`, `mpvpaper` | still wallpapers with transitions (awww) and animated ones (mpvpaper with VA-API) |
 
 `hypraether-vpn` comes from the VPN module (`vpn/`), not from the manifest.

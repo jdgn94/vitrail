@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "kit"
+import "kit/base"
 import "media"
 import "network"
 import "session"
@@ -21,6 +22,10 @@ GridLayout {
     readonly property Item networkButton: network
     readonly property Item vpnButton: vpn
     readonly property Item powerButton: power
+    readonly property Item expandButton: expand
+    // The chevron follows the panel: the icon test reads string literals in an
+    // `icon:` line, so the choice lives here.
+    readonly property string expandIcon: root.open && root.openKind === "connection" ? "expand_less" : "expand_more"
 
     // The power button's left click opens the session menu; its right click
     // is the "power" popout.
@@ -43,29 +48,78 @@ GridLayout {
         onTipHovered: function (item, on) { root.tipHovered(item, on) }
     }
 
-    NetworkButton {
-        id: network
+    // The connection buttons, together in a chip.
+    Rectangle {
+        id: chip
 
-        strings: root.strings
-        opened: root.open && root.openKind === "network"
-        onClicked: root.clicked("network", network)
-        onHoveredChanged: {
-            root.tipHovered(network, hovered)
-            if (hovered)
-                root.hovered("network", network)
+        implicitWidth: chipRow.implicitWidth + 2 * VitrailTokens.gap("xs")
+        implicitHeight: chipRow.implicitHeight + 2 * VitrailTokens.gap("xs")
+        radius: height / 2
+        color: Qt.rgba(VitrailTokens.color("foreground").r, VitrailTokens.color("foreground").g,
+                       VitrailTokens.color("foreground").b, 0.06)
+
+        GridLayout {
+            id: chipRow
+
+            anchors.centerIn: parent
+            flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+            rowSpacing: 0
+            columnSpacing: 0
+
+            NetworkButton {
+                id: network
+
+                strings: root.strings
+                opened: root.open && root.openKind === "network"
+                onClicked: root.clicked("network", network)
+                onHoveredChanged: {
+                    root.tipHovered(network, hovered)
+                    if (hovered)
+                        root.hovered("network", network)
+                }
+            }
+
+            VpnButton {
+                id: vpn
+
+                strings: root.strings
+                opened: root.open && root.openKind === "vpn"
+                onClicked: root.clicked("vpn", vpn)
+                onHoveredChanged: {
+                    root.tipHovered(vpn, hovered)
+                    if (hovered)
+                        root.hovered("vpn", vpn)
+                }
+            }
         }
     }
 
-    VpnButton {
-        id: vpn
+    // The chip's own button, outside it: it opens the connection panel.
+    Item {
+        id: expand
 
-        strings: root.strings
-        opened: root.open && root.openKind === "vpn"
-        onClicked: root.clicked("vpn", vpn)
-        onHoveredChanged: {
-            root.tipHovered(vpn, hovered)
-            if (hovered)
-                root.hovered("vpn", vpn)
+        implicitWidth: expandButton.implicitWidth
+        implicitHeight: expandButton.implicitHeight
+        property string tooltip: root.strings["connection.open"] || "connection.open"
+        property string tooltipDetail: ""
+
+        signal clicked()
+
+        VitrailButton {
+            id: expandButton
+
+            anchors.fill: parent
+            variant: "plain"
+            tone: "secondary"
+            size: "sm"
+            icon: root.expandIcon
+            onClicked: expand.clicked()
+        }
+
+        HoverHandler {
+            id: expandHover
+
+            onHoveredChanged: root.tipHovered(expand, hovered)
         }
     }
 

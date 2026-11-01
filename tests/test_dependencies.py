@@ -61,6 +61,7 @@ PROVIDED_BY = {
     "wtype": "wtype",
     "hyprpicker": "hyprpicker",
     "bluetoothctl": "bluez-utils",
+    "powerprofilesctl": "power-profiles-daemon",
     "wl-copy": "wl-clipboard",
     "wl-paste": "wl-clipboard",
     "xdg-open": "xdg-utils",

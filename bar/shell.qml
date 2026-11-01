@@ -28,6 +28,7 @@ import "clipboard/clipboard.js" as Clipboard
 import Quickshell.Services.Mpris
 import "clipboard/colors.js" as Colors
 import "toggles/toggles.js" as Toggles
+import "network/connection.js" as Connection
 import "osd"
 import "osd/osd.js" as Osd
 import "session"
@@ -91,6 +92,21 @@ ShellRoot {
     property bool bluetoothPresent: false
     property bool micMuted: false
     property bool airplaneOn: false
+
+    // The connection panel: the link's details, the paired Bluetooth devices
+    // and the power profile.
+    property string connectionAddress: ""
+    property string connectionGateway: ""
+    property string connectionDns: ""
+    property var bluetoothDevices: []
+    property string powerProfile: "balanced"
+
+    function refreshConnection() {
+        shell.refreshToggles()
+        detailsRead.run(Commands.connectionDetails(), "")
+        btDevicesRead.run(Commands.bluetoothPaired(), "")
+        powerRead.run(Commands.powerProfile(), "")
+    }
 
     function refreshToggles() {
         wifiRead.run(Commands.wifiState(), "")
@@ -285,6 +301,8 @@ ShellRoot {
             shell.popupAnchor = Qt.rect(point.x, point.y, anchor.width, anchor.height)
         }
         shell.popupScreen = target
+        if (kind === "connection")
+            shell.refreshConnection()
         shell.popupKind = kind
         shell.popupOpen = true
     }
@@ -618,6 +636,49 @@ ShellRoot {
         id: btWrite
 
         onFinished: function (tag, output) { shell.refreshToggles() }
+    }
+
+    AsyncRun {
+        id: btScan
+
+        onFinished: function (tag, output) { shell.refreshConnection() }
+    }
+
+    AsyncRun {
+        id: detailsRead
+
+        onFinished: function (tag, output) {
+            var details = Connection.details(output)
+            shell.connectionAddress = details.address
+            shell.connectionGateway = details.gateway
+            shell.connectionDns = details.dns
+        }
+    }
+
+    AsyncRun {
+        id: btDevicesRead
+
+        onFinished: function (tag, output) {
+            shell.bluetoothDevices = Connection.bluetoothDevices(output, "")
+        }
+    }
+
+    AsyncRun {
+        id: btConnect
+
+        onFinished: function (tag, output) { shell.refreshConnection() }
+    }
+
+    AsyncRun {
+        id: powerRead
+
+        onFinished: function (tag, output) { shell.powerProfile = Connection.powerProfile(output) }
+    }
+
+    AsyncRun {
+        id: powerWrite
+
+        onFinished: function (tag, output) { shell.refreshConnection() }
     }
 
     AsyncRun {
@@ -1671,6 +1732,38 @@ ShellRoot {
 
                     NetworkPanel {
                         strings: shell.strings
+                    }
+                }
+
+                Component {
+                    id: connectionComponent
+
+                    ConnectionPanel {
+                        strings: shell.strings
+                        wifiOn: shell.wifiOn
+                        address: shell.connectionAddress
+                        gateway: shell.connectionGateway
+                        dns: shell.connectionDns
+                        bluetoothOn: shell.bluetoothOn
+                        bluetoothPresent: shell.bluetoothPresent
+                        bluetoothDevices: shell.bluetoothDevices
+                        powerProfile: shell.powerProfile
+                        onRefreshRequested: shell.refreshConnection()
+                        onWifiRadioToggled: shell.toggleQuick("wifi")
+                        onBluetoothToggled: shell.toggleQuick("bluetooth")
+                        onBluetoothScanRequested: btScan.run(Commands.bluetoothScan(), "")
+                        onBluetoothDeviceToggled: function (mac) {
+                            var device = null
+                            for (var i = 0; i < shell.bluetoothDevices.length; i++) {
+                                if (shell.bluetoothDevices[i].mac === mac)
+                                    device = shell.bluetoothDevices[i]
+                            }
+                            if (device && device.connected)
+                                btConnect.run(Commands.bluetoothDisconnect(mac), "")
+                            else
+                                btConnect.run(Commands.bluetoothConnect(mac), "")
+                        }
+                        onPowerProfileRequested: function (profile) { powerWrite.run(Commands.powerSet(profile), "") }
                     }
                 }
 

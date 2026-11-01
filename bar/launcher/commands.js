@@ -96,6 +96,19 @@ function bluetoothSet(on) { return ["bluetoothctl", "power", on ? "on" : "off"] 
 function micState() { return ["wpctl", "get-volume", "@DEFAULT_AUDIO_SOURCE@"] }
 function micToggle() { return ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"] }
 function airplaneState() { return ["rfkill", "-J"] }
+
+// The connection panel.
+function connectionDetails() {
+    return ["sh", "-c", "echo ADDR $(ip -4 -o addr show scope global | awk '{print $4; exit}'); " +
+                        "echo GW $(ip -4 route show default | awk '{print $3; exit}'); " +
+                        "echo DNS $(resolvectl dns 2>/dev/null | grep -oE '([0-9]{1,3}\\.){3}[0-9]{1,3}' | head -1)"]
+}
+function bluetoothPaired() { return ["bluetoothctl", "devices", "Paired"] }
+function bluetoothConnect(mac) { return ["bluetoothctl", "connect", mac] }
+function bluetoothDisconnect(mac) { return ["bluetoothctl", "disconnect", mac] }
+function bluetoothScan() { return ["sh", "-c", "bluetoothctl --timeout 6 scan on"] }
+function powerProfile() { return ["powerprofilesctl", "get"] }
+function powerSet(profile) { return ["powerprofilesctl", "set", profile] }
 function airplaneSet(on) { return ["rfkill", on ? "unblock" : "block", "all"] }
 
 // The screen colour picker: prints the colour under the pointer and exits.
