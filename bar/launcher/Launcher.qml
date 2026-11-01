@@ -12,6 +12,7 @@ import "results.js" as Results
 import "engine.js" as Engine
 import "actions.js" as Actions
 import "commands.js" as Commands
+import "desktop.js" as Desktop
 
 // Vitrail's application launcher, the content of the "launcher" popout.
 // Empty query: favourites, recent apps and every app by category. Typing: a
@@ -37,6 +38,9 @@ FocusScope {
     property bool expanded: false
     property int current: 0
     property string tab: "all"
+    // What the shell's last scan found when the launcher opened: the entries
+    // its own list lacks, so a newly installed app shows up at once.
+    property var scanned: []
     // A menu of one app, or null.
     property var menu: null
     property int menuCurrent: 0
@@ -70,7 +74,21 @@ FocusScope {
     readonly property bool browsing: root.parsed.mode === "all" && field.text.trim() === ""
 
     // --- data ------------------------------------------------------------------
-    readonly property var appItems: Apps.items(DesktopEntries.applications.values, root.state.hidden)
+    readonly property var appItems: Apps.items(root.allEntries(), root.state.hidden)
+
+    // The shell's entries plus whatever the last scan found that it does not
+    // know yet.
+    function allEntries() {
+        var known = DesktopEntries.applications.values
+        var out = []
+        for (var i = 0; i < known.length; i++)
+            out.push(known[i])
+        var extra = Desktop.missing(root.scanned, known)
+        for (var j = 0; j < extra.length; j++)
+            out.push(extra[j])
+        return out
+    }
+
     readonly property var actionItems: Actions.toItems(root.t)
     readonly property var windowItems: Hyprland.toplevels.values.map(function (top) {
         var ipc = top.lastIpcObject || ({})
@@ -148,7 +166,10 @@ FocusScope {
     }
 
     function launchApp(item) {
-        item.entry.execute()
+        if (item.entry && typeof item.entry.execute === "function")
+            item.entry.execute()
+        else
+            root.detach(["sh", "-c", Desktop.command(item.entry.execString)])
         if (root.store)
             root.store.record(item.id)
         root.done()

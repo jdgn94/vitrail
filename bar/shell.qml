@@ -23,6 +23,7 @@ import "notes/notes.js" as Notes
 import "clipboard"
 import "media"
 import "launcher/commands.js" as Commands
+import "launcher/desktop.js" as LauncherDesktop
 import "clipboard/clipboard.js" as Clipboard
 import Quickshell.Services.Mpris
 import "clipboard/colors.js" as Colors
@@ -112,6 +113,9 @@ ShellRoot {
     property string launcherMode: ""
     // The full-screen launcher: open, and on which screen.
     property bool launcherOpen: false
+    // What the last scan found when the launcher opened: its list, plus any
+    // app installed while the shell was running.
+    property var launcherScanned: []
     property var launcherScreen: null
 
     // Left click and Super: the full-screen launcher on that monitor (the
@@ -122,6 +126,9 @@ ShellRoot {
             shell.launcherOpen = false
             return
         }
+        // Every opening re-reads the application folders, so an app installed
+        // while the shell was running shows up.
+        launcherScan.run(Commands.scanDesktop(), "")
         shell.closePopup()
         shell.sessionOpen = false
         shell.launcherMode = ""
@@ -536,6 +543,37 @@ ShellRoot {
 
     AsyncRun {
         id: copyRun
+    }
+
+    AsyncRun {
+        id: launcherScan
+
+        onFinished: function (tag, output) { shell.launcherScanned = LauncherDesktop.parseScan(output) }
+    }
+
+    // The application folders, watched so a shortcut installed while the shell
+    // runs shows up at once. The listing's fingerprint is compared every two
+    // seconds (no extra tool needed); a change triggers the same scan the
+    // launcher uses when it opens.
+    Process {
+        id: desktopWatch
+
+        running: true
+        command: ["sh", "-c",
+            "last=''; while :; do " +
+            "sig=$(find \"$HOME/.local/share/applications\" /usr/local/share/applications /usr/share/applications " +
+            "-maxdepth 1 -name '*.desktop' -printf '%p %T@ %s\\n' 2>/dev/null | md5sum); " +
+            "if [ \"$sig\" != \"$last\" ]; then [ -n \"$last\" ] && echo changed; last=$sig; fi; sleep 2; done"]
+        stdout: SplitParser {
+            onRead: function (line) { if (line === "changed") appScanDebounce.restart() }
+        }
+    }
+
+    Timer {
+        id: appScanDebounce
+
+        interval: 400
+        onTriggered: launcherScan.run(Commands.scanDesktop(), "")
     }
 
     // The screen picker: `hyprpicker -f hex` prints the colour and exits.
@@ -1415,6 +1453,7 @@ ShellRoot {
                     Launcher {
                         strings: shell.strings
                         prefs: shell.prefs
+                        scanned: shell.launcherScanned
                         store: launcherStore
                         initialMode: shell.launcherMode
                         screenWidth: monitor.modelData.width

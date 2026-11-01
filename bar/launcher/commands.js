@@ -15,6 +15,12 @@ function files(tool, query, limit, home) {
     return ["fd", "-i", "-a", "--max-results", String(limit), "--", query, home]
 }
 
+// Every application file with its text, so the launcher can see an app
+// installed while the shell was running.
+function scanDesktop() {
+    return ["sh", "-c", "for f in \"$HOME\"/.local/share/applications/*.desktop /usr/local/share/applications/*.desktop /usr/share/applications/*.desktop; do [ -f \"$f\" ] || continue; echo \"@@FILE $f\"; cat \"$f\"; done"]
+}
+
 // Which of the two is installed: prints "plocate" or "fd".
 function probeFiles() {
     return ["sh", "-c", "command -v plocate >/dev/null 2>&1 && echo plocate || echo fd"]
