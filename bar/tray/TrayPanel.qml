@@ -14,6 +14,8 @@ ColumnLayout {
 
     property var strings: ({})
 
+    implicitWidth: 220
+
     signal activated(var item)
     signal menuRequested(var item, var entry)
 

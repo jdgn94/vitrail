@@ -34,22 +34,9 @@ Item {
         color: VitrailTokens.solid("primary", 0.14)
     }
 
-    Image {
-        id: art
-
-        anchors.centerIn: parent
-        width: VitrailTokens.size("title")
-        height: width
-        visible: root.player && root.player.trackArtUrl !== ""
-        source: art.visible ? root.player.trackArtUrl : ""
-        fillMode: Image.PreserveAspectCrop
-        asynchronous: true
-    }
-
     VitrailIcon {
         anchors.centerIn: parent
-        // An art URL that fails to load leaves the circle empty: fall back.
-        visible: !art.visible || art.status !== Image.Ready
+        // Only the glyph here: the cover belongs to the open panel.
         icon: root.player && Media.isPlaying(root.player.playbackState) ? "pause" : "play_arrow"
         size: "md"
         tone: root.player ? "primary" : "muted"
