@@ -11,6 +11,7 @@ import "../osd/osd.js" as Osd
 import "../session"
 import "../notes"
 import "../media"
+import "../toggles"
 
 // The notification panel of one monitor: full height on the notification side,
 // built like the OSD. The panel stays on the monitor it was opened on (`pinned`)
@@ -49,6 +50,11 @@ Scope {
     property string notes: ""
     // The player the panel's mini player follows.
     property var mediaPlayer: null
+    // The quick toggles' state.
+    property bool wifiOn: false
+    property bool bluetoothOn: false
+    property bool bluetoothPresent: false
+    property bool micMuted: false
     property string mediaStyle: "disc"
     property var mediaPlayers: []
     property int mediaIndex: 0
@@ -64,6 +70,7 @@ Scope {
     signal sessionRequested(string key)
     signal noteAdded(string note)
     signal noteRemoved(int index)
+    signal quickToggled(string key)
 
     readonly property var bounds: root.docked ? root.layout.dock : root.layout.reserve
     readonly property bool touching: stripHover.hovered || panelHover.hovered
@@ -222,6 +229,16 @@ Scope {
                     index: root.mediaIndex
                     strings: root.strings
                     onPlayerChosen: function (index) { root.mediaIndex = index }
+                }
+
+                QuickToggles {
+                    Layout.fillWidth: true
+                    wifiOn: root.wifiOn
+                    bluetoothOn: root.bluetoothOn
+                    bluetoothPresent: root.bluetoothPresent
+                    micMuted: root.micMuted
+                    dnd: root.dnd
+                    onToggled: function (key) { root.quickToggled(key) }
                 }
 
                 QuickNotes {

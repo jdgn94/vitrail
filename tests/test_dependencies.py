@@ -60,6 +60,7 @@ PROVIDED_BY = {
     "cliphist": "cliphist",
     "wtype": "wtype",
     "hyprpicker": "hyprpicker",
+    "bluetoothctl": "bluez-utils",
     "wl-copy": "wl-clipboard",
     "wl-paste": "wl-clipboard",
     "xdg-open": "xdg-utils",

@@ -88,6 +88,14 @@ function clipCopyTrimmed(id) {
     return ["sh", "-c", "printf '%s' \"$(cliphist decode \"$1\")\" | wl-copy", "sh", id]
 }
 
+// The quick toggles: read the state, then flip it.
+function wifiState() { return ["nmcli", "radio", "wifi"] }
+function wifiSet(on) { return ["nmcli", "radio", "wifi", on ? "on" : "off"] }
+function bluetoothState() { return ["bluetoothctl", "show"] }
+function bluetoothSet(on) { return ["bluetoothctl", "power", on ? "on" : "off"] }
+function micState() { return ["wpctl", "get-volume", "@DEFAULT_AUDIO_SOURCE@"] }
+function micToggle() { return ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"] }
+
 // The screen colour picker: prints the colour under the pointer and exits.
 function colorPicker() {
     return ["hyprpicker", "-f", "hex"]

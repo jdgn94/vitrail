@@ -27,6 +27,7 @@ import "launcher/desktop.js" as LauncherDesktop
 import "clipboard/clipboard.js" as Clipboard
 import Quickshell.Services.Mpris
 import "clipboard/colors.js" as Colors
+import "toggles/toggles.js" as Toggles
 import "osd"
 import "osd/osd.js" as Osd
 import "session"
@@ -83,6 +84,31 @@ ShellRoot {
     property string clipboardFormat: "hex"
     // The tab the next opening shows: the IPC picks it.
     property string clipboardMode: "history"
+
+    // The quick toggles: the system's own state, read back after every change.
+    property bool wifiOn: false
+    property bool bluetoothOn: false
+    property bool bluetoothPresent: false
+    property bool micMuted: false
+
+    function refreshToggles() {
+        wifiRead.run(Commands.wifiState(), "")
+        btRead.run(Commands.bluetoothState(), "")
+        micRead.run(Commands.micState(), "")
+    }
+
+    function toggleQuick(key) {
+        if (key === "wifi")
+            wifiWrite.run(Commands.wifiSet(!shell.wifiOn), "")
+        else if (key === "bluetooth")
+            btWrite.run(Commands.bluetoothSet(!shell.bluetoothOn), "")
+        else if (key === "mic")
+            micWrite.run(Commands.micToggle(), "")
+        else if (key === "dnd") {
+            shell.dnd = !shell.dnd
+            shell.setPref("notificationDnd", shell.dnd ? "true" : "false")
+        }
+    }
 
     // Now playing: the players the bar follows, one per application. An app
     // can expose several MPRIS services (Firefox: its own, the browser
@@ -559,6 +585,61 @@ ShellRoot {
 
     AsyncRun {
         id: copyRun
+    }
+
+    // The quick toggles: each reader stores what the tool printed, each writer
+    // asks for a fresh read once it is done.
+    AsyncRun {
+        id: wifiRead
+
+        onFinished: function (tag, output) { shell.wifiOn = Toggles.wifiOn(output) }
+    }
+
+    AsyncRun {
+        id: wifiWrite
+
+        onFinished: function (tag, output) { shell.refreshToggles() }
+    }
+
+    AsyncRun {
+        id: btRead
+
+        onFinished: function (tag, output) {
+            shell.bluetoothOn = Toggles.bluetoothOn(output)
+            shell.bluetoothPresent = Toggles.bluetoothPresent(output)
+        }
+    }
+
+    AsyncRun {
+        id: btWrite
+
+        onFinished: function (tag, output) { shell.refreshToggles() }
+    }
+
+    AsyncRun {
+        id: micRead
+
+        onFinished: function (tag, output) { shell.micMuted = Toggles.micMuted(output) }
+    }
+
+    AsyncRun {
+        id: micWrite
+
+        onFinished: function (tag, output) { shell.refreshToggles() }
+    }
+
+    // Opening the panel reads the state at once, and while it is open the
+    // state is kept fresh in case something else changes it.
+    onNotificationsOpenChanged: if (shell.notificationsOpen)
+        shell.refreshToggles()
+
+    // While the panel is open the state is kept fresh, in case something else
+    // changes it.
+    Timer {
+        interval: 3000
+        repeat: true
+        running: shell.notificationsOpen
+        onTriggered: shell.refreshToggles()
     }
 
     AsyncRun {
@@ -1232,6 +1313,11 @@ ShellRoot {
                     dnd: shell.dnd
                     notes: shell.notes
                     mediaPlayer: shell.mprisPlayer
+                    wifiOn: shell.wifiOn
+                    bluetoothOn: shell.bluetoothOn
+                    bluetoothPresent: shell.bluetoothPresent
+                    micMuted: shell.micMuted
+                    onQuickToggled: function (key) { shell.toggleQuick(key) }
                     mediaStyle: shell.prefs.mediaStyle || "disc"
                     mediaPlayers: shell.mprisPlayers
                     mediaIndex: shell.mprisIndex
