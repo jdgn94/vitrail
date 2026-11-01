@@ -43,43 +43,6 @@ GridLayout {
         return value === undefined ? key : value
     }
 
-    // The chevron comes first: it folds the icons away and back.
-    // On the anchored side of the icons, between them and the network button:
-    // folding moves only the icons, the chevron stays put.
-    VitrailButton {
-        id: chevron
-
-        // What the pointer reads: what a click does, and how many apps.
-        property string tooltip: root.t(root.collapsed ? "tooltip.trayShow" : "tooltip.trayHide").replace("%1", root.visibleCount)
-
-        visible: SystemTray.items.values.length > 0
-        variant: "plain"
-        tone: "secondary"
-        size: "sm"
-        // It stays in its cell and turns: the icons are what opens.
-        icon: root.vertical ? "expand_more" : "chevron_right"
-        rotation: root.vertical ? (root.collapsed ? 0 : 180) : (root.collapsed ? 0 : 90)
-        Behavior on rotation { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
-        Layout.alignment: Qt.AlignCenter
-        onClicked: {
-            if (root.style === "popup")
-                root.menuRequested("tray", chevron)
-            else
-                root.collapsed = !root.collapsed
-        }
-        onHoveredChanged: root.tipHovered(chevron, chevron.hovered)
-
-        Rectangle {
-            anchors.right: parent.right
-            anchors.top: parent.top
-            width: 6
-            height: 6
-            radius: 3
-            visible: root.collapsed && root.attention
-            color: VitrailTokens.color("error")
-        }
-    }
-
     // The icons, folded into nothing along the bar.
     Item {
         clip: true
@@ -191,6 +154,44 @@ GridLayout {
                     }
                 }
             }
+        }
+    }
+
+    // The chevron sits next to the chip and never moves: the icons are what
+    // fold away, on the side away from it.
+    // On the anchored side of the icons, between them and the network button:
+    // folding moves only the icons, the chevron stays put.
+    VitrailButton {
+        id: chevron
+
+        // What the pointer reads: what a click does, and how many apps.
+        property string tooltip: root.t(root.collapsed ? "tooltip.trayShow" : "tooltip.trayHide").replace("%1", root.visibleCount)
+
+        visible: SystemTray.items.values.length > 0
+        variant: "plain"
+        tone: "secondary"
+        size: "sm"
+        // It stays in its cell and turns: the icons are what opens.
+        icon: root.vertical ? "expand_more" : "chevron_right"
+        rotation: root.collapsed ? 180 : 0
+        Behavior on rotation { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+        Layout.alignment: Qt.AlignCenter
+        onClicked: {
+            if (root.style === "popup")
+                root.menuRequested("tray", chevron)
+            else
+                root.collapsed = !root.collapsed
+        }
+        onHoveredChanged: root.tipHovered(chevron, chevron.hovered)
+
+        Rectangle {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            width: 6
+            height: 6
+            radius: 3
+            visible: root.collapsed && root.attention
+            color: VitrailTokens.color("error")
         }
     }
 
