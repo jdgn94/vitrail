@@ -37,9 +37,12 @@ variant table plus a token block; the gallery draws every entry
   tooltips by bar edge, which does not fit content in a popout).
 - Keys are caught in `VitrailField.keyPressed` (before the text takes
   Ctrl+E / Ctrl+K / Tab); the arrows move only when the caret is at an end.
-- Escape is a window `Shortcut` in `Launcher.qml`, not a field key, so it
-  works whichever item has the focus: it closes the open menu, otherwise the
-  launcher (a typed query or mode prefix does not need clearing first).
+- Escape is `Keys.onEscapePressed` on the root `FocusScope` (plus the field's
+  `onEscaped`, which swallows the key otherwise), so it works whichever item
+  has the focus: it closes the open menu, otherwise the launcher (a typed
+  query or mode prefix does not need clearing first). Never use `Shortcut`:
+  `QQuickShortcut` segfaults Quickshell on teardown (`qs kill`). The clipboard
+  panel does the same.
 
 ## Logic (pure, `.pragma library`, tested in `tests/qml/tst_launcher_*.qml`)
 
