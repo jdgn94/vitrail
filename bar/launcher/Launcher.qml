@@ -489,13 +489,10 @@ FocusScope {
         restoreMode: Binding.RestoreNone
     }
 
-    // Escape from anywhere in the window: the field is not always the item
-    // with the focus (a click, the tabs, the menu), and the shortcut wins over
-    // whatever has it.
-    Shortcut {
-        sequences: ["Escape"]
-        onActivated: root.dismiss()
-    }
+    // Escape from anywhere inside the launcher: the field is not always the
+    // item with the focus (the tabs, the menu), and the key climbs from it to
+    // here. (Not a `Shortcut`: it crashes Quickshell when the bar stops.)
+    Keys.onEscapePressed: root.dismiss()
 
     // --- layout --------------------------------------------------------------------
     // Clicks between the blocks are not the backdrop's (fullscreen).
@@ -531,6 +528,7 @@ FocusScope {
                 focus: true
                 // The launcher's keys come before the text's own (Ctrl+E, Ctrl+K).
                 onKeyPressed: function (event) { root.press(event) }
+                onEscaped: root.dismiss()
                 onTextChanged: {
                     root.current = 0
                     root.menu = null

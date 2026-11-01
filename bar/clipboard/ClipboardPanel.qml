@@ -10,7 +10,7 @@ import "../kit/base"
 //
 // Presentational: the shell runs cliphist and hyprpicker, holds the entries,
 // the emoji data and the colours, and performs every copy.
-Item {
+FocusScope {
     id: root
 
     property var strings: ({})
@@ -39,6 +39,8 @@ Item {
 
     readonly property int margin: VitrailTokens.gap("md")
 
+    // Keeps the keyboard when no field has it (the colours tab).
+    focus: true
     implicitWidth: 420
     implicitHeight: content.implicitHeight + 2 * root.margin
 
@@ -57,12 +59,11 @@ Item {
     onStartModeChanged: if (root.active)
         root.mode = root.startMode
 
-    // Escape closes from any tab, even when no field has the keyboard.
-    Shortcut {
-        sequences: ["Escape"]
-        enabled: root.active
-        onActivated: root.closeRequested()
-    }
+    // Escape closes from any tab, even when no field has the keyboard: the key
+    // climbs from the focused item to here. (Not a `Shortcut`: it crashes
+    // Quickshell when the bar stops.)
+    Keys.enabled: root.active
+    Keys.onEscapePressed: root.closeRequested()
 
     // The same container the bar draws: glass or solid, its radius and edge.
     VitrailSurface {
@@ -125,6 +126,7 @@ Item {
             strings: root.strings
             emojis: root.emojis
             onPicked: function (emoji) { root.emojiPicked(emoji) }
+            onCloseRequested: root.closeRequested()
         }
 
         ClipboardColors {

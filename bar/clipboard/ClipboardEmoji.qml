@@ -17,6 +17,7 @@ Item {
     property string group: "all"
 
     signal picked(string emoji)
+    signal closeRequested()
 
     readonly property var shown: Emoji.filter(root.emojis, root.query, root.group)
 
@@ -68,6 +69,7 @@ Item {
             leadingIcon: "search"
             placeholder: root.t("clipboard.emoji.search")
             onTextChanged: root.query = text
+            onEscaped: root.closeRequested()
         }
 
         VitrailText {
