@@ -26,7 +26,8 @@ Item {
     property string tooltipDetail: root.activeVpn ? Vpn.service(root.activeVpn) : ""
 
     implicitWidth: glyph.implicitWidth + VitrailTokens.gap("sm")
-    implicitHeight: glyph.implicitHeight + VitrailTokens.gap("xs")
+    // Square, so the round background fits the chip's pill.
+    implicitHeight: implicitWidth
 
     function t(key) {
         var value = root.strings[key]
@@ -35,7 +36,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: VitrailTokens.radius / 2
+        radius: width / 2
         visible: root.opened
         color: VitrailTokens.solid("primary", 0.16)
     }

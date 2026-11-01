@@ -49,7 +49,8 @@ Item {
     property string tooltipDetail: root.connected ? root.address : ""
 
     implicitWidth: icon.implicitWidth + VitrailTokens.gap("sm")
-    implicitHeight: icon.implicitHeight + VitrailTokens.gap("xs")
+    // Square, so the round background fits the chip's pill.
+    implicitHeight: implicitWidth
 
     // The address follows the interface in use, and changes with the lease.
     onLinkDeviceChanged: {
@@ -81,7 +82,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: VitrailTokens.radius / 2
+        radius: width / 2
         visible: root.opened
         color: VitrailTokens.solid("primary", 0.16)
     }

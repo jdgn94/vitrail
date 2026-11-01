@@ -22,10 +22,7 @@ GridLayout {
     readonly property Item networkButton: network
     readonly property Item vpnButton: vpn
     readonly property Item powerButton: power
-    readonly property Item expandButton: expand
-    // The chevron follows the panel: the icon test reads string literals in an
-    // `icon:` line, so the choice lives here.
-    readonly property string expandIcon: root.open && root.openKind === "connection" ? "expand_less" : "expand_more"
+
 
     // The power button's left click opens the session menu; its right click
     // is the "power" popout.
@@ -72,8 +69,8 @@ GridLayout {
                 id: network
 
                 strings: root.strings
-                opened: root.open && root.openKind === "network"
-                onClicked: root.clicked("network", network)
+                opened: root.open && root.openKind === "connection"
+                onClicked: root.clicked("connection", network)
                 onHoveredChanged: {
                     root.tipHovered(network, hovered)
                     if (hovered)
@@ -93,35 +90,6 @@ GridLayout {
                         root.hovered("vpn", vpn)
                 }
             }
-        }
-    }
-
-    // The chip's own button, outside it: it opens the connection panel.
-    Item {
-        id: expand
-
-        implicitWidth: expandButton.implicitWidth
-        implicitHeight: expandButton.implicitHeight
-        property string tooltip: root.strings["connection.open"] || "connection.open"
-        property string tooltipDetail: ""
-
-        signal clicked()
-
-        VitrailButton {
-            id: expandButton
-
-            anchors.fill: parent
-            variant: "plain"
-            tone: "secondary"
-            size: "sm"
-            icon: root.expandIcon
-            onClicked: expand.clicked()
-        }
-
-        HoverHandler {
-            id: expandHover
-
-            onHoveredChanged: root.tipHovered(expand, hovered)
         }
     }
 
