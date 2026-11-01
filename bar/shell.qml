@@ -2112,7 +2112,8 @@ ShellRoot {
                     exclusionMode: ExclusionMode.Ignore
                     WlrLayershell.namespace: "vitrail-launcher"
                     WlrLayershell.layer: WlrLayer.Overlay
-                    WlrLayershell.keyboardFocus: launcherLayer.shown ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+                    WlrLayershell.keyboardFocus: launcherLayer.visible ? WlrKeyboardFocus.Exclusive
+                                                                       : WlrKeyboardFocus.None
 
                     LauncherScreen {
                         id: launcherFull
@@ -2148,7 +2149,7 @@ ShellRoot {
                     exclusionMode: ExclusionMode.Ignore
                     WlrLayershell.namespace: "vitrail-session"
                     WlrLayershell.layer: WlrLayer.Overlay
-                    WlrLayershell.keyboardFocus: sessionLayer.shown ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+                    WlrLayershell.keyboardFocus: sessionLayer.visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
                     SessionMenu {
                         id: sessionMenu
