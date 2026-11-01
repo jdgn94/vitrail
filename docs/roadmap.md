@@ -113,7 +113,7 @@ API once it exists.
 
 | Task | Depends on | Done when |
 |---|---|---|
-| P1.1 Generic popup host (kinds, anchors, keyboard, click-out, hover switching) | P0.1 | Three kinds open from the bar, move between buttons, close on outside click and after the idle timeout |
+| ✅ P1.1 Generic popup host (kinds, anchors, keyboard, click-out, hover switching) | P0.1 | Three kinds open from the bar, move between buttons, close on outside click, on Escape and after the idle timeout |
 | ✅ P1.2 Notification panel: grouping, DND, expiry, actions, full height, widgets slot | P1.1 | A burst of 20 notifications stays grouped; DND silences them; actions run |
 | ✅ P1.3 Clipboard history (cliphist, text and images) | P1.1 | Copy → appears in the panel → selecting it pastes |
 | ✅ P1.4 Music indicator (MPRIS): title, artist, controls | P1.1 | Controlled from the bar and from the panel's widgets slot |
