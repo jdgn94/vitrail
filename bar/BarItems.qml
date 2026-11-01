@@ -18,6 +18,7 @@ GridLayout {
     property string openKind: ""
     property bool open: false
     property var strings: ({})
+    property string trayStyle: "inline"
     // The buttons of the popouts that open without a click (IPC).
     readonly property Item networkButton: network
     readonly property Item vpnButton: vpn
@@ -39,6 +40,7 @@ GridLayout {
     TrayItems {
         Layout.alignment: Qt.AlignHCenter
         vertical: root.vertical
+        style: root.trayStyle
         openKind: root.open ? root.openKind : ""
         strings: root.strings
         onMenuRequested: function (kind, item) { root.clicked(kind, item) }

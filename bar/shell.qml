@@ -1332,6 +1332,7 @@ ShellRoot {
                             open: shell.popupOpen && shell.popupScreen === monitor.modelData
                             openKind: shell.popupKind
                             strings: shell.strings
+                            trayStyle: shell.prefs.trayStyle || "inline"
                             onClicked: function (kind, item) { shell.togglePopup(kind, item, monitor.modelData) }
                             onHovered: function (kind, item) { shell.hoverPopup(kind, item, monitor.modelData) }
                             onTipHovered: function (item, on) { tooltips.hover(item, on) }
@@ -1741,6 +1742,18 @@ ShellRoot {
 
                     NetworkPanel {
                         strings: shell.strings
+                    }
+                }
+
+                Component {
+                    id: trayComponent
+
+                    TrayPanel {
+                        strings: shell.strings
+                        onActivated: function (item) { item.activate(); shell.closePopup() }
+                        onMenuRequested: function (item, entry) {
+                            shell.openPopup("tray:" + item.id, entry, monitor.modelData)
+                        }
                     }
                 }
 

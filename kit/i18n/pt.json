@@ -351,5 +351,8 @@
   "connection.power.balanced": "Equilibrado",
   "connection.power.performance": "Desempenho",
   "connection.gateway": "porta",
-  "connection.open": "Ligação rápida"
+  "connection.open": "Ligação rápida",
+  "bar.trayStyle": "Apps na bandeja",
+  "bar.trayStyle.inline": "Desdobrar",
+  "bar.trayStyle.popup": "Emergente"
 }

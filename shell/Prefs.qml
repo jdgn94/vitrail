@@ -36,6 +36,7 @@ QtObject {
     property alias clipboardMax: barFile.clipboardMax
     property alias clipboardPaste: barFile.clipboardPaste
     property alias mediaStyle: barFile.mediaStyle
+    property alias trayStyle: barFile.trayStyle
     property alias wallpaper: wallpaperFile.wallpaper
     property alias wallpaperMode: wallpaperFile.wallpaperMode
     property alias wallpaperDir: wallpaperFile.wallpaperDir
@@ -116,6 +117,8 @@ QtObject {
         property bool clipboardPaste: false
         // The player's look: "disc" or "cassette".
         property string mediaStyle: "disc"
+        // The tray's look: "inline" folds the icons out, "popup" lists them.
+        property string trayStyle: "inline"
     }
 
     property Settings wallpaperSettings: Settings {

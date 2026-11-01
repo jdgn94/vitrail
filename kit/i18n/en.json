@@ -351,5 +351,8 @@
   "connection.power.balanced": "Balanced",
   "connection.power.performance": "Performance",
   "connection.gateway": "gateway",
-  "connection.open": "Quick connection"
+  "connection.open": "Quick connection",
+  "bar.trayStyle": "Tray apps",
+  "bar.trayStyle.inline": "Fold out",
+  "bar.trayStyle.popup": "Popup"
 }

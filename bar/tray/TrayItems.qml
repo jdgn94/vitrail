@@ -18,6 +18,8 @@ GridLayout {
     property bool vertical: false
     property string openKind: ""
     property bool collapsed: true
+    // inline: the icons fold out beside the chevron; popup: a list opens.
+    property string style: "inline"
     property var strings: ({})
 
     signal menuRequested(string kind, Item item)
@@ -54,11 +56,17 @@ GridLayout {
         variant: "plain"
         tone: "secondary"
         size: "sm"
-        // Points to where the icons come from, or go to.
-        icon: root.vertical ? (root.collapsed ? "expand_less" : "expand_more")
-                            : (root.collapsed ? "chevron_left" : "chevron_right")
+        // It stays in its cell and turns: the icons are what opens.
+        icon: root.vertical ? "expand_more" : "chevron_right"
+        rotation: root.vertical ? (root.collapsed ? 0 : 180) : (root.collapsed ? 0 : 90)
+        Behavior on rotation { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
         Layout.alignment: Qt.AlignCenter
-        onClicked: root.collapsed = !root.collapsed
+        onClicked: {
+            if (root.style === "popup")
+                root.menuRequested("tray", chevron)
+            else
+                root.collapsed = !root.collapsed
+        }
         onHoveredChanged: root.tipHovered(chevron, chevron.hovered)
 
         Rectangle {
@@ -75,6 +83,7 @@ GridLayout {
     // The icons, folded into nothing along the bar.
     Item {
         clip: true
+        visible: root.style === "inline"
         implicitWidth: root.vertical ? icons.implicitWidth : (root.collapsed ? 0 : icons.implicitWidth)
         implicitHeight: root.vertical ? (root.collapsed ? 0 : icons.implicitHeight) : icons.implicitHeight
 

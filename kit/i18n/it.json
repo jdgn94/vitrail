@@ -351,5 +351,8 @@
   "connection.power.balanced": "Bilanciato",
   "connection.power.performance": "Prestazioni",
   "connection.gateway": "gateway",
-  "connection.open": "Connessione rapida"
+  "connection.open": "Connessione rapida",
+  "bar.trayStyle": "App nella barra",
+  "bar.trayStyle.inline": "Aprire",
+  "bar.trayStyle.popup": "Pop-up"
 }

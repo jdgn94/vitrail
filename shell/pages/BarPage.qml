@@ -91,6 +91,21 @@ Item {
                     }
 
                     VitrailSettingRow {
+                        icon: "dock_to_bottom"
+                        label: page.t("bar.trayStyle")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            options: page.options("bar.trayStyle.", ["inline", "popup"], ({}))
+                            current: page.prefs.trayStyle
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: page.prefs.trayStyle = key
+                        }
+                    }
+
+                    VitrailSettingRow {
                         icon: "style"
                         label: page.t("bar.style")
                         foreground: page.palette.foreground

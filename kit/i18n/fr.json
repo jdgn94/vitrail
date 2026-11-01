@@ -351,5 +351,8 @@
   "connection.power.balanced": "Équilibré",
   "connection.power.performance": "Performance",
   "connection.gateway": "passerelle",
-  "connection.open": "Connexion rapide"
+  "connection.open": "Connexion rapide",
+  "bar.trayStyle": "Apps de la zone",
+  "bar.trayStyle.inline": "Déplier",
+  "bar.trayStyle.popup": "Pop-up"
 }
