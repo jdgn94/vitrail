@@ -144,8 +144,14 @@ timeline, ratios), `motion.smooth`.
 - Opening from closed sets `shell.popupOpening` for a `fast` beat: the
   Behaviors are off, so the card appears at its button instead of gliding
   from wherever the last popout was.
-- The idle close timer (`popupLeave`, 3 s after the pointer leaves the card) is
-  cancelled when the popup kind changes.
+- A popout kind that always floats (`tray:<id>`, `popupCard.floating`) is an
+  island like the OSD's device card even on a docked bar: `popupCard.docked`
+  is false, so `popupLook` stays null (the frame draws no tab), the card sits
+  `layout.dock[edge] + margin` from the screen edge (past the frame / islands;
+  `reserve` for a floating bar) and has no neck (`sourceTarget` is null while
+  the bar is docked).
+- The idle close timer (`popupLeave`, 3 s after the pointer leaves the card and
+  the tray menu card) is cancelled when the popup kind changes.
 
 ## Tray (bar/tray)
 
@@ -157,9 +163,37 @@ timeline, ratios), `motion.smooth`.
   when `onlyMenu`), right = menu popout, middle = secondaryActivate, wheel =
   scroll; NeedsAttention shows an `error` dot.
 - The chevron comes after the icons (between them and the network button), so
-  folding moves only the icons; its glyph points to where the icons come from
-  (collapsed) or go to (expanded).
-- `TrayMenu`: StackView of `MenuLevel`s over `QsMenuOpener`; plain rows
-  (pill hover), 1 px separators, disabled at 45 %, check / radio glyphs,
+  folding moves only the icons. One `chevron_right` glyph, `rotation` =
+  `heading` + 180 while expanded (icons out, or the popup list open), animated
+  by a `Behavior`. Inline: `heading` points where the icons come from (left on a
+  horizontal bar, up on a vertical one). Popup: away from the bar's edge
+  (`barEdge`: top down, bottom up, left right, right left).
+- `TrayPanel` (popup style): icons only, in a `GridLayout` of
+  `min(visible apps, tray.columns)` columns (one row when few, then wrapping).
+  Each cell is the bar's inline icon (title + `sm` gap, colourised, round
+  primary 8 % highlight on hover); Passive apps are hidden, so the grid
+  reserves nothing for them. Left activates, right opens the menu. Its
+  tooltip (`tipHovered`) is a `VitrailTooltip` in `popupLayer`, beside
+  `popupCard` (the card clips), placed with `Frame.tooltipAt` past the card on
+  the side away from the bar.
+- The grid's app menu does not swap the popout: `popupKind` stays `tray` (the
+  chevron stays open) and `menuRequested` sets `shell.trayMenuItem` plus
+  `popupLayer.menuCell`, the icon. `menuCard` is a second card in the same
+  `popupLayer` window (a second window would need its own input and focus), a
+  plain `VitrailSurface` (`shell.barOpacity`) over one `Popout` per app with a
+  `TrayMenu`, so replacing the menu fades the old one out and loads the new
+  fresh. Placement `Frame.besideAt`: a `gap(md)` past `popupCard` away from the
+  bar, along the bar centred on the icon within the hole like `popupAlong`.
+  The mask is `popupCard` plus a child `Region` for `menuCard` while shown.
+- Closing the menu: picking an entry (`done`), Escape (`menuCard` takes focus
+  when it opens), right click on the same icon again (toggle). The tray card
+  stays. `closePopup`, a change of `popupKind` or `popupScreen` clear
+  `trayMenuItem`; an app taking the focus or the idle timers close both. The
+  pointer on `menuCard` counts as on the popup (`popupLeave`), opening a menu
+  restarts `popupIdle`, and the icon tooltip is off while a menu is open.
+- `TrayMenu`: StackView of `MenuLevel`s over `QsMenuOpener`; rows like
+  `network/Entry` (`tray.menu` wide, `radius / 2`, foreground 6 % hover,
+  checked check / radio entries tinted primary 14 % with a primary glyph),
+  `xs` spacing, 1 px separators, disabled at 45 %, check / radio glyphs,
   `chevron_right` pushes a submenu with a tonal "Back" row; DBusMenu
   mnemonics (`_`) are stripped. Triggering closes the popout.

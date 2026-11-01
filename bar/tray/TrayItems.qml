@@ -16,6 +16,9 @@ GridLayout {
     id: root
 
     property bool vertical: false
+    // The bar's edge (left, top, right or bottom): the popup style points the
+    // chevron away from it.
+    property string barEdge: "left"
     property string openKind: ""
     property bool collapsed: true
     // inline: the icons fold out beside the chevron; popup: a list opens.
@@ -33,6 +36,16 @@ GridLayout {
     readonly property bool attention: SystemTray.items.values.some(function (item) {
         return item.status === Status.NeedsAttention
     })
+
+    // The icons are out (inline) or the list is open (popup).
+    readonly property bool expanded: root.style === "popup" ? root.openKind === "tray" : !root.collapsed
+    // Where the chevron points, folded: where the icons come from (they
+    // precede it in the flow) or, for the popup, where it opens (away from
+    // the bar's edge). Degrees of the right-pointing glyph; expanding turns it
+    // half a revolution.
+    readonly property int heading: root.style === "popup"
+        ? ({ top: 90, bottom: 270, left: 0, right: 180 })[root.barEdge]
+        : (root.vertical ? 270 : 180)
 
     flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
     rowSpacing: VitrailTokens.gap("xs")
@@ -117,9 +130,9 @@ GridLayout {
                     Rectangle {
                         anchors.right: parent.right
                         anchors.top: parent.top
-                        width: 6
-                        height: 6
-                        radius: 3
+                        width: VitrailTokens.tray.dot
+                        height: VitrailTokens.tray.dot
+                        radius: VitrailTokens.tray.dot / 2
                         visible: entry.modelData.status === Status.NeedsAttention
                         color: VitrailTokens.color("error")
                     }
@@ -157,23 +170,20 @@ GridLayout {
         }
     }
 
-    // The chevron sits next to the chip and never moves: the icons are what
-    // fold away, on the side away from it.
     // On the anchored side of the icons, between them and the network button:
-    // folding moves only the icons, the chevron stays put.
+    // folding moves only the icons, the chevron stays put and turns.
     VitrailButton {
         id: chevron
 
         // What the pointer reads: what a click does, and how many apps.
-        property string tooltip: root.t(root.collapsed ? "tooltip.trayShow" : "tooltip.trayHide").replace("%1", root.visibleCount)
+        property string tooltip: root.t(root.expanded ? "tooltip.trayHide" : "tooltip.trayShow").replace("%1", root.visibleCount)
 
         visible: SystemTray.items.values.length > 0
         variant: "plain"
         tone: "secondary"
         size: "sm"
-        // It stays in its cell and turns: the icons are what opens.
-        icon: root.vertical ? "expand_more" : "chevron_right"
-        rotation: root.collapsed ? 180 : 0
+        icon: "chevron_right"
+        rotation: root.heading + (root.expanded ? 180 : 0)
         Behavior on rotation { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
         Layout.alignment: Qt.AlignCenter
         onClicked: {
@@ -187,9 +197,9 @@ GridLayout {
         Rectangle {
             anchors.right: parent.right
             anchors.top: parent.top
-            width: 6
-            height: 6
-            radius: 3
+            width: VitrailTokens.tray.dot
+            height: VitrailTokens.tray.dot
+            radius: VitrailTokens.tray.dot / 2
             visible: root.collapsed && root.attention
             color: VitrailTokens.color("error")
         }

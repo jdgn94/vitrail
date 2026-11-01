@@ -50,6 +50,11 @@ ShellRoot {
     readonly property var prefs: Prefs.merge(shell.prefParts, shell.prefFiles)
     property bool popupOpen: false
     property string popupKind: ""
+    // The tray app whose menu is open beside the tray popup (a card of its own).
+    // Another popup kind or screen, or closing the popup, closes it.
+    property var trayMenuItem: null
+    onPopupKindChanged: shell.trayMenuItem = null
+    onPopupScreenChanged: shell.trayMenuItem = null
     // The screen whose bar opened the popup: only its layer shows it.
     property var popupScreen: null
     // The rect (screen coordinates) of the button the popup grows from.
@@ -330,6 +335,7 @@ ShellRoot {
 
     function closePopup() {
         shell.popupByHover = false
+        shell.trayMenuItem = null
         shell.popupOpen = false
     }
 
@@ -1254,7 +1260,7 @@ ShellRoot {
                         panelOpen: shell.panelOpen
                         panelPush: shell.panelPush
                         popup: Qt.rect(popupCard.x, popupCard.y, popupCard.width, popupCard.height)
-                        popupLook: popupLiquid.shown ? popupLiquid.look : null
+                        popupLook: popupLiquid.shown && popupCard.docked ? popupLiquid.look : null
                         popupOrigin: shell.popupAnchor
                         popupLag: popupCard.lag
                         // Docked, the notification stack, the OSD and the notification panel are tabs of the frame too.
@@ -1329,6 +1335,7 @@ ShellRoot {
                             id: barItems
 
                             vertical: bar.vertical
+                            barEdge: bar.layout.edge
                             open: shell.popupOpen && shell.popupScreen === monitor.modelData
                             openKind: shell.popupKind
                             strings: shell.strings
@@ -1444,6 +1451,11 @@ ShellRoot {
                     // keeps the keyboard until another window takes the focus.
                     readonly property bool wantsKeyboard: popupLiquid.open
                     property bool grabbing: false
+                    // The tray app under the pointer in the tray popup, and its icon.
+                    property var trayTip: null
+                    property Item trayCell: null
+                    // The icon whose menu is open, which the menu card centres on.
+                    property Item menuCell: null
                     onWantsKeyboardChanged: {
                         popupLayer.grabbing = popupLayer.wantsKeyboard
                         if (popupLayer.wantsKeyboard)
@@ -1468,9 +1480,14 @@ ShellRoot {
                         onTriggered: popupLayer.grabbing = false
                     }
 
-                    // Input only on the card: the bar buttons and the apps
-                    // around it stay clickable while a popup is open.
-                    mask: Region { item: popupLiquid.shown ? popupCard : null }
+                    // Input only on the cards (the tray app's menu is one more):
+                    // the bar buttons and the apps around them stay clickable
+                    // while a popup is open.
+                    mask: Region {
+                        item: popupLiquid.shown ? popupCard : null
+
+                        Region { item: menuCard.shown ? menuCard : null }
+                    }
 
                     // Floating, the card is an island that leaves the bar
                     // (joined by a liquid neck in glass); docked, the frame
@@ -1494,13 +1511,16 @@ ShellRoot {
                         property bool entered: false
                         readonly property int margin: VitrailTokens.gap("md")
                         readonly property string barEdge: bar.layout.edge
-                        readonly property bool docked: bar.style.docked
+                        // An app's menu always floats, like the OSD's device card.
+                        readonly property bool floating: shell.popupKind.indexOf("tray:") === 0
+                        readonly property bool docked: bar.style.docked && !popupCard.floating
                         readonly property var hole: bar.layout.hole
                         // Docked, the card is a tab of the frame, flush with
                         // its edge (past the islands of an islands bar);
-                        // floating, an island a gap past the bar.
+                        // floating, an island a gap past the bar (past the
+                        // frame, when the bar is docked).
                         readonly property real offset: popupCard.docked ? bar.layout.dock[popupCard.barEdge]
-                                                                        : bar.reserve[popupCard.barEdge] + popupCard.margin
+                            : (bar.style.docked ? bar.layout.dock[popupCard.barEdge] : bar.reserve[popupCard.barEdge]) + popupCard.margin
 
                         // Sized to the popout being shown; switching glides to the
                         // next size while the contents fade out, then in. It keeps
@@ -1520,7 +1540,8 @@ ShellRoot {
 
                         // The island or bar a floating card leaves, for its neck.
                         readonly property var sourceTarget: {
-                            if (popupCard.docked)
+                            // Docked, the frame has no neck to a floating card.
+                            if (bar.style.docked)
                                 return null
                             if (bar.islands)
                                 return Frame.nearestRect(bar.islandRects, shell.popupAnchorX, shell.popupAnchorY)
@@ -1590,7 +1611,7 @@ ShellRoot {
                                 if (cardHover.hovered) {
                                     popupCard.entered = true
                                     popupLeave.stop()
-                                } else if (popupCard.entered) {
+                                } else if (popupCard.entered && !menuHover.hovered) {
                                     popupLeave.restart()
                                 }
                             }
@@ -1713,6 +1734,122 @@ ShellRoot {
                             onTriggered: shell.closePopup()
                         }
                     }
+
+                    // What the pointer reads over a tray icon: the app's own
+                    // words, past the card on the side away from the bar. Not
+                    // inside the card, which clips.
+                    VitrailTooltip {
+                        id: trayTip
+
+                        readonly property var app: popupLayer.trayTip
+                        readonly property var corner: popupLayer.trayCell ? popupLayer.trayCell.mapToItem(null, 0, 0) : Qt.point(0, 0)
+                        readonly property var at: Frame.tooltipAt(popupCard.barEdge,
+                            Qt.rect(trayTip.corner.x, trayTip.corner.y, popupLayer.trayCell ? popupLayer.trayCell.width : 0,
+                                    popupLayer.trayCell ? popupLayer.trayCell.height : 0),
+                            trayTip.width, trayTip.height,
+                            popupCard.barEdge === "left" ? popupCard.x + popupCard.width
+                            : popupCard.barEdge === "right" ? popupLayer.width - popupCard.x
+                            : popupCard.barEdge === "top" ? popupCard.y + popupCard.height
+                            : popupLayer.height - popupCard.y,
+                            VitrailTokens.gap("sm"), popupLayer.width, popupLayer.height)
+
+                        x: trayTip.at.x
+                        y: trayTip.at.y
+                        active: popupLayer.trayCell !== null && shell.popupOpen && shell.popupKind === "tray"
+                                && shell.trayMenuItem === null
+                        edge: popupCard.barEdge
+                        opacityLevel: shell.barOpacity
+
+                        // The text stays while the pill fades out.
+                        Binding on text {
+                            when: trayTip.app !== null
+                            value: trayTip.app ? trayTip.app.tooltipTitle || trayTip.app.title || trayTip.app.id : ""
+                            restoreMode: Binding.RestoreNone
+                        }
+                        Binding on detail {
+                            when: trayTip.app !== null
+                            value: trayTip.app ? trayTip.app.tooltipDescription : ""
+                            restoreMode: Binding.RestoreNone
+                        }
+                    }
+
+                    // A tray app's menu: a second card past the tray card, away
+                    // from the bar, centred on the icon that opened it. It
+                    // leaves the tray card open; Escape or picking an entry
+                    // closes only the menu.
+                    FocusScope {
+                        id: menuCard
+
+                        readonly property bool shown: shell.trayMenuItem !== null && shell.popupScreen === monitor.modelData
+                        readonly property string name: menuCard.shown ? "tray:" + shell.trayMenuItem.id : ""
+                        // The menu being shown, while the previous one fades out.
+                        readonly property Item current: {
+                            for (var i = 0; i < menus.children.length; i++) {
+                                if (menus.children[i].shouldBeActive)
+                                    return menus.children[i]
+                            }
+                            return null
+                        }
+                        readonly property var corner: popupLayer.menuCell ? popupLayer.menuCell.mapToItem(null, 0, 0) : Qt.point(0, 0)
+                        readonly property var at: Frame.besideAt(popupCard.barEdge,
+                            Qt.rect(popupCard.targetX, popupCard.targetY, popupCard.targetWidth, popupCard.targetHeight),
+                            menuCard.width, menuCard.height,
+                            Qt.point(menuCard.corner.x + (popupLayer.menuCell ? popupLayer.menuCell.width : 0) / 2,
+                                     menuCard.corner.y + (popupLayer.menuCell ? popupLayer.menuCell.height : 0) / 2),
+                            popupCard.hole, popupCard.margin, popupLayer.width, popupLayer.height)
+
+                        visible: menuCard.shown
+                        x: menuCard.at.x
+                        y: menuCard.at.y
+                        width: menuCard.current ? menuCard.current.implicitWidth + 2 * popupCard.margin : 0
+                        height: menuCard.current ? menuCard.current.implicitHeight + 2 * popupCard.margin : 0
+                        Keys.onEscapePressed: shell.trayMenuItem = null
+
+                        VitrailSurface {
+                            anchors.fill: parent
+                            opacityLevel: shell.barOpacity
+                        }
+
+                        HoverHandler {
+                            id: menuHover
+
+                            // The pointer on the menu is still on the popup.
+                            onHoveredChanged: {
+                                if (menuHover.hovered)
+                                    popupLeave.stop()
+                                else if (popupCard.entered && !cardHover.hovered)
+                                    popupLeave.restart()
+                            }
+                        }
+
+                        Item {
+                            id: menus
+
+                            anchors.fill: parent
+                            anchors.margins: popupCard.margin
+
+                            Repeater {
+                                model: SystemTray.items
+
+                                delegate: Popout {
+                                    id: menuPopout
+
+                                    required property var modelData
+
+                                    name: "tray:" + menuPopout.modelData.id
+                                    current: menuCard.name
+                                    handover: VitrailTokens.duration("fast")
+                                    sourceComponent: Component {
+                                        TrayMenu {
+                                            handle: menuPopout.modelData.menu
+                                            strings: shell.strings
+                                            onDone: shell.trayMenuItem = null
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Component {
@@ -1764,9 +1901,26 @@ ShellRoot {
 
                     TrayPanel {
                         strings: shell.strings
+                        onTipHovered: function (item, cell, on) {
+                            if (on) {
+                                popupLayer.trayTip = item
+                                popupLayer.trayCell = cell
+                            } else if (popupLayer.trayCell === cell) {
+                                popupLayer.trayTip = null
+                                popupLayer.trayCell = null
+                            }
+                        }
                         onActivated: function (item) { item.activate(); shell.closePopup() }
+                        // The app's menu opens beside this card; the same icon again closes it.
                         onMenuRequested: function (item, entry) {
-                            shell.openPopup("tray:" + item.id, entry, monitor.modelData)
+                            if (shell.trayMenuItem === item) {
+                                shell.trayMenuItem = null
+                                return
+                            }
+                            popupLayer.menuCell = entry
+                            shell.trayMenuItem = item
+                            popupIdle.restart()
+                            menuCard.forceActiveFocus()
                         }
                     }
                 }

@@ -17,6 +17,7 @@ GridLayout {
     property bool vertical: false
     property string openKind: ""
     property bool open: false
+    property string barEdge: "left"
     property var strings: ({})
     property string trayStyle: "inline"
     // The buttons of the popouts that open without a click (IPC).
@@ -40,6 +41,7 @@ GridLayout {
     TrayItems {
         Layout.alignment: Qt.AlignHCenter
         vertical: root.vertical
+        barEdge: root.barEdge
         style: root.trayStyle
         openKind: root.open ? root.openKind : ""
         strings: root.strings

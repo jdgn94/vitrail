@@ -286,6 +286,24 @@ TestCase {
         compare(Frame.popupAlong(960, 100, 6, 1000, false, 12, 14), 888)
     }
 
+    // A card beside another, toward the inside of the screen, centred on the
+    // anchor along the bar and a gap clear of the hole's ends.
+    function test_card_beside_sits_past_the_card_away_from_the_bar() {
+        var hole = { left: 10, top: 10, right: 10, bottom: 10 }
+        var card = Qt.rect(50, 300, 100, 80)
+        compare(Frame.besideAt("left", card, 120, 60, Qt.point(80, 340), hole, 12, 1000, 800), { x: 162, y: 310 })
+        compare(Frame.besideAt("right", Qt.rect(850, 300, 100, 80), 120, 60, Qt.point(920, 340), hole, 12, 1000, 800), { x: 718, y: 310 })
+        compare(Frame.besideAt("top", Qt.rect(400, 50, 100, 80), 120, 60, Qt.point(450, 60), hole, 12, 1000, 800), { x: 390, y: 142 })
+        compare(Frame.besideAt("bottom", Qt.rect(400, 650, 100, 80), 120, 60, Qt.point(450, 720), hole, 12, 1000, 800), { x: 390, y: 578 })
+    }
+
+    function test_card_beside_stays_inside_the_hole() {
+        var hole = { left: 10, top: 10, right: 10, bottom: 10 }
+        var card = Qt.rect(50, 20, 100, 80)
+        compare(Frame.besideAt("left", card, 120, 60, Qt.point(80, 30), hole, 12, 1000, 800).y, 22)
+        compare(Frame.besideAt("left", card, 120, 60, Qt.point(80, 790), hole, 12, 1000, 800).y, 800 - 10 - 60 - 12)
+    }
+
     function test_unknown_edge_falls_back_to_left() {
         compare(Frame.layout(full, docked, "diagonal", sizes).edge, "left")
     }

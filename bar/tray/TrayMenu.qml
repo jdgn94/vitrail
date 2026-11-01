@@ -6,9 +6,9 @@ import Quickshell.Widgets
 import "../kit"
 import "../kit/base"
 
-// A tray app's context menu as a bar popout: plain rows, thin separators,
-// disabled entries dimmed, check marks for toggles and a chevron for
-// submenus, which slide in over the menu with a back row on top.
+// A tray app's context menu as a bar popout: rows like the connection list's
+// (the checked ones tinted), thin separators, disabled entries dimmed, check
+// marks for toggles and a chevron for submenus, which slide in over the menu with a back row on top.
 StackView {
     id: root
 
@@ -56,9 +56,7 @@ StackView {
         property var handle
         property bool nested: false
 
-        readonly property int rowWidth: 260
-
-        spacing: 2
+        spacing: VitrailTokens.gap("xs")
 
         StackView.onRemoved: menu.destroy()
 
@@ -88,7 +86,11 @@ StackView {
 
                 required property var modelData
 
-                Layout.preferredWidth: menu.rowWidth
+                // A check or radio entry that is on.
+                readonly property bool checked: row.modelData.buttonType !== QsMenuButtonType.None
+                                                && row.modelData.checkState === Qt.Checked
+
+                Layout.preferredWidth: VitrailTokens.tray.menu
                 implicitHeight: row.modelData.isSeparator ? VitrailTokens.gap("sm") : line.implicitHeight + 2 * VitrailTokens.gap("xs")
 
                 Rectangle {
@@ -102,12 +104,11 @@ StackView {
 
                 Rectangle {
                     anchors.fill: parent
-                    visible: !row.modelData.isSeparator
-                    radius: height / 2
-                    color: VitrailTokens.color("foreground")
-                    opacity: hover.hovered && row.modelData.enabled ? 0.08 : 0
+                    radius: VitrailTokens.radius / 2
+                    visible: !row.modelData.isSeparator && (row.checked || (hover.hovered && row.modelData.enabled))
+                    color: row.checked ? VitrailTokens.solid("primary", 0.14) : VitrailTokens.solid("foreground", 0.06)
 
-                    Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("fast") } }
+                    Behavior on color { ColorAnimation { duration: VitrailTokens.duration("fast") } }
                 }
 
                 RowLayout {
@@ -135,7 +136,7 @@ StackView {
                         text: row.modelData.buttonType === QsMenuButtonType.RadioButton
                               ? (row.modelData.checkState === Qt.Checked ? "radio_button_checked" : "radio_button_unchecked")
                               : (row.modelData.checkState === Qt.Checked ? "check_box" : "check_box_outline_blank")
-                        color: VitrailTokens.color("primary")
+                        color: row.checked ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
                     }
 
                     VitrailText {

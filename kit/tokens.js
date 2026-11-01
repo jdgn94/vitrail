@@ -280,6 +280,14 @@ var launcher = {
     }
 }
 
+// The tray (bar/tray): `columns` the most icons per row in the popup style,
+// `menu` the width of an app's menu card, `dot` the attention dot, px.
+var tray = {
+    columns: 4,
+    menu: 300,
+    dot: 6
+}
+
 var space = {
     xs: 0.35,
     sm: 0.6,

@@ -71,6 +71,11 @@ layer contract.
   and covers use a `MultiEffect` with `maskSource` (see `bar/media/DiscArt.qml`).
   Not `ClippingRectangle`: `Quickshell.Widgets` does not load in `qml6`, and
   the settings window reuses those components.
+- A `ColumnLayout` / `RowLayout` overwrites an assigned `implicitWidth` /
+  `implicitHeight` with its children's: give the children `Layout.preferredWidth`
+  (a popout's card sizes from the root's implicit size). A hidden item
+  (`visible: false`, e.g. the `IconImage` under a `MultiEffect`) is skipped by
+  layouts and gets no size: put it in an `Item` cell and anchor the effect to it.
 - Variant colour roles must exist in `VitrailPalette` (`accentForeground`,
   not `onPrimary`).
 

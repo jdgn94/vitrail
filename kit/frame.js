@@ -256,6 +256,20 @@ function popupAlong(anchor, size, lo, hi, docked, gap, radius) {
     return at
 }
 
+// Where a w x h card sits beside `card` (a screen rect), toward the inside of
+// the screen from the bar's edge, `gap` clear of it, and along the bar centred
+// on `anchor` (a screen point) within the hole's insets like popupAlong.
+function besideAt(edge, card, w, h, anchor, hole, gap, width, height) {
+    var x = popupAlong(anchor.x, w, hole.left, width - hole.right, false, gap, 0)
+    var y = popupAlong(anchor.y, h, hole.top, height - hole.bottom, false, gap, 0)
+    switch (edge) {
+    case "bottom": return { x: x, y: card.y - gap - h }
+    case "left": return { x: card.x + card.width + gap, y: y }
+    case "right": return { x: card.x - gap - w, y: y }
+    default: return { x: x, y: card.y + card.height + gap }
+    }
+}
+
 // Where the notification stack sits for a position such as "top-right".
 // Docked, flush with the hole, as a tab of the frame on its top or bottom
 // edge; floating, a gap inside the space the bar and the frame leave. On an
