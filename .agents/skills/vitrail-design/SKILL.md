@@ -64,6 +64,13 @@ layer contract.
   it (`pkill -f "^qml6 -I .*main[.]qml"`).
 - ListView `add` transitions cut short by the next insert leave the item
   half transparent; fade in from the delegate (`Component.onCompleted`).
+- Fills on glass must be opaque: `VitrailTokens.solid(...)`, not `Qt.alpha` /
+  `opacity` (they smear into a dark inner edge over the blur); see
+  `references/components.md`. The sunk look (`inset`) only when asked.
+- `clip: true` ignores `radius` (it cuts to the bounding box): round images
+  and covers use a `MultiEffect` with `maskSource` (see `bar/media/DiscArt.qml`).
+  Not `ClippingRectangle`: `Quickshell.Widgets` does not load in `qml6`, and
+  the settings window reuses those components.
 - Variant colour roles must exist in `VitrailPalette` (`accentForeground`,
   not `onPrimary`).
 

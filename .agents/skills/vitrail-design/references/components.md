@@ -11,6 +11,23 @@
 - New icon name? Check it renders as one glyph: `TextMetrics.advanceWidth`
   under ~1.25 × pixelSize (see SKILL.md verification).
 
+## Fills on glass are opaque
+
+Popups are blurred layers (`vitrail-glass`). A translucent final colour
+(`Qt.alpha(x, 0.14)`, `Qt.rgba(..., a)`, `opacity:` on a filled Rectangle)
+drawn over the translucent card smears into a dark, soft inner edge.
+
+- Use `VitrailTokens.solid(role | colour, amount, base)`: the colour
+  pre-composited over `base` (default: the card's `surface`), alpha 1. Animate
+  with `ColorAnimation`, never `opacity`.
+- A shape that must vanish at rest is hidden with `visible`, not drawn at
+  amount 0 (that is an opaque patch of card colour over the glass).
+- A translucent tint over an already opaque parent (a highlight inside the
+  `surfaceHigh` list) is fine; text colours with alpha are fine.
+- Bar button highlights (opened / hovered / now playing) are the same: the bar
+  is glass too, so `solid(role, amount)` over `surface`, shown with `visible`.
+- The sunk look (`inset` button variant) only when the user asks for it.
+
 ## VitrailSlider (`kit`)
 
 Material 3 expressive: thick track split by a 4 px vertical handle with a
@@ -19,7 +36,8 @@ gap each side (`tokens.slider`: `sm 8 / md 16 / lg 28`, `handle`, `gap`).
 - `size` or `thickness` (px) sets the track; the handle is track + 4 × gap
   tall and halves its width while pressed.
 - `segments: [{ to: 0.8, color }, { to: 1, color }]` colours by level
-  (fractions of the range): filled piece full colour, empty piece 28 %.
+  (fractions of the range): filled piece full colour, empty piece 28 % (both
+  opaque, `VitrailTokens.solid`).
   Example: brightness, primary to 80 %, `error` after.
 - End stop dot hollow by default (`stopFilled` fills it); hidden once the
   fill reaches it or when `endIcon` is set.
@@ -37,6 +55,7 @@ gap each side (`tokens.slider`: `sm 8 / md 16 / lg 28`, `handle`, `gap`).
   accepts only Mouse by default: set `acceptedDevices: Mouse | TouchPad` on any
   new one. QtTest's `mouseWheel` sends a mouse, so it cannot catch this; only a
   real wheel over a real layer-shell surface does.
+- `fillOpacity` (0..1) dims the fill as an opaque pre-tinted colour; 0 hides it.
 - Outer ends are pills, ends at the handle nearly square (per-corner radii).
 
 ## VitrailButton (`kit/base`)
@@ -121,7 +140,8 @@ pure helpers (tested in `tst_network.qml`, `tst_vpn.qml`).
   shows the provider of the tunnel that is up).
 - `Entry` rows: fixed-width glyph slot (glyph widths vary), title + `label`
   detail, a `VitrailButton` (`tonal` to connect, `glass` on the active row).
-  Active row tinted primary 0.14; others foreground 0.06 on hover.
+  Active row tinted primary 0.14; others foreground 0.06 on hover (opaque
+  `VitrailTokens.solid` fills, shown only while active or hovered).
 - Long lists go in a `Scroller` capped at about 8 rows.
 - State icons: Wi-Fi `signal_wifi_0_bar` → `network_wifi_{1,2,3}_bar` →
   `signal_wifi_4_bar`, offline `signal_wifi_off`, ethernet `lan`, VPN

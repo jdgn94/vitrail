@@ -54,11 +54,12 @@ length is unknown. While the handle is held the 250 ms tick stands still.
   as the track (`bar.track`) so it merges with it; `amplitude`, `wavelength`,
   round caps (`media.progress`).
 - `energy` (0 paused .. 1 playing) eases over `progress.settle` (InOutQuad) and
-  drives the wave: amplitude is `amplitude * energy`, opacity is `energy`, the
-  phase speed is multiplied by it, so it flattens, fades and slows to a stop
-  instead of freezing. The slider's `fillOpacity` is `1 - energy`, so the straight
-  fill gives way to the wave without showing through it; the empty part, the
-  handle and the end stop never fade.
+  drives the wave: amplitude is `amplitude * energy` and the phase speed is
+  multiplied by it, so it flattens and slows to a stop instead of freezing. The
+  wave is always drawn opaque (no fade: a translucent fill over the glass
+  smears). The slider's `fillOpacity` is `energy > 0 ? 0 : 1`: the straight fill
+  hides the moment the wave (flat at first) takes over; the empty part, the
+  handle and the end stop never change.
 - It travels one wavelength per `progress.period` (5000 ms): calm, not a flicker.
   The `FrameAnimation` runs only while playing or while `energy > 0`; it repaints
   on phase, energy, width and palette changes.

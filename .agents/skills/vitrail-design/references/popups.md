@@ -63,6 +63,14 @@ timeline, ratios), `motion.smooth`.
   gets the focused monitor (`shell.focusedScreen`, via
   `Hyprland.monitorFor(screen) === Hyprland.focusedMonitor`).
 
+- Input: the popup window (`vitrail-popup`, Overlay, full screen) has
+  `mask: Region { item: popupCard }` while shown, so only the card takes input;
+  the bar buttons (layer Top) and the apps stay clickable, and a click on the
+  same button closes, on another one switches. There is no click-catcher: a
+  full-screen one eats every click. An app taking the focus
+  (`Hyprland.activeToplevel` changes) closes the popup, except the launcher
+  popout (it holds the keyboard until dismissed).
+
 ## Floating bar → island
 
 - Own `VitrailSurface`, cross-axis at `reserve[edge] + gap(md)` (a gap past
