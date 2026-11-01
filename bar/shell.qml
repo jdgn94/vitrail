@@ -1487,7 +1487,7 @@ ShellRoot {
                         opacityLevel: shell.barOpacity
                     }
 
-                    Item {
+                    FocusScope {
                         id: popupCard
 
                         property bool entered: false

@@ -129,4 +129,19 @@ Item {
         cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
         onClicked: root.clicked()
     }
+
+    // Keyboard: Tab reaches it, Enter or Space presses it, and the ring shows
+    // where the keyboard is.
+    activeFocusOnTab: root.enabled && !root.busy
+    Keys.onReturnPressed: root.clicked()
+    Keys.onSpacePressed: root.clicked()
+
+    Rectangle {
+        anchors.fill: parent
+        radius: height / 2
+        color: "transparent"
+        border.width: root.activeFocus ? 2 : 0
+        border.color: root.tint
+        visible: root.activeFocus
+    }
 }
