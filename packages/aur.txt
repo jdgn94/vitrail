@@ -1,2 +1,3 @@
 # Packages that only exist in AUR, installed with the chosen helper.
-# (empty for now)
+# Animated wallpapers (the stills use awww, from extra).
+mpvpaper
