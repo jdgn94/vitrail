@@ -146,6 +146,9 @@ ShellRoot {
     // True for the first frames after a closed popout opens: it appears in
     // place instead of gliding in from wherever the last one was.
     property bool popupOpening: false
+    // The open popup was moved there by hovering its button: the next click on
+    // that button confirms it instead of closing it.
+    property bool popupByHover: false
 
     // Opens the panel on `screen` (the monitor whose hot zone asked, or the
     // focused one), and moves it there if it was open somewhere else.
@@ -239,6 +242,7 @@ ShellRoot {
     // the focused monitor when there is none (IPC), anchored on its own
     // button there.
     function openPopup(kind, item, screen) {
+        shell.popupByHover = false
         shell.launcherOpen = false
         var target = screen || shell.focusedScreen
         var anchor = item || shell.anchorOf(kind, target)
@@ -256,13 +260,28 @@ ShellRoot {
     }
 
     function togglePopup(kind, item, screen) {
-        if (shell.popupOpen && shell.popupKind === kind)
-            shell.closePopup()
-        else
+        if (shell.popupOpen && shell.popupKind === kind) {
+            // A popup the pointer already brought here: the click confirms it.
+            if (shell.popupByHover)
+                shell.popupByHover = false
+            else
+                shell.closePopup()
+        } else {
             shell.openPopup(kind, item, screen)
+        }
+    }
+
+    // Hovering an element that has a popup moves an open popup to it (never
+    // opens one from closed).
+    function hoverPopup(kind, item, screen) {
+        if (shell.popupOpen && (shell.popupKind !== kind || shell.popupScreen !== screen)) {
+            shell.openPopup(kind, item, screen)
+            shell.popupByHover = true
+        }
     }
 
     function closePopup() {
+        shell.popupByHover = false
         shell.popupOpen = false
     }
 
@@ -926,13 +945,12 @@ ShellRoot {
 
     // The popup only takes input on its card, so a click elsewhere reaches
     // the bar or the app under it. An app that takes the focus closes the
-    // popup; the launcher popout, which holds the keyboard, stays until it is
-    // dismissed.
+    // popup.
     Connections {
         target: Hyprland
 
         function onActiveToplevelChanged() {
-            if (shell.popupOpen && shell.popupKind !== "launcher")
+            if (shell.popupOpen)
                 shell.closePopup()
         }
     }
@@ -1096,13 +1114,23 @@ ShellRoot {
                             strings: shell.strings
                             opened: (shell.popupOpen && shell.popupKind === "launcher" && shell.popupScreen === monitor.modelData)
                                     || (shell.launcherOpen && shell.launcherScreen === monitor.modelData)
-                            onClicked: shell.toggleLauncher(monitor.modelData, "")
+                            onClicked: {
+                                // The popout is already here: the click is for it.
+                                if (shell.popupOpen && shell.popupKind === "launcher" && shell.popupScreen === monitor.modelData)
+                                    shell.togglePopup("launcher", launcherButton, monitor.modelData)
+                                else
+                                    shell.toggleLauncher(monitor.modelData, "")
+                            }
                             onMenuRequested: {
                                 shell.launcherOpen = false
                                 shell.launcherMode = ""
                                 shell.togglePopup("launcher", launcherButton, monitor.modelData)
                             }
-                            onHoveredChanged: tooltips.hover(launcherButton, hovered)
+                            onHoveredChanged: {
+                                tooltips.hover(launcherButton, hovered)
+                                if (hovered)
+                                    shell.hoverPopup("launcher", launcherButton, monitor.modelData)
+                            }
                         }
 
                         center: GridLayout {
@@ -1117,7 +1145,11 @@ ShellRoot {
                                 player: shell.mprisPlayer
                                 strings: shell.strings
                                 onClicked: shell.togglePopup("media", mediaButton, monitor.modelData)
-                                onHoveredChanged: tooltips.hover(mediaButton, hovered)
+                                onHoveredChanged: {
+                                    tooltips.hover(mediaButton, hovered)
+                                    if (hovered)
+                                        shell.hoverPopup("media", mediaButton, monitor.modelData)
+                                }
                             }
 
                             ClockButton {
@@ -1127,7 +1159,11 @@ ShellRoot {
                             language: shell.prefs.language || "en"
                             opened: shell.popupOpen && shell.popupKind === "clock" && shell.popupScreen === monitor.modelData
                             onClicked: shell.togglePopup("clock", clockButton, monitor.modelData)
-                            onHoveredChanged: tooltips.hover(clockButton, hovered)
+                            onHoveredChanged: {
+                                tooltips.hover(clockButton, hovered)
+                                if (hovered)
+                                    shell.hoverPopup("clock", clockButton, monitor.modelData)
+                            }
                             }
                         }
 
@@ -1139,6 +1175,7 @@ ShellRoot {
                             openKind: shell.popupKind
                             strings: shell.strings
                             onClicked: function (kind, item) { shell.togglePopup(kind, item, monitor.modelData) }
+                            onHovered: function (kind, item) { shell.hoverPopup(kind, item, monitor.modelData) }
                             onTipHovered: function (item, on) { tooltips.hover(item, on) }
                             onSessionRequested: shell.toggleSession(monitor.modelData)
                         }
@@ -1234,9 +1271,28 @@ ShellRoot {
                     exclusionMode: ExclusionMode.Ignore
                     WlrLayershell.namespace: "vitrail-popup"
                     WlrLayershell.layer: WlrLayer.Overlay
-                    // The launcher is typed into: it takes the keyboard while open.
-                    WlrLayershell.keyboardFocus: popupLiquid.open && shell.popupKind === "launcher" ? WlrKeyboardFocus.Exclusive
-                                                                                                       : WlrKeyboardFocus.None
+                    // The launcher is typed into, so it takes the keyboard when it
+                    // opens: exclusive for a beat (the only way to be focused
+                    // without a click), then on demand. An exclusive layer keeps
+                    // the pointer and the focus to itself, so no bar button could be
+                    // hovered and no window clicked while it is open; on demand it
+                    // keeps the keyboard until another window takes the focus.
+                    readonly property bool wantsKeyboard: popupLiquid.open && shell.popupKind === "launcher"
+                    property bool grabbing: false
+                    onWantsKeyboardChanged: {
+                        popupLayer.grabbing = popupLayer.wantsKeyboard
+                        if (popupLayer.wantsKeyboard)
+                            keyboardGrab.restart()
+                    }
+                    WlrLayershell.keyboardFocus: !popupLayer.wantsKeyboard ? WlrKeyboardFocus.None
+                                                 : popupLayer.grabbing ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+
+                    Timer {
+                        id: keyboardGrab
+
+                        interval: 150
+                        onTriggered: popupLayer.grabbing = false
+                    }
 
                     // Input only on the card: the bar buttons and the apps
                     // around it stay clickable while a popup is open.
@@ -1304,10 +1360,16 @@ ShellRoot {
                         property real sourceHeight: popupCard.sourceTarget ? popupCard.sourceTarget.height : 0
                         readonly property var source: popupCard.sourceTarget
                             ? Qt.rect(popupCard.sourceX, popupCard.sourceY, popupCard.sourceWidth, popupCard.sourceHeight) : null
-                        // Where the card is heading along the bar, minus where it
-                        // is: it stretches that way while gliding to a button.
-                        readonly property real lag: bar.vertical ? popupCard.targetY - popupCard.y
-                                                                 : popupCard.targetX - popupCard.x
+                        // The anchor along the bar, followed with the card's own
+                        // curve. `lag` (where the anchor is, minus where it was
+                        // followed to) is how far the tab stretches ahead while the
+                        // card glides to another button. It is measured on the
+                        // anchor, not on the card's x / y: those also move when the
+                        // card only grows (a bottom-flush card rises as it gets
+                        // taller), which is no glide and must not stretch the tab.
+                        readonly property real anchorAlong: bar.vertical ? shell.popupAnchorY : shell.popupAnchorX
+                        property real glideAlong: popupCard.anchorAlong
+                        readonly property real lag: popupCard.anchorAlong - popupCard.glideAlong
 
                         width: popupCard.targetWidth
                         height: popupCard.targetHeight
@@ -1341,6 +1403,7 @@ ShellRoot {
                         Behavior on y { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
                         Behavior on width { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
                         Behavior on height { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
+                        Behavior on glideAlong { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
                         Behavior on sourceX { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
                         Behavior on sourceY { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
                         Behavior on sourceWidth { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
@@ -1459,8 +1522,7 @@ ShellRoot {
                         Timer {
                             id: popupLeave
                             interval: 3000
-                            // The launcher stays until it is dismissed.
-                            onTriggered: if (shell.popupKind !== "launcher") shell.closePopup()
+                            onTriggered: shell.closePopup()
                         }
                     }
                 }

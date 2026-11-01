@@ -68,8 +68,23 @@ timeline, ratios), `motion.smooth`.
   the bar buttons (layer Top) and the apps stay clickable, and a click on the
   same button closes, on another one switches. There is no click-catcher: a
   full-screen one eats every click. An app taking the focus
-  (`Hyprland.activeToplevel` changes) closes the popup, except the launcher
-  popout (it holds the keyboard until dismissed).
+  (`Hyprland.activeToplevel` changes) closes the popup, the launcher popout
+  included.
+- Hover switching: with a popup open, hovering another bar element that has
+  one opens it (`shell.hoverPopup`; every element emits `hovered(kind, item)`
+  next to `clicked`). It never opens from closed. `shell.popupByHover` marks a
+  popup the pointer brought there: the first click on its button confirms it
+  (clears the flag), the next one closes it; any other open clears it.
+  Otherwise the click would toggle the popup the hover just moved.
+- Launcher popout: same rules as the others (hover, glide, close on focus
+  loss and idle). It takes the keyboard exclusively for 150 ms when it opens
+  (the only way to be focused without a click), then `OnDemand`: an exclusive
+  layer keeps the pointer and the focus to itself, so no bar button could be
+  hovered and no window clicked while it is open. Opened with the pointer over
+  a window (IPC), `follow_mouse` can hand the keyboard back to that window.
+  The left click on its button opens the full-screen launcher (modal, layer
+  `vitrail-launcher`) unless the popout is already open, then it confirms /
+  closes the popout.
 
 ## Floating bar → island
 
@@ -89,8 +104,7 @@ timeline, ratios), `motion.smooth`.
   month paging and a "today" button).
 - end: `BarItems` (tray, network, vpn, power). Clicking another bar button
   while a popup is open moves the popup to it (`togglePopup` → `openPopup`);
-  hovering never switches (the bar gets hover while a popup is open, so a
-  hover switch would also close it again on the click).
+  hovering one does the same (see Hover switching).
 
 ## Popouts (after caelestia-dots/shell)
 
@@ -117,6 +131,16 @@ timeline, ratios), `motion.smooth`.
   the neck's source island (`sourceX..sourceHeight`) glides with the same
   curve. The liquid `origin` (the button) only matters while the shape opens
   (`spread` < 1), so it jumps to the new button without desync.
+- The tab's stretch (`lag`, `popupLag * stretch`) is measured on the anchor
+  along the bar (`popupCard.glideAlong` follows `anchorAlong` with the card's
+  curve), not on the card's x / y: those also move when the card only grows (a
+  bottom-flush card rises as it gets taller), which is no glide and made the
+  tab reach ahead of the card.
+- `VitrailFrame`'s Shape is `asynchronous`: with a synchronous Shape the bar
+  window stopped being repainted while the popup card (another window) kept
+  resizing (VPN list loading), so the frame tab stayed at its old size until a
+  hover repainted the bar (Qt 6.11; seen as `beforeSynchronizing` stopping
+  while `holePath` kept changing).
 - Opening from closed sets `shell.popupOpening` for a `fast` beat: the
   Behaviors are off, so the card appears at its button instead of gliding
   from wherever the last popout was.

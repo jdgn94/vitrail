@@ -21,6 +21,7 @@ GridLayout {
     property var strings: ({})
 
     signal menuRequested(string kind, Item item)
+    signal hovered(string kind, Item item)
     // The pointer entered or left an element (for its tooltip).
     signal tipHovered(Item item, bool on)
 
@@ -123,7 +124,11 @@ GridLayout {
                     HoverHandler {
                         id: hover
 
-                        onHoveredChanged: root.tipHovered(entry, hovered)
+                        onHoveredChanged: {
+                            root.tipHovered(entry, hovered)
+                            if (hovered)
+                                root.hovered(entry.kind, entry)
+                        }
                     }
 
                     MouseArea {
