@@ -35,10 +35,10 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: VitrailTokens.radius / 2
-        color: VitrailTokens.color("primary")
-        opacity: root.opened ? 0.16 : (root.hovered ? 0.08 : 0)
+        visible: root.opened || root.hovered
+        color: VitrailTokens.solid("primary", root.opened ? 0.16 : 0.08)
 
-        Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("fast") } }
+        Behavior on color { ColorAnimation { duration: VitrailTokens.duration("fast") } }
     }
 
     VitrailText {

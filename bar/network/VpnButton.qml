@@ -36,9 +36,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: VitrailTokens.radius / 2
-        color: VitrailTokens.color("primary")
-        opacity: root.opened ? 0.16 : 0
-        Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("fast") } }
+        visible: root.opened
+        color: VitrailTokens.solid("primary", 0.16)
     }
 
     VitrailText {

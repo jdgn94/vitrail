@@ -62,6 +62,22 @@ QtObject {
         return value === undefined ? fallback : value
     }
 
+    // An opaque fill: `source` (a palette role or a colour) at `amount`,
+    // composited over `base` (a role or a colour; the popup card's "surface"
+    // by default). Over the blurred glass a translucent fill smears into a
+    // dark inner edge; this one is opaque, so its edge is crisp. A shape that
+    // must vanish at rest is hidden (`visible`), not drawn at amount 0: that
+    // would be an opaque patch of card colour over translucent glass.
+    function solid(source, amount, base) {
+        var under = base === undefined ? root.color("surface", "transparent") : root.resolve(base)
+        return Qt.tint(under, Qt.alpha(root.resolve(source), amount))
+    }
+
+    function resolve(source) {
+        var value = typeof source === "string" && root.palette ? root.palette[source] : undefined
+        return value === undefined ? source : value
+    }
+
     function size(name) {
         return Math.round(root.fontBase * (Tokens.font.scale[name] || 1))
     }

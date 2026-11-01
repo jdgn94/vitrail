@@ -31,10 +31,10 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: VitrailTokens.radius / 2
-        color: VitrailTokens.color("error")
-        opacity: root.opened ? 0.16 : (root.hovered ? 0.1 : 0)
+        visible: root.opened || root.hovered
+        color: VitrailTokens.solid("error", root.opened ? 0.16 : 0.1)
 
-        Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("fast") } }
+        Behavior on color { ColorAnimation { duration: VitrailTokens.duration("fast") } }
     }
 
     VitrailText {

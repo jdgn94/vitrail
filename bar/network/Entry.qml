@@ -24,10 +24,10 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: VitrailTokens.radius / 2
-        color: entry.active ? VitrailTokens.color("primary") : VitrailTokens.color("foreground")
-        opacity: entry.active ? 0.14 : (hover.hovered ? 0.06 : 0)
+        visible: entry.active || hover.hovered
+        color: entry.active ? VitrailTokens.solid("primary", 0.14) : VitrailTokens.solid("foreground", 0.06)
 
-        Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("fast") } }
+        Behavior on color { ColorAnimation { duration: VitrailTokens.duration("fast") } }
     }
 
     HoverHandler {

@@ -63,8 +63,7 @@ Item {
                 implicitWidth: VitrailTokens.size("display") + VitrailTokens.gap("sm")
                 implicitHeight: implicitWidth
                 radius: width / 2
-                color: Qt.rgba(VitrailTokens.color("primary").r, VitrailTokens.color("primary").g,
-                               VitrailTokens.color("primary").b, root.online ? 0.18 : 0.06)
+                color: VitrailTokens.solid("primary", root.online ? 0.18 : 0.06)
 
                 Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
 

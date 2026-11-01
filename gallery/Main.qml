@@ -202,7 +202,7 @@ Window {
 
             VitrailSlider {
                 Layout.preferredWidth: 320
-                label: "fillOpacity 0.35 · only the filled part fades"
+                label: "fillOpacity 0.35 · only the filled part is dimmed"
                 suffix: "%"
                 from: 0
                 to: 100

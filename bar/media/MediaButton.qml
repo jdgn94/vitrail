@@ -30,9 +30,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: VitrailTokens.radius / 2
-        color: VitrailTokens.color("primary")
-        opacity: root.player ? 0.14 : 0
-        Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("fast") } }
+        visible: !!root.player
+        color: VitrailTokens.solid("primary", 0.14)
     }
 
     Image {

@@ -14,9 +14,11 @@ import "wheel.js" as Wheel
 //   continuous        no gap and no end stop: the filled and empty parts meet
 //                     (a hairline progress bar: size "thin")
 //   stopFilled        the end dot is hollow unless this is set
-//   fillOpacity       opacity of the filled (active) pieces only, 0..1; the
-//                     empty part, the handle and the end stop stay as they are
-//                     (a wave drawn over the fill fades it out this way)
+//   fillOpacity       strength of the filled (active) pieces only, 0..1; the
+//                     empty part, the handle and the end stop stay as they are.
+//                     Below 1 the fill is pre-tinted over the card (opaque, so
+//                     it keeps a crisp edge over the blurred glass); 0 hides it
+//                     (a wave drawn over the fill takes its place this way)
 //   activeEnd         (read-only) where the filled part ends along the track,
 //                     px from the track's start, just before the handle's gap
 //   orientation       Qt.Vertical stands it up: the minimum at the bottom,
@@ -207,9 +209,9 @@ ColumnLayout {
                             x: band.start
                             width: Math.max(0, stop - band.start)
                             height: parent.height
-                            visible: width > 0
-                            opacity: root.fillOpacity
-                            color: band.modelData.color
+                            visible: width > 0 && root.fillOpacity > 0
+                            color: root.fillOpacity >= 1 ? band.modelData.color
+                                                         : VitrailTokens.solid(band.modelData.color, root.fillOpacity)
                             topLeftRadius: band.start === 0 ? band.outer : 0
                             bottomLeftRadius: topLeftRadius
                             topRightRadius: stop === slider.activeEnd ? band.inner : 0
@@ -223,7 +225,7 @@ ColumnLayout {
                             width: Math.max(0, band.end - begin)
                             height: parent.height
                             visible: width > 0
-                            color: Qt.rgba(band.modelData.color.r, band.modelData.color.g, band.modelData.color.b, 0.28)
+                            color: VitrailTokens.solid(band.modelData.color, 0.28)
                             topLeftRadius: begin === slider.inactiveStart ? band.inner : 0
                             bottomLeftRadius: topLeftRadius
                             topRightRadius: band.end === slider.span ? band.outer : 0

@@ -46,8 +46,7 @@ Item {
                 implicitWidth: VitrailTokens.size("display") + VitrailTokens.gap("sm")
                 implicitHeight: implicitWidth
                 radius: width / 2
-                color: Qt.rgba(VitrailTokens.color("primary").r, VitrailTokens.color("primary").g,
-                               VitrailTokens.color("primary").b, root.activeVpn ? 0.18 : 0.06)
+                color: VitrailTokens.solid("primary", root.activeVpn ? 0.18 : 0.06)
 
                 Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
 
@@ -85,8 +84,7 @@ Item {
                 implicitWidth: badge.implicitWidth + 2 * VitrailTokens.gap("sm")
                 implicitHeight: badge.implicitHeight + VitrailTokens.gap("xs")
                 radius: height / 2
-                color: Qt.rgba(VitrailTokens.color("primary").r, VitrailTokens.color("primary").g,
-                               VitrailTokens.color("primary").b, 0.18)
+                color: VitrailTokens.solid("primary", 0.18)
 
                 VitrailText {
                     id: badge
