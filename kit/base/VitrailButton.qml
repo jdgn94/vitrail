@@ -99,12 +99,11 @@ Item {
             color: root.ink
         }
 
-        VitrailText {
+        VitrailIcon {
             anchors.verticalCenter: parent.verticalCenter
             visible: root.icon !== "" && !root.busy
-            variant: "icon"
-            font.pixelSize: VitrailTokens.size(root.scaleBySize.icon)
-            text: root.icon
+            icon: root.icon
+            pixelSize: VitrailTokens.size(root.scaleBySize.icon)
             color: root.ink
         }
 

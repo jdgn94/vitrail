@@ -17,10 +17,22 @@ MISC = "misc"
 LEGACY = "settings.ini"
 BACKUP = "settings.ini.before-split"
 
+# Bumped when the files change shape. migrate() stamps it; validate() refuses
+# to reason about files written by a newer Vitrail.
+SCHEMA = 3
+SCHEMA_FILE = "schema"
+
 # Key -> the values it may take, for the settings the launcher's actions change.
 CHOICES = {
     "appearance": {"light", "dark", "auto"},
     "surfaceStyle": {"glass", "solid"},
+}
+
+# Keys that take a number inside a range. `clipboardMax` is what the clipboard
+# store keeps: 50 is the least that is still useful, 1000 the most the panel
+# can list without a search.
+RANGES = {
+    "clipboardMax": (50, 1000),
 }
 
 
@@ -52,6 +64,42 @@ def config_dir() -> Path:
 
 def file_of(key: str) -> str:
     return _FILE_OF.get(key, MISC)
+
+
+def schema_version(config: Path) -> int:
+    try:
+        return int((config / SCHEMA_FILE).read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return 0
+
+
+def write_schema(config: Path, version: int = SCHEMA) -> None:
+    config.mkdir(parents=True, exist_ok=True)
+    (config / SCHEMA_FILE).write_text(f"{version}\n", encoding="utf-8")
+
+
+def validate(config: Path) -> list[str]:
+    """Problems with the preference files: unknown, misplaced or future keys.
+
+    Values are never touched: a key the map does not list is reported, not
+    deleted, because it may belong to a plugin or to a newer Vitrail.
+    """
+    issues: list[str] = []
+    version = schema_version(config)
+    if version > SCHEMA:
+        issues.append(
+            f"settings were written by a newer Vitrail (schema {version} > {SCHEMA})"
+        )
+    for path in sorted(config.glob("*.ini")):
+        name = path.stem
+        for key, _value in _items(_read_text(path)):
+            owner = _FILE_OF.get(key)
+            if owner is None:
+                if name != MISC:
+                    issues.append(f"{key} is not in prefs.map (found in {path.name})")
+            elif owner != name:
+                issues.append(f"{key} belongs in {owner}.ini, found in {path.name}")
+    return issues
 
 
 def _items(text: str) -> list[tuple[str, str]]:
@@ -104,7 +152,21 @@ def _write_keys(config: Path, name: str, values: dict[str, str]) -> None:
     _replace(path, "\n".join(lines) + "\n")
 
 
+def check(key: str, value: str) -> None:
+    """Raises ValueError when the key does not take that value."""
+    if key not in RANGES:
+        return
+    low, high = RANGES[key]
+    try:
+        number = int(str(value).strip())
+    except (TypeError, ValueError):
+        raise ValueError(f"{key} takes a number between {low} and {high}") from None
+    if not low <= number <= high:
+        raise ValueError(f"{key} must be between {low} and {high}")
+
+
 def write_pref(config: Path, key: str, value: str) -> None:
+    check(key, value)
     _write_keys(config, file_of(key), {key: value})
 
 
@@ -132,6 +194,23 @@ def _unique(path: Path) -> Path:
     return candidate
 
 
+def _normalise_positions(config: Path) -> bool:
+    """`notificationPosition` is left/right now; old values carried a top/bottom."""
+    path = config / "bar.ini"
+    text = _read_text(path)
+    if not text:
+        return False
+    changed = False
+    for key, value in _items(text):
+        if key != "notificationPosition":
+            continue
+        side = "left" if "left" in value else "right"
+        if value != side:
+            write_pref(config, key, side)
+            changed = True
+    return changed
+
+
 def migrate(config: Path) -> bool:
     """Splits a legacy settings.ini into the per-area files, once.
 
@@ -140,9 +219,12 @@ def migrate(config: Path) -> bool:
     values, each file is written atomically, and the legacy file is renamed to
     its backup last. Returns whether there was anything to migrate.
     """
+    changed = _normalise_positions(config)
     legacy = config / LEGACY
     if not legacy.exists():
-        return False
+        if changed:
+            write_schema(config)
+        return changed
     with (config / ".migrate.lock").open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         if not legacy.exists():
@@ -156,4 +238,5 @@ def migrate(config: Path) -> bool:
             if missing:
                 _write_keys(config, name, missing)
         os.replace(legacy, _unique(config / BACKUP))
+        write_schema(config)
     return True

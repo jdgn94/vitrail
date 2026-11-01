@@ -5,6 +5,10 @@ import QtQuick.Layouts
 // the new one when it changes. An option is { key, label, icon }: `icon` is an
 // optional Material Symbol before the label (alone when the label is empty),
 // drawn in the label's colour and filled when the option is chosen.
+//
+// When the options do not fit the width the control was given, the row scrolls
+// sideways under the pill (wheel, drag or touch): the pill keeps its size and
+// nothing is cut off.
 Rectangle {
     id: root
 
@@ -31,80 +35,119 @@ Rectangle {
 
     Component.onCompleted: Qt.callLater(function () { root.settled = true })
 
-    Rectangle {
-        x: row.x + (root.currentItem ? root.currentItem.x : 0)
-        y: row.y
-        width: root.currentItem ? root.currentItem.width : 0
-        height: row.height
-        radius: height / 2
-        visible: root.currentItem !== null
-        color: root.accent
+    // The chosen option is always brought into view, however far the row was
+    // scrolled.
+    onCurrentChanged: Qt.callLater(function () { root.reveal(root.currentItem) })
 
-        Behavior on x { enabled: root.settled; NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
-        Behavior on width { enabled: root.settled; NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+    function reveal(item) {
+        if (!item)
+            return
+        var left = item.x
+        var right = item.x + item.width
+        if (left < flick.contentX)
+            flick.contentX = left
+        else if (right > flick.contentX + flick.width)
+            flick.contentX = right - flick.width
     }
 
-    RowLayout {
-        id: row
+    Flickable {
+        id: flick
 
         anchors.fill: parent
         anchors.margins: 4
-        spacing: 4
+        clip: true
+        contentWidth: row.width
+        contentHeight: height
+        interactive: contentWidth > width
+        boundsBehavior: Flickable.StopAtBounds
 
-        Repeater {
-            id: segments
+        Behavior on contentX { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
 
-            model: root.options
+        WheelHandler {
+            onWheel: function (event) {
+                flick.contentX = Math.max(0, Math.min(flick.contentWidth - flick.width,
+                                                      flick.contentX - event.angleDelta.y - event.angleDelta.x))
+            }
+        }
 
-            delegate: Item {
-                id: segment
+        Rectangle {
+            id: indicator
 
-                required property var modelData
+            x: row.x + (root.currentItem ? root.currentItem.x : 0)
+            y: row.y
+            width: root.currentItem ? root.currentItem.width : 0
+            height: row.height
+            radius: height / 2
+            visible: root.currentItem !== null
+            color: root.accent
 
-                readonly property bool chosen: root.current === segment.modelData.key
-                readonly property color ink: segment.chosen ? root.onAccent : root.foreground
+            Behavior on x { enabled: root.settled; NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+            Behavior on width { enabled: root.settled; NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+        }
 
-                Layout.fillHeight: true
-                implicitWidth: content.implicitWidth + (label.text === "" ? 20 : 28)
+        RowLayout {
+            id: row
 
-                Row {
-                    id: content
+            y: 0
+            width: Math.max(implicitWidth, flick.width)
+            height: flick.height
+            spacing: 4
 
-                    anchors.centerIn: parent
-                    spacing: 6
+            Repeater {
+                id: segments
 
-                    Text {
-                        id: glyph
+                model: root.options
 
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: text !== ""
-                        text: segment.modelData.icon || ""
-                        color: segment.ink
-                        font.family: VitrailTokens.iconFamily
-                        font.variableAxes: ({ "FILL": segment.chosen ? 1 : 0 })
-                        font.pixelSize: 18
+                delegate: Item {
+                    id: segment
 
-                        Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
+                    required property var modelData
+
+                    readonly property bool chosen: root.current === segment.modelData.key
+                    readonly property color ink: segment.chosen ? root.onAccent : root.foreground
+
+                    Layout.fillHeight: true
+                    implicitWidth: content.implicitWidth + (label.text === "" ? 20 : 28)
+
+                    Row {
+                        id: content
+
+                        anchors.centerIn: parent
+                        spacing: 6
+
+                        Text {
+                            id: glyph
+
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: text !== ""
+                            text: segment.modelData.icon || ""
+                            color: segment.ink
+                            font.family: VitrailTokens.iconFamily
+                            font.variableAxes: ({ "FILL": segment.chosen ? 1 : 0 })
+                            font.pixelSize: 18
+
+                            Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
+                        }
+
+                        Text {
+                            id: label
+
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: text !== ""
+                            text: segment.modelData.label || ""
+                            color: segment.ink
+                            font.pixelSize: 13
+                            font.family: VitrailTokens.fontFamily
+
+                            Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
+                        }
                     }
 
-                    Text {
-                        id: label
-
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: text !== ""
-                        text: segment.modelData.label || ""
-                        color: segment.ink
-                        font.pixelSize: 13
-                        font.family: VitrailTokens.fontFamily
-
-                        Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.selected(segment.modelData.key)
                     }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.selected(segment.modelData.key)
                 }
             }
         }

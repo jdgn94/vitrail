@@ -6,6 +6,7 @@ import Quickshell.Services.Polkit
 import Quickshell.Services.SystemTray
 import Quickshell.Wayland
 import QtQuick
+import QtQuick.Layouts
 import "kit"
 import "kit/base"
 import "kit/composed"
@@ -17,6 +18,14 @@ import "launcher"
 import "network"
 import "tray"
 import "notifications"
+import "notifications/notifications.js" as Notifications
+import "notes/notes.js" as Notes
+import "clipboard"
+import "media"
+import "launcher/commands.js" as Commands
+import "clipboard/clipboard.js" as Clipboard
+import Quickshell.Services.Mpris
+import "clipboard/colors.js" as Colors
 import "osd"
 import "osd/osd.js" as Osd
 import "session"
@@ -47,6 +56,57 @@ ShellRoot {
     // Per screen name, the monitor scope that owns its bar (anchorFor).
     property var monitors: ({})
     property var strings: ({})
+    property bool notificationsOpen: false
+    // Do Not Disturb: arrivals are listed, never toasted. Writable, because
+    // the panel's button flips it; the preference keeps it across reloads.
+    property bool dnd: Notifications.enabled(shell.prefs.notificationDnd)
+    // The quick-notes widget's text: one JSON array on a single line.
+    property string notes: shell.prefs.quickNotes || ""
+    // The monitor the panel was opened on. It stays there whatever the focus
+    // does, until it is opened on another one.
+    property var notificationsScreen: null
+
+    // The clipboard history: the card opens at the pointer on the focused
+    // monitor, with the keyboard while it is up.
+    property bool clipboardOpen: false
+    property var clipboardScreen: null
+    property int clipboardX: 0
+    property int clipboardY: 0
+    property var clipboardEntries: []
+    property var clipboardThumbs: ({})
+    property var clipboardPending: ({})
+    // The other two tabs: the emoji set, and the colour tab's state.
+    property var clipboardEmojis: []
+    property var clipboardRecent: Colors.recentFrom(shell.prefs.clipboardColors)
+    property string clipboardColor: ""
+    property string clipboardFormat: "hex"
+    // The tab the next opening shows: the IPC picks it.
+    property string clipboardMode: "history"
+
+    // Now playing: the players the bar follows, one per application (Firefox
+    // and its browser integration are the same player), and the one chosen.
+    readonly property var mprisPlayers: {
+        var all = Mpris.players.values
+        var at = ({})
+        var out = []
+        for (var i = 0; i < all.length; i++) {
+            var item = all[i]
+            var key = item.identity || item.desktopEntry || item.dbusName
+            if (at[key] === undefined) {
+                at[key] = out.length
+                out.push(item)
+            } else if (item.isPlaying && !out[at[key]].isPlaying) {
+                out[at[key]] = item
+            }
+        }
+        return out
+    }
+    property int mprisIndex: 0
+    readonly property var mprisPlayer: shell.mprisPlayers.length > 0
+                                        ? shell.mprisPlayers[Math.min(shell.mprisIndex, shell.mprisPlayers.length - 1)]
+                                        : null
+    onMprisPlayersChanged: if (shell.mprisIndex >= shell.mprisPlayers.length)
+        shell.mprisIndex = 0
 
     // The mode the next launcher opens in (see the launcher IPC).
     property string launcherMode: ""
@@ -73,6 +133,91 @@ ShellRoot {
     // True for the first frames after a closed popout opens: it appears in
     // place instead of gliding in from wherever the last one was.
     property bool popupOpening: false
+    // The outside-click close waits a moment after opening: the very click
+    // that opened the popup would otherwise reach the layer and close it.
+    property bool popupArmed: false
+
+    // Opens the panel on `screen` (the monitor whose hot zone asked, or the
+    // focused one), and moves it there if it was open somewhere else.
+    function openNotifications(screen) {
+        var target = screen || shell.focusedScreen || shell.primaryScreen
+        if (target)
+            shell.notificationsScreen = target
+        shell.notificationsOpen = true
+    }
+
+    function openClipboard(mode) {
+        var screen = shell.focusedScreen
+        if (!screen)
+            return
+        shell.clipboardMode = mode || "history"
+        shell.clipboardScreen = screen
+        shell.clipboardOpen = true
+        cursorRun.run(["hyprctl", "cursorpos"], "")
+        clipList.run(Commands.clipList(), "")
+    }
+
+    // The first time an image entry is on screen, its bytes go to a PNG the
+    // Image can load; the path is kept so it is decoded once.
+    function requestThumb(id) {
+        if (shell.clipboardThumbs[id] || shell.clipboardPending[id])
+            return
+        shell.clipboardPending[id] = true
+        var path = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/vitrail-clip-" + id + ".png"
+        thumbRun.run(["sh", "-c", "cliphist decode \"$1\" > \"$2\"", "sh", id, path], id + "\t" + path)
+    }
+
+    // Enter copies (and pastes if the preference says so), Shift+Enter only
+    // copies, Ctrl+Enter copies without the trailing newline for a terminal.
+    // Any text to the clipboard: an emoji, a colour.
+    function copyText(text) {
+        if (String(text || "") === "")
+            return
+        copyRun.run(Commands.copyText(text), "")
+    }
+
+    // The colour tab: remember it, keep the last ten, copy it in the format.
+    function useColor(hex) {
+        if (!Colors.isColor(hex))
+            return
+        shell.clipboardColor = hex
+        shell.clipboardRecent = Colors.addRecent(shell.clipboardRecent, hex, Colors.RECENT)
+        shell.setPref("clipboardColors", JSON.stringify(shell.clipboardRecent))
+        shell.copyText(Colors.format(Colors.parse(hex), shell.clipboardFormat))
+    }
+
+    // An emoji goes into the clipboard and into the field that had the focus:
+    // the panel closes first, then the text is typed where it was.
+    function pickEmoji(emoji) {
+        if (String(emoji || "") === "")
+            return
+        shell.copyText(emoji)
+        shell.clipboardOpen = false
+        emojiDelay.emoji = emoji
+        emojiDelay.restart()
+    }
+
+    // The colour picker needs the screen to itself: close the panel, wait a
+    // frame, then run it.
+    function pickColor() {
+        shell.clipboardOpen = false
+        pickDelay.restart()
+    }
+
+    function pickClip(id, mode) {
+        var command = mode === "terminal" ? Commands.clipCopyTrimmed(id) : Commands.clipCopy(id)
+        clipPick.run(command, id + "\t" + mode)
+        shell.clipboardOpen = false
+    }
+
+    function removeClip(id) {
+        clipRemove.run(Commands.clipDelete(id), id)
+    }
+
+    function clearClips() {
+        shell.clipboardEntries = []
+        clipClear.run(Commands.clipWipe(), "")
+    }
 
     // The button of a popup on a screen's bar, for popups opened without one.
     function anchorOf(kind, screen) {
@@ -192,7 +337,9 @@ ShellRoot {
     // The primary monitor's bar, which every monitor's OSD follows: one edge
     // and one centring everywhere (see OsdLayer).
     property var primaryBar: null
-    readonly property string osdEdge: Osd.edgeFor(shell.prefs.notificationPosition || "top-right",
+    readonly property string notificationSide: Notifications.sideFor(
+        shell.prefs.notificationPosition, shell.prefs.barEdge || "left")
+    readonly property string osdEdge: Osd.edgeFor(shell.notificationSide,
                                                   shell.primaryBar ? shell.primaryBar.layout.edge : "")
     readonly property var osdReference: !shell.primaryBar ? ({ left: 0, top: 0, right: 0, bottom: 0 })
         : (shell.primaryBar.style.docked ? shell.primaryBar.layout.dock : shell.primaryBar.layout.reserve)
@@ -211,6 +358,21 @@ ShellRoot {
     // Toasts follow the focused monitor, but stay off a screen showing a
     // fullscreen window: then the primary one, any other free one, and only
     // when every screen is fullscreen the focused one anyway.
+    // The screen the toasts appeared on: they stay there until the last one
+    // is gone, even if the focus moves, and a new one joins them there.
+    property var toastScreen: null
+
+    Connections {
+        target: toasts.shown
+
+        function onCountChanged() {
+            if (toasts.shown.count === 0)
+                shell.toastScreen = null
+            else if (!shell.toastScreen)
+                shell.toastScreen = shell.notificationScreen
+        }
+    }
+
     readonly property var notificationScreen: {
         function fullscreen(screen) {
             var monitor = Hyprland.monitorFor(screen)
@@ -288,6 +450,153 @@ ShellRoot {
         running: true
         command: ["python3", "-m", "vitrail.cli", "migrate"]
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
+    // The clipboard store reads its limit from its own file: keep it in step
+    // with the preference at every start.
+    Process {
+        running: true
+        command: ["python3", "-m", "vitrail.cli", "clipboard", "apply"]
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
+    // The bar reads the preference files with its own parser, so the CLI is
+    // what writes them. Writes go one at a time; a newer value for the same
+    // key waits its turn.
+    Process {
+        id: prefWriter
+
+        property var queue: []
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        onExited: shell.writeNextPref()
+    }
+
+    function setPref(key, value) {
+        prefWriter.queue.push([key, value])
+        if (!prefWriter.running)
+            shell.writeNextPref()
+    }
+
+    function writeNextPref() {
+        var next = prefWriter.queue.shift()
+        if (!next)
+            return
+        prefWriter.command = ["python3", "-m", "vitrail.cli", "config", "set", next[0], next[1]]
+        prefWriter.running = true
+    }
+
+    // The clipboard's programs: the history, a thumbnail, a pick, the paste.
+    AsyncRun {
+        id: clipList
+
+        onFinished: function (tag, output) {
+            shell.clipboardEntries = Commands.parseClips(output, Number(shell.prefs.clipboardMax) || 100)
+        }
+    }
+
+    AsyncRun {
+        id: cursorRun
+
+        onFinished: function (tag, output) {
+            var parts = String(output).trim().split(",")
+            if (parts.length !== 2)
+                return
+            shell.clipboardX = Number(parts[0])
+            shell.clipboardY = Number(parts[1])
+        }
+    }
+
+    AsyncRun {
+        id: thumbRun
+
+        onFinished: function (tag, output) {
+            var parts = String(tag).split("\t")
+            if (parts.length !== 2)
+                return
+            delete shell.clipboardPending[parts[0]]
+            var next = {}
+            for (var key in shell.clipboardThumbs)
+                next[key] = shell.clipboardThumbs[key]
+            next[parts[0]] = "file://" + parts[1]
+            shell.clipboardThumbs = next
+        }
+    }
+
+    AsyncRun {
+        id: clipPick
+
+        onFinished: function (tag, output) {
+            var mode = String(tag).split("\t")[1] || "default"
+            if (mode === "copy")
+                return
+            if (Notifications.enabled(shell.prefs.clipboardPaste))
+                pasteRun.run(Commands.clipPaste(), "")
+        }
+    }
+
+    AsyncRun {
+        id: copyRun
+    }
+
+    // The screen picker: `hyprpicker -f hex` prints the colour and exits.
+    Timer {
+        id: pickDelay
+
+        interval: VitrailTokens.duration("base")
+        onTriggered: colorPick.run(Commands.colorPicker(), "")
+    }
+
+    Timer {
+        id: emojiDelay
+
+        property string emoji: ""
+
+        interval: VitrailTokens.duration("base")
+        onTriggered: {
+            if (emoji !== "")
+                typeRun.run(Commands.typeText(emoji), "")
+            emoji = ""
+        }
+    }
+
+    AsyncRun {
+        id: typeRun
+    }
+
+    AsyncRun {
+        id: colorPick
+
+        onFinished: function (tag, output) { shell.useColor(String(output).trim()) }
+    }
+
+    AsyncRun {
+        id: clipRemove
+
+        onFinished: clipList.run(Commands.clipList(), "")
+    }
+
+    AsyncRun {
+        id: clipClear
+
+        onFinished: clipList.run(Commands.clipList(), "")
+    }
+
+    AsyncRun {
+        id: pasteRun
+    }
+
+    // The emoji set, built from Unicode by scripts/build-emoji.py.
+    FileView {
+        path: Quickshell.shellDir + "/../assets/emoji.json"
+        printErrors: false
+        onLoaded: {
+            try {
+                shell.clipboardEmojis = JSON.parse(this.text())
+            } catch (error) {
+                shell.clipboardEmojis = []
+            }
+        }
+        onLoadFailed: shell.clipboardEmojis = []
     }
 
     FileView {
@@ -371,6 +680,9 @@ ShellRoot {
         id: toasts
 
         maximum: Number(shell.prefs.notificationMax) || VitrailTokens.ranges.notifications.value
+        // The panel lists what arrives while it is open; no toast for it.
+        // Do Not Disturb silences them the same way.
+        quiet: Notifications.silent(shell.notificationsOpen, shell.dnd)
     }
 
     // --- system requests ------------------------------------------------------
@@ -494,6 +806,49 @@ ShellRoot {
     }
 
     IpcHandler {
+        target: "clipboard"
+
+        function toggle(): void {
+            if (shell.clipboardOpen)
+                shell.clipboardOpen = false
+            else
+                shell.openClipboard("history")
+        }
+
+        function emoji(): void {
+            shell.openClipboard("emoji")
+        }
+
+        function colors(): void {
+            shell.openClipboard("color")
+        }
+
+        function pick(): void {
+            shell.pickColor()
+        }
+
+        function close(): void {
+            shell.clipboardOpen = false
+        }
+    }
+
+    IpcHandler {
+        target: "notifications"
+
+        function toggle(): void {
+            if (shell.notificationsOpen)
+                shell.notificationsOpen = false
+            else
+                shell.openNotifications(shell.focusedScreen)
+        }
+
+        function close(): void {
+            shell.notificationsOpen = false
+        }
+
+    }
+
+    IpcHandler {
         target: "network"
 
         function toggle(): void {
@@ -532,6 +887,13 @@ ShellRoot {
                 shell.paletteVersion++
             }
         }
+    }
+
+    Timer {
+        id: popupArm
+
+        interval: 200
+        onTriggered: shell.popupArmed = true
     }
 
     Timer {
@@ -609,7 +971,8 @@ ShellRoot {
                 VitrailLiquid {
                     id: stackLiquid
 
-                    open: monitor.modelData === shell.notificationScreen && toasts.shown.count > 0
+                    open: monitor.modelData === (shell.toastScreen || shell.notificationScreen) && toasts.shown.count > 0
+                          && !shell.notificationsOpen
                 }
 
                 // Until a wallpaper is chosen, whatever draws it today stays.
@@ -677,14 +1040,14 @@ ShellRoot {
                         popupLook: popupLiquid.shown ? popupLiquid.look : null
                         popupOrigin: shell.popupAnchor
                         popupLag: popupCard.lag
-                        // Docked, the notification stack and the OSD are tabs of the frame too.
+                        // Docked, the notification stack, the OSD and the notification panel are tabs of the frame too.
                         tabs: (stackHolder.docked && stackLiquid.shown && stackHolder.height > 0
                               ? [{ edge: stackHolder.place.edge, reveal: stackLiquid.look.reveal,
                                    swell: stackLiquid.look.swell,
                                    rect: Frame.liquidRect(Qt.rect(stackHolder.x, stackHolder.y, stackHolder.width, stackHolder.height),
                                                           stackHolder.place.edge, stackHolder.origin,
                                                           stackLiquid.look.spread, 0, 0) }]
-                              : []).concat(osd.tabs)
+                              : []).concat(osd.tabs).concat(notificationLayer.tabs)
 
                         start: LauncherButton {
                             id: launcherButton
@@ -701,7 +1064,26 @@ ShellRoot {
                             onHoveredChanged: tooltips.hover(launcherButton, hovered)
                         }
 
-                        center: ClockButton {
+                        center: GridLayout {
+                            flow: bar.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+                            rowSpacing: VitrailTokens.gap("sm")
+                            columnSpacing: VitrailTokens.gap("sm")
+
+                            MediaButton {
+                                id: mediaButton
+
+                                visible: shell.mprisPlayer !== null
+                                player: shell.mprisPlayer
+                                strings: shell.strings
+                                onClicked: shell.togglePopup("media", mediaButton, monitor.modelData)
+                                onHoveredChanged: {
+                                    tooltips.hover(mediaButton, hovered)
+                                    if (hovered)
+                                        shell.hoverPopup("media", mediaButton, monitor.modelData)
+                                }
+                            }
+
+                            ClockButton {
                             id: clockButton
 
                             vertical: bar.vertical
@@ -712,6 +1094,7 @@ ShellRoot {
                                 tooltips.hover(clockButton, hovered)
                                 if (hovered)
                                     shell.hoverPopup("clock", clockButton, monitor.modelData)
+                            }
                             }
                         }
 
@@ -756,6 +1139,50 @@ ShellRoot {
                     opacityLevel: shell.barOpacity
                 }
 
+                // Notifications: a full-height panel that opens from a hot
+                // zone on its side, like the volume OSD. It never shows over a
+                // fullscreen window; only the OSD may.
+                NotificationLayer {
+                    id: notificationLayer
+
+                    readonly property var hyprMonitor: Hyprland.monitorFor(monitor.modelData)
+                    readonly property bool fullscreen: !!(hyprMonitor
+                        && hyprMonitor.activeWorkspace && hyprMonitor.activeWorkspace.hasFullscreen)
+
+                    screen: monitor.modelData
+                    layout: bar.layout
+                    docked: bar.style.docked
+                    side: shell.notificationSide
+                    // Every monitor keeps its hot zone; only the pinned one draws the panel.
+                    active: !notificationLayer.fullscreen
+                    pinned: monitor.modelData === shell.notificationsScreen
+                    open: shell.notificationsOpen
+                    queue: toasts
+                    strings: shell.strings
+                    opacityLevel: shell.barOpacity
+                    dnd: shell.dnd
+                    notes: shell.notes
+                    mediaPlayer: shell.mprisPlayer
+                    mediaStyle: shell.prefs.mediaStyle || "disc"
+                    mediaPlayers: shell.mprisPlayers
+                    mediaIndex: shell.mprisIndex
+                    onOpenRequested: shell.openNotifications(notificationLayer.screen)
+                    onCloseRequested: shell.notificationsOpen = false
+                    onDndToggled: {
+                        shell.dnd = !shell.dnd
+                        shell.setPref("notificationDnd", shell.dnd ? "true" : "false")
+                    }
+                    onSessionRequested: function (key) { shell.runSession(key) }
+                    onNoteAdded: function (note) {
+                        shell.notes = Notes.add(shell.notes, note)
+                        shell.setPref("quickNotes", shell.notes)
+                    }
+                    onNoteRemoved: function (index) {
+                        shell.notes = Notes.remove(shell.notes, index)
+                        shell.setPref("quickNotes", shell.notes)
+                    }
+                }
+
                 // Popup layer: one full-screen surface so the card can sit
                 // exactly under the button that opened it and travel between
                 // bar buttons without recreating a surface.
@@ -782,7 +1209,7 @@ ShellRoot {
                     // Any click outside the card closes it.
                     MouseArea {
                         anchors.fill: parent
-                        enabled: popupLiquid.open
+                        enabled: popupLiquid.open && shell.popupArmed
                         onClicked: shell.closePopup()
                     }
 
@@ -932,6 +1359,12 @@ ShellRoot {
                             }
 
                             Popout {
+                                name: "media"
+                                current: popouts.name
+                                sourceComponent: mediaComponent
+                            }
+
+                            Popout {
                                 name: "power"
                                 current: popouts.name
                                 sourceComponent: powerComponent
@@ -1007,6 +1440,19 @@ ShellRoot {
 
                     NetworkPanel {
                         strings: shell.strings
+                    }
+                }
+
+                Component {
+                    id: mediaComponent
+
+                    MediaPanel {
+                        player: shell.mprisPlayer
+                        style: shell.prefs.mediaStyle || "disc"
+                        players: shell.mprisPlayers
+                        index: shell.mprisIndex
+                        strings: shell.strings
+                        onPlayerChosen: function (index) { shell.mprisIndex = index }
                     }
                 }
 
@@ -1182,7 +1628,7 @@ ShellRoot {
                 PanelWindow {
                     screen: monitor.modelData
                     // Stays up while the stack closes (or the screen changes).
-                    visible: monitor.modelData === shell.notificationScreen || stackLiquid.shown
+                    visible: monitor.modelData === (shell.toastScreen || shell.notificationScreen) || stackLiquid.shown
                     anchors {
                         top: true
                         bottom: true
@@ -1217,7 +1663,8 @@ ShellRoot {
                         // Height of the last stack shown: it keeps it while it closes.
                         property real keptHeight: 0
 
-                        readonly property string position: shell.prefs.notificationPosition || "top-right"
+                        readonly property string position: Notifications.stackPosition(
+                            shell.prefs.notificationPosition, shell.prefs.barEdge || "left")
                         readonly property bool docked: bar.style.docked
                         readonly property var place: Frame.stackRect(stackHolder.position, parent.width, parent.height,
                                                                      stack.implicitWidth, stackHolder.height,
@@ -1260,6 +1707,67 @@ ShellRoot {
                     }
                 }
 
+
+                // The clipboard history: a card at the pointer, on the monitor
+                // the shortcut was pressed on, with the keyboard while it is up.
+                PanelWindow {
+                    id: clipboardLayer
+
+                    readonly property bool here: monitor.modelData === shell.clipboardScreen
+                    readonly property var place: Clipboard.clamp(
+                        shell.clipboardX - monitor.modelData.x, shell.clipboardY - monitor.modelData.y,
+                        clipboardCard.implicitWidth, clipboardCard.implicitHeight,
+                        monitor.modelData.width, monitor.modelData.height, VitrailTokens.gap("md"))
+
+                    screen: monitor.modelData
+                    visible: shell.clipboardOpen && clipboardLayer.here
+                    anchors {
+                        top: true
+                        bottom: true
+                        left: true
+                        right: true
+                    }
+                    color: "transparent"
+                    exclusionMode: ExclusionMode.Ignore
+                    WlrLayershell.namespace: "vitrail-clipboard"
+                    WlrLayershell.layer: WlrLayer.Overlay
+                    WlrLayershell.keyboardFocus: clipboardLayer.visible ? WlrKeyboardFocus.Exclusive
+                                                                       : WlrKeyboardFocus.None
+                    // The whole screen takes the click that closes it.
+                    mask: Region {}
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: shell.clipboardOpen = false
+                    }
+
+                    ClipboardPanel {
+                        id: clipboardCard
+
+                        x: clipboardLayer.place.x
+                        y: clipboardLayer.place.y
+                        active: shell.clipboardOpen
+                        opacityLevel: shell.barOpacity
+                        entries: shell.clipboardEntries
+                        thumbs: shell.clipboardThumbs
+                        emojis: shell.clipboardEmojis
+                        recent: shell.clipboardRecent
+                        color: shell.clipboardColor
+                        colorFormat: shell.clipboardFormat
+                        startMode: shell.clipboardMode
+                        strings: shell.strings
+                        max: Number(shell.prefs.clipboardMax) || 100
+                        onPicked: function (id, mode) { shell.pickClip(id, mode) }
+                        onRemoveRequested: function (id) { shell.removeClip(id) }
+                        onClearRequested: shell.clearClips()
+                        onCloseRequested: shell.clipboardOpen = false
+                        onThumbRequested: function (id) { shell.requestThumb(id) }
+                        onEmojiPicked: function (emoji) { shell.pickEmoji(emoji) }
+                        onColorCopied: function (text) { shell.copyText(text) }
+                        onColorPickRequested: shell.pickColor()
+                        onColorFormatPicked: function (format) { shell.clipboardFormat = format }
+                    }
+                }
 
                 // One invisible panel per edge reserves the space the frame
                 // covers, so windows never slide under it.

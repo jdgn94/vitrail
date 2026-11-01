@@ -11,6 +11,8 @@ import "wheel.js" as Wheel
 //                     fractions of the range; the last one should reach 1
 //   icon, endIcon     Material Symbols drawn inside the track
 //   readOnly          no handle, the filled and empty parts stay apart
+//   continuous        no gap and no end stop: the filled and empty parts meet
+//                     (a hairline progress bar: size "thin")
 //   stopFilled        the end dot is hollow unless this is set
 //   orientation       Qt.Vertical stands it up: the minimum at the bottom,
 //                     `length` px tall (or whatever its parent gives it)
@@ -38,6 +40,7 @@ ColumnLayout {
     property string icon: ""
     property string endIcon: ""
     property bool readOnly: false
+    property bool continuous: false
     property bool stopFilled: false
     property int orientation: Qt.Horizontal
     property real length: VitrailTokens.slider.length
@@ -47,7 +50,7 @@ ColumnLayout {
 
     readonly property real track: root.thickness > 0 ? root.thickness
                                                      : (VitrailTokens.slider[root.size] || VitrailTokens.slider.md)
-    readonly property real gap: VitrailTokens.slider.gap
+    readonly property real gap: root.continuous ? 0 : VitrailTokens.slider.gap
     readonly property bool vertical: root.orientation === Qt.Vertical
     // The pointer holds the handle.
     readonly property bool pressed: slider.pressed
@@ -187,7 +190,7 @@ ColumnLayout {
                         readonly property real start: band.modelData.from * slider.span
                         readonly property real end: band.modelData.to * slider.span
                         readonly property real outer: root.track / 2
-                        readonly property real inner: VitrailTokens.slider.handle / 2
+                        readonly property real inner: root.continuous ? 0 : VitrailTokens.slider.handle / 2
 
                         anchors.fill: parent
 
@@ -230,7 +233,7 @@ ColumnLayout {
                     width: diameter
                     height: diameter
                     radius: diameter / 2
-                    visible: root.endIcon === "" && slider.inactiveStart < x
+                    visible: root.endIcon === "" && !root.continuous && slider.inactiveStart < x
                     color: root.stopFilled ? root.bandColor(1) : "transparent"
                     border.width: root.stopFilled ? 0 : Math.max(1, diameter / 4)
                     border.color: root.bandColor(1)

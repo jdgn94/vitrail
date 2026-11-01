@@ -9,7 +9,19 @@ import subprocess
 import sys
 from pathlib import Path
 
-from vitrail import brightness, colors, plugins, prefs, style, system_theme, wallpaper
+from vitrail import (
+    brightness,
+    clipboard,
+    colors,
+    doctor,
+    plugins,
+    prefs,
+    safe_mode,
+    style,
+    system_theme,
+    wallpaper,
+    wallpaperd,
+)
 
 
 def _say(message: str = "") -> None:
@@ -53,7 +65,9 @@ def _parser() -> argparse.ArgumentParser:
     style_actions.add_parser("show", help="print the current style")
 
     paper = sub.add_parser("wallpaper", help="theme the wallpaper or rotate to the next one")
-    paper.add_argument("action", choices=("apply", "next", "sync", "import"))
+    paper.add_argument(
+        "action", choices=("apply", "next", "sync", "import", "show", "stop", "status")
+    )
     paper.add_argument("paths", nargs="*", help="import: files or folders to add")
     paper.add_argument("--force", action="store_true", help="apply: extract even if unchanged")
 
@@ -66,6 +80,29 @@ def _parser() -> argparse.ArgumentParser:
     setter.add_argument("value")
 
     sub.add_parser("migrate", help="split a legacy settings.ini into one file per area")
+
+    sub.add_parser("doctor", help="check the system, the services and the preference files")
+
+    safe = sub.add_parser(
+        "safe-mode", help="start a minimal session when the config is broken"
+    )
+    safe.add_argument(
+        "action", nargs="?", choices=("status", "enter", "exit", "session"), default="status"
+    )
+
+    config = sub.add_parser("config", help="check the preference files")
+    config_actions = config.add_subparsers(dest="config_action")
+    config_actions.add_parser(
+        "validate", help="report unknown, misplaced or future keys"
+    )
+    config_actions.add_parser("path", help="print the preference folder")
+    config_set = config_actions.add_parser("set", help="write one preference key")
+    config_set.add_argument("key")
+    config_set.add_argument("value")
+
+    clip = sub.add_parser("clipboard", help="the clipboard store")
+    clip_actions = clip.add_subparsers(dest="clipboard_action")
+    clip_actions.add_parser("apply", help="write the history size into cliphist")
 
     light = sub.add_parser("brightness", help="list the monitors the OSD can dim, as JSON")
     light.add_argument("action", choices=("list",))
@@ -158,6 +195,28 @@ def _wallpaper(args: argparse.Namespace) -> int:
         chosen = wallpaper.advance(settings)
         _say(f"Wallpaper: {chosen}" if chosen else "Wallpaper: nothing to rotate")
         return 0
+    cache = colors.cache_dir()
+    if args.action == "show":
+        path = prefs.read_prefs(settings).get("wallpaper", "")
+        if not path:
+            _say("Wallpaper: none selected")
+            return 1
+        try:
+            state = wallpaperd.show(path, cache)
+        except (ValueError, OSError, subprocess.CalledProcessError) as error:
+            _say(f"Could not display the wallpaper: {error}")
+            return 1
+        wallpaper.apply(settings, cache, force=True)
+        _say(f"Wallpaper: {path} ({state['engine']})")
+        return 0
+    if args.action == "stop":
+        wallpaperd.stop(cache)
+        _say("Wallpaper: daemons stopped")
+        return 0
+    if args.action == "status":
+        state = wallpaperd.read_state(cache)
+        _say(json.dumps(state) if state else "Wallpaper: nothing displayed")
+        return 0
     try:
         themed = wallpaper.apply(settings, colors.cache_dir(), force=args.force)
     except (colors.ColorExtractionError, OSError, subprocess.CalledProcessError) as error:
@@ -193,6 +252,63 @@ def _migrate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _safe_mode(args: argparse.Namespace) -> int:
+    directory = prefs.config_dir()
+    action = args.action or "status"
+    if action == "enter":
+        path = safe_mode.enter(directory)
+        _say(f"Safe mode armed: {path}")
+        _say("Log out, then run: vitrail safe-mode session")
+        return 0
+    if action == "exit":
+        _say("Safe mode disabled" if safe_mode.exit(directory) else "Safe mode was not armed")
+        return 0
+    if action == "session":
+        safe_mode.run_session()
+        return 0
+    errors = safe_mode.config_errors()
+    _say(f"Safe mode: {'armed' if safe_mode.is_active(directory) else 'off'}")
+    if errors:
+        _say(f"Hyprland reports {len(errors)} config error(s):")
+        for error in errors[:10]:
+            _say(f"  - {error}")
+        _say("Run: vitrail safe-mode enter")
+        return 1
+    _say("Hyprland config: no errors")
+    return 0
+
+
+def _clipboard(args: argparse.Namespace) -> int:
+    values = prefs.read_prefs(prefs.config_dir())
+    size = int(values.get("clipboardMax") or clipboard.DEFAULT_MAX)
+    path = clipboard.apply(size)
+    _say(f"{path}: -max-items {size}")
+    return 0
+
+
+def _config(args: argparse.Namespace) -> int:
+    directory = prefs.config_dir()
+    if (args.config_action or "validate") == "path":
+        _say(str(directory))
+        return 0
+    if args.config_action == "set":
+        try:
+            prefs.write_pref(directory, args.key, args.value)
+        except ValueError as error:
+            _say(str(error))
+            return 2
+        if args.key == "clipboardMax":
+            clipboard.apply(int(args.value))
+        return 0
+    issues = prefs.validate(directory)
+    if not issues:
+        _say(f"{directory}: schema {prefs.SCHEMA}, no problems")
+        return 0
+    for issue in issues:
+        _say(f"- {issue}")
+    return 1
+
+
 def _brightness(args: argparse.Namespace) -> int:
     _say(json.dumps(brightness.collect()))
     return 0
@@ -206,6 +322,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "colors":
         return _colors(args)
+    if args.command == "clipboard":
+        return _clipboard(args)
     if args.command == "style":
         return _style(args)
     if args.command == "wallpaper":
@@ -216,6 +334,12 @@ def main(argv: list[str] | None = None) -> int:
         return _set(args)
     if args.command == "migrate":
         return _migrate(args)
+    if args.command == "safe-mode":
+        return _safe_mode(args)
+    if args.command == "doctor":
+        return doctor.main([])
+    if args.command == "config":
+        return _config(args)
     if args.command == "brightness":
         return _brightness(args)
     if args.command == "plugins":

@@ -72,11 +72,13 @@ package to the manifest and a row here.
 | `kitty` | `kitty` | terminal, launcher `>` mode |
 | `libqalculate` | `qalc` | launcher calculator and conversions (`=`) |
 | `plocate`, `fd` | `plocate`, `fd` | launcher file search (`/`); `plocate-updatedb.timer` is enabled by the installer |
-| `cliphist`, `wl-clipboard` | `cliphist`, `wl-copy`, `wl-paste` | launcher clipboard history (`;`), copying results |
+| `cliphist`, `wl-clipboard`, `wtype`, `hyprpicker` | `cliphist`, `wl-copy`, `wl-paste`, `wtype`, `hyprpicker` | launcher clipboard history (`;`), the clipboard panel (`Mod+.`) with emojis and the colour picker, and pasting a pick into the focused window |
 | `xdg-utils` | `xdg-open` | opening files, folders and links |
 | `wireplumber`, `playerctl`, `brightnessctl` | `wpctl`, `playerctl`, `brightnessctl` | media keys, laptop panel brightness |
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
 | `grim`, `slurp` | `grim`, `slurp` | screenshots |
+| `pciutils` | `lspci` | GPU vendor detection in the installer and `vitrail doctor` |
+| `awww`, `mpvpaper` | `awww`, `awww-daemon`, `mpvpaper` | still wallpapers with transitions (awww) and animated ones (mpvpaper with VA-API) |
 
 `hypraether-vpn` comes from the VPN module (`vpn/`), not from the manifest.
 
@@ -233,7 +235,7 @@ the window declares it in another file, or the path unit watches another set.
 | File | Keys |
 |------|------|
 | `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase` |
-| `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax` |
+| `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `clipboardMax`, `clipboardPaste`, `mediaStyle` |
 | `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `systemColor` (`wallpaperSeed`: legacy) |
 | `windows.ini` | `windowLayout`, `visibleColumns`, `followFocus`, `wrapFocus`, `borderWidth`, `opacityFocused`, `opacityUnfocused` |
 | `input.ini` | `keyboardLayouts`, `keyboardSwitch`, `numlockOnStart`, `focusFollowsMouse` |
@@ -241,7 +243,7 @@ the window declares it in another file, or the path unit watches another set.
 | `launcher.ini` | `launcherEngine`, `launcherBangs`, `launcherModes`, `launcherView`, `launcherClear` |
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
-| `misc.ini` | `selftest` (written by the smoke test) and any key the map does not list |
+| `misc.ini` | `selftest` (written by the smoke test), `quickNotes`, `clipboardColors` and any key the map does not list |
 
 A key shared by several pages (`radius`, `blurStrength`, `surfaceStyle`,
 `surfaceOpacity`) lives with the page that owns it, Appearance. To add a
@@ -370,6 +372,21 @@ tests/       installer, QML smoke test, colors and translation tests
 
 Interactive installer, theme engine and the first settings window are working.
 Next: the dotfiles and the remaining settings pages.
+
+## Safe mode
+
+When a Hyprland config change leaves the session unusable:
+
+```sh
+vitrail safe-mode status     # reads hyprctl configerrors, exits 1 on errors
+vitrail safe-mode enter      # arms the fallback
+vitrail safe-mode session    # starts Hyprland with dots/.config/hypr/safe.lua
+vitrail safe-mode exit       # back to the normal config
+```
+
+The fallback config knows four binds (`Mod+Q`, `Mod+Return`, `Mod+,`,
+`Mod+Shift+Q`) and starts the bar, so the settings window is reachable even
+when the normal config does not load.
 
 ## Bar and screen frame
 

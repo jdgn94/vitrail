@@ -356,6 +356,7 @@ Window {
                                     anchors.fill: parent
                                     visible: app.category === "plugins"
                                     palette: palette
+                                    prefs: prefs
                                     plugins: app.plugins
                                     strings: app.strings
                                 }

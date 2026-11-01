@@ -66,6 +66,42 @@ function clipCopy(id) {
     return ["sh", "-c", "cliphist decode \"$1\" | wl-copy", "sh", id]
 }
 
+// One entry goes away: `delete` reads the id from stdin.
+function clipDelete(id) {
+    return ["sh", "-c", "printf '%s\\n' \"$1\" | cliphist delete", "sh", id]
+}
+
+// The whole history.
+function clipWipe() {
+    return ["cliphist", "wipe"]
+}
+
+// A pick for a terminal: the same content without its trailing newlines, so
+// it does not submit the command.
+function clipCopyTrimmed(id) {
+    return ["sh", "-c", "printf '%s' \"$(cliphist decode \"$1\")\" | wl-copy", "sh", id]
+}
+
+// The screen colour picker: prints the colour under the pointer and exits.
+function colorPicker() {
+    return ["hyprpicker", "-f", "hex"]
+}
+
+// Any text to the clipboard (an emoji, a colour).
+function copyText(text) {
+    return ["sh", "-c", "printf '%s' \"$1\" | wl-copy", "sh", text]
+}
+
+// Typing text into the focused window, for the emoji picker.
+function typeText(text) {
+    return ["wtype", text]
+}
+
+// Pasting a pick into the focused window: Ctrl+V through wtype.
+function clipPaste() {
+    return ["wtype", "-M", "ctrl", "v", "-m", "ctrl"]
+}
+
 // "12<TAB>preview" lines, newest first.
 function parseClips(output, limit) {
     var out = []

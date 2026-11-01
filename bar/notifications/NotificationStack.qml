@@ -44,6 +44,7 @@ Item {
 
             width: list.width
             notification: root.queue.byId[nid] || null
+            queue: root.queue
             arrived: root.queue.arrived[nid] || Date.now()
             now: root.now
             newest: index === 0

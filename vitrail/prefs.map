@@ -30,6 +30,10 @@ bar panelSize
 bar panelPush
 bar notificationPosition
 bar notificationMax
+bar notificationDnd
+bar clipboardMax
+bar clipboardPaste
+bar mediaStyle
 
 wallpaper wallpaper
 wallpaper wallpaperMode
@@ -76,3 +80,5 @@ datetime timezone
 datetime ntp
 
 misc selftest
+misc quickNotes
+misc clipboardColors

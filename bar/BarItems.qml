@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "kit"
+import "media"
 import "network"
 import "session"
 import "tray"

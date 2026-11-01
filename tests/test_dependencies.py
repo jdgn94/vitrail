@@ -44,6 +44,10 @@ PROVIDED_BY = {
     "quickshell": "quickshell",
     "qml6": "qt6-declarative",
     "matugen": "matugen",
+    "lspci": "pciutils",
+    "awww": "awww",
+    "awww-daemon": "awww",
+    "mpvpaper": "mpvpaper",
     "ffmpeg": "ffmpeg",
     "ffprobe": "ffmpeg",
     "magick": "imagemagick",
@@ -54,6 +58,8 @@ PROVIDED_BY = {
     "plocate": "plocate",
     "fd": "fd",
     "cliphist": "cliphist",
+    "wtype": "wtype",
+    "hyprpicker": "hyprpicker",
     "wl-copy": "wl-clipboard",
     "wl-paste": "wl-clipboard",
     "xdg-open": "xdg-utils",
@@ -76,7 +82,7 @@ SHELL_WORDS = {
 
 QML_ARRAY = re.compile(r"""(?:command\s*[:=]|exec(?:Detached)?\()\s*\[\s*"([^"]+)"\s*(?:,\s*"-c"\s*,\s*"((?:[^"\\]|\\.)*)")?""")
 JS_RETURN = re.compile(r"""return\s*\[\s*"([^"]+)"\s*(?:,\s*"-c"\s*,\s*"((?:[^"\\]|\\.)*)")?""")
-PY_CALL = re.compile(r'''\b(?:subprocess\.\w+|_?run|_call|Popen)\(\s*(?:run\s*,\s*)?\[\s*"([\w.-]+)"|shutil\.which\(\s*"([\w.-]+)"|\b(?:command|cmd)\s*=\s*\[\s*"([\w.-]+)"|\breturn\s*\[\s*"([\w.-]+)"''')
+PY_CALL = re.compile(r'''\b(?:subprocess\.\w+|_?run|_call|spawn\w*|Popen)\(\s*(?:run\s*,\s*)?\[\s*"([\w.-]+)"|shutil\.which\(\s*"([\w.-]+)"|\b(?:command|cmd)\s*=\s*\[\s*"([\w.-]+)"|\breturn\s*\[\s*"([\w.-]+)"''')
 LUA_EXEC = re.compile(r"""exec_cmd\(\s*(?:home\s*\.\.\s*)?"((?:[^"\\]|\\.)+)\"""")
 COMMAND_V = re.compile(r"\bcommand\s+-v\s+([\w.-]+)")
 SEPARATORS = re.compile(r"\|\||&&|[;|&()`]|\$\(|\n")

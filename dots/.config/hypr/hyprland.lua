@@ -71,6 +71,10 @@ local launcher = home .. "/.local/bin/vitrail-bar ipc call launcher toggle"
 hl.bind(mod .. " + SUPER_L", hl.dsp.exec_cmd(launcher), { release = true, description = "apps/launcher" })
 hl.bind(mod .. " + comma", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-settings"), { description = "shell/settings" })
 hl.bind(mod .. " + L", hl.dsp.exec_cmd("hyprlock"), { description = "shell/lock" })
+hl.bind(mod .. " + period", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard toggle"), { description = "shell/clipboard" })
+hl.bind(mod .. " + SHIFT + period", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard emoji"), { description = "shell/clipboard-emoji" })
+hl.bind(mod .. " + ALT + period", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard colors"), { description = "shell/clipboard-colors" })
+hl.bind(mod .. " + CTRL + period", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard pick"), { description = "shell/clipboard-pick" })
 hl.bind(mod .. " + P", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call panel toggle full"), { description = "shell/panel" })
 hl.bind(mod .. " + SHIFT + P", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call panel toggle overlay"), { description = "shell/panel-overlay" })
 
@@ -119,12 +123,20 @@ hl.bind("PRINT", hl.dsp.exec_cmd("grim -g \"$(slurp)\" - | wl-copy"), { descript
 hl.bind(mod .. " + PRINT", hl.dsp.exec_cmd("grim - | wl-copy"), { description = "screenshot/screen" })
 
 -- Vitrail's own windows (settings, gallery) run on the QML runtime, whose
--- class is generic: the title tells them apart. They open floating, centred.
+-- class is generic. They open floating, centred: the class is matched alone
+-- because the title is set after the window maps, too late for the rule.
 hl.window_rule({
     name = "vitrail-float",
-    match = { class = "^org\\.qt-project\\.qml$", title = "Vitrail" },
+    match = { class = "^org\\.qt-project\\.qml$" },
     float = true,
     center = true,
+})
+
+-- A terminal is a normal tiled window, never a floating card.
+hl.window_rule({
+    name = "kitty-tile",
+    match = { class = "^kitty$" },
+    float = false,
 })
 
 -- Glass: every Vitrail surface is a Quickshell layer, and Hyprland blurs a
@@ -134,7 +146,7 @@ hl.window_rule({
 -- when the surface style is solid.
 hl.layer_rule({
     name = "vitrail-glass",
-    match = { namespace = "^vitrail-(bar|popup|notifications|dialog|session|tooltip|launcher|osd)$" },
+    match = { namespace = "^vitrail-(bar|popup|notifications|dialog|session|tooltip|launcher|osd|clipboard)$" },
     blur = true,
     ignore_alpha = 0.01,
 })

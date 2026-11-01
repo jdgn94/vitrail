@@ -91,6 +91,13 @@ TestCase {
         verify(item.value > 30 && item.value < 70)
     }
 
+    function test_continuous_has_no_gap_and_the_thin_track_is_a_hairline() {
+        var item = make({ readOnly: true, continuous: true, size: "thin", width: 200 })
+        compare(item.gap, 0)
+        compare(item.track, VitrailTokens.slider.thin)
+        verify(make({ width: 200 }).gap > 0)
+    }
+
     // --- mouse wheel (opt-in) ----------------------------------------------------
 
     function test_the_wheel_does_nothing_unless_asked() {

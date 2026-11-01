@@ -187,6 +187,18 @@ Window {
                     { to: 1, color: VitrailTokens.color("error") }
                 ]
             }
+
+            VitrailSlider {
+                Layout.preferredWidth: 320
+                label: "read-only · continuous, thin (media progress)"
+                suffix: "%"
+                from: 0
+                to: 100
+                value: 62
+                readOnly: true
+                continuous: true
+                size: "thin"
+            }
         }
 
         VitrailText {
@@ -236,6 +248,31 @@ Window {
                 size: "md"
                 readOnly: true
             }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "VitrailMarquee · the text that does not fit slides with a gap"
+        }
+
+        VitrailMarquee {
+            width: 220
+            variant: "body"
+            text: "A line too long to fit in its box slides like a carousel"
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "VitrailTabs · the underline follows the choice"
+        }
+
+        VitrailTabs {
+            current: "history"
+            tabs: [
+                { key: "history", label: "History" },
+                { key: "emoji", label: "Emojis" },
+                { key: "color", label: "Colours" }
+            ]
         }
 
         VitrailText {
@@ -425,6 +462,63 @@ Window {
                         current: "a"
                         options: [{ key: "a", label: "Option A" }]
                     }
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "VitrailIcon · size × tone × filled"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("xl")
+
+            Repeater {
+                model: ["sm", "md", "lg", "xl"]
+
+                delegate: ColumnLayout {
+                    id: iconSize
+
+                    required property string modelData
+
+                    spacing: VitrailTokens.gap("xs")
+
+                    VitrailIcon {
+                        Layout.alignment: Qt.AlignHCenter
+                        icon: "wifi"
+                        size: iconSize.modelData
+                    }
+
+                    VitrailText {
+                        Layout.alignment: Qt.AlignHCenter
+                        variant: "label"
+                        text: iconSize.modelData
+                    }
+                }
+            }
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("xl")
+
+            Repeater {
+                model: [
+                    { tone: "foreground", filled: false },
+                    { tone: "primary", filled: true },
+                    { tone: "muted", filled: false },
+                    { tone: "error", filled: true }
+                ]
+
+                delegate: VitrailIcon {
+                    id: iconTone
+
+                    required property var modelData
+
+                    icon: "favorite"
+                    size: "lg"
+                    tone: iconTone.modelData.tone
+                    filled: iconTone.modelData.filled
                 }
             }
         }

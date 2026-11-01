@@ -32,6 +32,10 @@ QtObject {
     property alias panelPush: barFile.panelPush
     property alias notificationPosition: barFile.notificationPosition
     property alias notificationMax: barFile.notificationMax
+    property alias notificationDnd: barFile.notificationDnd
+    property alias clipboardMax: barFile.clipboardMax
+    property alias clipboardPaste: barFile.clipboardPaste
+    property alias mediaStyle: barFile.mediaStyle
     property alias wallpaper: wallpaperFile.wallpaper
     property alias wallpaperMode: wallpaperFile.wallpaperMode
     property alias wallpaperDir: wallpaperFile.wallpaperDir
@@ -69,6 +73,8 @@ QtObject {
     property alias timezone: datetimeFile.timezone
     property alias ntp: datetimeFile.ntp
     property alias selftest: miscFile.selftest
+    property alias quickNotes: miscFile.quickNotes
+    property alias clipboardColors: miscFile.clipboardColors
 
     property Settings appearanceSettings: Settings {
         id: appearanceFile
@@ -103,6 +109,13 @@ QtObject {
         property bool panelPush: false
         property string notificationPosition: "top-right"
         property int notificationMax: VitrailTokens.ranges.notifications.value
+        property bool notificationDnd: false
+        // What the clipboard store keeps, and whether picking an entry also
+        // pastes it into the focused window.
+        property int clipboardMax: 100
+        property bool clipboardPaste: false
+        // The player's look: "disc" or "cassette".
+        property string mediaStyle: "disc"
     }
 
     property Settings wallpaperSettings: Settings {
@@ -212,6 +225,10 @@ QtObject {
         fileName: root.directory + "/misc.ini"
         category: "misc"
 
+        // The quick-notes widget: one note per line, newest first.
+        property string quickNotes: ""
+        // The colour tab's last ten colours, as a JSON array of hex values.
+        property string clipboardColors: ""
         // Written by the smoke test, never by the UI.
         property string selftest: ""
     }

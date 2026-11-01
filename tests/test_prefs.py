@@ -59,6 +59,10 @@ class ReadWriteTests(Base):
     def test_missing_files_read_as_empty(self) -> None:
         self.assertEqual(prefs.read_prefs(self.config), {})
 
+    def test_a_json_value_round_trips_on_one_line(self) -> None:
+        prefs.write_pref(self.config, "quickNotes", '["uno","dos"]')
+        self.assertEqual(prefs.read_prefs(self.config)["quickNotes"], '["uno","dos"]')
+
     def test_a_write_replaces_in_place_and_keeps_the_rest(self) -> None:
         self.config.mkdir(parents=True)
         (self.config / "appearance.ini").write_text(
@@ -80,6 +84,22 @@ class ReadWriteTests(Base):
     def test_the_write_is_atomic(self) -> None:
         prefs.write_pref(self.config, "radius", "9")
         self.assertEqual([p.name for p in self.config.iterdir()], ["appearance.ini"])
+
+
+class RangeTests(Base):
+    def test_the_clipboard_maximum_accepts_its_range(self) -> None:
+        prefs.write_pref(self.config, "clipboardMax", "50")
+        prefs.write_pref(self.config, "clipboardMax", "1000")
+        self.assertEqual(prefs.read_prefs(self.config)["clipboardMax"], "1000")
+
+    def test_the_clipboard_maximum_rejects_out_of_range(self) -> None:
+        for value in ("49", "1001", "0", "-5"):
+            with self.assertRaises(ValueError):
+                prefs.write_pref(self.config, "clipboardMax", value)
+
+    def test_the_clipboard_maximum_rejects_a_non_number(self) -> None:
+        with self.assertRaises(ValueError):
+            prefs.write_pref(self.config, "clipboardMax", "many")
 
 
 class SetPrefTests(Base):
@@ -191,3 +211,63 @@ class MigrationTests(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ValidateTests(Base):
+    def setUp(self) -> None:
+        super().setUp()
+        self.config.mkdir(parents=True)
+
+    def write(self, name: str, text: str) -> None:
+        (self.config / f"{name}.ini").write_text(text, encoding="utf-8")
+
+    def test_a_clean_folder_has_no_problems(self) -> None:
+        self.write("appearance", "[appearance]\nappearance=dark\nradius=14\n")
+        self.assertEqual(prefs.validate(self.config), [])
+
+    def test_an_unknown_key_is_reported_but_kept(self) -> None:
+        self.write("appearance", "[appearance]\nnotAKey=1\n")
+        issues = prefs.validate(self.config)
+        self.assertEqual(len(issues), 1)
+        self.assertIn("notAKey", issues[0])
+        self.assertIn("appearance.ini", issues[0])
+        self.assertEqual(self.read("appearance"), "[appearance]\nnotAKey=1\n")
+
+    def test_a_key_in_the_wrong_file_is_reported(self) -> None:
+        self.write("bar", "[bar]\nradius=14\n")
+        issues = prefs.validate(self.config)
+        self.assertEqual(len(issues), 1)
+        self.assertIn("radius", issues[0])
+        self.assertIn("appearance.ini", issues[0])
+
+    def test_a_known_key_in_misc_is_a_misplacement(self) -> None:
+        self.write("misc", "[misc]\nradius=14\n")
+        issues = prefs.validate(self.config)
+        self.assertEqual(len(issues), 1)
+        self.assertIn("radius", issues[0])
+
+    def test_an_unknown_key_in_misc_is_allowed(self) -> None:
+        self.write("misc", "[misc]\npluginThing=1\n")
+        self.assertEqual(prefs.validate(self.config), [])
+
+    def test_a_newer_schema_is_reported(self) -> None:
+        prefs.write_schema(self.config, prefs.SCHEMA + 1)
+        issues = prefs.validate(self.config)
+        self.assertEqual(len(issues), 1)
+        self.assertIn("newer", issues[0])
+
+    def test_the_schema_is_stamped_by_migration(self) -> None:
+        (self.config / "settings.ini").write_text(
+            "[appearance]\nappearance=dark\n", encoding="utf-8"
+        )
+        prefs.migrate(self.config)
+        self.assertEqual(prefs.schema_version(self.config), prefs.SCHEMA)
+
+    def test_cli_reports_problems_and_exits_one(self) -> None:
+        self.write("appearance", "[appearance]\nnotAKey=1\n")
+        with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": self.tmp.name}):
+            self.assertEqual(cli.main(["config", "validate"]), 1)
+            (self.config / "appearance.ini").write_text(
+                "[appearance]\nappearance=dark\n", encoding="utf-8"
+            )
+            self.assertEqual(cli.main(["config", "validate"]), 0)

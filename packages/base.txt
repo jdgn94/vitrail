@@ -11,12 +11,17 @@ ripgrep
 fd
 wl-clipboard
 cliphist
+wtype
+hyprpicker
 plocate
 libqalculate
 xdg-desktop-portal-gtk
 polkit-gnome
 grim
 slurp
+awww
+mpvpaper
+pciutils
 playerctl
 brightnessctl
 ddcutil

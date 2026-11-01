@@ -28,6 +28,7 @@ QtObject {
     readonly property var osd: Tokens.osd
     readonly property var field: Tokens.field
     readonly property var launcher: Tokens.launcher
+    readonly property var media: Tokens.media
     readonly property string fontFamily: Tokens.font.family
     readonly property string iconFamily: Tokens.font.icons
 

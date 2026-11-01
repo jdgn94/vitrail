@@ -96,6 +96,8 @@ var field = {
 
 // Slider track thickness per size; the handle and the gaps around it.
 var slider = {
+    // A hairline progress track.
+    thin: 3,
     sm: 8,
     md: 16,
     lg: 28,
@@ -126,6 +128,108 @@ var osd = {
     write: 150,
     stale: 10000,
     card: 300
+}
+
+// The media player (bar/media). Lengths are px, times ms.
+// disc: `size` of the cover, `pad` of room around it for the ring, `marks`
+// dashes in the ring, `gap` from the cover to the ring, `dot` the mark's
+// thickness and its length when paused (a dotted border), `longest` how far a
+// mark grows while playing, `idle` / `low` the mark opacity when paused / at
+// its shortest while playing, `settle` how long the ring takes to change
+// between dots and bars, `bounce` one bounce of the bars, `turn` one revolution
+// of the record, `tint` the record's fill opacity, `hole` the spindle hole.
+// cassette: every number is px of a tape 80 wide (the preview scales it).
+// progress: bar `height`, `wave` thickness, `amplitude` and `wavelength` of the
+// wave, `period` ms a wave takes to travel one wavelength (calm; frozen when
+// paused), `line` the remaining track's thickness, `head` / `headHeight` the
+// playhead, `gap` around it, `dot` the end dot, `rest` / `end` the opacity of
+// the remaining line / end dot, `step` px between wave samples.
+// preview: the settings tile's room for a look, and how much it is scaled.
+var media = {
+    disc: {
+        size: 68,
+        pad: 13,
+        marks: 36,
+        gap: 2,
+        dot: 3,
+        longest: 11,
+        idle: 0.6,
+        low: 0.4,
+        tint: 0.08,
+        settle: 420,
+        bounce: 1200,
+        turn: 8000,
+        hole: 8
+    },
+    cassette: {
+        width: 80,
+        height: 52,
+        radius: 5,
+        deepen: 1.5,
+        cover: 0.4,
+        edge: 0.2,
+        edgeWidth: 1,
+        screwTone: 0.6,
+        lineTone: 0.45,
+        screw: 3,
+        screwAt: 3,
+        labelX: 9,
+        labelY: 5,
+        labelWidth: 62,
+        labelHeight: 30,
+        labelRadius: 2,
+        letter: 13,
+        letterX: 2,
+        letterY: -1,
+        lineX: 17,
+        lineY: 3,
+        lineStep: 3,
+        lineWidth: 36,
+        lineShort: 24,
+        bandPrimary: 3,
+        bandSecondary: 1,
+        windowX: 18,
+        windowY: 16,
+        windowWidth: 44,
+        windowHeight: 14,
+        windowRadius: 4,
+        reel: 11,
+        hub: 6,
+        teeth: 6,
+        tooth: 1.5,
+        stripHeight: 1.5,
+        taper: 2,
+        turn: 2500,
+        baseY: 37,
+        baseInset: 12,
+        baseTaper: 5,
+        baseHeight: 13,
+        hole: 4,
+        holeAt: 21,
+        slot: 3,
+        slotAt: 10
+    },
+    progress: {
+        height: 16,
+        wave: 4,
+        amplitude: 3,
+        wavelength: 30,
+        period: 5000,
+        line: 2,
+        head: 4,
+        headHeight: 14,
+        gap: 3,
+        dot: 4,
+        rest: 0.35,
+        end: 0.6,
+        step: 2
+    },
+    preview: {
+        width: 64,
+        height: 56,
+        disc: 0.6,
+        cassette: 0.75
+    }
 }
 
 // The application launcher, in its two presentations (see the `launcher`

@@ -234,13 +234,12 @@ FocusScope {
             onTapped: input.forceActiveFocus()
         }
 
-        VitrailText {
+        VitrailIcon {
             visible: root.leadingIcon !== ""
             x: root.padX
             anchors.verticalCenter: parent.verticalCenter
-            variant: "icon"
-            font.pixelSize: root.iconPx
-            text: root.leadingIcon
+            icon: root.leadingIcon
+            pixelSize: root.iconPx
             color: root.error ? root.accent : VitrailTokens.color("muted")
         }
 
