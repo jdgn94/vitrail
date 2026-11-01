@@ -117,7 +117,7 @@ API once it exists.
 | ✅ P1.2 Notification panel: grouping, DND, expiry, actions, full height, widgets slot | P1.1 | A burst of 20 notifications stays grouped; DND silences them; actions run |
 | ✅ P1.3 Clipboard history (cliphist, text and images) | P1.1 | Copy → appears in the panel → selecting it pastes |
 | ✅ P1.4 Music indicator (MPRIS): title, artist, controls | P1.1 | Controlled from the bar and from the panel's widgets slot |
-| P1.5 Wallpaper panel: grid, type, transition, random, interval, import | P0.4 | Pick an image → transition plays → palette regenerates → survives a reboot; importing a 4K GIF produces an mp4 within budget |
+| ✅ P1.5 Wallpaper panel: grid, type, transition, random, interval, import | P0.4 | Pick an image → transition plays → palette regenerates → survives a reboot; importing a 4K GIF produces a video within budget |
 | P1.6 Quick toggles: wifi, bluetooth, mic, DND | P1.1 | Each toggle reflects real state and survives a reload; the same set is a row of the panel's widgets slot |
 | P1.7 Native launcher: apps, windows, files, calculator, inline actions | P1.1, P0.1 | Opens from `Mod+D`, keyboard-only, no external launcher installed |
 | P1.8 Keyboard navigation pass over every popup | P1.1–P1.7 | Every popup is fully operable with Tab/Space/Enter/Escape; focus never escapes the open popup |

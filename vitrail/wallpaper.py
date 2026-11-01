@@ -31,7 +31,7 @@ from vitrail.prefs import read_prefs, remove_pref, write_pref
 KINDS = {
     "image": (".png", ".jpg", ".jpeg", ".webp", ".bmp"),
     "svg": (".svg",),
-    "video": (".mp4", ".webm", ".mkv", ".mov", ".m4v", ".avi"),
+    "video": (".mp4", ".webm", ".mkv", ".mov", ".m4v", ".avi", ".gif"),
 }
 FOLDERS = {"image": "images", "svg": "svg", "video": "videos"}
 SEPARATOR = "|"

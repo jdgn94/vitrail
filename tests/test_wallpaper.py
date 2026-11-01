@@ -34,6 +34,7 @@ class KindTests(unittest.TestCase):
         self.assertEqual(wallpaper.kind_of("/w/images/a.JPG"), "image")
         self.assertEqual(wallpaper.kind_of("/w/svg/waves.svg"), "svg")
         self.assertEqual(wallpaper.kind_of("/w/videos/rain.webm"), "video")
+        self.assertEqual(wallpaper.kind_of("/w/incoming/loop.GIF"), "video")
         self.assertIsNone(wallpaper.kind_of("/w/notes.txt"))
 
     def test_requests_drop_their_nonce(self) -> None:
