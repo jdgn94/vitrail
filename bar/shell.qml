@@ -1441,7 +1441,7 @@ ShellRoot {
                     // the pointer and the focus to itself, so no bar button could be
                     // hovered and no window clicked while it is open; on demand it
                     // keeps the keyboard until another window takes the focus.
-                    readonly property bool wantsKeyboard: popupLiquid.open && shell.popupKind === "launcher"
+                    readonly property bool wantsKeyboard: popupLiquid.open
                     property bool grabbing: false
                     onWantsKeyboardChanged: {
                         popupLayer.grabbing = popupLayer.wantsKeyboard
@@ -1450,6 +1450,15 @@ ShellRoot {
                     }
                     WlrLayershell.keyboardFocus: !popupLayer.wantsKeyboard ? WlrKeyboardFocus.None
                                                  : popupLayer.grabbing ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+
+                    // A popup left alone closes itself.
+                    Timer {
+                        id: popupIdle
+
+                        interval: 10000
+                        running: shell.popupOpen
+                        onTriggered: shell.closePopup()
+                    }
 
                     Timer {
                         id: keyboardGrab

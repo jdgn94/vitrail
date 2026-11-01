@@ -37,6 +37,7 @@ GridLayout {
     columnSpacing: VitrailTokens.gap("xs")
 
     TrayItems {
+        Layout.alignment: Qt.AlignHCenter
         vertical: root.vertical
         openKind: root.open ? root.openKind : ""
         strings: root.strings
@@ -51,8 +52,7 @@ GridLayout {
 
         implicitWidth: chipRow.implicitWidth
         implicitHeight: chipRow.implicitHeight + 2
-        Layout.alignment: Qt.AlignCenter
-        Layout.margins: 5
+        Layout.alignment: Qt.AlignHCenter
         radius: height / 2
         // A soft primary: opaque, so it does not smear over the glass.
         color: VitrailTokens.solid("primary", 0.14)
@@ -96,6 +96,7 @@ GridLayout {
     PowerButton {
         id: power
 
+        Layout.alignment: Qt.AlignHCenter
         strings: root.strings
         opened: root.open && root.openKind === "power"
         onClicked: root.sessionRequested()
