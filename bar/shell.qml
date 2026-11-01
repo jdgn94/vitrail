@@ -146,9 +146,6 @@ ShellRoot {
     // True for the first frames after a closed popout opens: it appears in
     // place instead of gliding in from wherever the last one was.
     property bool popupOpening: false
-    // The outside-click close waits a moment after opening: the very click
-    // that opened the popup would otherwise reach the layer and close it.
-    property bool popupArmed: false
 
     // Opens the panel on `screen` (the monitor whose hot zone asked, or the
     // focused one), and moves it there if it was open somewhere else.
@@ -262,12 +259,6 @@ ShellRoot {
         if (shell.popupOpen && shell.popupKind === kind)
             shell.closePopup()
         else
-            shell.openPopup(kind, item, screen)
-    }
-
-    // Hovering an element that has a popout moves an open popout to it.
-    function hoverPopup(kind, item, screen) {
-        if (shell.popupOpen && (shell.popupKind !== kind || shell.popupScreen !== screen))
             shell.openPopup(kind, item, screen)
     }
 
@@ -933,11 +924,17 @@ ShellRoot {
         }
     }
 
-    Timer {
-        id: popupArm
+    // The popup only takes input on its card, so a click elsewhere reaches
+    // the bar or the app under it. An app that takes the focus closes the
+    // popup; the launcher popout, which holds the keyboard, stays until it is
+    // dismissed.
+    Connections {
+        target: Hyprland
 
-        interval: 200
-        onTriggered: shell.popupArmed = true
+        function onActiveToplevelChanged() {
+            if (shell.popupOpen && shell.popupKind !== "launcher")
+                shell.closePopup()
+        }
     }
 
     Timer {
@@ -1120,11 +1117,7 @@ ShellRoot {
                                 player: shell.mprisPlayer
                                 strings: shell.strings
                                 onClicked: shell.togglePopup("media", mediaButton, monitor.modelData)
-                                onHoveredChanged: {
-                                    tooltips.hover(mediaButton, hovered)
-                                    if (hovered)
-                                        shell.hoverPopup("media", mediaButton, monitor.modelData)
-                                }
+                                onHoveredChanged: tooltips.hover(mediaButton, hovered)
                             }
 
                             ClockButton {
@@ -1134,11 +1127,7 @@ ShellRoot {
                             language: shell.prefs.language || "en"
                             opened: shell.popupOpen && shell.popupKind === "clock" && shell.popupScreen === monitor.modelData
                             onClicked: shell.togglePopup("clock", clockButton, monitor.modelData)
-                            onHoveredChanged: {
-                                tooltips.hover(clockButton, hovered)
-                                if (hovered)
-                                    shell.hoverPopup("clock", clockButton, monitor.modelData)
-                            }
+                            onHoveredChanged: tooltips.hover(clockButton, hovered)
                             }
                         }
 
@@ -1150,7 +1139,6 @@ ShellRoot {
                             openKind: shell.popupKind
                             strings: shell.strings
                             onClicked: function (kind, item) { shell.togglePopup(kind, item, monitor.modelData) }
-                            onHovered: function (kind, item) { shell.hoverPopup(kind, item, monitor.modelData) }
                             onTipHovered: function (item, on) { tooltips.hover(item, on) }
                             onSessionRequested: shell.toggleSession(monitor.modelData)
                         }
@@ -1250,12 +1238,9 @@ ShellRoot {
                     WlrLayershell.keyboardFocus: popupLiquid.open && shell.popupKind === "launcher" ? WlrKeyboardFocus.Exclusive
                                                                                                        : WlrKeyboardFocus.None
 
-                    // Any click outside the card closes it.
-                    MouseArea {
-                        anchors.fill: parent
-                        enabled: popupLiquid.open && shell.popupArmed
-                        onClicked: shell.closePopup()
-                    }
+                    // Input only on the card: the bar buttons and the apps
+                    // around it stay clickable while a popup is open.
+                    mask: Region { item: popupLiquid.shown ? popupCard : null }
 
                     // Floating, the card is an island that leaves the bar
                     // (joined by a liquid neck in glass); docked, the frame
@@ -1288,30 +1273,46 @@ ShellRoot {
                                                                         : bar.reserve[popupCard.barEdge] + popupCard.margin
 
                         // Sized to the popout being shown; switching glides to the
-                        // next size while the contents cross-fade. It keeps its
-                        // size while the popup closes.
+                        // next size while the contents fade out, then in. It keeps
+                        // its size while the popup closes.
                         readonly property real wantWidth: popouts.current ? popouts.current.implicitWidth + 2 * popupCard.margin : 0
                         readonly property real wantHeight: popouts.current ? popouts.current.implicitHeight + 2 * popupCard.margin : 0
                         property real keptWidth: 0
                         property real keptHeight: 0
                         onWantWidthChanged: if (popupCard.wantWidth > 0) popupCard.keptWidth = popupCard.wantWidth
                         onWantHeightChanged: if (popupCard.wantHeight > 0) popupCard.keptHeight = popupCard.wantHeight
+                        // Where the size is heading. The targets below place the
+                        // card from this, not from the animated width / height:
+                        // placing it from those would make x / y chase a moving
+                        // target and leave the card off the bar while it resizes.
+                        readonly property real targetWidth: popupCard.wantWidth > 0 ? popupCard.wantWidth : popupCard.keptWidth
+                        readonly property real targetHeight: popupCard.wantHeight > 0 ? popupCard.wantHeight : popupCard.keptHeight
 
                         // The island or bar a floating card leaves, for its neck.
-                        readonly property var source: {
+                        readonly property var sourceTarget: {
                             if (popupCard.docked)
                                 return null
                             if (bar.islands)
                                 return Frame.nearestRect(bar.islandRects, shell.popupAnchorX, shell.popupAnchorY)
                             return Qt.rect(bar.area.x, bar.area.y, bar.area.width, bar.area.height)
                         }
+                        // The neck follows the card: switching to a button on
+                        // another island glides the source like the card.
+                        property real sourceX: popupCard.sourceTarget ? popupCard.sourceTarget.x : 0
+                        property real sourceY: popupCard.sourceTarget ? popupCard.sourceTarget.y : 0
+                        property real sourceWidth: popupCard.sourceTarget ? popupCard.sourceTarget.width : 0
+                        property real sourceHeight: popupCard.sourceTarget ? popupCard.sourceTarget.height : 0
+                        readonly property var source: popupCard.sourceTarget
+                            ? Qt.rect(popupCard.sourceX, popupCard.sourceY, popupCard.sourceWidth, popupCard.sourceHeight) : null
                         // Where the card is heading along the bar, minus where it
                         // is: it stretches that way while gliding to a button.
                         readonly property real lag: bar.vertical ? popupCard.targetY - popupCard.y
                                                                  : popupCard.targetX - popupCard.x
 
-                        width: popupCard.wantWidth > 0 ? popupCard.wantWidth : popupCard.keptWidth
-                        height: popupCard.wantHeight > 0 ? popupCard.wantHeight : popupCard.keptHeight
+                        width: popupCard.targetWidth
+                        height: popupCard.targetHeight
+                        // Nothing draws outside the card while it resizes.
+                        clip: true
                         // Opens from the button that invoked it: sideways for a
                         // vertical bar, above or below for a horizontal one.
                         x: popupCard.targetX
@@ -1320,8 +1321,8 @@ ShellRoot {
                             if (popupCard.barEdge === "left")
                                 return popupCard.offset
                             if (popupCard.barEdge === "right")
-                                return popupLayer.width - popupCard.offset - popupCard.width
-                            return Frame.popupAlong(shell.popupAnchorX, popupCard.width, popupCard.hole.left,
+                                return popupLayer.width - popupCard.offset - popupCard.targetWidth
+                            return Frame.popupAlong(shell.popupAnchorX, popupCard.targetWidth, popupCard.hole.left,
                                                     popupLayer.width - popupCard.hole.right, popupCard.docked,
                                                     popupCard.margin, bar.layout.radius)
                         }
@@ -1329,8 +1330,8 @@ ShellRoot {
                             if (popupCard.barEdge === "top")
                                 return popupCard.offset
                             if (popupCard.barEdge === "bottom")
-                                return popupLayer.height - popupCard.offset - popupCard.height
-                            return Frame.popupAlong(shell.popupAnchorY, popupCard.height, popupCard.hole.top,
+                                return popupLayer.height - popupCard.offset - popupCard.targetHeight
+                            return Frame.popupAlong(shell.popupAnchorY, popupCard.targetHeight, popupCard.hole.top,
                                                     popupLayer.height - popupCard.hole.bottom, popupCard.docked,
                                                     popupCard.margin, bar.layout.radius)
                         }
@@ -1340,6 +1341,10 @@ ShellRoot {
                         Behavior on y { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
                         Behavior on width { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
                         Behavior on height { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
+                        Behavior on sourceX { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
+                        Behavior on sourceY { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
+                        Behavior on sourceWidth { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
+                        Behavior on sourceHeight { enabled: !shell.popupOpening; NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutQuint } }
 
                         HoverHandler {
                             id: cardHover
@@ -1354,9 +1359,15 @@ ShellRoot {
                             }
                         }
 
-                        // Absorbs clicks so they do not reach the outside area.
-                        MouseArea {
-                            anchors.fill: parent
+                        // Switching to another popout restarts the idle timer: the
+                        // pointer left the old card, not the new one.
+                        Connections {
+                            target: shell
+
+                            function onPopupKindChanged() {
+                                popupCard.entered = cardHover.hovered
+                                popupLeave.stop()
+                            }
                         }
 
                         // One popout per element; only the current one is loaded.
@@ -1377,40 +1388,49 @@ ShellRoot {
                             anchors.margins: popupCard.margin
                             // The content waits for the shape and leaves first.
                             opacity: popupLiquid.look.content
+                            // Switching: the next popout waits for the previous one
+                            // to fade out; opening from closed has nothing to wait for.
+                            readonly property int handover: shell.popupOpening ? 0 : VitrailTokens.duration("fast")
 
                             Popout {
                                 name: "launcher"
                                 current: popouts.name
+                                handover: popouts.handover
                                 sourceComponent: launcherComponent
                             }
 
                             Popout {
                                 name: "network"
                                 current: popouts.name
+                                handover: popouts.handover
                                 sourceComponent: networkComponent
                             }
 
                             Popout {
                                 name: "vpn"
                                 current: popouts.name
+                                handover: popouts.handover
                                 sourceComponent: vpnComponent
                             }
 
                             Popout {
                                 name: "clock"
                                 current: popouts.name
+                                handover: popouts.handover
                                 sourceComponent: clockComponent
                             }
 
                             Popout {
                                 name: "media"
                                 current: popouts.name
+                                handover: popouts.handover
                                 sourceComponent: mediaComponent
                             }
 
                             Popout {
                                 name: "power"
                                 current: popouts.name
+                                handover: popouts.handover
                                 sourceComponent: powerComponent
                             }
 
@@ -1424,6 +1444,7 @@ ShellRoot {
 
                                     name: "tray:" + trayPopout.modelData.id
                                     current: popouts.name
+                                    handover: popouts.handover
                                     sourceComponent: Component {
                                         TrayMenu {
                                             handle: trayPopout.modelData.menu

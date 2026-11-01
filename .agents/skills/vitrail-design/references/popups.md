@@ -87,24 +87,41 @@ timeline, ratios), `motion.smooth`.
 - center: `ClockButton` (SystemClock; "HH\nMM" on a vertical bar) → popup
   kind `clock` → `ClockPanel` (time, localized date, MonthGrid calendar with
   month paging and a "today" button).
-- end: `BarItems` (tray, network, vpn, power). Hovering another bar button while a popup is
-  open moves the popup to it (`openPopup(kind, item)`).
+- end: `BarItems` (tray, network, vpn, power). Clicking another bar button
+  while a popup is open moves the popup to it (`togglePopup` → `openPopup`);
+  hovering never switches (the bar gets hover while a popup is open, so a
+  hover switch would also close it again on the click).
 
 ## Popouts (after caelestia-dots/shell)
 
 - Every element with a popout reports `(kind, item)`; `shell.openPopup` anchors
   (`shell.popupAnchor`, the item's rect) on that exact item; without one (IPC)
-  on that popup's own button on the target screen (`monitor.anchorFor`), `shell.hoverPopup` moves an open popout to a hovered
-  element. Kinds: `network`, `vpn`, `clock`, `power`, `tray:<id>`.
-- `bar/Popout.qml`: one named `Loader` per kind. Becoming current: load, then
-  fade in (`slow`); leaving: fade out (`fast`), then unload. Closing the
-  popup clears the current name, so menus reload fresh on the next open.
+  on that popup's own button on the target screen (`monitor.anchorFor`).
+  Kinds: `network`, `vpn`, `media`, `clock`, `power`, `launcher`, `tray:<id>`.
+- `bar/Popout.qml`: one named `Loader` per kind. Becoming current: load at
+  once (the card needs its size), wait `handover`, then fade in (`slow`);
+  leaving: fade out (`fast`), then unload. Closing the popup clears the
+  current name, so menus reload fresh on the next open.
+- Switching (click on another button, `popupOpen` stays true, so the liquid
+  timeline does not move): the old content fades out (`fast`), the card glides
+  to the new button and size, then the new content fades in. `handover` is
+  `fast` when switching, 0 when opening from closed. Never two popouts visible
+  at once.
 - The card (`popupCard`) is sized to the current popout + margin and animates
-  x / y / width / height with `slow` + `Easing.OutQuint`: it glides to the
-  next element while the contents cross-fade. Docked, the frame tab follows.
+  x / y / width / height with `slow` + `Easing.OutQuint`, and clips its
+  content so nothing draws outside it while it resizes. `targetX/Y` are
+  computed from the TARGET size (`targetWidth/Height`), never the animated
+  one: otherwise on a right / bottom bar or a centred card x / y chase a moving
+  target and the card drifts off the frame edge. The frame tab (`popup` rect)
+  and the floating skin (`rect`) are fed the animated x / y / width / height;
+  the neck's source island (`sourceX..sourceHeight`) glides with the same
+  curve. The liquid `origin` (the button) only matters while the shape opens
+  (`spread` < 1), so it jumps to the new button without desync.
 - Opening from closed sets `shell.popupOpening` for a `fast` beat: the
   Behaviors are off, so the card appears at its button instead of gliding
   from wherever the last popout was.
+- The idle close timer (`popupLeave`, 3 s after the pointer leaves the card) is
+  cancelled when the popup kind changes.
 
 ## Tray (bar/tray)
 

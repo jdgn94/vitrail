@@ -26,7 +26,6 @@ GridLayout {
     // is the "power" popout.
     signal sessionRequested()
     signal clicked(string kind, Item item)
-    signal hovered(string kind, Item item)
     // The pointer entered or left an element: its tooltip.
     signal tipHovered(Item item, bool on)
 
@@ -39,7 +38,6 @@ GridLayout {
         openKind: root.open ? root.openKind : ""
         strings: root.strings
         onMenuRequested: function (kind, item) { root.clicked(kind, item) }
-        onHovered: function (kind, item) { root.hovered(kind, item) }
         onTipHovered: function (item, on) { root.tipHovered(item, on) }
     }
 
@@ -49,11 +47,7 @@ GridLayout {
         strings: root.strings
         opened: root.open && root.openKind === "network"
         onClicked: root.clicked("network", network)
-        onHoveredChanged: {
-            root.tipHovered(network, hovered)
-            if (hovered)
-                root.hovered("network", network)
-        }
+        onHoveredChanged: root.tipHovered(network, hovered)
     }
 
     VpnButton {
@@ -62,11 +56,7 @@ GridLayout {
         strings: root.strings
         opened: root.open && root.openKind === "vpn"
         onClicked: root.clicked("vpn", vpn)
-        onHoveredChanged: {
-            root.tipHovered(vpn, hovered)
-            if (hovered)
-                root.hovered("vpn", vpn)
-        }
+        onHoveredChanged: root.tipHovered(vpn, hovered)
     }
 
     PowerButton {
@@ -76,10 +66,6 @@ GridLayout {
         opened: root.open && root.openKind === "power"
         onClicked: root.sessionRequested()
         onMenuRequested: root.clicked("power", power)
-        onHoveredChanged: {
-            root.tipHovered(power, hovered)
-            if (hovered)
-                root.hovered("power", power)
-        }
+        onHoveredChanged: root.tipHovered(power, hovered)
     }
 }

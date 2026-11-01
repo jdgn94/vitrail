@@ -2,13 +2,17 @@ import QtQuick
 import "kit"
 
 // One bar popout. It loads while it is the current one; leaving, it fades
-// out before unloading, arriving it loads and fades in, so the shared card
-// can glide to the next button and cross-fade between contents.
+// out before unloading. Arriving, it loads at once (the card needs its size)
+// but stays invisible for `handover`, then fades in: the previous popout is
+// gone before the next shows, so two never overlap on the gliding card.
 Loader {
     id: popout
 
     required property string name
     property string current: ""
+    // How long an arriving popout waits before it fades in (the time the
+    // previous one needs to fade out).
+    property int handover: 0
 
     readonly property bool shouldBeActive: popout.current === popout.name
 
@@ -42,6 +46,7 @@ Loader {
 
             SequentialAnimation {
                 PropertyAction { property: "active" }
+                PauseAnimation { duration: popout.handover }
                 NumberAnimation { property: "opacity"; duration: VitrailTokens.duration("slow"); easing.type: Easing.OutCubic }
             }
         }
