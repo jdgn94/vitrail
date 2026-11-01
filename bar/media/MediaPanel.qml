@@ -16,7 +16,8 @@ import "media.js" as Media
 // The progress is the same in both: the shell's slider (seekable), with a wave
 // over its filled part that fades in while it plays. Below: loop, shuffle,
 // previous/play/next, and the application chip, whose list of players (when
-// more than one is running) opens inline under it.
+// more than one is running) opens upward over the card, so it never changes the
+// card's size (the popup is sized to its content and clips anything outside).
 //
 // One spacing (`unit`) separates every cell of the grid; the host card pads the
 // content by the same amount, so the padding is even on all sides.
@@ -147,7 +148,7 @@ Item {
 
             // The progress: the shell's slider, seekable, with a wave drawn
             // over its filled part. Playing, the wave eases in (`energy`) while
-            // the straight fill fades out; pausing eases it back.
+            // the straight fill steps aside; pausing eases it back.
             Item {
                 id: progress
 
@@ -174,7 +175,7 @@ Item {
                     to: Math.max(root.length, 0)
                     value: root.position
                     readOnly: !root.current || !root.current.canSeek || root.length <= 0
-                    fillOpacity: 1 - progress.energy
+                    fillOpacity: progress.energy > 0 ? 0 : 1
                     onMoved: function (v) {
                         root.position = v
                         root.current.position = v
@@ -187,7 +188,6 @@ Item {
                     readonly property real end: bar.activeEnd
 
                     anchors.fill: bar
-                    opacity: progress.energy
 
                     onEndChanged: requestPaint()
                     onWidthChanged: requestPaint()
@@ -206,7 +206,7 @@ Item {
                         function onPhaseChanged() { canvas.requestPaint() }
                     }
 
-                    // Frame clock: the wave slows to a stop as it fades out.
+                    // Frame clock: the wave slows to a stop as it flattens.
                     FrameAnimation {
                         running: root.playing || progress.energy > 0
                         onTriggered: progress.phase = (progress.phase + 2 * Math.PI * frameTime * 1000
@@ -304,10 +304,10 @@ Item {
             }
         }
 
-        // --- the application: a chip with the icon and the name; with more
-        // than one player running, its list opens inline below it and pushes
-        // the card taller, so nothing is ever covered.
-        ColumnLayout {
+        // --- the application: a chip with the icon and the name. Only the chip
+        // takes room in the grid; its list of players (when more than one is
+        // running) is drawn after the grid, over the card (see `choices`).
+        Item {
             id: selector
 
             readonly property var chipLook: root.look.chip
@@ -316,16 +316,19 @@ Item {
 
             Layout.columnSpan: 2
             Layout.alignment: Qt.AlignHCenter
-            spacing: root.unit
+            implicitWidth: chip.implicitWidth
+            implicitHeight: chip.implicitHeight
 
             Rectangle {
                 id: chip
 
-                Layout.alignment: Qt.AlignHCenter
+                anchors.fill: parent
                 implicitWidth: chipRow.implicitWidth + 2 * VitrailTokens.gap("sm")
                 implicitHeight: chipRow.implicitHeight + 2 * selector.chipLook.padY
                 radius: height / 2
-                color: Qt.alpha(VitrailTokens.color("foreground"), selector.open ? selector.chipLook.open : selector.chipLook.rest)
+                color: VitrailTokens.solid("foreground", selector.open ? selector.chipLook.open : selector.chipLook.rest)
+
+                Behavior on color { ColorAnimation { duration: VitrailTokens.duration("fast") } }
 
                 Row {
                     id: chipRow
@@ -365,76 +368,90 @@ Item {
                     onClicked: selector.expanded = !selector.expanded
                 }
             }
+        }
+    }
 
-            // One entry per application; the current one is shaded.
-            Rectangle {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: Math.max(chip.implicitWidth, implicitWidth)
-                visible: selector.open
-                implicitWidth: listColumn.implicitWidth + 2 * VitrailTokens.gap("xs")
-                implicitHeight: listColumn.implicitHeight + 2 * VitrailTokens.gap("xs")
-                radius: VitrailTokens.radius * selector.chipLook.listRadius
-                color: VitrailTokens.color("surfaceHigh")
+    // Clicking anywhere else on the card closes the list, and only closes it.
+    MouseArea {
+        anchors.fill: parent
+        z: 1
+        enabled: selector.open
+        onClicked: selector.expanded = false
+    }
 
-                ColumnLayout {
-                    id: listColumn
+    // One entry per application; the current one is shaded. It sits just above
+    // the chip, centred on it, over the cover and the controls.
+    Rectangle {
+        id: choices
 
-                    anchors.fill: parent
-                    anchors.margins: VitrailTokens.gap("xs")
-                    spacing: selector.chipLook.listGap
+        z: 2
+        x: selector.x + (selector.width - width) / 2
+        y: selector.y - height - VitrailTokens.gap("xs")
+        width: Math.max(selector.width, implicitWidth)
+        height: implicitHeight
+        visible: selector.open
+        implicitWidth: listColumn.implicitWidth + 2 * VitrailTokens.gap("xs")
+        implicitHeight: listColumn.implicitHeight + 2 * VitrailTokens.gap("xs")
+        radius: VitrailTokens.radius * selector.chipLook.listRadius
+        color: VitrailTokens.color("surfaceHigh")
 
-                    Repeater {
-                        model: root.players
+        ColumnLayout {
+            id: listColumn
 
-                        delegate: Item {
-                            id: choice
+            anchors.fill: parent
+            anchors.margins: VitrailTokens.gap("xs")
+            spacing: selector.chipLook.listGap
 
-                            required property var modelData
-                            required property int index
+            Repeater {
+                model: root.players
 
-                            Layout.fillWidth: true
-                            implicitWidth: choiceRow.implicitWidth
-                            implicitHeight: selector.chipLook.row
+                delegate: Item {
+                    id: choice
 
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: VitrailTokens.radius * selector.chipLook.rowRadius
-                                color: choice.index === root.index
-                                       ? Qt.alpha(VitrailTokens.color("primary"), selector.chipLook.current)
-                                       : "transparent"
-                            }
+                    required property var modelData
+                    required property int index
 
-                            Row {
-                                id: choiceRow
+                    Layout.fillWidth: true
+                    implicitWidth: choiceRow.implicitWidth
+                    implicitHeight: selector.chipLook.row
 
-                                anchors.centerIn: parent
-                                spacing: VitrailTokens.gap("xs")
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: VitrailTokens.radius * selector.chipLook.rowRadius
+                        color: choice.index === root.index
+                               ? Qt.alpha(VitrailTokens.color("primary"), selector.chipLook.current)
+                               : "transparent"
+                    }
 
-                                Image {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: selector.chipLook.rowIcon
-                                    height: selector.chipLook.rowIcon
-                                    source: root.appIcon(choice.modelData)
-                                    visible: source !== ""
-                                    asynchronous: true
-                                }
+                    Row {
+                        id: choiceRow
 
-                                VitrailMarquee {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: selector.chipLook.name
-                                    variant: "label"
-                                    text: root.appName(choice.modelData)
-                                }
-                            }
+                        anchors.centerIn: parent
+                        spacing: VitrailTokens.gap("xs")
 
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    root.playerChosen(choice.index)
-                                    selector.expanded = false
-                                }
-                            }
+                        Image {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: selector.chipLook.rowIcon
+                            height: selector.chipLook.rowIcon
+                            source: root.appIcon(choice.modelData)
+                            visible: source !== ""
+                            asynchronous: true
+                        }
+
+                        VitrailMarquee {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: selector.chipLook.name
+                            variant: "label"
+                            text: root.appName(choice.modelData)
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            root.playerChosen(choice.index)
+                            selector.expanded = false
                         }
                     }
                 }

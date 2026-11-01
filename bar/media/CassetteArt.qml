@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Effects
 import "../kit"
 import "../kit/base"
 
@@ -120,7 +121,6 @@ Item {
         height: root.look.labelHeight
         radius: root.look.labelRadius
         color: root.paper
-        clip: true
 
         VitrailText {
             x: root.look.letterX
@@ -150,6 +150,8 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: root.look.bandPrimary + root.look.bandSecondary
+            bottomLeftRadius: root.look.labelRadius
+            bottomRightRadius: root.look.labelRadius
             color: root.primary
 
             Rectangle {
@@ -157,6 +159,8 @@ Item {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 height: root.look.bandSecondary
+                bottomLeftRadius: root.look.labelRadius
+                bottomRightRadius: root.look.labelRadius
                 color: root.info
             }
         }
@@ -176,15 +180,41 @@ Item {
         height: root.look.windowHeight
         radius: root.look.windowRadius
         color: root.deepest
-        clip: true
 
+        // `clip: true` only cuts to the bounding box, not to `radius`: the
+        // cover is masked to the window's rounded shape instead.
         Image {
+            id: art
+
             anchors.fill: parent
             source: root.cover
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
+            visible: false
+            layer.enabled: true
+        }
+
+        MultiEffect {
+            anchors.fill: parent
+            source: art
             opacity: root.look.cover
             visible: root.cover !== ""
+            maskEnabled: true
+            maskSource: windowMask
+        }
+
+        Item {
+            id: windowMask
+
+            anchors.fill: parent
+            visible: false
+            layer.enabled: true
+
+            Rectangle {
+                anchors.fill: parent
+                radius: window.radius
+                color: "black"
+            }
         }
 
         // Tape wound on the left reel, thinning to the strip that runs across.

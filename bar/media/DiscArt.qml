@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import "../kit"
 import "../kit/base"
 import "media.js" as Media
@@ -67,41 +68,75 @@ Item {
         }
     }
 
-    Rectangle {
+    // `clip: true` only cuts to the bounding box, not to `radius`: the round
+    // shape is a mask over the cover, the tint and the hole (they are drawn
+    // square in `content`, which is not shown itself).
+    Item {
         id: record
 
         anchors.centerIn: parent
         width: root.look.size
         height: root.look.size
-        radius: width / 2
-        clip: true
-        color: Qt.alpha(root.foreground, root.look.tint)
 
-        Image {
+        Item {
+            id: content
+
             anchors.fill: parent
-            source: root.cover
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
-            visible: root.cover !== ""
+            visible: false
+            layer.enabled: true
+
+            Rectangle {
+                anchors.fill: parent
+                color: Qt.alpha(root.foreground, root.look.tint)
+            }
+
+            Image {
+                anchors.fill: parent
+                source: root.cover
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                visible: root.cover !== ""
+            }
+
+            VitrailIcon {
+                anchors.centerIn: parent
+                visible: root.cover === ""
+                icon: "music_note"
+                size: "lg"
+                color: root.foreground
+            }
+
+            // The hole in the middle of a record (the music note stands there
+            // when there is no cover).
+            Rectangle {
+                anchors.centerIn: parent
+                visible: root.cover !== ""
+                width: root.look.hole
+                height: root.look.hole
+                radius: width / 2
+                color: root.surface
+            }
         }
 
-        VitrailIcon {
-            anchors.centerIn: parent
-            visible: root.cover === ""
-            icon: "music_note"
-            size: "lg"
-            color: root.foreground
+        MultiEffect {
+            anchors.fill: parent
+            source: content
+            maskEnabled: true
+            maskSource: disc
         }
 
-        // The hole in the middle of a record (the music note stands there
-        // when there is no cover).
-        Rectangle {
-            anchors.centerIn: parent
-            visible: root.cover !== ""
-            width: root.look.hole
-            height: root.look.hole
-            radius: width / 2
-            color: root.surface
+        Item {
+            id: disc
+
+            anchors.fill: parent
+            visible: false
+            layer.enabled: true
+
+            Rectangle {
+                anchors.fill: parent
+                radius: width / 2
+                color: "black"
+            }
         }
     }
 }

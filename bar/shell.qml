@@ -84,15 +84,21 @@ ShellRoot {
     // The tab the next opening shows: the IPC picks it.
     property string clipboardMode: "history"
 
-    // Now playing: the players the bar follows, one per application (Firefox
-    // and its browser integration are the same player), and the one chosen.
+    // Now playing: the players the bar follows, one per application. An app
+    // can expose several MPRIS services (Firefox: its own, the browser
+    // integration, and the playerctld proxy); they share a desktop entry, so
+    // that keys the app (then the identity, then the bus name), lowercased. The
+    // playerctld proxy only mirrors whichever player is active, so it is
+    // skipped. Of the instances of one app, the one playing wins.
     readonly property var mprisPlayers: {
         var all = Mpris.players.values
         var at = ({})
         var out = []
         for (var i = 0; i < all.length; i++) {
             var item = all[i]
-            var key = item.identity || item.desktopEntry || item.dbusName
+            if ((item.dbusName || "").indexOf("playerctld") >= 0)
+                continue
+            var key = (item.desktopEntry || item.identity || item.dbusName || "").trim().toLowerCase()
             if (at[key] === undefined) {
                 at[key] = out.length
                 out.push(item)
