@@ -44,6 +44,12 @@ Item {
     Shape {
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
+        // Asynchronous: the path is processed off the GUI thread. Synchronous, a
+        // frame whose path only changes because a card in ANOTHER window moves
+        // (a popup resizing) could stop being repainted (Qt 6.11: the window never
+        // got its update request), leaving the old tab on screen until the next
+        // hover repainted it.
+        asynchronous: true
 
         ShapePath {
             fillColor: Qt.rgba(root.tint.r, root.tint.g, root.tint.b,
