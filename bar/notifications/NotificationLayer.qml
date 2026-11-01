@@ -55,6 +55,7 @@ Scope {
     property bool bluetoothOn: false
     property bool bluetoothPresent: false
     property bool micMuted: false
+    property bool airplaneOn: false
     property string mediaStyle: "disc"
     property var mediaPlayers: []
     property int mediaIndex: 0
@@ -237,6 +238,7 @@ Scope {
                     bluetoothOn: root.bluetoothOn
                     bluetoothPresent: root.bluetoothPresent
                     micMuted: root.micMuted
+                    airplaneOn: root.airplaneOn
                     dnd: root.dnd
                     onToggled: function (key) { root.quickToggled(key) }
                 }

@@ -13,6 +13,7 @@ RowLayout {
     property bool bluetoothPresent: false
     property bool micMuted: false
     property bool dnd: false
+    property bool airplaneOn: false
 
     signal toggled(string key)
 
@@ -41,6 +42,14 @@ RowLayout {
         tone: root.micMuted ? "error" : "secondary"
         icon: root.micMuted ? "mic_off" : "mic"
         onClicked: root.toggled("mic")
+    }
+
+    VitrailButton {
+        Layout.fillWidth: true
+        variant: "text"
+        tone: root.airplaneOn ? "primary" : "secondary"
+        icon: root.airplaneOn ? "airplanemode_active" : "airplanemode_inactive"
+        onClicked: root.toggled("airplane")
     }
 
     VitrailButton {

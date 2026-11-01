@@ -19,6 +19,13 @@ TestCase {
         verify(!Toggles.bluetoothPresent(""))
     }
 
+    function test_airplane_mode_is_every_radio_blocked() {
+        verify(Toggles.airplaneOn('{"rfkilldevices":[{"soft":"blocked"}]}'))
+        verify(!Toggles.airplaneOn('{"rfkilldevices":[{"soft":"unblocked"}]}'))
+        verify(!Toggles.airplaneOn('{"rfkilldevices":[{"soft":"blocked"},{"soft":"unblocked"}]}'))
+        verify(!Toggles.airplaneOn(""))
+    }
+
     function test_the_microphone_reads_wpctl() {
         verify(Toggles.micMuted("Volume: 1.00 [MUTED]\n"))
         verify(!Toggles.micMuted("Volume: 0.55\n"))

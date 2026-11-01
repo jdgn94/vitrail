@@ -90,11 +90,13 @@ ShellRoot {
     property bool bluetoothOn: false
     property bool bluetoothPresent: false
     property bool micMuted: false
+    property bool airplaneOn: false
 
     function refreshToggles() {
         wifiRead.run(Commands.wifiState(), "")
         btRead.run(Commands.bluetoothState(), "")
         micRead.run(Commands.micState(), "")
+        airplaneRead.run(Commands.airplaneState(), "")
     }
 
     function toggleQuick(key) {
@@ -104,6 +106,8 @@ ShellRoot {
             btWrite.run(Commands.bluetoothSet(!shell.bluetoothOn), "")
         else if (key === "mic")
             micWrite.run(Commands.micToggle(), "")
+        else if (key === "airplane")
+            airplaneWrite.run(Commands.airplaneSet(!shell.airplaneOn), "")
         else if (key === "dnd") {
             shell.dnd = !shell.dnd
             shell.setPref("notificationDnd", shell.dnd ? "true" : "false")
@@ -612,6 +616,18 @@ ShellRoot {
 
     AsyncRun {
         id: btWrite
+
+        onFinished: function (tag, output) { shell.refreshToggles() }
+    }
+
+    AsyncRun {
+        id: airplaneRead
+
+        onFinished: function (tag, output) { shell.airplaneOn = Toggles.airplaneOn(output) }
+    }
+
+    AsyncRun {
+        id: airplaneWrite
 
         onFinished: function (tag, output) { shell.refreshToggles() }
     }
@@ -1317,6 +1333,7 @@ ShellRoot {
                     bluetoothOn: shell.bluetoothOn
                     bluetoothPresent: shell.bluetoothPresent
                     micMuted: shell.micMuted
+                    airplaneOn: shell.airplaneOn
                     onQuickToggled: function (key) { shell.toggleQuick(key) }
                     mediaStyle: shell.prefs.mediaStyle || "disc"
                     mediaPlayers: shell.mprisPlayers

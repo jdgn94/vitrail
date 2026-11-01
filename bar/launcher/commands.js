@@ -95,6 +95,8 @@ function bluetoothState() { return ["bluetoothctl", "show"] }
 function bluetoothSet(on) { return ["bluetoothctl", "power", on ? "on" : "off"] }
 function micState() { return ["wpctl", "get-volume", "@DEFAULT_AUDIO_SOURCE@"] }
 function micToggle() { return ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"] }
+function airplaneState() { return ["rfkill", "-J"] }
+function airplaneSet(on) { return ["rfkill", on ? "unblock" : "block", "all"] }
 
 // The screen colour picker: prints the colour under the pointer and exits.
 function colorPicker() {

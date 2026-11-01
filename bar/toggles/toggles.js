@@ -18,6 +18,22 @@ function bluetoothPresent(text) {
     return /(Controller|Powered:)/i.test(String(text || ""))
 }
 
+// `rfkill -J` lists every radio: airplane mode is all of them soft-blocked.
+function airplaneOn(text) {
+    try {
+        var devices = JSON.parse(text).rfkilldevices || []
+        if (devices.length === 0)
+            return false
+        for (var i = 0; i < devices.length; i++) {
+            if (devices[i].soft !== "blocked")
+                return false
+        }
+        return true
+    } catch (error) {
+        return false
+    }
+}
+
 // `wpctl get-volume @DEFAULT_AUDIO_SOURCE@` adds "[MUTED]" when it is muted.
 function micMuted(text) {
     return /\[MUTED\]/i.test(String(text || ""))

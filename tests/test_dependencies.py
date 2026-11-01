@@ -25,7 +25,7 @@ SYSTEM = {
     "sh", "bash", "env", "python3", "systemctl", "ip", "mkdir", "mv", "cp", "rm", "cat", "printf", "echo", "dirname",
     "basename", "kill", "pkill", "sleep", "date", "ln", "readlink", "mktemp", "sort", "head", "tail", "tr", "cut",
     "wc", "find", "grep", "sed", "awk", "paste", "test", "sudo", "git", "uname", "id", "true", "false", "timedatectl",
-    "localectl", "sleep", "pwd",
+    "localectl", "sleep", "pwd", "rfkill",
 }
 
 # Programs that are not packaged by Vitrail, with the reason.
