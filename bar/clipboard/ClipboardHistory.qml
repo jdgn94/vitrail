@@ -286,6 +286,27 @@ Item {
                     }
                 }
 
+                // Keyboard: Tab reaches the entry, Enter or Space copies it.
+                activeFocusOnTab: true
+                Keys.onReturnPressed: {
+                    root.selected = row.index
+                    root.pick("default")
+                }
+                Keys.onSpacePressed: {
+                    root.selected = row.index
+                    root.pick("default")
+                }
+
+                // Where the keyboard is.
+                Rectangle {
+                    anchors.fill: parent
+                    radius: VitrailTokens.radius / 2
+                    color: "transparent"
+                    border.width: row.activeFocus ? 2 : 0
+                    border.color: VitrailTokens.color("primary")
+                    visible: row.activeFocus
+                }
+
                 Component.onCompleted: if (row.image && row.thumb === "")
                     root.thumbRequested(row.modelData.id)
             }

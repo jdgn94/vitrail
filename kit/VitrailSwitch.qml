@@ -32,7 +32,23 @@ Rectangle {
 
     MouseArea {
         anchors.fill: parent
+        enabled: root.enabled
         cursorShape: Qt.PointingHandCursor
         onClicked: root.toggled(!root.checked)
+    }
+
+    // Keyboard: Tab reaches it, Enter or Space flips it, and the ring shows
+    // where the keyboard is.
+    activeFocusOnTab: root.enabled
+    Keys.onReturnPressed: root.toggled(!root.checked)
+    Keys.onSpacePressed: root.toggled(!root.checked)
+
+    Rectangle {
+        anchors.fill: parent
+        radius: height / 2
+        color: "transparent"
+        border.width: root.activeFocus ? 2 : 0
+        border.color: root.accent
+        visible: root.activeFocus
     }
 }

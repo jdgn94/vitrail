@@ -92,6 +92,14 @@ Item {
             boundsBehavior: Flickable.StopAtBounds
             model: root.shown
 
+            // Keyboard: Tab reaches the grid, the arrows move the cursor,
+            // Enter or Space picks the emoji under it.
+            activeFocusOnTab: true
+            keyNavigationEnabled: true
+            currentIndex: root.shown.length > 0 ? 0 : -1
+            Keys.onReturnPressed: if (grid.currentIndex >= 0) root.picked(root.shown[grid.currentIndex].e)
+            Keys.onSpacePressed: if (grid.currentIndex >= 0) root.picked(root.shown[grid.currentIndex].e)
+
             delegate: Item {
                 id: cell
 
@@ -106,6 +114,17 @@ Item {
                     radius: VitrailTokens.radius * 0.4
                     color: Qt.rgba(VitrailTokens.color("primary").r, VitrailTokens.color("primary").g,
                                    VitrailTokens.color("primary").b, cellHover.hovered ? 0.18 : 0)
+                }
+
+                // Where the keyboard is.
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 2
+                    radius: VitrailTokens.radius * 0.4
+                    color: "transparent"
+                    border.width: GridView.isCurrentItem && grid.activeFocus ? 2 : 0
+                    border.color: VitrailTokens.color("primary")
+                    visible: GridView.isCurrentItem && grid.activeFocus
                 }
 
                 HoverHandler {

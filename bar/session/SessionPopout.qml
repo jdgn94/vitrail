@@ -24,17 +24,28 @@ ColumnLayout {
     spacing: 2
 
     Repeater {
+        id: rows
+
         model: Session.available(root.canHibernate)
 
         delegate: Item {
             id: row
 
             required property var modelData
+            required property int index
 
             readonly property color ink: VitrailTokens.color(row.modelData.tone === "error" ? "error" : "foreground")
 
             Layout.preferredWidth: root.rowWidth
             implicitHeight: line.implicitHeight + 2 * VitrailTokens.gap("xs")
+
+            // Keyboard: Tab reaches a row, the arrows move through the list,
+            // Enter or Space runs the action.
+            activeFocusOnTab: true
+            KeyNavigation.up: rows.itemAt(row.index - 1)
+            KeyNavigation.down: rows.itemAt(row.index + 1)
+            Keys.onReturnPressed: root.chosen(row.modelData.key)
+            Keys.onSpacePressed: root.chosen(row.modelData.key)
 
             Rectangle {
                 anchors.fill: parent
@@ -77,6 +88,16 @@ ColumnLayout {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.chosen(row.modelData.key)
+            }
+
+            // Where the keyboard is.
+            Rectangle {
+                anchors.fill: parent
+                radius: height / 2
+                color: "transparent"
+                border.width: row.activeFocus ? 2 : 0
+                border.color: row.ink
+                visible: row.activeFocus
             }
         }
     }

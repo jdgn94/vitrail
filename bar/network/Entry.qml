@@ -34,12 +34,28 @@ Item {
         id: hover
     }
 
+    // Keyboard: a row that is a choice is reached with Tab and picked with
+    // Enter or Space; a row with a button leaves that to the button.
+    activeFocusOnTab: entry.action === "" && !entry.busy
+    Keys.onReturnPressed: if (entry.action === "") entry.triggered()
+    Keys.onSpacePressed: if (entry.action === "") entry.triggered()
+
     // A row without a button is a choice: the whole row picks it.
     MouseArea {
         anchors.fill: parent
         enabled: entry.action === ""
         cursorShape: Qt.PointingHandCursor
         onClicked: entry.triggered()
+    }
+
+    // Where the keyboard is.
+    Rectangle {
+        anchors.fill: parent
+        radius: VitrailTokens.radius / 2
+        color: "transparent"
+        border.width: entry.activeFocus ? 2 : 0
+        border.color: VitrailTokens.color("primary")
+        visible: entry.activeFocus
     }
 
     RowLayout {

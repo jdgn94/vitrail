@@ -104,7 +104,7 @@ The slot is filled in this order, each one when its part is being built:
 |---|---|---|
 | ✅ Session row | P1.2 | Lock, log out, reboot and power off in one compact row (`bar/session/SessionRow.qml`) |
 | ✅ Mini player | P1.4 | Art, title/artist, progress and previous/play/next: a bar button with its popout and the panel's first widget (`bar/media/`) |
-| Quick toggles | P1.6 | Wi-Fi, Bluetooth, mic, DND and VPN as a row of pills, each reading real state |
+| ✅ Quick toggles | P1.6 | Wi-Fi, Bluetooth, mic, DND and VPN as a row of pills, each reading real state |
 | ✅ Quick notes | P1.2 | Lines kept as one JSON array in `misc.ini`, newest first (`bar/notes/QuickNotes.qml`) |
 | Capture controls | P3.1, P3.2 | Screenshot (region/window/full) and record start/stop, with the recording indicator |
 
@@ -118,9 +118,9 @@ API once it exists.
 | ✅ P1.3 Clipboard history (cliphist, text and images) | P1.1 | Copy → appears in the panel → selecting it pastes |
 | ✅ P1.4 Music indicator (MPRIS): title, artist, controls | P1.1 | Controlled from the bar and from the panel's widgets slot |
 | ✅ P1.5 Wallpaper panel: grid, type, transition, random, interval, import | P0.4 | Pick an image → transition plays → palette regenerates → survives a reboot; importing a 4K GIF produces a video within budget |
-| P1.6 Quick toggles: wifi, bluetooth, mic, DND | P1.1 | Each toggle reflects real state and survives a reload; the same set is a row of the panel's widgets slot |
-| P1.7 Native launcher: apps, windows, files, calculator, inline actions | P1.1, P0.1 | Opens from `Mod+D`, keyboard-only, no external launcher installed |
-| P1.8 Keyboard navigation pass over every popup | P1.1–P1.7 | Every popup is fully operable with Tab/Space/Enter/Escape; focus never escapes the open popup |
+| ✅ P1.6 Quick toggles: wifi, bluetooth, mic, DND | P1.1 | Each toggle reflects real state and survives a reload; the same set is a row of the panel's widgets slot |
+| ✅ P1.7 Native launcher: apps, windows, files, calculator, inline actions | P1.1, P0.1 | Opens from `Mod+D`, keyboard-only, no external launcher installed |
+| ✅ P1.8 Keyboard navigation pass over every popup | P1.1–P1.7 | Every popup is fully operable with Tab/Space/Enter/Escape; focus never escapes the open popup |
 
 P1.3: `Mod+.` opens a card at the pointer (a full-screen overlay on the
 focused monitor, `vitrail-clipboard`), with a search field, text previews and

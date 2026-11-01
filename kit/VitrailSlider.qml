@@ -172,6 +172,9 @@ ColumnLayout {
             implicitHeight: root.handleHeight
             padding: 0
             enabled: !root.readOnly
+            // Keyboard: Tab reaches it; the arrows, Page Up / Down and Home /
+            // End move it (handled by the control itself).
+            activeFocusOnTab: !root.readOnly
             from: root.from
             to: root.to
             stepSize: root.stepSize
@@ -290,6 +293,16 @@ ColumnLayout {
                 visible: !root.readOnly
                 color: root.bandColor(slider.visualPosition)
             }
+        }
+
+        // Where the keyboard is.
+        Rectangle {
+            anchors.fill: parent
+            radius: height / 2
+            color: "transparent"
+            border.width: slider.activeFocus ? 2 : 0
+            border.color: root.accent
+            visible: slider.activeFocus
         }
     }
 }

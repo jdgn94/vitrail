@@ -1619,14 +1619,41 @@ ShellRoot {
                         }
 
                         // Switching to another popout restarts the idle timer: the
-                        // pointer left the old card, not the new one.
+                        // pointer left the old card, not the new one. The keyboard
+                        // follows the card (see takeKeys).
                         Connections {
                             target: shell
 
                             function onPopupKindChanged() {
                                 popupCard.entered = cardHover.hovered
                                 popupLeave.stop()
+                                popupCard.takeKeys()
                             }
+
+                            function onPopupOpenChanged() {
+                                popupCard.takeKeys()
+                            }
+                        }
+
+                        // The card holds the keyboard while its popup is up, so
+                        // Escape and Tab reach it without a click (the layer is
+                        // OnDemand: it asks for the keyboard only when something
+                        // inside has the focus). Releasing it on close lets the
+                        // window underneath take it back.
+                        function takeKeys() {
+                            if (shell.popupOpen && popupLiquid.open)
+                                popupCard.forceActiveFocus()
+                            else
+                                popupCard.focus = false
+                        }
+
+                        // Escape closes the popup; a tray app menu open beside it
+                        // closes first and leaves the tray card up.
+                        Keys.onEscapePressed: {
+                            if (shell.trayMenuItem !== null)
+                                shell.trayMenuItem = null
+                            else
+                                shell.closePopup()
                         }
 
                         // One popout per element; only the current one is loaded.

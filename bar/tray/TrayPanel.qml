@@ -28,18 +28,58 @@ GridLayout {
     rowSpacing: VitrailTokens.gap("xs")
     columnSpacing: VitrailTokens.gap("xs")
 
+    // Keyboard: the arrows move through the grid, skipping the hidden cells.
+    function move(from, delta) {
+        for (var i = from + delta; i >= 0 && i < cells.count; i += delta) {
+            var item = cells.itemAt(i)
+            if (item && item.visible) {
+                item.forceActiveFocus()
+                return
+            }
+        }
+    }
+
     Repeater {
+        id: cells
+
         model: SystemTray.items
 
         delegate: Item {
             id: cell
 
             required property var modelData
+            required property int index
 
             // A hidden cell reserves no space in the grid.
             visible: cell.modelData.status !== Status.Passive
             implicitWidth: VitrailTokens.size("title") + VitrailTokens.gap("sm")
             implicitHeight: implicitWidth
+
+            // A click or Enter: the menu for an app that only has one.
+            function activate() {
+                if (cell.modelData.onlyMenu)
+                    root.menuRequested(cell.modelData, cell)
+                else
+                    root.activated(cell.modelData)
+            }
+
+            // Keyboard: Tab reaches each icon, the arrows move through the
+            // grid, Enter or Space activates it and the menu key (or
+            // Shift+F10) opens its menu.
+            activeFocusOnTab: cell.visible
+            Keys.onReturnPressed: cell.activate()
+            Keys.onSpacePressed: cell.activate()
+            Keys.onMenuPressed: root.menuRequested(cell.modelData, cell)
+            Keys.onLeftPressed: root.move(cell.index, -1)
+            Keys.onRightPressed: root.move(cell.index, 1)
+            Keys.onUpPressed: root.move(cell.index, -root.columns)
+            Keys.onDownPressed: root.move(cell.index, root.columns)
+            Keys.onPressed: function (event) {
+                if (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier) {
+                    root.menuRequested(cell.modelData, cell)
+                    event.accepted = true
+                }
+            }
 
             Rectangle {
                 anchors.fill: parent
@@ -93,11 +133,21 @@ GridLayout {
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: Qt.PointingHandCursor
                 onClicked: function (mouse) {
-                    if (mouse.button === Qt.RightButton || cell.modelData.onlyMenu)
+                    if (mouse.button === Qt.RightButton)
                         root.menuRequested(cell.modelData, cell)
                     else
-                        root.activated(cell.modelData)
+                        cell.activate()
                 }
+            }
+
+            // Where the keyboard is.
+            Rectangle {
+                anchors.fill: parent
+                radius: height / 2
+                color: "transparent"
+                border.width: cell.activeFocus ? 2 : 0
+                border.color: VitrailTokens.color("primary")
+                visible: cell.activeFocus
             }
         }
     }

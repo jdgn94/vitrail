@@ -50,6 +50,19 @@ Rectangle {
             flick.contentX = right - flick.width
     }
 
+    // Keyboard: one stop for the group; Left / Right move the choice.
+    function step(delta) {
+        if (root.options.length === 0)
+            return
+        var index = root.currentIndex < 0 ? 0
+                                           : (root.currentIndex + delta + root.options.length) % root.options.length
+        root.selected(root.options[index].key)
+    }
+
+    activeFocusOnTab: root.enabled
+    Keys.onLeftPressed: root.step(-1)
+    Keys.onRightPressed: root.step(1)
+
     Flickable {
         id: flick
 
@@ -151,5 +164,15 @@ Rectangle {
                 }
             }
         }
+    }
+
+    // Where the keyboard is.
+    Rectangle {
+        anchors.fill: parent
+        radius: height / 2
+        color: "transparent"
+        border.width: root.activeFocus ? 2 : 0
+        border.color: root.accent
+        visible: root.activeFocus
     }
 }

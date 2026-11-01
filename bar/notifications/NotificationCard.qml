@@ -290,4 +290,20 @@ Item {
             }
         }
     }
+
+    // Keyboard: Tab reaches the card, Enter or Space runs its default action
+    // (focus the app). Its buttons stay reachable on their own.
+    activeFocusOnTab: root.defaultAction !== null && root.defaultAction !== undefined
+    Keys.onReturnPressed: if (root.defaultAction) root.defaultAction.invoke()
+    Keys.onSpacePressed: if (root.defaultAction) root.defaultAction.invoke()
+
+    // Where the keyboard is.
+    Rectangle {
+        anchors.fill: parent
+        radius: VitrailTokens.radius * 0.85
+        color: "transparent"
+        border.width: root.activeFocus ? 2 : 0
+        border.color: VitrailTokens.color("primary")
+        visible: root.activeFocus
+    }
 }

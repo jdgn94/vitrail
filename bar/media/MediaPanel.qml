@@ -324,6 +324,21 @@ Item {
             implicitWidth: chip.implicitWidth
             implicitHeight: chip.implicitHeight
 
+            // Keyboard: Tab reaches the chip, Enter or Space opens the list,
+            // Down opens it on the current player, Escape closes it.
+            activeFocusOnTab: root.players.length > 1
+            Keys.onReturnPressed: if (root.players.length > 1) selector.expanded = !selector.expanded
+            Keys.onSpacePressed: if (root.players.length > 1) selector.expanded = !selector.expanded
+            Keys.onDownPressed: {
+                if (root.players.length < 2)
+                    return
+                selector.expanded = true
+                var at = choiceList.itemAt(Math.max(0, root.index))
+                if (at)
+                    at.forceActiveFocus()
+            }
+            Keys.onEscapePressed: selector.expanded = false
+
             Rectangle {
                 id: chip
 
@@ -334,6 +349,16 @@ Item {
                 color: VitrailTokens.solid("foreground", selector.open ? selector.chipLook.open : selector.chipLook.rest)
 
                 Behavior on color { ColorAnimation { duration: VitrailTokens.duration("fast") } }
+
+                // Where the keyboard is.
+                Rectangle {
+                    anchors.fill: parent
+                    radius: height / 2
+                    color: "transparent"
+                    border.width: selector.activeFocus ? 2 : 0
+                    border.color: VitrailTokens.color("primary")
+                    visible: selector.activeFocus
+                }
 
                 Row {
                     id: chipRow
@@ -415,6 +440,8 @@ Item {
             spacing: selector.chipLook.listGap
 
             Repeater {
+                id: choiceList
+
                 model: root.players
 
                 delegate: Item {
@@ -426,6 +453,26 @@ Item {
                     Layout.fillWidth: true
                     implicitWidth: choiceRow.implicitWidth + 2 * VitrailTokens.gap("sm")
                     implicitHeight: selector.chipLook.row
+
+                    // Keyboard: Tab reaches a row, the arrows move through the
+                    // list, Enter or Space picks it, Escape goes back to the chip.
+                    activeFocusOnTab: choices.visible
+                    KeyNavigation.up: choiceList.itemAt(choice.index - 1)
+                    KeyNavigation.down: choiceList.itemAt(choice.index + 1)
+                    Keys.onReturnPressed: {
+                        root.playerChosen(choice.index)
+                        selector.expanded = false
+                        selector.forceActiveFocus()
+                    }
+                    Keys.onSpacePressed: {
+                        root.playerChosen(choice.index)
+                        selector.expanded = false
+                        selector.forceActiveFocus()
+                    }
+                    Keys.onEscapePressed: {
+                        selector.expanded = false
+                        selector.forceActiveFocus()
+                    }
 
                     Rectangle {
                         anchors.fill: parent
@@ -470,6 +517,16 @@ Item {
                             root.playerChosen(choice.index)
                             selector.expanded = false
                         }
+                    }
+
+                    // Where the keyboard is.
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: VitrailTokens.radius * selector.chipLook.rowRadius
+                        color: "transparent"
+                        border.width: choice.activeFocus ? 2 : 0
+                        border.color: VitrailTokens.color("primary")
+                        visible: choice.activeFocus
                     }
                 }
             }
