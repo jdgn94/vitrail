@@ -545,4 +545,42 @@ TestCase {
         compare(Frame.tooltipAt("top", Qt.rect(980, 0, 20, 36), 100, 30, 36, 8, 1000, 800).x, 1000 - 100 - 8)
         compare(Frame.tooltipAt("left", Qt.rect(0, 0, 36, 20), 100, 30, 36, 8, 1000, 800).y, 8)
     }
+
+    // The bar's inner face ignores panels, which grow hole, dock and reserve.
+    function test_face_is_the_bars_inner_face() {
+        compare(Frame.layout(full, docked, "left", sizes).face, 36)
+        compare(Frame.layout(full, islands, "top", sizes).face, 36)
+        compare(Frame.layout(full, floating, "right", sizes).face, 6 + 8 + 36)
+        compare(Frame.layout(full, floatingIslands, "right", sizes).face, 6 + 8 + 36)
+        compare(Frame.layout(full, null, "left", sizes).face, 6)
+        compare(Frame.layout(none, null, "left", sizes).face, 0)
+    }
+
+    function test_face_does_not_move_with_an_open_panel() {
+        var panel = { variant: { attached: true }, extent: 380, push: true }
+        var d = Frame.layout(full, docked, "left", sizes, panel)
+        compare(d.face, 36)
+        compare(d.dock.left, 36 + 380)
+        compare(d.reserve.left, 36 + 380)
+        var i = Frame.layout(full, islands, "left", sizes, panel)
+        compare(i.face, 36)
+        compare(i.dock.left, 36 + 380)
+        var f = Frame.layout(full, floating, "left", sizes, panel)
+        compare(f.face, 6 + 8 + 36)
+        compare(f.reserve.left, 6 + 8 + 36 + 380)
+    }
+
+    // A floating bar: the face is 50 from the edge, the element sits inside it.
+    function test_tooltip_past_a_floating_bar_on_every_edge() {
+        var face = 6 + 8 + 36
+        compare(Frame.tooltipAt("top", Qt.rect(500, 14, 40, 36), 100, 30, face, 8, 1000, 800), { x: 470, y: face + 8 })
+        compare(Frame.tooltipAt("bottom", Qt.rect(500, 750, 40, 36), 100, 30, face, 8, 1000, 800), { x: 470, y: 800 - face - 8 - 30 })
+        compare(Frame.tooltipAt("left", Qt.rect(14, 300, 36, 40), 100, 30, face, 8, 1000, 800), { x: face + 8, y: 305 })
+        compare(Frame.tooltipAt("right", Qt.rect(950, 300, 36, 40), 100, 30, face, 8, 1000, 800), { x: 1000 - face - 8 - 100, y: 305 })
+    }
+
+    function test_oversized_tooltip_clamps_to_the_gap() {
+        compare(Frame.tooltipAt("top", Qt.rect(500, 0, 40, 36), 1200, 30, 36, 8, 1000, 800).x, 8)
+        compare(Frame.tooltipAt("left", Qt.rect(0, 300, 36, 40), 100, 900, 36, 8, 1000, 800).y, 8)
+    }
 }

@@ -1354,7 +1354,7 @@ ShellRoot {
 
                     screen: monitor.modelData
                     edge: bar.layout.edge
-                    offset: bar.style.docked ? bar.layout.dock[bar.layout.edge] : bar.reserve[bar.layout.edge]
+                    offset: bar.layout.face
                     opacityLevel: shell.barOpacity
                 }
 

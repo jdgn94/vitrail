@@ -47,6 +47,9 @@ function layout(frame, bar, edge, sizes, panel) {
         edge: side,
         hole: hole,
         dock: dock,
+        // The bar's inner face, measured from its screen edge. Panels do not
+        // move it (unlike hole, dock and reserve), so tooltips use this.
+        face: start,
         radius: radius,
         reserve: reserve,
         bar: {

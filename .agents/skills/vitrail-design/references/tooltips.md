@@ -25,13 +25,30 @@ tooltip is not finished** (`tests/test_tooltips.py` enforces it for
   `active: false` hides at once. No input handlers.
 - `bar/TooltipLayer.qml`: ONE per monitor (not per item). Full-screen
   overlay (`vitrail-tooltip`), empty `mask` so it never takes input, visible
-  only while the pill is. `hover(item, on)` sets the target; the text is read
-  live from it; pressing the target hides it until the pointer leaves.
-  Moving to the next element keeps it up and glides.
+  only while the pill is (`visible: tip.opacity > 0`). `hover(item, on)` sets
+  the target; the text is read live from it; pressing the target hides it
+  until the pointer leaves. Moving to the next element keeps it up and glides.
 - `Frame.tooltipAt(edge, target, w, h, offset, gap, width, height)`: a gap
-  past the bar (`offset` = `layout.dock[edge]` docked, `layout.reserve[edge]`
-  floating), on the side away from the bar, centred on the element, kept a
-  gap inside the screen (`tst_frame.qml`).
+  past the bar, on the side away from the bar, centred on the element, kept a
+  gap inside the screen (`tst_frame.qml`). `offset` is `layout.face`: the
+  bar's inner face from its edge, the same docked, islands or floating.
+
+## Pitfalls
+
+- Never bind a window's `visible` to a child Item's `visible`: that is the
+  effective visibility, false while the window is hidden, so the window never
+  shows (a deadlock). Bind to something the window does not affect, like
+  `tip.opacity > 0`, which still lets the pill fade out before the window hides.
+- Map the target with its bounding rect,
+  `target.mapToItem(null, Qt.rect(0, 0, w, h))`, not its mapped corner plus
+  width / height: a rotated target (the tray chevron) maps the wrong corner.
+  The bar and the tooltip windows are full-screen layers on one screen, so
+  scene coordinates agree.
+- Place again when the pill becomes `shown` (layouts settle during the hover
+  delay) and when the target's x, y, width or height change, not only when
+  the target or the pill size changes.
+- Pass `offset = layout.face`, never `dock` or `reserve`: those grow with an
+  open panel and the pill would jump past it, far from the element.
 
 ## Contents
 

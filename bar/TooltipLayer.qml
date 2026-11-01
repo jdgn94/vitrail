@@ -32,23 +32,32 @@ PanelWindow {
             root.target = null
     }
 
+    // The bar window and this one are full-screen layers on the same screen,
+    // so the target's scene rect is also its rect here. The bounding rect
+    // (not the mapped corner) keeps rotated targets, like the tray chevron,
+    // right.
     function place() {
         if (!root.target)
             return
-        var corner = root.target.mapToItem(null, 0, 0)
-        var at = Frame.tooltipAt(root.edge, Qt.rect(corner.x, corner.y, root.target.width, root.target.height),
-                                 tip.width, tip.height, root.offset, VitrailTokens.gap("sm"),
-                                 root.width, root.height)
+        var rect = root.target.mapToItem(null, Qt.rect(0, 0, root.target.width, root.target.height))
+        var at = Frame.tooltipAt(root.edge, rect, tip.width, tip.height, root.offset,
+                                 VitrailTokens.gap("sm"), root.width, root.height)
         tip.x = at.x
         tip.y = at.y
     }
+
+    // The window is sized by the compositor once it shows.
+    onWidthChanged: root.place()
+    onHeightChanged: root.place()
 
     onTargetChanged: {
         root.dismissed = false
         root.place()
     }
 
-    visible: tip.visible
+    // Not tip.visible: that is false while this window is hidden, so the
+    // window would never show.
+    visible: tip.opacity > 0
     anchors {
         top: true
         bottom: true
@@ -60,6 +69,16 @@ PanelWindow {
     WlrLayershell.namespace: "vitrail-tooltip"
     WlrLayershell.layer: WlrLayer.Overlay
     mask: Region {}
+
+    // The element moved or resized (layouts settle after the hover starts).
+    Connections {
+        function onXChanged() { root.place() }
+        function onYChanged() { root.place() }
+        function onWidthChanged() { root.place() }
+        function onHeightChanged() { root.place() }
+
+        target: root.target
+    }
 
     // Pressing the element hides its tooltip.
     Connections {
@@ -96,6 +115,7 @@ PanelWindow {
         opacityLevel: root.opacityLevel
         onWidthChanged: root.place()
         onHeightChanged: root.place()
+        onShownChanged: if (tip.shown) root.place()
 
         // Moving to the next element glides; the first appearance does not.
         Behavior on x { enabled: tip.shown; NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
