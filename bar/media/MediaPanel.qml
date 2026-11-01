@@ -8,8 +8,8 @@ import "media.js" as Media
 
 // Now playing, in two looks:
 //
-//   disc      a round cover with a ring of marks: dots while paused, bouncing
-//             bars while it plays, when the cover turns like a record (DiscArt);
+//   disc      a vinyl record with a ring of marks: dots while paused, bouncing
+//             bars while it plays, when the record turns (DiscArt);
 //   cassette  a tape with the cover in its window and two reels that turn
 //             (CassetteArt).
 //
@@ -116,6 +116,7 @@ Item {
                 visible: root.style === "disc"
                 playing: root.playing && visible
                 cover: root.cover
+                label: root.trackLabel
             }
 
             CassetteArt {
@@ -125,6 +126,7 @@ Item {
                 visible: root.style === "cassette"
                 playing: root.playing && visible
                 cover: root.cover
+                label: root.trackLabel
             }
         }
 

@@ -92,9 +92,12 @@ Item {
                                         // page's `kit` is not the bar's.
                                         DiscArt {
                                             anchors.centerIn: parent
+                                            dark: page.palette.dark
                                             primary: page.palette.primary
+                                            accentForeground: page.palette.accentForeground
                                             foreground: page.palette.foreground
                                             surface: page.palette.surface
+                                            surfaceHigh: page.palette.surfaceHigh
                                             scale: VitrailTokens.media.preview.disc
                                             visible: tile.modelData.key === "disc"
                                         }

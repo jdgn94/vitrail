@@ -8,9 +8,8 @@ tooltip is not finished** (`tests/test_tooltips.py` enforces it for
 
 - The element declares `property string tooltip` (title, required) and
   `tooltipDetail` (second line, optional), bound to live data, plus
-  `hovered` (HoverHandler) and `pressed` (MouseArea / button alias). A
-  popout element also has `opened`: its tooltip stays quiet while its popout
-  is open.
+  `hovered` (HoverHandler). `opened` (popout elements) only paints the
+  element; the host does not read it.
 - Strings go through the element's `t("tooltip.*")` (`strings` comes from
   the shell); data that is not translatable (SSID, app title, IP) is used as is.
 - The container reports hover: `onHoveredChanged: tooltips.hover(item, hovered)`
@@ -26,8 +25,18 @@ tooltip is not finished** (`tests/test_tooltips.py` enforces it for
 - `bar/TooltipLayer.qml`: ONE per monitor (not per item). Full-screen
   overlay (`vitrail-tooltip`), empty `mask` so it never takes input, visible
   only while the pill is (`visible: tip.opacity > 0`). `hover(item, on)` sets
-  the target; the text is read live from it; pressing the target hides it
-  until the pointer leaves. Moving to the next element keeps it up and glides.
+  the target; the text is read live from it. Moving to the next element keeps
+  it up and glides.
+- Quiet rules (`TooltipLayer`): (1) `popupOpen` (shell: `popupOpen ||
+  launcherOpen || sessionOpen`, global, any monitor) means no tooltip at all,
+  it is part of the pill's `active`. (2) `dismissed` hides the tooltip of the
+  current target until the pointer leaves and comes back: it is set when
+  `popupOpen` changes in either direction while a target is hovered (a click
+  that opened or closed something) and on the target's `clicked` (a
+  `Connections` with `ignoreUnknownSignals: true`, for clicks that open
+  nothing); `onTargetChanged` clears it, and leaving sets the target to null,
+  so re-entering starts clean. Never connect to `pressed` or other
+  per-element signals: most elements lack them and Quickshell warns at startup.
 - `Frame.tooltipAt(edge, target, w, h, offset, gap, width, height)`: a gap
   past the bar, on the side away from the bar, centred on the element, kept a
   gap inside the screen (`tst_frame.qml`). `offset` is `layout.face`: the

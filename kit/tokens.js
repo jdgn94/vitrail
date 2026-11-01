@@ -137,7 +137,14 @@ var osd = {
 // mark grows while playing, `idle` / `low` the mark opacity when paused / at
 // its shortest while playing, `settle` how long the ring takes to change
 // between dots and bars, `bounce` one bounce of the bars, `turn` one revolution
-// of the record, `tint` the record's fill opacity, `hole` the spindle hole.
+// of the record, `hole` the spindle hole, `label` the label circle's diameter
+// and `labelMin` the smallest text in it. The record is `vinyl` times darker
+// than the theme's dark tone, with `grooves` (radii in px) drawn at the
+// `groove` opacity of the light tone and an `edge` outline `edgeWidth` px
+// wide. The tonearm has its pivot at `armAngle` degrees around the record,
+// `armReach` of the radius out, and its head at `headAngle` / `headReach`;
+// `arm` is its thickness, `pivot` the base's diameter, `headLength` /
+// `headWidth` the head and `armTone` its opacity.
 // cassette: every number is px of a tape 80 wide (the preview scales it).
 // progress: the wave drawn over the shell slider's filled part (the slider's
 // own size sets the thickness): `amplitude` and `wavelength`, `period` ms a wave
@@ -161,18 +168,33 @@ var media = {
         longest: 11,
         idle: 0.6,
         low: 0.4,
-        tint: 0.08,
         settle: 420,
         bounce: 1200,
         turn: 8000,
-        hole: 8
+        hole: 6,
+        label: 40,
+        labelMin: 6,
+        vinyl: 6,
+        grooves: [32, 29, 26, 23],
+        groove: 0.14,
+        edge: 0.35,
+        edgeWidth: 1,
+        armAngle: -48,
+        armReach: 0.92,
+        headAngle: 22,
+        headReach: 0.7,
+        arm: 2,
+        pivot: 6,
+        headLength: 8,
+        headWidth: 4,
+        armTone: 0.9
     },
     cassette: {
         width: 80,
         height: 52,
         radius: 5,
         deepen: 1.5,
-        cover: 0.4,
+        textMin: 5,
         edge: 0.2,
         edgeWidth: 1,
         screwTone: 0.6,

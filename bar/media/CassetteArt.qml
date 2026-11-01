@@ -5,9 +5,9 @@ import "../kit"
 import "../kit/base"
 
 // The cassette look: a tape. A dark shell with a screw in each corner, a light
-// label (a big "A", a few lines, a coloured band along its foot), a window with
-// the cover behind two reels and the tape between them, and a darker base with
-// the usual holes. The reels turn in opposite directions while it plays and
+// label (a big "A", a few lines or, when there is no cover, the track's text,
+// and a coloured band along its foot), a window with the cover behind two
+// reels and the tape between them, and a darker base with the usual holes. The reels turn in opposite directions while it plays and
 // stop where they are when it pauses. Every size is a px of an 80 px wide tape
 // (`VitrailTokens.media.cassette`); scale the item to fit elsewhere.
 Item {
@@ -15,6 +15,8 @@ Item {
 
     property bool playing: false
     property string cover: ""
+    // The track's text, shown on the label when there is no cover.
+    property string label: ""
     // How far the reels have turned, in degrees.
     property real angle: 0
 
@@ -32,6 +34,7 @@ Item {
     // one, the label the light one.
     readonly property color ink: root.dark ? root.surfaceHigh : root.foreground
     readonly property color paper: root.dark ? root.foreground : root.surface
+    readonly property bool covered: root.cover !== "" && art.status === Image.Ready
     readonly property color deep: Qt.darker(root.ink, root.look.deepen)
     readonly property color deepest: Qt.darker(root.deep, root.look.deepen)
 
@@ -131,12 +134,31 @@ Item {
             font.weight: Font.Bold
         }
 
+        // The text that stands in for a missing cover, where the lines are.
+        VitrailText {
+            x: root.look.lineX
+            y: root.look.lineY
+            width: root.look.lineWidth
+            height: 3 * root.look.lineStep
+            visible: !root.covered && root.label !== ""
+            text: root.label
+            variant: "label"
+            color: root.ink
+            opacity: 1
+            wrapMode: Text.Wrap
+            elide: Text.ElideRight
+            verticalAlignment: Text.AlignVCenter
+            fontSizeMode: Text.Fit
+            minimumPixelSize: root.look.textMin
+        }
+
         Repeater {
             model: 3
 
             delegate: Rectangle {
                 required property int index
 
+                visible: root.covered || root.label === ""
                 x: root.look.lineX
                 y: root.look.lineY + index * root.look.lineStep
                 width: index === 2 ? root.look.lineShort : root.look.lineWidth
@@ -197,8 +219,7 @@ Item {
         MultiEffect {
             anchors.fill: parent
             source: art
-            opacity: root.look.cover
-            visible: root.cover !== ""
+            visible: root.covered
             maskEnabled: true
             maskSource: windowMask
         }

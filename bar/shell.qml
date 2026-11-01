@@ -1356,6 +1356,7 @@ ShellRoot {
                     edge: bar.layout.edge
                     offset: bar.layout.face
                     opacityLevel: shell.barOpacity
+                    popupOpen: shell.popupOpen || shell.launcherOpen || shell.sessionOpen
                 }
 
                 // Volume, microphone and brightness, on the edge opposite the

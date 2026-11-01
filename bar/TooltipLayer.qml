@@ -19,11 +19,16 @@ PanelWindow {
     property string edge: "top"
     property real offset: 0
     property real opacityLevel: VitrailTokens.opacity
-    // Pressed since the pointer entered: it stays quiet until it leaves.
+    // A popup, the launcher or the session menu is open: no tooltip at all.
+    property bool popupOpen: false
+    // Clicked, or something opened or closed, since the pointer entered: the
+    // tooltip stays quiet until the pointer leaves and comes back.
     property bool dismissed: false
 
-    // The element's popout is open: the card says it all.
-    readonly property bool suppressed: root.target !== null && root.target.opened === true
+    onPopupOpenChanged: {
+        if (root.target !== null)
+            root.dismissed = true
+    }
 
     function hover(item, on) {
         if (on)
@@ -80,14 +85,13 @@ PanelWindow {
         target: root.target
     }
 
-    // Pressing the element hides its tooltip.
+    // A click that opens nothing (a toggle, an action) hides it too. Not every
+    // element has `clicked`.
     Connections {
-        function onPressedChanged() {
-            if (root.target.pressed)
-                root.dismissed = true
-        }
+        function onClicked() { root.dismissed = true }
 
         target: root.target
+        ignoreUnknownSignals: true
     }
 
     // The text stays while the pill fades out.
@@ -110,7 +114,7 @@ PanelWindow {
     VitrailTooltip {
         id: tip
 
-        active: root.target !== null && !root.dismissed && !root.suppressed
+        active: root.target !== null && !root.dismissed && !root.popupOpen
         edge: root.edge
         opacityLevel: root.opacityLevel
         onWidthChanged: root.place()

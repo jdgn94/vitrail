@@ -10,10 +10,26 @@ Each look is its own component in `bar/media/` (`DiscArt`, `CassetteArt`); the
 settings tiles draw the same components, scaled, so a preview is the look.
 Every number comes from `VitrailTokens.media` (`kit/tokens.js`, `media`).
 
-- **disc** (`DiscArt`) — the cover is a round record with a hole, inside a ring
-  of 36 marks. The ring is a function of playback state: `energy` (0 paused ..
-  1 playing, eased over `media.disc.settle`) feeds `Media.markLength` /
-  `markOpacity`.
+- **disc** (`DiscArt`) — a vinyl record inside a ring of 36 marks. The ring is
+  a function of playback state: `energy` (0 paused .. 1 playing, eased over
+  `media.disc.settle`) feeds `Media.markLength` / `markOpacity`.
+  - The record (`record` item, the only part that turns): a disc `disc.vinyl`
+    times darker than the theme's dark tone (`ink`: surfaceHigh in dark,
+    foreground in light), outlined with the light tone (`paper`) at `disc.edge`
+    so it reads on a dark card, `disc.grooves` (radii in px) as transparent
+    circles with a `disc.groove`-alpha light border, the label circle
+    (`disc.label` px) and the spindle hole.
+  - The label: `primary` fill with the cover cropped to the circle (a
+    `MultiEffect` mask; `clip` does not round). With no cover (or one that has
+    not loaded) it shows the `label` property (the panel's `trackLabel`, the
+    same text as the button's tooltip) in a `VitrailText` (`label` variant,
+    `accentForeground` ink) inside the square that fits the circle, shrunk
+    (`Text.Fit`, min `disc.labelMin`) and elided; the hole is hidden then, so
+    it does not sit under the text.
+  - The tonearm is drawn above `record`, so it never turns: a base on the edge
+    (`armAngle`, `armReach`), a thin arm and a head over the grooves
+    (`headAngle`, `headReach`), in `paper` at `armTone`. Geometry is computed
+    from the tokens in `DiscArt`.
   - Paused: `energy` 0, so every mark is the same round dot (`disc.dot` px,
     opacity `disc.idle`): a dotted border around the cover.
   - Playing: marks grow to `disc.longest` and bounce (`disc.bounce` ms per
@@ -28,7 +44,7 @@ Every number comes from `VitrailTokens.media` (`kit/tokens.js`, `media`).
   polygons, 80 px wide (`media.cassette`, px of that width). Dark shell with a
   screw in each corner; light label (big "A" in `VitrailText`, three thin lines,
   a `primary` band with a thin `info` stripe along its foot); the window is a
-  dark rounded rectangle holding the cover (tinted, `cassette.cover`), a dark
+  dark rounded rectangle holding the cover (full strength, masked to the window; with no cover the label shows the track's text in place of its three lines, `Text.Fit` down to `cassette.textMin`), a dark
   trapezoid of tape on the left thinning into a light strip, and two light reels
   with a hub and six teeth; below, a darker trapezoid base with two round holes
   and two slots. Shell and label swap with the theme (`ink` is the dark one of
@@ -36,7 +52,9 @@ Every number comes from `VitrailTokens.media` (`kit/tokens.js`, `media`).
   `Qt.darker` by `cassette.deepen`. The reels turn in opposite directions
   (`cassette.turn` ms) on a `FrameAnimation` and freeze when paused.
 
-Both take the palette roles as properties (default: `VitrailTokens`). The
+Both take `cover`, `label` and the palette roles as properties (default:
+`VitrailTokens`; the disc also takes `dark`, `accentForeground` and
+`surfaceHigh`). The
 settings window must pass its own palette: `shell/` and `bar/` reach `kit` by
 different paths, so QML gives each its own `VitrailTokens` singleton and the
 bar's is never configured there.
