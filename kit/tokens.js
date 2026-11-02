@@ -52,6 +52,10 @@ var motion = {
     dwell: 150,
     // How long typing in a menu keeps building the same search.
     typeahead: 800,
+    // How often the Connection page looks for the answer to a request, and how
+    // long it waits for one before it gives up.
+    poll: 1500,
+    patience: 90000,
     // Typing pauses this long before a search runs; a search that never
     // answers is given up after `timeout`.
     debounce: 220,

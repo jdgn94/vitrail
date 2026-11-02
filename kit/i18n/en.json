@@ -357,5 +357,20 @@
   "bar.trayStyle.popup": "Popup",
   "powerprofile.saver.detail": "Slower clocks and a dimmer screen: the battery lasts longer.",
   "powerprofile.balanced.detail": "Speed when it is needed, less power when it is not.",
-  "powerprofile.performance.detail": "Full speed: more heat and more battery used."
+  "powerprofile.performance.detail": "Full speed: more heat and more battery used.",
+  "section.connection": "Connection",
+  "connection.tab.internet": "Internet",
+  "connection.wifi.networks": "Networks around",
+  "connection.wifi.none": "No networks found",
+  "connection.wifi.help": "Joins open networks and the ones you already saved.",
+  "connection.security.open": "Open",
+  "connection.vpn.missing": "VPN module not found (hypraether-vpn)",
+  "connection.bluetooth.enabled": "Bluetooth enabled",
+  "connection.bluetooth.missing": "No Bluetooth adapter found",
+  "connection.bluetooth.scan": "Scan for devices",
+  "connection.bluetooth.scan.help": "Looks for devices nearby for a few seconds.",
+  "connection.bluetooth.paired": "Paired devices",
+  "connection.bluetooth.nearby": "Nearby devices",
+  "connection.bluetooth.none": "No paired devices",
+  "connection.battery": "Battery %1%"
 }

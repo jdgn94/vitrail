@@ -357,5 +357,20 @@
   "bar.trayStyle.popup": "Emergente",
   "powerprofile.saver.detail": "Relojes más lentos y pantalla más tenue: la batería dura más.",
   "powerprofile.balanced.detail": "Velocidad cuando hace falta, menos consumo cuando no.",
-  "powerprofile.performance.detail": "Máxima velocidad: más calor y más batería."
+  "powerprofile.performance.detail": "Máxima velocidad: más calor y más batería.",
+  "section.connection": "Conexión",
+  "connection.tab.internet": "Internet",
+  "connection.wifi.networks": "Redes cercanas",
+  "connection.wifi.none": "No se encontraron redes",
+  "connection.wifi.help": "Se une a redes abiertas y a las que ya guardaste.",
+  "connection.security.open": "Abierta",
+  "connection.vpn.missing": "Módulo VPN no encontrado (hypraether-vpn)",
+  "connection.bluetooth.enabled": "Bluetooth activado",
+  "connection.bluetooth.missing": "No se encontró ningún adaptador Bluetooth",
+  "connection.bluetooth.scan": "Buscar dispositivos",
+  "connection.bluetooth.scan.help": "Busca dispositivos cercanos durante unos segundos.",
+  "connection.bluetooth.paired": "Dispositivos vinculados",
+  "connection.bluetooth.nearby": "Dispositivos cercanos",
+  "connection.bluetooth.none": "No hay dispositivos vinculados",
+  "connection.battery": "Batería %1%"
 }

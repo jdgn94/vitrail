@@ -78,7 +78,7 @@ package to the manifest and a row here.
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
 | `grim`, `slurp` | `grim`, `slurp` | screenshots |
 | `pciutils` | `lspci` | GPU vendor detection in the installer and `vitrail doctor` |
-| `networkmanager`, `bluez-utils`, `wireplumber`, `power-profiles-daemon` | `nmcli`, `bluetoothctl`, `wpctl`, `powerprofilesctl` | the panel's quick toggles and the connection panel (networks, Bluetooth, power profile) |
+| `networkmanager`, `bluez-utils`, `wireplumber`, `power-profiles-daemon` | `nmcli`, `bluetoothctl`, `wpctl`, `powerprofilesctl` | the panel's quick toggles, the connection panel (networks, Bluetooth, power profile) and the settings window's Connection page (`vitrail.network`: Wi-Fi, Bluetooth and VPN state and requests) |
 | `awww`, `mpvpaper` | `awww`, `awww-daemon`, `mpvpaper` | still wallpapers with transitions (awww) and animated ones (mpvpaper with VA-API) |
 
 `hypraether-vpn` comes from the VPN module (`vpn/`), not from the manifest.
@@ -244,6 +244,7 @@ the window declares it in another file, or the path unit watches another set.
 | `launcher.ini` | `launcherEngine`, `launcherBangs`, `launcherModes`, `launcherView`, `launcherClear` |
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
+| `connection.ini` | `connectionRequest`, `connectionSeq` (the Connection page's request, run once per counter value) |
 | `misc.ini` | `selftest` (written by the smoke test), `quickNotes`, `clipboardColors` and any key the map does not list |
 
 A key shared by several pages (`radius`, `blurStrength`, `surfaceStyle`,
@@ -279,6 +280,18 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   Blur is a single global value and only exists in glass mode.
 - **Input:** keyboard layouts with variants and the switch shortcut; pointer
   focus behaviour.
+- **Connection:** Internet (Ethernet and Wi-Fi), VPN and Bluetooth on tabs. The
+  window cannot run commands, so `bin/vitrail-settings` injects the state
+  (`python3 -m vitrail.network state`, as `--network`), and a click writes
+  `connectionRequest` and raises `connectionSeq` in `connection.ini`.
+  `scripts/apply-settings.sh` runs `python3 -m vitrail.network apply <request>`
+  once per counter value (stamp: `~/.cache/vitrail/system/connection-seq`; it
+  logs every command to the `vitrail-settings.service` journal) and `apply`
+  rewrites `~/.config/vitrail/network-state.json`, which the page polls while
+  it waits. Requests: `wifi-on`, `wifi-off`, `wifi-connect:<ssid>`,
+  `wifi-disconnect`, `vpn-up:<id>`, `vpn-down:<id>`, `bt-on`, `bt-off`,
+  `bt-connect:<mac>`, `bt-disconnect:<mac>`, `bt-scan` and `refresh`; anything
+  else is refused. `--tab internet|vpn|bluetooth` opens a tab.
 - **Language:** `ON SAVE`, everything else is `LIVE`.
 
 `LIVE` means the value is written as soon as you change it and applied by

@@ -32,6 +32,8 @@ Window {
     readonly property var zones: Args.json("--zones", ([]))
     readonly property string systemZone: Args.value("--timezone", "")
     readonly property bool systemNtp: Args.value("--ntp", "yes") === "yes"
+    // Ethernet, Wi-Fi, VPN and Bluetooth as they were at launch.
+    readonly property var network: Args.json("--network", ({}))
     readonly property bool daytime: {
         var hour = new Date().getHours()
         return hour >= 7 && hour < 19
@@ -81,6 +83,7 @@ Window {
         { key: "input", group: "system", glyph: "keyboard", label: app.t("section.input"), badge: app.t("badge.live") },
         { key: "language", group: "system", glyph: "translate", label: app.t("section.language"), badge: app.t("badge.saved") },
         { key: "datetime", group: "system", glyph: "schedule", label: app.t("section.datetime"), badge: "" },
+        { key: "connection", group: "system", glyph: "settings_ethernet", label: app.t("section.connection"), badge: "" },
         { key: "plugins", group: "system", glyph: "extension", label: app.t("section.plugins"), badge: "" }
     ]
     readonly property var groups: ({
@@ -350,6 +353,17 @@ Window {
                                     palette: palette
                                     prefs: prefs
                                     strings: app.strings
+                                }
+
+                                ConnectionPage {
+                                    anchors.fill: parent
+                                    visible: app.category === "connection"
+                                    palette: palette
+                                    prefs: prefs
+                                    strings: app.strings
+                                    network: app.network
+                                    configDir: app.configDir
+                                    tab: Args.value("--tab", "internet")
                                 }
 
                                 PluginsPage {

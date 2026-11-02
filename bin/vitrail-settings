@@ -46,6 +46,14 @@ if command -v python3 >/dev/null 2>&1; then
     zones="$(PYTHONPATH="${HERE}/.." python3 -m vitrail.timezones index "${zone}" 2>/dev/null || printf '[]')"
 fi
 
+# The Connection page: Ethernet, Wi-Fi, VPN and Bluetooth as they are now.
+# Changes the page asks for come back through network-state.json (see
+# vitrail/network.py).
+network='{}'
+if command -v python3 >/dev/null 2>&1; then
+    network="$(PYTHONPATH="${HERE}/.." python3 -m vitrail.network state 2>/dev/null || printf '{}')"
+fi
+
 # Adaptive SVG previews read the files to fill their {{role}} placeholders.
 export QML_XHR_ALLOW_FILE_READ=1
 
@@ -57,5 +65,6 @@ exec qml6 -I "${HERE}/.." "${SHELL_DIR}/main.qml" -- \
     --zones "${zones}" \
     --timezone "${zone}" \
     --ntp "${ntp}" \
+    --network "${network}" \
     --home "${HOME}" \
     "$@"

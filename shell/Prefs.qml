@@ -73,6 +73,8 @@ QtObject {
     property alias languageSystem: languageFile.languageSystem
     property alias timezone: datetimeFile.timezone
     property alias ntp: datetimeFile.ntp
+    property alias connectionRequest: connectionFile.connectionRequest
+    property alias connectionSeq: connectionFile.connectionSeq
     property alias selftest: miscFile.selftest
     property alias quickNotes: miscFile.quickNotes
     property alias clipboardColors: miscFile.clipboardColors
@@ -220,6 +222,18 @@ QtObject {
         // "" leaves the system's zone / clock sync as they are.
         property string timezone: ""
         property string ntp: ""
+    }
+
+    property Settings connectionSettings: Settings {
+        id: connectionFile
+
+        fileName: root.directory + "/connection.ini"
+        category: "connection"
+
+        // What the Connection page asks `vitrail.network apply` to do, and a
+        // counter that grows with every ask so the same one can be repeated.
+        property string connectionRequest: ""
+        property int connectionSeq: 0
     }
 
     property Settings miscSettings: Settings {

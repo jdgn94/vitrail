@@ -123,11 +123,34 @@ Frameless, floated + centred by the Hyprland rule `vitrail-float` (class
 close. `VitrailSidebar`: collapse toggle, items grouped (`group` key → `groups` labels: look / desktop / system),
 sliding pill, icons fill when active. Content sits in a `surfaceHigh` card.
 Categories: appearance, wallpaper, colors, design | bar, windows, terminal |
-input, language, datetime, plugins. Pages: `Flickable` → `Section { icon; title }` → `VitrailSettingRow { icon;
+input, language, datetime, connection, plugins. Pages: `Flickable` → `Section { icon; title }` → `VitrailSettingRow { icon;
 label; description; <control> }`; sliders full width inside a Section. A page with
 more than one topic splits them into `VitrailTabs` subcategories
 (`property string tab`, sections `visible: page.tab === key`, scroll reset
 on tab change); single-topic pages (Colors, Language, Plugins) have none.
+
+## Pages that act on the system (ConnectionPage)
+
+`qml6` cannot run commands, so a page that changes the system asks and reads
+through files:
+
+- Read: `bin/vitrail-settings` injects a JSON state as an argument
+  (`--network`, from `vitrail/network.py`); `main.qml` parses it with
+  `Args.json` and passes it down.
+- Ask: the page writes a request string and raises an integer counter in an
+  ini (`connectionRequest` / `connectionSeq`, area `connection`);
+  `apply-settings.sh` acts once per counter value.
+- Answer: the tool rewrites a JSON file in the config folder (`updated` in
+  ms); while a request waits the page polls it with `XMLHttpRequest`
+  (`QML_XHR_ALLOW_FILE_READ=1`, timers `motion.poll` / `motion.patience`) and
+  shows whichever copy has the larger `updated`.
+- While a request is in flight every action control is disabled and the one
+  that asked shows `VitrailButton { busy }`; the refresh button asks `refresh`.
+- Rows are `VitrailSettingRow` (state icon, name, `a · b · c` description) with
+  a `tonal` `VitrailButton` (`secondary` tone when it undoes: Disconnect);
+  radios are a `VitrailSwitch` row. Tabs are a `VitrailSegmented` with icons
+  (one keyboard stop, Left / Right), then every control is Tab-reachable.
+  A missing tool shows a one-line `content` text instead of its rows.
 
 ## Popup content (bar/network/NetworkPanel.qml, VpnPanel.qml)
 

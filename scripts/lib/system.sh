@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# System-level settings applied by apply-settings.sh: time zone, NTP and the
-# system locale. Each one acts only when its value changed, and each command
+# System-level settings applied by apply-settings.sh: time zone, NTP, the
+# system locale and the Connection page's request. Each one acts only when its
+# value changed, and each command
 # that needs authorisation goes through polkit (the bar is the agent and asks
 # in its own dialog).
 #
@@ -107,4 +108,20 @@ apply_system_locale() {
         printf 'Locale: %s not applied (cancelled or refused)\n' "$wanted"
     fi
     stamp_write locale "$wanted"
+}
+
+# The Connection page's request (Wi-Fi, VPN, Bluetooth): `vitrail.network`
+# runs it. $1 is connectionRequest, $2 connectionSeq. It runs once per counter
+# value, stamped like the settings above whatever its outcome, so another
+# setting changing never repeats it. With no stamp yet (first run, or the cache
+# was cleared) the stored request runs once. A Bluetooth scan takes a few
+# seconds. The command logs what it runs: this script's output is the journal
+# of vitrail-settings.service.
+apply_connection() {
+    local request="$1" seq="$2"
+    [[ -n "$request" && "$seq" =~ ^[1-9][0-9]*$ ]] || return 0
+    stamp_differs connection-seq "$seq" || return 0
+    stamp_write connection-seq "$seq"
+    printf 'Connection: request #%s %s\n' "$seq" "$request"
+    sys env "PYTHONPATH=$(dirname -- "${BASH_SOURCE[0]}")/../.." python3 -m vitrail.network apply "$request" || true
 }

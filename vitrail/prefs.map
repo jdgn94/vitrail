@@ -80,6 +80,12 @@ language languageSystem
 datetime timezone
 datetime ntp
 
+# A request from the Connection page ("wifi-connect:<ssid>") and a counter the
+# page raises with each one; scripts/apply-settings.sh acts when the counter
+# differs from the last one it ran.
+connection connectionRequest
+connection connectionSeq
+
 misc selftest
 misc quickNotes
 misc clipboardColors

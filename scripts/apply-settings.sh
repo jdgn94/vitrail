@@ -213,6 +213,11 @@ vitrail_cli wallpaper sync || true
 vitrail_cli wallpaper apply || true
 vitrail_cli theme apply --mode "$system_mode" || true
 
+# --- connection --------------------------------------------------------------
+# The Connection page's request, run once per counter value (see
+# apply_connection in lib/system.sh), before the system settings below.
+apply_connection "$(read_ini connectionRequest '')" "$(read_ini connectionSeq 0)"
+
 # --- system -----------------------------------------------------------------
 # Last, because each of these may wait for a password: the live settings above
 # are already applied. Every one acts only when its value changed.
