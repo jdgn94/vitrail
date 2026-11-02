@@ -39,11 +39,23 @@ Item {
         onClicked: root.dismissed()
     }
 
+    // The content is heavy (the app scan, the categories, the pages). Built the
+    // first time the launcher opens, it took over two seconds to show; built
+    // while the bar settles, the first open is instant. It costs one build per
+    // bar start, off screen and after the bar is up.
+    property bool warmed: false
+
+    Timer {
+        interval: 1500
+        running: true
+        onTriggered: root.warmed = true
+    }
+
     Loader {
         id: loader
 
         anchors.fill: parent
-        active: root.open || root.opacity > 0
+        active: root.warmed || root.open || root.opacity > 0
         scale: root.open ? 1 : VitrailTokens.motion.smooth.scale
 
         Behavior on scale { NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutCubic } }
