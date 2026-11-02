@@ -76,6 +76,10 @@ layer contract.
   (a popout's card sizes from the root's implicit size). A hidden item
   (`visible: false`, e.g. the `IconImage` under a `MultiEffect`) is skipped by
   layouts and gets no size: put it in an `Item` cell and anchor the effect to it.
+- A QML function named like a JS global (`escape`) fails to load ("Illegal
+  method name") and `qmllint` stays quiet: the smoke test's window load is
+  what catches it. Settings drill-in views, inline confirmations and secrets:
+  `references/components.md`.
 - Variant colour roles must exist in `VitrailPalette` (`accentForeground`,
   not `onPrimary`).
 

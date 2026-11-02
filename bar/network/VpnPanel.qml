@@ -14,10 +14,6 @@ Item {
     property var strings: ({})
 
     property var connections: []
-    // The Connection page's VPN document: which connections the active user
-    // may raise.
-    property string settings: ""
-    readonly property var offered: Vpn.available(root.connections, root.settings)
     // VPN id being connected or disconnected, until the list catches up.
     property string pending: ""
     readonly property var activeVpn: Vpn.active(root.connections)
@@ -108,10 +104,10 @@ Item {
             spacing: VitrailTokens.gap("xs")
 
             Scroller {
-                visible: root.offered.length > 0
+                visible: root.connections.length > 0
 
                 Repeater {
-                    model: root.offered
+                    model: root.connections
 
                     delegate: Entry {
                         id: connection
@@ -139,7 +135,7 @@ Item {
             VitrailText {
                 Layout.fillWidth: true
                 Layout.leftMargin: VitrailTokens.gap("sm")
-                visible: root.offered.length === 0
+                visible: root.connections.length === 0
                 variant: "content"
                 text: root.t("network.vpnEmpty")
             }

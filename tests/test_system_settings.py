@@ -210,6 +210,12 @@ class StampTests(Sandbox):
         self.run_lib("stamp_write locale es_ES.UTF-8", dry="1")
         self.assertFalse((self.dir / "cache").exists())
 
+    def test_the_journal_names_the_verb_of_a_request_and_nothing_else(self) -> None:
+        request = '"vpn-cred-add:{\\"name\\":\\"work\\",\\"user\\":\\"very-secret-user\\"}"'
+        done = self.run_lib(f"apply_connection '{request}' 7", dry="1")
+        # The first line is the journal's; a dry run prints the command after it.
+        self.assertEqual(done.stdout.splitlines()[0], "Connection: request #7 vpn-cred-add")
+
 
 class LocaleHelperTests(Sandbox):
     """The helper with its three system paths pointed at a sandbox."""

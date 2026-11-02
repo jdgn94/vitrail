@@ -53,9 +53,15 @@ var motion = {
     // How long typing in a menu keeps building the same search.
     typeahead: 800,
     // How often the Connection page looks for the answer to a request, and how
-    // long it waits for one before it gives up.
+    // long it waits for one before it gives up. `probe` is how often the VPN
+    // tab measures its connections while it is open and `probeWait` how long a
+    // request made meanwhile waits for it; `settle` how long a
+    // password file gets to reach the disk before the request that names it.
     poll: 1500,
     patience: 90000,
+    probe: 60000,
+    probeWait: 20000,
+    settle: 150,
     // Typing pauses this long before a search runs; a search that never
     // answers is given up after `timeout`.
     debounce: 220,

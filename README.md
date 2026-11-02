@@ -82,6 +82,11 @@ package to the manifest and a row here.
 | `awww`, `mpvpaper` | `awww`, `awww-daemon`, `mpvpaper` | still wallpapers with transitions (awww) and animated ones (mpvpaper with VA-API) |
 
 `hypraether-vpn` comes from the VPN module (`vpn/`), not from the manifest.
+`ping` (iputils, in the Arch `base` group, so not in the manifest) measures the
+latency of each VPN connection for the VPN tab and for the automatic choice of
+the best one. `xdg-desktop-portal-gtk` (in `packages/base.txt`) or any other
+FileChooser backend of your portal config serves the settings window's file
+dialog.
 
 ## VPN
 
@@ -245,7 +250,7 @@ the window declares it in another file, or the path unit watches another set.
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
 | `connection.ini` | `connectionRequest`, `connectionSeq` (the Connection page's request, run once per counter value) |
-| `misc.ini` | `selftest` (written by the smoke test), `quickNotes`, `clipboardColors`, `vpnSettings` (the Connection page's VPN document, one JSON text) and any key the map does not list |
+| `misc.ini` | `selftest` (written by the smoke test), `quickNotes`, `clipboardColors`, `vpnSettings` (the VPN tab's one Vitrail-only document: which connections the automatic choice may use) and any key the map does not list |
 
 A key shared by several pages (`radius`, `blurStrength`, `surfaceStyle`,
 `surfaceOpacity`) lives with the page that owns it, Appearance. To add a
@@ -285,27 +290,71 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   (`python3 -m vitrail.network state`, as `--network`), and a click writes
   `connectionRequest` and raises `connectionSeq` in `connection.ini`.
   `scripts/apply-settings.sh` runs `python3 -m vitrail.network apply <request>`
-  once per counter value (stamp: `~/.cache/vitrail/system/connection-seq`; it
-  logs every command to the `vitrail-settings.service` journal) and `apply`
-  rewrites `~/.config/vitrail/network-state.json`, which the page polls while
-  it waits. Requests: `wifi-on`, `wifi-off`, `wifi-connect:<ssid>`,
-  `wifi-disconnect`, `vpn-up:<id>`, `vpn-down:<id>`, `bt-on`, `bt-off`,
-  `vpn-resolve:<url>`, `bt-connect:<mac>`, `bt-disconnect:<mac>`, `bt-scan`
-  and `refresh`; anything else is refused. `--tab internet|vpn|bluetooth` opens
-  a tab.
-  The VPN tab keeps users (Vitrail profiles, not system accounts), which
-  connections each may use, a mode (`split` / `full`) and a host rule per
-  connection, and extra connections (stored only) in one JSON document,
-  `vpnSettings` in `misc.ini`; the page is its only writer. Adding a URL to a
-  rule sends `vpn-resolve:<url>`: `vitrail.network` resolves its A / AAAA records
-  and finds subdomains of its domain in certificate transparency (crt.sh),
-  and leaves them under `resolved` in `network-state.json` for the page to file
-  (offline, the host is kept empty with a Retry button). `vpn-up:<id>` reads the
-  document (read-only) and, before `hypraether-vpn connect`, runs
-  `hypraether-vpn mode <mode>` and, in split mode, `domain add` for each stored
-  domain the tool does not list yet. The bar's VPN popup offers the active
-  user only the connections assigned to them (or to nobody). The tool has no
-  kill-switch, DNS or auto-connect flags, so the page has no controls for them.
+  once per counter value (stamp: `~/.cache/vitrail/system/connection-seq`; the
+  journal of `vitrail-settings.service` gets the verb, the credential's name
+  and the commands without secrets) and `apply` rewrites
+  `~/.config/vitrail/network-state.json`, which the page polls while it waits
+  (its `result` says which verb it answers and whether it failed).
+  `--tab internet|vpn|bluetooth` opens a tab; `--view global|<connection id>`
+  opens a VPN view.
+
+  The VPN tab shows **hypraether-vpn's own model**, never a parallel list. The
+  state's `vpn` has `tunnels` (id, name, provider, region, credential,
+  config_path, active), `credentials` (name, username, usedBy; no password),
+  `mode` (`split`/`full`), `domains` (domain, address count), `enabled` (the
+  tool's `~/.config/hypraether/vpn/enabled` marker), `quality` (`{id: {latency,
+  loss}}` from the last probe; `state` never pings). Three views: the
+  connections (a `tune` button at the left of each row opens its settings, the
+  ping of the one that is up sits left of Connect / Disconnect, and a "VPN
+  settings" button closes the section), the global settings (traffic mode,
+  connect at startup, the URL list grouped by registrable domain, credentials,
+  import) and one connection's settings (name, provider, region and config path
+  read-only; credential; "Use for the automatic choice"; remove).
+  Requests: `wifi-on`, `wifi-off`, `wifi-connect:<ssid>`, `wifi-disconnect`,
+  `bt-on`, `bt-off`, `bt-connect:<mac>`, `bt-disconnect:<mac>`, `bt-scan`,
+  `refresh`, and for the VPN `vpn-up:<id>`, `vpn-down:<id>`, `vpn-off`
+  (disconnect), `vpn-best` (probe, then connect the best), `vpn-probe`,
+  `vpn-mode:split|full`, `vpn-domain-add:<url>`, `vpn-domain-remove:<domain>`,
+  `vpn-domain-refresh`, `vpn-remove:<id>`, `vpn-cred-remove:<name>` and the
+  JSON ones `vpn-import:{file,name?,credential?}`,
+  `vpn-cred-add:{name,user,nonce}`, `vpn-cred-update:{name,rename?,user?,nonce?}`
+  and `vpn-cred-assign:{name,ids}`; anything else is refused, every argument is
+  validated and reaches the tool as one argv item. The VPN tab sends
+  `vpn-probe` when it opens and every minute while it is open; it is a
+  background request (`shell/vpnqueue.js`): the page stays operable while it
+  runs, a tick is skipped while a real request is busy or pending, and a
+  request made during a probe waits as the one pending request and goes out
+  when the probe's answer (or its 20 s timeout) lands.
+  `vpn-domain-add:<url>` adds the host and the live subdomains that
+  certificate transparency (crt.sh) lists for its registrable domain (at most
+  50) with `domain add` each. The marker is the "Connect at startup" switch:
+  on runs `vpn-best`, off runs `vpn-off`, and Connect / Disconnect on any row
+  moves it through the tool; Vitrail keeps no copy.
+
+  The automatic choice is hypraether's rule: of the connections with a
+  credential (all if none has one) the measured one with the lowest latency
+  (mean of the average round trips of up to three `remote` hosts of its
+  config, `env LANG=C ping -c 3 -W 1`, side by side), packet loss breaking a
+  tie; nothing measured, the first. Vitrail adds one filter: a connection
+  switched off under "Use for the automatic choice" (`vpnSettings` in
+  `misc.ini`, `{"connections": {"<id>": {"auto": false}}}`) is left out unless
+  that leaves nothing. At login the bar runs `python3 -m vitrail.network
+  autostart` once per graphical session (a stamp under `$XDG_RUNTIME_DIR`,
+  keyed by the compositor instance, so restarting the bar never undoes a
+  disconnect): the marker with nothing up and a credential connects the best
+  (waiting up to 30 s for NetworkManager when nothing could be measured), a
+  tunnel up without the marker records the marker, otherwise nothing happens.
+
+  Passwords never travel in `connection.ini`, `misc.ini`, the state, an
+  argument or a log. The page writes the password with `Qt.labs.settings` to
+  `$XDG_RUNTIME_DIR/vitrail-secret-<nonce>.ini` (a private tmpfs;
+  `bin/vitrail-settings` passes it as `--runtime`) and the request carries only
+  the random nonce; the helper reads it, gives the tool a private copy
+  (`--pass-file`, mode 0600) and deletes both files whatever happens, and
+  files older than five minutes are swept at every request. The file dialog of
+  the import form is `QtQuick.Dialogs.FileDialog`; `bin/vitrail-settings`
+  sets `QT_QPA_PLATFORMTHEME=xdgdesktopportal` for the window so it reaches the
+  desktop's portal (under `qt6ct` Qt draws a plain dialog of its own).
 - **Language:** `ON SAVE`, everything else is `LIVE`.
 
 `LIVE` means the value is written as soon as you change it and applied by

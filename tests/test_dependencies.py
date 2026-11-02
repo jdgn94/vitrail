@@ -26,6 +26,8 @@ SYSTEM = {
     "basename", "kill", "pkill", "sleep", "date", "ln", "readlink", "mktemp", "sort", "head", "tail", "tr", "cut",
     "wc", "find", "grep", "sed", "awk", "paste", "test", "sudo", "git", "uname", "id", "true", "false", "timedatectl",
     "localectl", "sleep", "pwd", "rfkill",
+    # iputils is in the Arch `base` group: the VPN page's latency probe.
+    "ping",
 }
 
 # Programs that are not packaged by Vitrail, with the reason.

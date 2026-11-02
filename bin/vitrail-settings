@@ -57,6 +57,13 @@ fi
 # Adaptive SVG previews read the files to fill their {{role}} placeholders.
 export QML_XHR_ALLOW_FILE_READ=1
 
+# The VPN page opens a file dialog for a .ovpn. Under `qt6ct` Qt draws its own
+# plain dialog (QtQuick.Dialogs falls back to it); the xdg-desktop-portal
+# platform theme sends it to the desktop's file chooser (the portal backend of
+# hyprland-portals.conf) instead. Scoped to this window: the rest of the
+# session keeps its platform theme.
+export QT_QPA_PLATFORMTHEME=xdgdesktopportal
+
 exec qml6 -I "${HERE}/.." "${SHELL_DIR}/main.qml" -- \
     --config "${CONFIG}" \
     --palette "${palette}" \
@@ -67,4 +74,5 @@ exec qml6 -I "${HERE}/.." "${SHELL_DIR}/main.qml" -- \
     --ntp "${ntp}" \
     --network "${network}" \
     --home "${HOME}" \
+    --runtime "${XDG_RUNTIME_DIR:-}" \
     "$@"

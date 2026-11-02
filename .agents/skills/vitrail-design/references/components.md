@@ -164,7 +164,10 @@ through files:
   ms); while a request waits the page polls it with `XMLHttpRequest`
   (`QML_XHR_ALLOW_FILE_READ=1`, timers `motion.poll` / `motion.patience`) and
   shows whichever copy has the larger `updated`.
-- While a request is in flight every action control is disabled and the one
+- A background request (the VPN tab's `vpn-probe`) never busies the page: the
+  one channel is shared through `shell/vpnqueue.js` (a click during a probe is
+  the one pending request and goes out when the probe answers).
+- While a real request is in flight every action control is disabled and the one
   that asked shows `VitrailButton { busy }`; the refresh button asks `refresh`.
 - Rows are `VitrailSettingRow` (state icon, name, `a · b · c` description) with
   a `tonal` `VitrailButton` (`secondary` tone when it undoes: Disconnect);
@@ -173,24 +176,53 @@ through files:
   after it are Tab-reachable.
   A missing tool shows a one-line `content` text instead of its rows.
 
-### Per-row editors and document pages (ConnectionPage, VPN tab)
+### Drill-in views inside a tab (ConnectionPage, VPN tab)
 
-- A page that edits a structured document keeps it as one JSON string pref
-  (`vpnSettings`) and derives `readonly property var doc` from it; every change
-  goes through the pure helpers in `shell/vpnsettings.js` (copy in, copy out,
-  `null` = nothing changed) and `page.save(next)`. The page is the only writer.
-- A list row with its own settings gets a `plain` `tune` button next to its
-  action that opens an indented editor under it (`page.openTunnel`, one open at
-  a time). Pick-many is a `Flow` of `VitrailButton` chips (`tonal` + `check`
-  when chosen, `outlined` secondary when not); pick-one is `VitrailSegmented`.
-- Removable items (domains, addresses) are small `tonal` chips with a `close`
-  icon; the row shows only a count until its chevron opens them.
-- A value waiting on the helper shows `hourglass_top` and a status line; a
-  result that came back incomplete shows `sync_problem` and a `tonal` Retry.
-- A field that rejects its input sets `error`, `errorText` and calls `shake()`;
-  `onTextChanged` clears it.
-- Anything stored by the window goes through QSettings, which quotes and
-  escapes JSON; `vitrail/prefs.py` and `bar/prefs.js` unquote on read.
+- A tab that needs more than a list swaps its content for a **view** instead of
+  opening a dialog: `page.vpnView` is `list`, `global` or `connection`
+  (`page.vpnId`), each view its own file (`VpnList`, `VpnGlobal`,
+  `VpnConnection`) that takes the page as `property var page` and calls
+  `page.ask`, `page.t`, `page.back()`. Deep link: `--view`.
+- The row that opens a view carries a `plain` `tune` button at its LEFT; the
+  button to the section's global view is a `tonal` `settings` button at the END
+  of the section. A view starts with a `plain` `arrow_back` and a `title`;
+  its blocks are `Section`s. Escape closes the innermost open thing (an inline
+  form, a confirmation) and then leaves the view: the view root takes the
+  focus when it opens, and every field forwards `onEscaped` to the same
+  `dismiss()` (a QML function cannot be called `escape`).
+- Anything that cannot be undone asks inline with `ConfirmRow` (message,
+  `outlined` cancel with the focus, `flat` error action; Escape cancels).
+  Removing a credential or a connection uses it; there is no modal.
+- An item with settings of its own expands an indented form under its row
+  (`page.editing`, one open at a time): fields, then a right-aligned Cancel
+  and Save. Enter in a field saves; a field that rejects its input sets
+  `error`, `errorText` and calls `shake()`; `onTextChanged` clears it.
+- Lists that sit next to forms (`page.tunnels`, `credentials`, `domains`) are
+  replaced only when their JSON changes (`page.adopt()`), so a state that says
+  the same (the periodic probe) never rebuilds a Repeater and wipes what is
+  being typed.
+- Grouped lists are computed from the flat list each time (`shell/vpnview.js`
+  `groupDomains`, same registrable-domain heuristic as `vitrail/network.py`);
+  nothing derived is stored. A group row shows counts and a chevron; its
+  names open under it, each with a `text` `error` `delete` button.
+- Secrets: a `type: "password"` field masks input as shapes with an eye; its
+  text goes to `page.sendSecret`, which hands it to `SecretFile`
+  (`Qt.labs.settings` at `$XDG_RUNTIME_DIR/vitrail-secret-<nonce>.ini`) and
+  sends a request that names only the nonce; the field is cleared at once and
+  a request that carried a user name is erased from `connection.ini` once it
+  is answered.
+- File choosers use `QtQuick.Dialogs.FileDialog` next to a typed-path field
+  (`bin/vitrail-settings` sets `QT_QPA_PLATFORMTHEME=xdgdesktopportal` so the
+  dialog is the portal's, not Qt's plain one).
+- Vitrail-only data lives in one JSON pref edited by the pure helpers of
+  `shell/vpnsettings.js` (copy in, copy out, `null` = nothing changed); the
+  rest is read from the tool it belongs to, never copied.
+- A VPN failure shows one `content` line in the error colour above the view
+  (`result` of the state); the journal has the details.
+- Anything stored by the window goes through QSettings, which escapes
+  quotes and backslashes even in values it does not wrap (a one-entry JSON
+  has no comma, so it is unquoted but escaped); `vitrail/prefs.py`,
+  `bar/prefs.js` and `network.qt_value` decode on read.
 
 ## Popup content (bar/network/NetworkPanel.qml, VpnPanel.qml)
 

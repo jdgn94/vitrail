@@ -537,6 +537,17 @@ ShellRoot {
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
     }
 
+    // The VPN's login rule (hypraether's): once per graphical session the
+    // helper reads the `enabled` marker of hypraether-vpn and brings the best
+    // connection up, or records a tunnel that is already up. A stamp under
+    // $XDG_RUNTIME_DIR makes a restart of the bar do nothing, so it never
+    // undoes a disconnect. It may wait for the network (bounded).
+    Process {
+        running: true
+        command: ["python3", "-m", "vitrail.network", "autostart"]
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
     // The bar reads the preference files with its own parser, so the CLI is
     // what writes them. Writes go one at a time; a newer value for the same
     // key waits its turn.
@@ -2012,7 +2023,6 @@ ShellRoot {
 
                     VpnPanel {
                         strings: shell.strings
-                        settings: shell.prefs.vpnSettings || ""
                     }
                 }
 

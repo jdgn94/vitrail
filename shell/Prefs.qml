@@ -245,9 +245,9 @@ QtObject {
 
         // The quick-notes widget: one note per line, newest first.
         property string quickNotes: ""
-        // The Connection page's VPN document (users, assignments, extra
-        // connections) as one JSON object. QSettings stores it quoted and
-        // escaped; the Python and bar readers unquote it.
+        // The VPN tab's one Vitrail-only document, as a JSON object:
+        // which connections the automatic choice may use. QSettings stores it
+        // quoted and escaped; the Python and bar readers unquote it.
         property string vpnSettings: ""
         // The colour tab's last ten colours, as a JSON array of hex values.
         property string clipboardColors: ""

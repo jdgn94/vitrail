@@ -116,12 +116,15 @@ apply_system_locale() {
 # setting changing never repeats it. With no stamp yet (first run, or the cache
 # was cleared) the stored request runs once. A Bluetooth scan takes a few
 # seconds. The command logs what it runs: this script's output is the journal
-# of vitrail-settings.service.
+# of vitrail-settings.service. Only the verb is printed here: a credential
+# request carries a user name in its argument.
 apply_connection() {
-    local request="$1" seq="$2"
+    local request="$1" seq="$2" verb
     [[ -n "$request" && "$seq" =~ ^[1-9][0-9]*$ ]] || return 0
     stamp_differs connection-seq "$seq" || return 0
     stamp_write connection-seq "$seq"
-    printf 'Connection: request #%s %s\n' "$seq" "$request"
+    # QSettings wraps a request that has commas in quotes.
+    verb="${request#\"}"
+    printf 'Connection: request #%s %s\n' "$seq" "${verb%%:*}"
     sys env "PYTHONPATH=$(dirname -- "${BASH_SOURCE[0]}")/../.." python3 -m vitrail.network apply "$request" || true
 }
