@@ -40,3 +40,20 @@ layout. `kit/base/VitrailButton.qml` is the reference.
 
 Nothing decorative takes focus. A popup's first Tab stop is the list or the
 first control, never a dead card.
+
+## Full-screen overlays (launcher, session)
+
+- Bind `WlrLayershell.keyboardFocus` (Exclusive) to the window's `visible`, not
+  to the delayed `shown` / `open`; otherwise the compositor never hands it the
+  keyboard.
+- Focus given in `Component.onCompleted` (the launcher's `field.forceActiveFocus()`,
+  the session's `focusMenu()` on `open`) survives until the window activates: Qt
+  restores it as the active focus item. No callLater / Timer re-focus needed
+  (measured: the field had `activeFocus` and was `Window.activeFocusItem` when
+  `Window.active` turned true).
+- Known limit: the first open after the bar starts can take about 2 s to map the
+  layer; keys typed before that go to the previously focused window. That is
+  first-frame latency, not focus.
+- Testing: `wtype -M shift -k Tab` sends `Key_Tab` with Shift, not `Key_Backtab`
+  (a real keyboard sends ISO_Left_Tab). Test backwards Tab with
+  `wtype -k ISO_Left_Tab`.
