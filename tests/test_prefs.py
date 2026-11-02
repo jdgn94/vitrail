@@ -63,6 +63,16 @@ class ReadWriteTests(Base):
         prefs.write_pref(self.config, "quickNotes", '["uno","dos"]')
         self.assertEqual(prefs.read_prefs(self.config)["quickNotes"], '["uno","dos"]')
 
+    def test_a_value_the_settings_window_quoted_is_read_back_whole(self) -> None:
+        self.config.mkdir(parents=True)
+        (self.config / "misc.ini").write_text(
+            '[misc]\nvpnSettings="{\\"a\\":[1,2],\\"b\\":\\"x\\\\y\\"}"\nquickNotes=["uno","dos"]\nplain=a"b"\n',
+            encoding="utf-8")
+        found = prefs.read_prefs(self.config)
+        self.assertEqual(found["vpnSettings"], '{"a":[1,2],"b":"x\\y"}')
+        self.assertEqual(found["quickNotes"], '["uno","dos"]')
+        self.assertEqual(found["plain"], 'a"b"')
+
     def test_a_write_replaces_in_place_and_keeps_the_rest(self) -> None:
         self.config.mkdir(parents=True)
         (self.config / "appearance.ini").write_text(

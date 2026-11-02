@@ -77,6 +77,7 @@ QtObject {
     property alias connectionSeq: connectionFile.connectionSeq
     property alias selftest: miscFile.selftest
     property alias quickNotes: miscFile.quickNotes
+    property alias vpnSettings: miscFile.vpnSettings
     property alias clipboardColors: miscFile.clipboardColors
 
     property Settings appearanceSettings: Settings {
@@ -244,6 +245,10 @@ QtObject {
 
         // The quick-notes widget: one note per line, newest first.
         property string quickNotes: ""
+        // The Connection page's VPN document (users, assignments, extra
+        // connections) as one JSON object. QSettings stores it quoted and
+        // escaped; the Python and bar readers unquote it.
+        property string vpnSettings: ""
         // The colour tab's last ten colours, as a JSON array of hex values.
         property string clipboardColors: ""
         // Written by the smoke test, never by the UI.

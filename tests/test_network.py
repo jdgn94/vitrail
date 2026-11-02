@@ -240,5 +240,179 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(self.run_apply("refresh", {})[1], [])
 
 
+SETTINGS = {
+    "users": [{"id": "juan", "name": "Juan", "note": ""}],
+    "active": "juan",
+    "assignments": [{
+        "vpn": "us-1", "users": ["juan"], "mode": "split",
+        "hosts": [
+            {"url": "https://example.com", "ips": ["93.184.216.34"], "domains": ["example.com", "www.example.com"]},
+            {"url": "https://offline.test", "ips": [], "domains": [], "retry": True},
+        ],
+    }, {"vpn": "us-2", "users": ["juan"], "mode": "full", "hosts": []}],
+}
+DOMAIN_LIST = json.dumps([{"domain": "example.com", "ips": ["93.184.216.34"]}])
+ADDRESSES = {
+    "example.com": ["93.184.216.34", "2606:2800::1"],
+    "www.example.com": ["93.184.216.34"],
+    "mail.example.com": ["93.184.216.35"],
+}
+
+
+def lookup(host: str) -> list[str]:
+    return list(ADDRESSES.get(host, []))
+
+
+def transparency(domain: str) -> list[str]:
+    return ["example.com\n*.example.com", "WWW.example.com", "mail.example.com", "gone.example.com",
+            "example.org", "evil-example.com", "a.b.example.com"] if domain == "example.com" else []
+
+
+def offline(_name: str) -> list[str]:
+    raise OSError("network is unreachable")
+
+
+class TargetTests(unittest.TestCase):
+    def test_a_url_or_a_bare_host_gives_its_host(self) -> None:
+        self.assertEqual(network.host_of("https://Example.com/a/b?q=1"), "example.com")
+        self.assertEqual(network.host_of("http://example.com:8080"), "example.com")
+        self.assertEqual(network.host_of("sub.example.co.uk"), "sub.example.co.uk")
+
+    def test_anything_else_is_not_a_host(self) -> None:
+        for text in ("", "-example.com", "--help", "ftp://example.com", "https://", "example", "a b.com",
+                     "exa;mple.com", "https://user@example.com", "https://exa mple.com", "$(id).com",
+                     "a" * 64 + ".com", ("a." * 130) + "com", "https://example.com/" + "x" * 2100,
+                     "example.com\n", "-.com", "a..com", "https://127.0.0.1"):
+            with self.subTest(text=text):
+                self.assertIsNone(network.host_of(text))
+
+    def test_the_registrable_domain_is_a_heuristic(self) -> None:
+        self.assertEqual(network.registrable("www.example.com"), "example.com")
+        self.assertEqual(network.registrable("example.com"), "example.com")
+        self.assertEqual(network.registrable("a.b.example.co.uk"), "example.co.uk")
+        self.assertEqual(network.registrable("www.example.com.br"), "example.com.br")
+        self.assertEqual(network.registrable("www.example.org"), "example.org")
+
+
+class ResolveTests(unittest.TestCase):
+    def test_addresses_and_subdomains_are_merged_and_sorted(self) -> None:
+        found = network.resolve_url("https://www.example.com/x", lookup, transparency)
+        self.assertEqual(found["domains"], ["example.com", "mail.example.com", "www.example.com"])
+        self.assertEqual(found["ips"], ["2606:2800::1", "93.184.216.34", "93.184.216.35"])
+        self.assertNotIn("retry", found)
+
+    def test_names_outside_the_domain_and_wildcards_and_dead_names_are_dropped(self) -> None:
+        found = network.resolve_url("example.com", lookup, transparency)
+        for name in ("example.org", "evil-example.com", "gone.example.com", "*.example.com", "a.b.example.com"):
+            self.assertNotIn(name, found["domains"])
+
+    def test_the_list_is_capped(self) -> None:
+        many = {f"h{n}.example.com": [f"10.0.0.{n % 250}"] for n in range(200)}
+        found = network.resolve_url(
+            "example.com", lambda host: many.get(host, ["1.1.1.1"] if host == "example.com" else []),
+            lambda _domain: list(many))
+        self.assertEqual(len(found["domains"]), network.MAX_DOMAINS + 1)
+        self.assertIn("example.com", found["domains"])
+
+    def test_offline_keeps_empty_lists_and_asks_for_a_retry(self) -> None:
+        found = network.resolve_url("https://example.com", lambda _host: [], offline)
+        self.assertEqual(found, {"ips": [], "domains": [], "retry": True})
+
+    def test_a_failing_directory_keeps_what_the_host_gave_and_asks_for_a_retry(self) -> None:
+        found = network.resolve_url("https://example.com", lookup, offline)
+        self.assertEqual(found["domains"], ["example.com"])
+        self.assertEqual(found["ips"], ["2606:2800::1", "93.184.216.34"])
+        self.assertTrue(found["retry"])
+
+    def test_the_directory_answer_is_read_from_crt_sh_json(self) -> None:
+        body = json.dumps([{"name_value": "a.example.com\nb.example.com"}, {"name_value": "c.example.com"}, {}])
+        self.assertEqual(network.parse_transparency(body), ["a.example.com\nb.example.com", "c.example.com"])
+        self.assertEqual(network.parse_transparency("not json"), [])
+
+
+class SettingsTests(unittest.TestCase):
+    def test_the_document_is_read_through_the_preference_files(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertEqual(network.vpn_settings(Path(folder)), {})
+            (Path(folder) / "misc.ini").write_text("[misc]\nvpnSettings=not json\n", encoding="utf-8")
+            self.assertEqual(network.vpn_settings(Path(folder)), {})
+            (Path(folder) / "misc.ini").write_text(
+                "[misc]\nvpnSettings=" + json.dumps(json.dumps(SETTINGS)) + "\n", encoding="utf-8")
+            self.assertEqual(network.vpn_settings(Path(folder)), SETTINGS)
+
+    def test_a_split_tunnel_adds_its_new_domains_after_the_mode(self) -> None:
+        self.assertEqual(network.vpn_prelude("us-1", SETTINGS, {"example.com"}), [
+            ["hypraether-vpn", "mode", "split"],
+            ["hypraether-vpn", "domain", "add", "www.example.com"],
+            ["hypraether-vpn", "domain", "add", "offline.test"],
+        ])
+
+    def test_full_mode_only_switches_the_mode(self) -> None:
+        self.assertEqual(network.vpn_prelude("us-2", SETTINGS, set()), [["hypraether-vpn", "mode", "full"]])
+
+    def test_a_tunnel_without_an_assignment_changes_nothing(self) -> None:
+        self.assertEqual(network.vpn_prelude("us-9", SETTINGS, set()), [])
+        self.assertEqual(network.vpn_prelude("us-1", {}, set()), [])
+
+    def test_every_argv_item_is_validated(self) -> None:
+        bad = {"assignments": [{"vpn": "us-1", "mode": "evil", "hosts": [
+            {"url": "x", "domains": ["--help", "a b.com", "ok.example.com", "ok.example.com", "$(id).com", 7]}]}]}
+        self.assertEqual(network.vpn_prelude("us-1", bad, set()), [
+            ["hypraether-vpn", "mode", "split"],
+            ["hypraether-vpn", "domain", "add", "ok.example.com"],
+        ])
+        self.assertEqual(network.vpn_prelude("us-1", {"assignments": "x"}, set()), [])
+
+
+class VpnRequestTests(unittest.TestCase):
+    def test_resolve_takes_a_url_or_a_host(self) -> None:
+        self.assertEqual(network.parse("vpn-resolve:https://example.com/a:b"), ("vpn-resolve", "https://example.com/a:b"))
+        for request in ("vpn-resolve", "vpn-resolve:", "vpn-resolve:--help", "vpn-resolve:a b", "vpn-resolve:ftp://x.com"):
+            with self.subTest(request=request), self.assertRaises(ValueError):
+                network.parse(request)
+
+    def run_apply(self, request: str, act_code: int = 0, document: dict | None = SETTINGS):
+        calls: list[list[str]] = []
+
+        def act(argv: list[str], timeout: int = 0) -> tuple[int, str]:
+            calls.append(argv)
+            return (act_code if argv[1:2] == ["mode"] else 0), "boom"
+
+        outputs = {**EVERYTHING, "hypraether-vpn domain list --json": DOMAIN_LIST}
+        with tempfile.TemporaryDirectory() as folder, redirect_stdout(io.StringIO()) as log:
+            if document is not None:
+                (Path(folder) / "misc.ini").write_text(
+                    "[misc]\nvpnSettings=" + json.dumps(json.dumps(document)) + "\n", encoding="utf-8")
+            result = network.apply(request, Path(folder), act, fake(outputs), lookup, transparency)
+            path = Path(folder) / network.STATE_FILE
+            written = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+        return result, calls, log.getvalue(), written
+
+    def test_resolving_runs_no_command_and_leaves_the_result_in_the_state(self) -> None:
+        result, calls, log, written = self.run_apply("vpn-resolve:https://example.com")
+        self.assertEqual((result, calls), (0, []))
+        self.assertEqual(written["resolved"]["https://example.com"]["domains"],
+                         ["example.com", "mail.example.com", "www.example.com"])
+        self.assertIn("Connection: vpn-resolve:https://example.com", log)
+
+    def test_connecting_applies_the_mode_and_the_domains_first(self) -> None:
+        result, calls, _log, _written = self.run_apply("vpn-up:us-1")
+        self.assertEqual(result, 0)
+        self.assertEqual(calls, [
+            ["hypraether-vpn", "mode", "split"],
+            ["hypraether-vpn", "domain", "add", "www.example.com"],
+            ["hypraether-vpn", "domain", "add", "offline.test"],
+            ["hypraether-vpn", "connect", "us-1"],
+        ])
+
+    def test_a_tunnel_nobody_configured_just_connects(self) -> None:
+        self.assertEqual(self.run_apply("vpn-up:us-1", document=None)[1], [["hypraether-vpn", "connect", "us-1"]])
+
+    def test_a_failed_mode_switch_stops_before_connecting(self) -> None:
+        result, calls, log, _written = self.run_apply("vpn-up:us-1", act_code=1)
+        self.assertEqual((result, calls), (1, [["hypraether-vpn", "mode", "split"]]))
+        self.assertIn("mode failed", log)
+
+
 if __name__ == "__main__":
     unittest.main()

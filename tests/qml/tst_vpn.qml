@@ -36,4 +36,22 @@ TestCase {
         compare(Vpn.active([idle]), null)
         compare(Vpn.active([]), null)
     }
+
+    function test_a_connection_is_offered_to_the_users_it_is_assigned_to() {
+        var other = { id: "c", name: "c.conf", active: false }
+        var list = [idle, other, proton]
+        var settings = JSON.stringify({ active: "ana", assignments: [
+            { vpn: "b", users: ["juan"] }, { vpn: "c", users: ["juan", "ana"] }, { vpn: "us-free-26-protonvpn-udp", users: ["juan"] }] })
+        // Not assigned to Ana: hidden, unless it is the tunnel that is up.
+        compare(Vpn.available(list, settings), [other, proton])
+        compare(Vpn.available(list, JSON.stringify({ active: "juan", assignments: [{ vpn: "b", users: ["juan"] }] })), list)
+    }
+
+    function test_an_unassigned_connection_or_no_active_user_shows_everything() {
+        var list = [idle, proton]
+        compare(Vpn.available(list, JSON.stringify({ active: "ana", assignments: [{ vpn: "b", users: [] }] })), list)
+        compare(Vpn.available(list, JSON.stringify({ active: "", assignments: [{ vpn: "b", users: ["juan"] }] })), list)
+        compare(Vpn.available(list, ""), list)
+        compare(Vpn.available(list, "not json"), list)
+    }
 }

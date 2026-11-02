@@ -10,6 +10,12 @@ The window cannot run commands, so this module does both halves:
 runs `apply` when the window asks for something (see prefs.map, area
 `connection`), and the page re-reads network-state.json once it is written.
 
+`vpn-resolve:<url>` is the one request that runs no command: it looks the URL's
+addresses and subdomains up and leaves them under `resolved` in
+network-state.json for the page to file into its VPN document (`vpnSettings`
+in misc.ini, which only the page writes; this module only reads it, to apply
+a tunnel's mode and domains when `vpn-up` raises it).
+
 A request is `<verb>` or `<verb>:<argument>`. Only the verbs below exist, the
 argument is validated and travels as one argv item: nothing goes through a
 shell. Every tool is optional: a missing one leaves its section empty with
@@ -18,15 +24,20 @@ shell. Every tool is optional: a missing one leaves its section empty with
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import re
 import shlex
 import shutil
+import socket
 import subprocess
 import sys
 import time
+import urllib.parse
+import urllib.request
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from . import prefs
@@ -42,10 +53,27 @@ MAC = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 # A hypraether-vpn connection id: "us-free-12-protonvpn-udp".
 VPN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
+# What a host label, and a whole host name, may look like (ASCII: an internet
+# domain is punycode). The last label has a letter, so an address is no host.
+LABEL = r"[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?"
+HOST = re.compile(rf"^({LABEL}\.)+[a-z]([a-z0-9-]{{0,61}}[a-z0-9])?$")
+MAX_TARGET = 2048
+# Subdomains kept per host, and how long finding and resolving them may take.
+MAX_DOMAINS = 50
+RESOLVE_BUDGET = 20
+DIRECTORY_TIMEOUT = 10
+DIRECTORY_MAX_BYTES = 8 * 1024 * 1024
+# Second-level labels that sit under a two-letter country code (example.co.uk).
+SECOND_LEVEL = {"co", "com", "org", "net", "gov", "ac", "edu"}
+
 NO_ARGUMENT = {"wifi-on", "wifi-off", "wifi-disconnect", "bt-on", "bt-off", "bt-scan", "refresh"}
-WITH_ARGUMENT = {"wifi-connect", "vpn-up", "vpn-down", "bt-connect", "bt-disconnect"}
+WITH_ARGUMENT = {"wifi-connect", "vpn-up", "vpn-down", "vpn-resolve", "bt-connect", "bt-disconnect"}
 
 Runner = Callable[[list[str]], "str | None"]
+# The network, injected so tests run offline: a host to its addresses, and a
+# registrable domain to the names a certificate directory lists for it.
+Resolver = Callable[[str], "list[str]"]
+Directory = Callable[[str], "list[str]"]
 
 
 # --- requests ----------------------------------------------------------------
@@ -59,6 +87,38 @@ def valid_ssid(text: str) -> bool:
     )
 
 
+def host_of(text: str) -> str | None:
+    """The host of an http(s) URL or a bare host name, lowercased; None for
+    anything else (other schemes, credentials, spaces, an option for a tool,
+    an address, a name that is not a valid host)."""
+    if not 0 < len(text) <= MAX_TARGET or re.search(r"[\s\x00-\x1f\x7f]", text):
+        return None
+    if re.match(r"(?i)^https?://", text):
+        try:
+            parts = urllib.parse.urlsplit(text)
+            host = parts.hostname
+            parts.port  # raises ValueError on a bad port
+        except ValueError:
+            return None
+        if "@" in parts.netloc or not host:
+            return None
+    else:
+        host = text.lower()
+    host = host.lower().rstrip(".") if host else ""
+    return host if len(host) <= 253 and HOST.match(host) else None
+
+
+def registrable(host: str) -> str:
+    """The domain a host belongs to: its last two labels, three under a
+    two-letter country code with a common second level (example.co.uk).
+    A heuristic: there is no public-suffix list here, so an unusual suffix
+    (a *.pvt.k12.ma.us school) is taken one label too short."""
+    labels = host.split(".")
+    if len(labels) >= 3 and len(labels[-1]) == 2 and labels[-2] in SECOND_LEVEL:
+        return ".".join(labels[-3:])
+    return ".".join(labels[-2:])
+
+
 def parse(request: str) -> tuple[str, str]:
     """`verb[:argument]` to (verb, argument); anything else is a ValueError."""
     verb, colon, argument = request.partition(":")
@@ -70,6 +130,7 @@ def parse(request: str) -> tuple[str, str]:
         "wifi-connect": valid_ssid,
         "vpn-up": VPN_ID.match,
         "vpn-down": VPN_ID.match,
+        "vpn-resolve": host_of,
         "bt-connect": MAC.match,
         "bt-disconnect": MAC.match,
     }[verb]
@@ -294,6 +355,137 @@ def write_state(data: dict, folder: Path | None = None) -> Path:
     return target
 
 
+# --- the VPN rule: resolving a URL, applying a tunnel's settings -------------
+
+def lookup(host: str) -> list[str]:
+    """The IPv4 and IPv6 addresses of a host, unique and sorted; [] when it
+    does not resolve (or the network is down)."""
+    try:
+        found = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except OSError:
+        return []
+    return sorted({str(address[4][0]).split("%")[0] for address in found})
+
+
+def parse_transparency(body: str) -> list[str]:
+    """crt.sh's JSON: the `name_value` of each certificate (several names may
+    share one, a name per line)."""
+    try:
+        listed = json.loads(body)
+    except ValueError:
+        return []
+    return [one["name_value"] for one in listed if isinstance(one, dict) and isinstance(one.get("name_value"), str)] \
+        if isinstance(listed, list) else []
+
+
+def transparency(domain: str) -> list[str]:
+    """The names certificate transparency (crt.sh) knows under a domain.
+    OSError when the directory cannot be reached."""
+    address = f"https://crt.sh/?q=%25.{domain}&output=json"
+    request = urllib.request.Request(address, headers={"User-Agent": "vitrail"})
+    try:
+        with urllib.request.urlopen(request, timeout=DIRECTORY_TIMEOUT) as answer:
+            body = answer.read(DIRECTORY_MAX_BYTES).decode("utf-8", "replace")
+    except http.client.HTTPException as error:
+        raise OSError(str(error)) from error
+    return parse_transparency(body)
+
+
+def resolve_all(names: list[str], resolver: Resolver) -> dict[str, list[str]]:
+    """Every name's addresses, looked up side by side within RESOLVE_BUDGET;
+    a name that is not answered in time is left out."""
+    pool = ThreadPoolExecutor(max_workers=8)
+    futures = {pool.submit(resolver, name): name for name in names}
+    found: dict[str, list[str]] = {}
+    try:
+        for future in as_completed(futures, timeout=RESOLVE_BUDGET):
+            found[futures[future]] = future.result()
+    except TimeoutError:
+        pass
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+    return found
+
+
+def resolve_url(url: str, resolver: Resolver = lookup, directory: Directory = transparency) -> dict:
+    """What the VPN rule stores for a URL: `ips` (the host's and its
+    subdomains', unique, sorted) and `domains` (the host and the subdomains of
+    its registrable domain that resolve, at most MAX_DOMAINS of them besides
+    the host). `retry` is set when something could not be found: the host did
+    not resolve (offline) or the directory was unreachable."""
+    host = host_of(url)
+    if host is None:
+        raise ValueError(f"not a URL or host: {url!r}")
+    root = registrable(host)
+    addresses = {host: resolver(host)}
+    retry = not addresses[host]
+    try:
+        listed = directory(root)
+    except (OSError, ValueError):
+        listed, retry = [], True
+    names = sorted({
+        name
+        for text in listed
+        for name in (line.strip().lower() for line in text.split("\n"))
+        if name != host and (name == root or name.endswith("." + root)) and HOST.match(name)
+    })[:MAX_DOMAINS]
+    addresses |= resolve_all(names, resolver)
+    live = sorted(name for name, found in addresses.items() if found)
+    found = {"ips": sorted({address for ips in addresses.values() for address in ips}), "domains": live}
+    return found | {"retry": True} if retry else found
+
+
+def vpn_settings(config: Path) -> dict:
+    """The page's VPN document (`vpnSettings` in misc.ini); {} when it is
+    missing or not a JSON object. Read-only: the page is its one writer."""
+    try:
+        document = json.loads(prefs.read_prefs(config).get("vpnSettings", ""))
+    except ValueError:
+        return {}
+    return document if isinstance(document, dict) else {}
+
+
+DOMAIN = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
+
+
+def vpn_prelude(tunnel: str, settings: dict, known: set[str]) -> list[list[str]]:
+    """The commands that run before `hypraether-vpn connect <tunnel>`: the
+    tunnel's mode and, in split mode, the stored domains the tool's list does
+    not have yet (it resolves their addresses itself). The mode and the list
+    are global in the tool: the last tunnel raised sets them. [] when the
+    tunnel has no assignment. Every item is checked: nothing stored reaches an
+    argv unless it is a plain mode or domain name."""
+    assignments = settings.get("assignments")
+    chosen = next((one for one in assignments if isinstance(one, dict) and one.get("vpn") == tunnel), None) \
+        if isinstance(assignments, list) else None
+    if chosen is None:
+        return []
+    mode = "full" if chosen.get("mode") == "full" else "split"
+    steps = [["hypraether-vpn", "mode", mode]]
+    if mode == "split":
+        seen = {name.lower() for name in known}
+        for host in chosen.get("hosts") or []:
+            if not isinstance(host, dict):
+                continue
+            names = host.get("domains") or [host_of(str(host.get("url", "")))]
+            for name in names:
+                name = name.lower() if isinstance(name, str) else ""
+                if DOMAIN.match(name) and name not in seen:
+                    seen.add(name)
+                    steps.append(["hypraether-vpn", "domain", "add", name])
+    return steps
+
+
+def known_domains(run: Runner) -> set[str]:
+    """The domains `hypraether-vpn domain list` already has."""
+    try:
+        listed = json.loads(run(["hypraether-vpn", "domain", "list", "--json"]) or "[]")
+    except ValueError:
+        return set()
+    return {one["domain"] for one in listed if isinstance(one, dict) and isinstance(one.get("domain"), str)} \
+        if isinstance(listed, list) else set()
+
+
 # --- acting --------------------------------------------------------------------
 
 def run_action(argv: list[str], timeout: int = ACT_TIMEOUT) -> tuple[int, str]:
@@ -316,30 +508,52 @@ def log(line: str) -> None:
 
 
 def apply(request: str, folder: Path | None = None, act: Callable[..., tuple[int, str]] = run_action,
-          run: Runner = run_text) -> int:
+          run: Runner = run_text, resolver: Resolver = lookup, directory: Directory = transparency) -> int:
     """Runs one request, logs it, and rewrites the state file. 0 when it ran
-    (or was only a refresh), 2 when refused, 1 when the command failed."""
+    (or was only a refresh or a resolution), 2 when refused, 1 when the
+    command failed."""
     try:
         verb, argument = parse(request)
     except ValueError as error:
         log(f"refused ({error})")
         return 2
     code = 0
+    extra: dict = {}
     if verb == "refresh":
         log("refresh")
         if wifi(run, device_list(run) or [])["device"]:
             act(["nmcli", "device", "wifi", "rescan"], READ_TIMEOUT)
+    elif verb == "vpn-resolve":
+        log(request)
+        found = resolve_url(argument, resolver, directory)
+        extra = {"resolved": {argument: found}}
+        log(f"{verb} done ({len(found['ips'])} addresses, {len(found['domains'])} domains"
+            + (", to retry)" if found.get("retry") else ")"))
     else:
         card = wifi(run, device_list(run) or [])["device"] if verb == "wifi-disconnect" else ""
         argv = command(verb, argument, card)
         if argv is None:
             log(f"{request} skipped (no Wi-Fi device)")
         else:
-            log(f"{request} -> {shlex.join(argv)}")
-            code, last = act(argv, ACT_TIMEOUT + (SCAN_SECONDS if verb == "bt-scan" else 0))
-            log(f"{verb} " + ("done" if code == 0 else f"failed ({code}): {last}"))
-            code = 0 if code == 0 else 1
-    write_state(state(run), folder)
+            if verb == "vpn-up":
+                settings = vpn_settings(folder or prefs.config_dir())
+                steps = vpn_prelude(argument, settings, set())
+                if len(steps) > 1:  # the tool's list is only worth reading when domains may be added
+                    steps = vpn_prelude(argument, settings, known_domains(run))
+                for step in steps:
+                    log(f"{request} -> {shlex.join(step)}")
+                    done, last = act(step, ACT_TIMEOUT)
+                    if done != 0:
+                        log(f"{step[1]} failed ({done}): {last}")
+                        if step[1] == "mode":
+                            code = 1
+                            break
+            if code == 0:
+                log(f"{request} -> {shlex.join(argv)}")
+                code, last = act(argv, ACT_TIMEOUT + (SCAN_SECONDS if verb == "bt-scan" else 0))
+                log(f"{verb} " + ("done" if code == 0 else f"failed ({code}): {last}"))
+                code = 0 if code == 0 else 1
+    write_state(state(run) | extra, folder)
     return code
 
 

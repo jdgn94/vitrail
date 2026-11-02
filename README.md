@@ -245,7 +245,7 @@ the window declares it in another file, or the path unit watches another set.
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
 | `connection.ini` | `connectionRequest`, `connectionSeq` (the Connection page's request, run once per counter value) |
-| `misc.ini` | `selftest` (written by the smoke test), `quickNotes`, `clipboardColors` and any key the map does not list |
+| `misc.ini` | `selftest` (written by the smoke test), `quickNotes`, `clipboardColors`, `vpnSettings` (the Connection page's VPN document, one JSON text) and any key the map does not list |
 
 A key shared by several pages (`radius`, `blurStrength`, `surfaceStyle`,
 `surfaceOpacity`) lives with the page that owns it, Appearance. To add a
@@ -290,8 +290,22 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   rewrites `~/.config/vitrail/network-state.json`, which the page polls while
   it waits. Requests: `wifi-on`, `wifi-off`, `wifi-connect:<ssid>`,
   `wifi-disconnect`, `vpn-up:<id>`, `vpn-down:<id>`, `bt-on`, `bt-off`,
-  `bt-connect:<mac>`, `bt-disconnect:<mac>`, `bt-scan` and `refresh`; anything
-  else is refused. `--tab internet|vpn|bluetooth` opens a tab.
+  `vpn-resolve:<url>`, `bt-connect:<mac>`, `bt-disconnect:<mac>`, `bt-scan`
+  and `refresh`; anything else is refused. `--tab internet|vpn|bluetooth` opens
+  a tab.
+  The VPN tab keeps users (Vitrail profiles, not system accounts), which
+  connections each may use, a mode (`split` / `full`) and a host rule per
+  connection, and extra connections (stored only) in one JSON document,
+  `vpnSettings` in `misc.ini`; the page is its only writer. Adding a URL to a
+  rule sends `vpn-resolve:<url>`: `vitrail.network` resolves its A / AAAA records
+  and finds subdomains of its domain in certificate transparency (crt.sh),
+  and leaves them under `resolved` in `network-state.json` for the page to file
+  (offline, the host is kept empty with a Retry button). `vpn-up:<id>` reads the
+  document (read-only) and, before `hypraether-vpn connect`, runs
+  `hypraether-vpn mode <mode>` and, in split mode, `domain add` for each stored
+  domain the tool does not list yet. The bar's VPN popup offers the active
+  user only the connections assigned to them (or to nobody). The tool has no
+  kill-switch, DNS or auto-connect flags, so the page has no controls for them.
 - **Language:** `ON SAVE`, everything else is `LIVE`.
 
 `LIVE` means the value is written as soon as you change it and applied by

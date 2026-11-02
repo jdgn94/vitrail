@@ -20,6 +20,13 @@ TestCase {
         compare(Prefs.parse("bangs=g*Google*https://x/?q=%s\n").bangs, "g*Google*https://x/?q=%s")
     }
 
+    function test_a_value_quoted_by_the_settings_window_is_read_whole() {
+        var out = Prefs.parse('[misc]\nvpnSettings="{\\"a\\":[1,2],\\"b\\":\\"x\\\\y\\"}"\nquickNotes=["uno","dos"]\nplain=a"b"\n')
+        compare(out.vpnSettings, '{"a":[1,2],"b":"x\\y"}')
+        compare(out.quickNotes, '["uno","dos"]')
+        compare(out.plain, 'a"b"')
+    }
+
     function test_merge_joins_the_files_and_skips_missing_ones() {
         var parts = { bar: { barSize: "40" }, appearance: { radius: "9" } }
         compare(Prefs.merge(parts, ["appearance", "bar", "wallpaper"]), { radius: "9", barSize: "40" })

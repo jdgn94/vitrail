@@ -18,6 +18,20 @@ function files(mapText) {
     return names
 }
 
+// A value the settings window wrote through QSettings: one with commas, quotes
+// or backslashes (a JSON document) is stored in double quotes with backslash
+// escapes. Anything not wrapped in quotes is returned as is.
+function unquote(value) {
+    if (value.length < 2 || value[0] !== '"' || value[value.length - 1] !== '"')
+        return value
+    var named = { n: "\n", t: "\t", r: "\r", a: "\x07", b: "\b", f: "\f", v: "\v" }
+    return value.slice(1, -1).replace(/\\(x[0-9A-Fa-f]+|[\s\S])/g, function (match, code) {
+        if (code.length > 1)
+            return String.fromCharCode(parseInt(code.slice(1), 16))
+        return named[code] || code
+    })
+}
+
 // The key=value pairs of one file, whatever their section.
 function parse(text) {
     var out = {}
@@ -26,7 +40,7 @@ function parse(text) {
         var line = lines[i].trim()
         var at = line.indexOf("=")
         if (at > 0 && line[0] !== "[" && line[0] !== "#" && line[0] !== ";")
-            out[line.slice(0, at).trim()] = line.slice(at + 1).trim()
+            out[line.slice(0, at).trim()] = unquote(line.slice(at + 1).trim())
     }
     return out
 }

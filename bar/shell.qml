@@ -2012,6 +2012,7 @@ ShellRoot {
 
                     VpnPanel {
                         strings: shell.strings
+                        settings: shell.prefs.vpnSettings || ""
                     }
                 }
 

@@ -88,4 +88,5 @@ connection connectionSeq
 
 misc selftest
 misc quickNotes
+misc vpnSettings
 misc clipboardColors

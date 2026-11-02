@@ -152,6 +152,25 @@ through files:
   (one keyboard stop, Left / Right), then every control is Tab-reachable.
   A missing tool shows a one-line `content` text instead of its rows.
 
+### Per-row editors and document pages (ConnectionPage, VPN tab)
+
+- A page that edits a structured document keeps it as one JSON string pref
+  (`vpnSettings`) and derives `readonly property var doc` from it; every change
+  goes through the pure helpers in `shell/vpnsettings.js` (copy in, copy out,
+  `null` = nothing changed) and `page.save(next)`. The page is the only writer.
+- A list row with its own settings gets a `plain` `tune` button next to its
+  action that opens an indented editor under it (`page.openTunnel`, one open at
+  a time). Pick-many is a `Flow` of `VitrailButton` chips (`tonal` + `check`
+  when chosen, `outlined` secondary when not); pick-one is `VitrailSegmented`.
+- Removable items (domains, addresses) are small `tonal` chips with a `close`
+  icon; the row shows only a count until its chevron opens them.
+- A value waiting on the helper shows `hourglass_top` and a status line; a
+  result that came back incomplete shows `sync_problem` and a `tonal` Retry.
+- A field that rejects its input sets `error`, `errorText` and calls `shake()`;
+  `onTextChanged` clears it.
+- Anything stored by the window goes through QSettings, which quotes and
+  escapes JSON; `vitrail/prefs.py` and `bar/prefs.js` unquote on read.
+
 ## Popup content (bar/network/NetworkPanel.qml, VpnPanel.qml)
 
 Internet and VPN are separate bar buttons and popouts (`network`, `vpn`); they

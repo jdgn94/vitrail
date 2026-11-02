@@ -34,3 +34,25 @@ function active(connections) {
     }
     return null
 }
+
+// The connections the active user may raise: the ones assigned to them, the
+// ones assigned to nobody, and the tunnel that is up (so it can be taken
+// down). `settings` is the `vpnSettings` document of the Connection page; with
+// no readable document or no active user every connection is offered.
+function available(connections, settings) {
+    var doc
+    try {
+        doc = JSON.parse(settings)
+    } catch (error) {
+        return connections
+    }
+    if (!doc || !doc.active)
+        return connections
+    var assignments = Array.isArray(doc.assignments) ? doc.assignments : []
+    return connections.filter(function (connection) {
+        if (connection.active)
+            return true
+        var one = assignments.filter(function (other) { return other.vpn === connection.id })[0]
+        return !one || !Array.isArray(one.users) || one.users.length === 0 || one.users.indexOf(doc.active) >= 0
+    })
+}

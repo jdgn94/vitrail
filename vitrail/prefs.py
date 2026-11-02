@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import fcntl
 import os
+import re
 from pathlib import Path
 
 MAP = Path(__file__).with_name("prefs.map")
@@ -114,6 +115,24 @@ def _items(text: str) -> list[tuple[str, str]]:
     return items
 
 
+_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "f": "\f", "v": "\v"}
+_ESCAPE = re.compile(r"\\(x[0-9A-Fa-f]+|.)", re.S)
+
+
+def unquote(value: str) -> str:
+    """A value the settings window wrote through QSettings: one with commas,
+    quotes or backslashes (a JSON document) is stored in double quotes with
+    backslash escapes. Anything not wrapped in quotes is returned as is."""
+    if len(value) < 2 or not (value[0] == value[-1] == '"'):
+        return value
+
+    def one(found: re.Match) -> str:
+        code = found.group(1)
+        return chr(int(code[1:], 16)) if code[0] == "x" and len(code) > 1 else _ESCAPES.get(code, code)
+
+    return _ESCAPE.sub(one, value[1:-1])
+
+
 def _read_text(path: Path) -> str:
     try:
         return path.read_text(encoding="utf-8")
@@ -125,7 +144,7 @@ def read_prefs(config: Path) -> dict[str, str]:
     """Every preference of every file, merged."""
     merged: dict[str, str] = {}
     for name in FILES:
-        merged.update(_items(_read_text(config / f"{name}.ini")))
+        merged.update((key, unquote(value)) for key, value in _items(_read_text(config / f"{name}.ini")))
     return merged
 
 
