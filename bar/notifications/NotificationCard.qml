@@ -226,6 +226,13 @@ Item {
                 onLinkActivated: function (link) { Qt.openUrlExternally(link) }
             }
 
+            // A download (or any long task): its bar and the X that cancels it.
+            ProgressRow {
+                Layout.fillWidth: true
+                Layout.topMargin: VitrailTokens.gap("xs")
+                notification: root.notification
+            }
+
             // The app's actions, then reply and mark as read.
             Flow {
                 Layout.fillWidth: true

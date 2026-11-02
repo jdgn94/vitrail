@@ -548,6 +548,17 @@ ShellRoot {
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
     }
 
+    // Downloads: the watcher turns the files a downloader is still writing
+    // (.part, .crdownload…) into notifications on this same server, replaced
+    // in place as they grow, with Cancel and the finished file's buttons
+    // (vitrail/downloads.py). It scans once a second and exits with the bar, so a
+    // bar restart never leaves an orphan behind.
+    Process {
+        running: true
+        command: ["python3", "-m", "vitrail.downloads", "watch"]
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
     // The bar reads the preference files with its own parser, so the CLI is
     // what writes them. Writes go one at a time; a newer value for the same
     // key waits its turn.

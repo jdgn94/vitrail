@@ -1,8 +1,10 @@
 import QtQuick
 import "../kit"
+import "progress.js" as Progress
 
 // One incoming notification: the shared card, a sideways flick that marks it
 // read, and the five second expiry (paused while the pointer rests on it).
+// A live task (a download) stays on screen until it ends.
 Item {
     id: root
 
@@ -62,7 +64,7 @@ Item {
     // Restarts from zero whenever the pointer leaves or the reply closes.
     Timer {
         interval: 5000
-        running: root.notification !== null && !card.held
+        running: root.notification !== null && !card.held && !Progress.live(root.notification)
         onTriggered: if (root.notification && root.queue) root.queue.expire(root.notification.id)
     }
 }

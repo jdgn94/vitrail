@@ -44,6 +44,13 @@ qt6-base
 qt6-declarative
 qt6-wayland
 
+# The downloads watcher: notifications to the bar and the buttons they carry
+python-dbus
+python-gobject
+# The file manager "Open folder" and "Open file" use (the desktop's choice is
+# read with xdg-mime; this is the fallback installed with Vitrail)
+nautilus
+
 # Runtime for `vitrail colors` (standard library only)
 python
 

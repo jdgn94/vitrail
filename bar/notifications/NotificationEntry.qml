@@ -221,6 +221,12 @@ Item {
             onLinkActivated: function (link) { Qt.openUrlExternally(link) }
         }
 
+        // A download (or any long task): its bar and the X that cancels it.
+        ProgressRow {
+            Layout.fillWidth: true
+            notification: root.notification
+        }
+
         // Always loaded: its size decides the slot, and it is the picture when
         // the slot says so.
         ClippingRectangle {

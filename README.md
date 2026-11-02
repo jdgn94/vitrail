@@ -73,7 +73,9 @@ package to the manifest and a row here.
 | `libqalculate` | `qalc` | launcher calculator and conversions (`=`) |
 | `plocate`, `fd` | `plocate`, `fd` | launcher file search (`/`); `plocate-updatedb.timer` is enabled by the installer |
 | `cliphist`, `wl-clipboard`, `wtype`, `hyprpicker` | `cliphist`, `wl-copy`, `wl-paste`, `wtype`, `hyprpicker` | launcher clipboard history (`;`), the clipboard panel (`Mod+.`) with emojis and the colour picker, and pasting a pick into the focused window |
-| `xdg-utils` | `xdg-open` | opening files, folders and links |
+| `xdg-utils` | `xdg-open`, `xdg-mime` | opening files, folders and links; finding the desktop's file manager |
+| `nautilus` | the file manager | "open folder" and "open file" of a download, with the desktop's own choice read from `xdg-mime` (Nautilus is the fallback installed with Vitrail) |
+| `python-dbus`, `python-gobject` | — | the downloads watcher (`vitrail/downloads.py`): a notification per download and the buttons that cancel, delete or open it |
 | `wireplumber`, `playerctl`, `brightnessctl` | `wpctl`, `playerctl`, `brightnessctl` | media keys, laptop panel brightness |
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
 | `grim`, `slurp` | `grim`, `slurp` | screenshots |
@@ -526,3 +528,25 @@ keeps working.
 
 Both are also scriptable: `vitrail-bar ipc call panel toggle full|overlay`,
 `vitrail-bar ipc call panel close`. Panels are empty for now.
+
+### Notifications
+
+The bar owns `org.freedesktop.Notifications` (Quickshell's server): an app's
+notification becomes a card on the opposite side of the bar, the panel
+(`Super + N`, or a hot zone on that side) keeps what arrived after the toast
+expires, and Do Not Disturb lists arrivals without showing them. The stack
+takes the newest five (`notificationMax`).
+
+**Downloads** are notifications of their own. No D-Bus API reports a download,
+so `vitrail/downloads.py` runs with the bar and watches the XDG download
+folders for the files a downloader is still writing (`.part`, `.crdownload`,
+`.download`, `.tmp`): each one is a card with the app that is writing it, the
+name, the size, the speed, the elapsed time and a bar, replaced in place as the
+file grows and never toasted twice. The total is only known when the
+downloader reserved the final size, so the card shows a percentage when it can
+and an indeterminate bar otherwise — never an invented one. The X at the end of
+the bar removes the partial file (if the app keeps writing, the card says so);
+when the file becomes its final name the card says how long it took and offers
+**Delete**, **Open folder** and **Open file**, which use the file manager the
+desktop is configured with (`xdg-mime query default inode/directory`, Nautilus
+as the fallback).

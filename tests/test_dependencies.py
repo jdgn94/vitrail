@@ -67,6 +67,7 @@ PROVIDED_BY = {
     "wl-copy": "wl-clipboard",
     "wl-paste": "wl-clipboard",
     "xdg-open": "xdg-utils",
+    "xdg-mime": "xdg-utils",
     "wpctl": "wireplumber",
     "playerctl": "playerctl",
     "brightnessctl": "brightnessctl",
