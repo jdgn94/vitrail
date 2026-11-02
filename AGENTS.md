@@ -69,6 +69,18 @@ Preferences live in one INI file per area under `~/.config/vitrail/`;
 first, then in `shell/Prefs.qml`; callers read and write it by key. See the
 README's "Preference files".
 
+### Settings keep up with the features
+
+Every user-facing feature ships with its settings in the **same change**: a
+preference, a toggle, a mode, an action or a value the user may want to change
+gets a place in the settings window (`shell/pages/`, wired in
+`shell/main.qml`), its key in `vitrail/prefs.map` and `shell/Prefs.qml`, and
+its words in **all six** `kit/i18n/*.json`.
+
+A feature whose settings live only in a config file, only in a bar popup or
+only in a script is not finished. When a feature lands without them, add them
+before the next one — and say so in the report.
+
 ### Dependencies
 
 Every external program or library Vitrail calls at runtime (a `Process`
