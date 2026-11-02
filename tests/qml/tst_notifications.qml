@@ -30,19 +30,91 @@ TestCase {
         compare(Notifications.stackPosition("left", "left"), "top-right")
     }
 
-    function test_a_notification_is_silent_with_the_panel_open() {
-        verify(Notifications.silent(true, false))
-        verify(!Notifications.silent(false, false))
-    }
-
-    function test_do_not_disturb_silences_them_too() {
-        verify(Notifications.silent(false, true))
-        verify(Notifications.silent(true, true))
-    }
-
     function test_the_preference_booleans_are_read_as_they_come() {
-        verify(Notifications.silent(false, "true"))
-        verify(!Notifications.silent(false, "false"))
-        verify(!Notifications.silent("false", "false"))
+        verify(Notifications.enabled("true"))
+        verify(!Notifications.enabled("false"))
+        verify(!Notifications.enabled(undefined))
+    }
+
+    function test_an_app_list_is_one_comma_separated_preference() {
+        compare(Notifications.list(""), [])
+        compare(Notifications.list(" A , B,,A "), ["A", "B"])
+        compare(Notifications.joined(["A", " B ", "A", ""]), "A,B")
+    }
+
+    function test_a_muted_app_is_listed_but_never_toasted() {
+        verify(Notifications.muted("Discord", "Discord,Telegram"))
+        verify(!Notifications.muted("Slack", "Discord,Telegram"))
+        verify(!Notifications.muted("", ""))
+    }
+
+    function test_urgent_comes_from_the_app_or_the_user() {
+        verify(Notifications.urgent({ urgency: 2, appName: "Calls" }, ""))
+        verify(!Notifications.urgent({ urgency: 1, appName: "Calls" }, ""))
+        verify(Notifications.urgent({ urgency: 1, appName: "Telegram Desktop" }, "Telegram Desktop"))
+        verify(!Notifications.urgent(null, "Telegram Desktop"))
+    }
+
+    function test_a_chat_is_grouped_by_its_conversation() {
+        verify(Notifications.messaging({ appName: "Telegram Desktop", hints: {} }))
+        verify(Notifications.messaging({ appName: "Other", hints: { category: "im.received" } }))
+        verify(!Notifications.messaging({ appName: "Correo", hints: {} }))
+        compare(Notifications.conversation({ appName: "Telegram Desktop", summary: "Juan", hints: {} }), "Juan")
+        compare(Notifications.conversation({ appName: "Correo", summary: "Invoice", hints: {} }), "")
+        compare(Notifications.conversation({ appName: "X", summary: "s",
+                                             hints: { "x-vitrail-conversation": "thread 4" } }), "thread 4")
+    }
+
+    function test_the_search_looks_at_the_app_the_title_and_the_body() {
+        var row = { appName: "Discord", summary: "Ana", body: "see you at 20:00", conversation: "Ana" }
+        verify(Notifications.matches("", row))
+        verify(Notifications.matches("disc", row))
+        verify(Notifications.matches("20:00", row))
+        verify(Notifications.matches("ana", row))
+        verify(!Notifications.matches("telegram", row))
+    }
+
+    function test_a_bare_url_becomes_a_link() {
+        compare(Notifications.linkify("see https://example.com/x now"),
+                'see <a href="https://example.com/x">https://example.com/x</a> now')
+        compare(Notifications.linkify('<a href="https://a.b">https://a.b</a>'),
+                '<a href="https://a.b">https://a.b</a>')
+        compare(Notifications.linkify(""), "")
+    }
+
+    function test_a_snooze_wakes_at_its_time() {
+        var now = new Date(2026, 10, 1, 22, 0, 0).getTime()
+        compare(Notifications.wakeTime("15m", now), now + 15 * 60000)
+        compare(Notifications.wakeTime("1h", now), now + 60 * 60000)
+        var tomorrow = new Date(Notifications.wakeTime("tomorrow", now))
+        compare(tomorrow.getDate(), 2)
+        compare(tomorrow.getHours(), 8)
+        compare(tomorrow.getMinutes(), 0)
+    }
+
+    function test_a_snoozed_notification_survives_as_json() {
+        var row = { summary: "Ana", body: "hola", appName: "Discord", icon: "discord" }
+        var text = Notifications.addSnooze("", row, 5000)
+        var found = Notifications.parseSnoozes(text)
+        compare(found.length, 1)
+        compare(found[0].summary, "Ana")
+        var due = Notifications.dueSnoozes(text, 5000)
+        compare(due.due.length, 1)
+        compare(JSON.parse(due.rest).length, 0)
+        var later = Notifications.dueSnoozes(text, 4999)
+        compare(later.due.length, 0)
+        compare(Notifications.parseSnoozes("not json"), [])
+        compare(Notifications.parseSnoozes('[{"until": 1}]').length, 1)
+    }
+
+    function test_the_stats_are_todays_counts_per_app() {
+        var now = new Date(2026, 10, 1, 12, 0, 0).getTime()
+        var stats = { "2026-11-01": { "Discord": [12, 3], "Correo": [2, 2] }, "2026-10-31": { "Discord": [9, 9] } }
+        var list = Notifications.statsList(stats, now)
+        compare(list.length, 2)
+        compare(list[0].app, "Discord")
+        compare(list[0].seen, 12)
+        compare(list[0].acted, 3)
+        compare(Notifications.dayOf(now), "2026-11-01")
     }
 }

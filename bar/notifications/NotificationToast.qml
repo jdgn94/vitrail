@@ -11,11 +11,18 @@ Item {
     property var notification: null
     property var queue: null
     property var strings: ({})
+    // What a button asks the shell to do, and the settings' switches.
+    property var act: null
+    property bool snoozeEnabled: true
+    property string mutedApps: ""
     property real arrived: 0
     property real now: Date.now()
     property bool newest: false
 
     implicitHeight: card.implicitHeight
+    // The stack lays the cards out by this height; a change of content (the
+    // actions, the progress bar) must move the ones below.
+    height: implicitHeight
 
     NotificationCard {
         id: card
@@ -24,6 +31,9 @@ Item {
         height: parent.height
         notification: root.notification
         strings: root.strings
+        act: root.act
+        snoozeEnabled: root.snoozeEnabled
+        mutedApps: root.mutedApps
         arrived: root.arrived
         now: root.now
         newest: root.newest

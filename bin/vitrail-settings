@@ -29,8 +29,20 @@ if command -v python3 >/dev/null 2>&1; then
 fi
 
 i18n='{"languages":[],"strings":{}}'
+# The bundle is a file, not an argument: every language makes it longer than
+# the kernel's 128 KiB limit for one argument. The window reads it at start.
+CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/vitrail"
+i18n_file="${CACHE_DIR}/i18n-bundle.json"
+mkdir -p -- "${CACHE_DIR}"
 if command -v python3 >/dev/null 2>&1; then
-    i18n="$(python3 "${HERE}/../scripts/i18n-bundle.py" 2>/dev/null || printf '{"languages":[],"strings":{}}')"
+    if python3 "${HERE}/../scripts/i18n-bundle.py" >"${i18n_file}.part" 2>/dev/null; then
+        mv -- "${i18n_file}.part" "${i18n_file}"
+    else
+        rm -f -- "${i18n_file}.part"
+        printf '{"languages":[],"strings":{}}' >"${i18n_file}"
+    fi
+else
+    printf '{"languages":[],"strings":{}}' >"${i18n_file}"
 fi
 
 palette="{}"
@@ -72,7 +84,7 @@ export QT_QPA_PLATFORMTHEME=xdgdesktopportal
 exec qml6 -I "${HERE}/.." "${SHELL_DIR}/main.qml" -- \
     --config "${CONFIG}" \
     --palette "${palette}" \
-    --i18n "${i18n}" \
+    --i18n-file "${i18n_file}" \
     --plugins "${plugins}" \
     --zones "${zones}" \
     --timezone "${zone}" \

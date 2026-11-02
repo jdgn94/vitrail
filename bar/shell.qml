@@ -74,6 +74,21 @@ ShellRoot {
     // does, until it is opened on another one.
     property var notificationsScreen: null
 
+    // What the notification centre remembers, in its own file
+    // (vitrail/notify.py): the rows, the per-app counts and the snoozes. A
+    // snoozed notification leaves the list and comes back when its time is up;
+    // the file is written on the process's stdin, out of the argument limit.
+    readonly property string notifyStore: (Quickshell.env("XDG_STATE_HOME")
+                                           || Quickshell.env("HOME") + "/.local/state") + "/vitrail/notifications.json"
+    readonly property bool snoozeEnabled: shell.prefs.notificationSnooze === undefined
+                                           || Notifications.enabled(shell.prefs.notificationSnooze)
+    property string storedNotifications: ""
+    property bool restoringNotifications: false
+    // The panel's search and the two lists it opens (so the IPC drives them).
+    property string notificationsQuery: ""
+    property bool notificationsMutedShown: false
+    property bool notificationsStatsShown: false
+
     // The clipboard history: the card opens at the pointer on the focused
     // monitor, with the keyboard while it is up.
     property bool clipboardOpen: false
@@ -208,6 +223,125 @@ ShellRoot {
         if (target)
             shell.notificationsScreen = target
         shell.notificationsOpen = true
+    }
+
+    // The muted list and the stats share the panel's second slot.
+    function toggleNotificationList(which) {
+        if (which === "muted") {
+            shell.notificationsMutedShown = !shell.notificationsMutedShown
+            if (shell.notificationsMutedShown)
+                shell.notificationsStatsShown = false
+        } else {
+            shell.notificationsStatsShown = !shell.notificationsStatsShown
+            if (shell.notificationsStatsShown)
+                shell.notificationsMutedShown = false
+        }
+    }
+
+    // --- notifications: what their buttons ask for ---------------------------
+    // copy, snooze, mute, mark as read, open an attachment. The id is the row
+    // the card belongs to.
+    function notificationAction(kind, value, id) {
+        var row = toasts.row(id)
+        if (kind === "copy") {
+            var text = row ? row.summary + (row.body ? "\n" + row.body : "") : ""
+            if (text !== "") {
+                shell.copyText(text)
+                toasts.markActed(id)
+            }
+        } else if (kind === "snooze") {
+            if (shell.snoozeEnabled)
+                toasts.snooze(id, value)
+        } else if (kind === "mute") {
+            shell.toggleMute(row ? row.appName : "")
+            toasts.markActed(id)
+        } else if (kind === "unmute") {
+            shell.toggleMute(value)
+        } else if (kind === "read") {
+            toasts.dismiss(id)
+        } else if (kind === "open") {
+            shell.openAttachment(value)
+        }
+    }
+
+    // The app goes in or out of the muted list (comma-separated preference).
+    function toggleMute(app) {
+        if (!app)
+            return
+        var apps = Notifications.list(shell.prefs.notificationMuted)
+        var at = apps.indexOf(app)
+        if (at >= 0)
+            apps.splice(at, 1)
+        else
+            apps.push(app)
+        shell.setPref("notificationMuted", Notifications.joined(apps))
+    }
+
+    // What the store keeps of the centre, as one JSON text.
+    function queueDocument() {
+        return JSON.stringify(toasts.snapshot())
+    }
+
+    // Writing is debounced: a burst of arrivals is one file.
+    function storeNotifications() {
+        if (shell.restoringNotifications)
+            return
+        var text = shell.queueDocument()
+        if (text === shell.storedNotifications)
+            return
+        shell.storedNotifications = text
+        notifyWriter.pending = text
+        if (!notifyWriter.running)
+            notifyWriter.running = true
+    }
+
+    // The rows of an earlier session come back into the panel.
+    function loadNotifications(text) {
+        var document
+        try {
+            document = JSON.parse(text)
+        } catch (error) {
+            return
+        }
+        shell.restoringNotifications = true
+        toasts.restore(document)
+        shell.restoringNotifications = false
+    }
+
+    // The snoozes whose time is up come back as new notifications, one at a
+    // time so none is lost.
+    function wakeSnoozes() {
+        var result = Notifications.dueSnoozes(shell.prefs.notificationSnoozes, Date.now())
+        if (result.due.length === 0)
+            return
+        shell.setPref("notificationSnoozes", result.rest)
+        for (var i = 0; i < result.due.length; i++)
+            snoozeSend.pending.push(JSON.stringify(result.due[i]))
+        shell.sendNextSnooze()
+    }
+
+    function sendNextSnooze() {
+        if (snoozeSend.running)
+            return
+        var next = snoozeSend.pending.shift()
+        if (next === undefined)
+            return
+        snoozeSend.exec(["python3", "-m", "vitrail.notify", "send", next])
+    }
+
+    // A picture or file attachment opens with the desktop's file manager; a
+    // web link with the browser.
+    function openAttachment(path) {
+        var local = String(path || "")
+        if (local === "")
+            return
+        if (local.indexOf("file://") === 0)
+            local = decodeURIComponent(local.slice(7))
+        if (!/^(\/|~)/.test(local)) {
+            Qt.openUrlExternally(local)
+            return
+        }
+        openPath.exec(["python3", "-m", "vitrail.files", "open", local])
     }
 
     function openClipboard(mode) {
@@ -920,9 +1054,85 @@ ShellRoot {
         id: toasts
 
         maximum: Number(shell.prefs.notificationMax) || VitrailTokens.ranges.notifications.value
-        // The panel lists what arrives while it is open; no toast for it.
-        // Do Not Disturb silences them the same way.
-        quiet: Notifications.silent(shell.notificationsOpen, shell.dnd)
+        // The panel lists what arrives while it is open; Do Not Disturb does
+        // the same unless the notification is urgent and the bypass is on; a
+        // muted app is never toasted.
+        panelOpen: shell.notificationsOpen
+        dnd: shell.dnd
+        urgentBypass: shell.prefs.notificationUrgentBypass === undefined
+                      || Notifications.enabled(shell.prefs.notificationUrgentBypass)
+        muted: shell.prefs.notificationMuted || ""
+        urgent: shell.prefs.notificationUrgentApps || ""
+    }
+
+    // The centre's memory: the rows of earlier sessions, the per-app counts and
+    // the snoozes. Read once at start; written, debounced, when they change.
+    FileView {
+        id: notifyFile
+
+        path: shell.notifyStore
+        printErrors: false
+        onLoaded: {
+            shell.loadNotifications(this.text())
+            shell.storedNotifications = shell.queueDocument()
+        }
+    }
+
+    Timer {
+        id: notifyWrite
+
+        interval: 400
+        onTriggered: shell.storeNotifications()
+    }
+
+    Connections {
+        target: toasts
+
+        function onRevisionChanged() { notifyWrite.restart() }
+        function onSnoozed(row, until) {
+            shell.setPref("notificationSnoozes",
+                          Notifications.addSnooze(shell.prefs.notificationSnoozes, row, until))
+        }
+    }
+
+    Process {
+        id: notifyWriter
+
+        property string pending: ""
+
+        stdinEnabled: true
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        command: ["python3", "-m", "vitrail.notify", "store"]
+        onStarted: if (notifyWriter.pending !== "") {
+            notifyWriter.write(notifyWriter.pending + "\n")
+            notifyWriter.pending = ""
+        }
+        onExited: if (notifyWriter.pending !== "") notifyWriter.running = true
+    }
+
+    // A snoozed notification comes back as a new one, one at a time.
+    Process {
+        id: snoozeSend
+
+        property var pending: []
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        onExited: shell.sendNextSnooze()
+    }
+
+    // Attachments open with the desktop's file manager (vitrail.files).
+    Process {
+        id: openPath
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
+    Timer {
+        interval: 30000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: shell.wakeSnoozes()
     }
 
     // --- system requests ------------------------------------------------------
@@ -1086,6 +1296,26 @@ ShellRoot {
             shell.notificationsOpen = false
         }
 
+        // The panel's "Clear all", for a script.
+        function clear(): void {
+            toasts.clear()
+        }
+
+        // What the panel shows: its search and its two extra lists.
+        function search(text: string): void {
+            shell.notificationsQuery = text
+            shell.openNotifications(shell.focusedScreen)
+        }
+
+        function muted(): void {
+            shell.toggleNotificationList("muted")
+            shell.openNotifications(shell.focusedScreen)
+        }
+
+        function stats(): void {
+            shell.toggleNotificationList("stats")
+            shell.openNotifications(shell.focusedScreen)
+        }
     }
 
     IpcHandler {
@@ -1422,6 +1652,16 @@ ShellRoot {
                     opacityLevel: shell.barOpacity
                     dnd: shell.dnd
                     notes: shell.notes
+                    act: shell.notificationAction
+                    snoozeEnabled: shell.snoozeEnabled
+                    mutedApps: shell.prefs.notificationMuted || ""
+                    stats: toasts.stats
+                    query: shell.notificationsQuery
+                    mutedShown: shell.notificationsMutedShown
+                    statsShown: shell.notificationsStatsShown
+                    onQueryEdited: function (text) { shell.notificationsQuery = text }
+                    onMutedToggled: shell.toggleNotificationList("muted")
+                    onStatsToggled: shell.toggleNotificationList("stats")
                     mediaPlayer: shell.mprisPlayer
                     wifiOn: shell.wifiOn
                     bluetoothOn: shell.bluetoothOn
@@ -2288,6 +2528,9 @@ ShellRoot {
                             opacity: stackLiquid.look.content
                             queue: toasts
                             strings: shell.strings
+                            act: shell.notificationAction
+                            snoozeEnabled: shell.snoozeEnabled
+                            mutedApps: shell.prefs.notificationMuted || ""
                             atBottom: stackHolder.place.edge === "bottom"
                             onImplicitHeightChanged: if (stack.implicitHeight > 0) stackHolder.keptHeight = stack.implicitHeight
                         }

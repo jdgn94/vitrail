@@ -243,7 +243,7 @@ the window declares it in another file, or the path unit watches another set.
 | File | Keys |
 |------|------|
 | `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase` |
-| `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle` |
+| `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle` |
 | `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `systemColor` (`wallpaperSeed`: legacy) |
 | `windows.ini` | `windowLayout`, `visibleColumns`, `followFocus`, `wrapFocus`, `borderWidth`, `opacityFocused`, `opacityUnfocused` |
 | `input.ini` | `keyboardLayouts`, `keyboardSwitch`, `numlockOnStart`, `focusFollowsMouse` |
@@ -550,3 +550,22 @@ when the file becomes its final name the card says how long it took and offers
 **Delete**, **Open folder** and **Open file**, which use the file manager the
 desktop is configured with (`xdg-mime query default inode/directory`, Nautilus
 as the fallback).
+
+Every card offers **Copy** (through the clipboard store), **Snooze** (15
+minutes, 1 hour or tomorrow: it leaves the list and comes back by itself) and
+**Mute** for its app. The panel searches titles, bodies and apps
+(`vitrail-bar ipc call notifications search <text>`), groups a chat by
+conversation (`Telegram Desktop · Ana`, with its unread count), lists the muted
+apps and shows today's counts per app — how many arrived, how many were acted
+on — so a noisy app can be muted with evidence. A notification marked urgent (a
+critical urgency, or an app in `notificationUrgentApps`) wears a marked border
+and bypasses Do Not Disturb when `notificationUrgentBypass` is on. A picture or
+file attachment opens with the file manager, and bare URLs in the body are
+links. The last 300 rows and the counts live in
+`~/.local/state/vitrail/notifications.json` (`vitrail/notify.py`), so they
+survive a reload.
+
+Any other long task uses the same card through one small API:
+`python3 -m vitrail.jobs run --name "Updating packages" -- pacman -Syu`, or the
+`Job` class for a progress the tool can report (`job.update(done, total)`);
+Cancel stops the child process.

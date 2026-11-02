@@ -146,4 +146,18 @@ TestCase {
         compare(Groups.pictureHeight(300, 400, 800, Groups.PICTURE_MAX), 240)
         compare(Groups.pictureHeight(300, 0, 0, Groups.PICTURE_MAX), 0)
     }
+
+    function test_two_conversations_of_one_app_are_two_groups() {
+        var groups = Groups.groupRows([
+            { nid: 1, appName: "Telegram", conversation: "Ana", arrived: 100 },
+            { nid: 2, appName: "Telegram", conversation: "Luis", arrived: 200 },
+            { nid: 3, appName: "Telegram", conversation: "Ana", arrived: 300 }
+        ], "Unknown")
+        compare(groups.length, 2)
+        compare(groups[0].conversation, "Ana")
+        compare(groups[0].rows.length, 2)
+        compare(groups[1].conversation, "Luis")
+        compare(groups[1].rows.length, 1)
+        compare(groups[0].key, "Telegram\u0000Ana")
+    }
 }

@@ -15,11 +15,6 @@ case "$MODE" in
         ;;
 esac
 
-i18n='{"languages":[],"strings":{}}'
-if command -v python3 >/dev/null 2>&1; then
-    i18n="$(python3 "${HERE}/../scripts/i18n-bundle.py" 2>/dev/null || printf '{"languages":[],"strings":{}}')"
-fi
-
 palette="{}"
 if command -v python3 >/dev/null 2>&1; then
     palette="$(python3 "${HERE}/../scripts/palette-json.py" 2>/dev/null || printf '{}')"

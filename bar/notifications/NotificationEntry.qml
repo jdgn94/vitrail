@@ -5,6 +5,7 @@ import Quickshell.Widgets
 import "../kit"
 import "../kit/base"
 import "groups.js" as Groups
+import "notifications.js" as Notifications
 
 // One notification inside an application group of the panel (the toast uses
 // `NotificationCard`):
@@ -16,8 +17,10 @@ import "groups.js" as Groups
 //
 // The notification's image shows in exactly one place (`Groups.imageSlot`): a
 // square one is the avatar in the circle, any other is the picture under the
-// text and the circle shows the app's icon. A click runs the default action
-// (focus the app), a middle click or the x removes it.
+// text and the circle shows the app's icon. Clicking the picture opens the
+// attachment with the file manager. A click runs the default action (focus the
+// app), a middle click or the x removes it. An urgent one wears the accent
+// border.
 //
 // `notification` is the live object; `row` is the queue's snapshot, which the
 // panel still has once the toast expired: an expired entry keeps its place and
@@ -28,6 +31,10 @@ Item {
     property var notification: null
     property var row: null
     property var strings: ({})
+    // What a button asks the shell to do; null in a preview.
+    property var act: null
+    property bool snoozeEnabled: true
+    property string mutedApps: ""
     // When it arrived and the current time, in ms, for "5 min".
     property real arrived: 0
     property real now: Date.now()
@@ -39,13 +46,12 @@ Item {
 
     // Whichever is there: the live object, else the snapshot.
     readonly property var entry: root.notification || root.row || null
+    readonly property bool isUrgent: root.entry ? root.entry.urgent === true : false
+    readonly property bool mutedApp: Notifications.muted(root.appName, root.mutedApps)
     readonly property var actions: root.notification ? root.notification.actions : []
     readonly property var defaultAction: root.actions.find(function (action) {
         return action.identifier === "default"
     }) || null
-    readonly property var extraActions: root.actions.filter(function (action) {
-        return action.identifier !== "default"
-    })
     readonly property string summary: root.entry ? (root.entry.summary || "") : ""
     readonly property string body: root.entry ? (root.entry.body || "") : ""
     readonly property string icon: root.entry ? (root.entry.appIcon || root.entry.icon || "") : ""
@@ -100,6 +106,9 @@ Item {
         color: Qt.rgba(VitrailTokens.color("surfaceHigh").r, VitrailTokens.color("surfaceHigh").g,
                        VitrailTokens.color("surfaceHigh").b,
                        hover.hovered ? root.surface.raisedHover : root.surface.raised)
+        // An urgent notification (a message, a call) is marked, not shouted.
+        border.width: root.isUrgent ? 1 : 0
+        border.color: VitrailTokens.color("error")
 
         Behavior on color { ColorAnimation { duration: VitrailTokens.duration("fast") } }
 
@@ -185,6 +194,14 @@ Item {
             }
 
             VitrailText {
+                visible: root.isUrgent
+                variant: "icon"
+                filled: true
+                color: VitrailTokens.color("error")
+                text: "priority_high"
+            }
+
+            VitrailText {
                 Layout.fillWidth: true
                 variant: "body"
                 font.weight: Font.Medium
@@ -212,7 +229,7 @@ Item {
             Layout.fillWidth: true
             visible: text !== ""
             variant: "content"
-            text: root.body
+            text: Notifications.linkify(root.body)
             textFormat: Text.StyledText
             wrapMode: Text.Wrap
             maximumLineCount: 6
@@ -228,7 +245,7 @@ Item {
         }
 
         // Always loaded: its size decides the slot, and it is the picture when
-        // the slot says so.
+        // the slot says so. A click opens the attachment.
         ClippingRectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: Groups.pictureHeight(width, picture.implicitWidth, picture.implicitHeight,
@@ -245,37 +262,37 @@ Item {
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
             }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: if (root.act) root.act("open", root.image, root.entry ? root.entry.nid : 0)
+            }
         }
 
-        // The app's own actions and the reply; "mark as read" is the x.
-        Flow {
+        // The app's own actions, copy, snooze, mute and mark as read; then reply.
+        NotificationActions {
             Layout.fillWidth: true
-            visible: root.extraActions.length > 0 || root.canReply
-            spacing: VitrailTokens.gap("xs")
-
-            Repeater {
-                model: root.extraActions
-
-                delegate: VitrailButton {
-                    required property var modelData
-
-                    variant: "text"
-                    tone: "secondary"
-                    text: modelData.text
-                    onClicked: modelData.invoke()
-                }
+            notification: root.notification
+            strings: root.strings
+            snooze: root.snoozeEnabled
+            muted: root.mutedApp
+            onAct: function (kind, value) {
+                if (root.act)
+                    root.act(kind, value, root.entry ? root.entry.nid : 0)
             }
+        }
 
-            VitrailButton {
-                visible: root.canReply
-                variant: "text"
-                tone: "secondary"
-                icon: "reply"
-                text: root.t("notifications.reply")
-                onClicked: {
-                    root.replying = true
-                    reply.forceActiveFocus()
-                }
+        VitrailButton {
+            visible: root.canReply
+            Layout.topMargin: VitrailTokens.gap("xs")
+            variant: "text"
+            tone: "secondary"
+            icon: "reply"
+            text: root.t("notifications.reply")
+            onClicked: {
+                root.replying = true
+                reply.forceActiveFocus()
             }
         }
 

@@ -22,6 +22,7 @@ the desktop's own file manager (`vitrail/files.py`).
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import sys
@@ -485,10 +486,30 @@ class Daemon:
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args == ["watch"]:
+        # A reload of the bar can leave the previous watcher alive for a
+        # moment: one watcher per session, or every file is announced twice.
+        lock = acquire_lock()
+        if lock is None:
+            return 0
         Daemon(Watcher(), Notifier()).run()
         return 0
     print("usage: downloads watch", file=sys.stderr)
     return 2
+
+
+def acquire_lock(folder: Path | None = None):
+    """An exclusive lock on the session's watcher; None when another one holds it."""
+    runtime = folder or Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp")
+    try:
+        handle = (runtime / "vitrail-downloads.lock").open("w")
+    except OSError:
+        return None
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        return None
+    return handle
 
 
 if __name__ == "__main__":

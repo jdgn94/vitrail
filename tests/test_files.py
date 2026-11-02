@@ -61,6 +61,15 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(argv, ["nautilus", "/home/me/Downloads/x.iso"])
         self.assertEqual(ran, [["nautilus", "/home/me/Downloads/x.iso"]])
 
+    def test_the_command_line_opens_a_path(self) -> None:
+        with mock.patch.object(files, "open_path") as opened:
+            self.assertEqual(files.main(["open", "/home/me/a.pdf"]), 0)
+        opened.assert_called_once_with(Path("/home/me/a.pdf"))
+
+    def test_the_command_line_needs_an_option(self) -> None:
+        with mock.patch("sys.stderr"):
+            self.assertEqual(files.main([]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

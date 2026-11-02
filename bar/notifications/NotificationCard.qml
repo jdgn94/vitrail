@@ -4,12 +4,15 @@ import Quickshell
 import Quickshell.Widgets
 import "../kit"
 import "../kit/base"
+import "notifications.js" as Notifications
 
 // One notification as a card: the app icon in a circle, then
 //   collapsed  title • age, and one line of the body;
 //   expanded   app • age, the title, the whole body and the actions.
 // The newest one opens expanded; the chevron overrides it. A click runs the
-// default action (focus the app), a middle click marks it read.
+// default action (focus the app), a middle click marks it read. An urgent one
+// wears the accent border. `act(kind, value, id)` hands copy, snooze, mute and
+// opening an attachment to the shell.
 //
 // The toast wraps it with the swipe and the expiry; the panel has its own
 // (`NotificationEntry`).
@@ -18,6 +21,11 @@ Item {
 
     property var notification: null
     property var strings: ({})
+    // What a button asks the shell to do; null in a preview.
+    property var act: null
+    // The settings' switches: snooze offered, and the apps muted.
+    property bool snoozeEnabled: true
+    property string mutedApps: ""
     // When it arrived and the current time, in ms, for "5 min".
     property real arrived: 0
     property real now: Date.now()
@@ -31,13 +39,12 @@ Item {
     readonly property bool expanded: root.userExpanded !== undefined ? root.userExpanded : root.newest
     readonly property bool hovered: hover.hovered
     readonly property bool held: hover.hovered || root.replying
+    readonly property bool isUrgent: root.entry ? root.entry.urgent === true : false
+    readonly property bool mutedApp: Notifications.muted(root.appName, root.mutedApps)
     readonly property var actions: root.notification ? root.notification.actions : []
     readonly property var defaultAction: root.actions.find(function (action) {
         return action.identifier === "default"
     }) || null
-    readonly property var extraActions: root.actions.filter(function (action) {
-        return action.identifier !== "default"
-    })
     readonly property string appName: root.entry ? (root.entry.appName || "") : ""
     readonly property string summary: root.entry ? (root.entry.summary || "") : ""
     readonly property string body: root.entry ? (root.entry.body || "") : ""
@@ -93,6 +100,9 @@ Item {
         color: Qt.rgba(VitrailTokens.color("surfaceHigh").r, VitrailTokens.color("surfaceHigh").g,
                        VitrailTokens.color("surfaceHigh").b,
                        hover.hovered ? root.surface.raisedHover : root.surface.raised)
+        // An urgent notification (a message, a call) is marked, not shouted.
+        border.width: root.isUrgent ? 1 : 0
+        border.color: VitrailTokens.color("error")
 
         Behavior on color { ColorAnimation { duration: VitrailTokens.duration("fast") } }
 
@@ -171,6 +181,14 @@ Item {
                 Layout.fillWidth: true
                 spacing: VitrailTokens.gap("xs")
 
+                VitrailText {
+                    visible: root.isUrgent
+                    variant: "icon"
+                    filled: true
+                    color: VitrailTokens.color("error")
+                    text: "priority_high"
+                }
+
                 // Takes what it needs; the age follows it and the
                 // chevron keeps the right edge.
                 VitrailText {
@@ -217,7 +235,7 @@ Item {
                 Layout.fillWidth: true
                 visible: text !== ""
                 variant: "content"
-                text: root.body
+                text: Notifications.linkify(root.body)
                 textFormat: Text.StyledText
                 wrapMode: Text.Wrap
                 maximumLineCount: root.expanded ? 6 : 1
@@ -233,44 +251,31 @@ Item {
                 notification: root.notification
             }
 
-            // The app's actions, then reply and mark as read.
-            Flow {
+            // The app's actions, copy, snooze, mute and mark as read; then reply.
+            NotificationActions {
                 Layout.fillWidth: true
                 Layout.topMargin: VitrailTokens.gap("xs")
                 visible: root.expanded
-                spacing: VitrailTokens.gap("xs")
-
-                Repeater {
-                    model: root.extraActions
-
-                    delegate: VitrailButton {
-                        required property var modelData
-
-                        variant: "text"
-                        tone: "secondary"
-                        text: modelData.text
-                        onClicked: modelData.invoke()
-                    }
+                notification: root.notification
+                strings: root.strings
+                snooze: root.snoozeEnabled
+                muted: root.mutedApp
+                onAct: function (kind, value) {
+                    if (root.act)
+                        root.act(kind, value, root.notification ? root.notification.id : 0)
                 }
+            }
 
-                VitrailButton {
-                    visible: root.canReply
-                    variant: "text"
-                    tone: "secondary"
-                    icon: "reply"
-                    text: root.t("notifications.reply")
-                    onClicked: {
-                        root.replying = true
-                        reply.forceActiveFocus()
-                    }
-                }
-
-                VitrailButton {
-                    variant: "text"
-                    tone: "secondary"
-                    icon: "done_all"
-                    text: root.t("notifications.markRead")
-                    onClicked: if (root.notification) root.notification.dismiss()
+            VitrailButton {
+                visible: root.expanded && root.canReply
+                Layout.topMargin: VitrailTokens.gap("xs")
+                variant: "text"
+                tone: "secondary"
+                icon: "reply"
+                text: root.t("notifications.reply")
+                onClicked: {
+                    root.replying = true
+                    reply.forceActiveFocus()
                 }
             }
 

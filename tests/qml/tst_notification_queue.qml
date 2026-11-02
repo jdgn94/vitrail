@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import "../../bar/notifications"
+import "../../bar/notifications/notifications.js" as Notifications
 
 // Which notifications are on screen and which wait their turn.
 TestCase {
@@ -11,6 +12,7 @@ TestCase {
 
         QtObject {
             property int id
+            property int urgency: 1
             property string summary: "Title " + id
             property string body: "Body " + id
             property string appName: "App"
@@ -118,7 +120,7 @@ TestCase {
     }
 
     function test_an_arrival_while_the_panel_is_open_is_listed_but_not_toasted() {
-        var queue = createTemporaryObject(queueComponent, this, { maximum: 5, quiet: true })
+        var queue = createTemporaryObject(queueComponent, this, { maximum: 5, panelOpen: true })
         make(queue, 2)
         compare(historyIds(queue), [2, 1])
         compare(shownIds(queue), [])
@@ -128,16 +130,16 @@ TestCase {
     function test_opening_the_panel_clears_the_cards_but_keeps_the_list() {
         var queue = createTemporaryObject(queueComponent, this, { maximum: 5 })
         make(queue, 2)
-        queue.quiet = true
+        queue.panelOpen = true
         compare(shownIds(queue), [])
         compare(queue.waiting, [])
         compare(historyIds(queue), [2, 1])
     }
 
     function test_closing_the_panel_does_not_raise_the_backlog() {
-        var queue = createTemporaryObject(queueComponent, this, { maximum: 5, quiet: true })
+        var queue = createTemporaryObject(queueComponent, this, { maximum: 5, panelOpen: true })
         make(queue, 2)
-        queue.quiet = false
+        queue.panelOpen = false
         compare(shownIds(queue), [])
         compare(historyIds(queue), [2, 1])
     }
@@ -250,5 +252,46 @@ TestCase {
         make(queue, 2)
         queue.clearGroup("nobody")
         compare(historyIds(queue), [2, 1])
+    }
+
+    function test_a_muted_app_is_listed_but_never_toasted() {
+        var queue = createTemporaryObject(queueComponent, this, { maximum: 5, muted: "App" })
+        make(queue, 2)
+        compare(historyIds(queue), [2, 1])
+        compare(shownIds(queue), [])
+        compare(queue.waiting, [])
+    }
+
+    function test_an_urgent_one_toasts_under_do_not_disturb() {
+        var queue = createTemporaryObject(queueComponent, this, { maximum: 5, dnd: true })
+        queue.push(createTemporaryObject(fake, this, { id: 1, appName: "Quiet" }))
+        compare(shownIds(queue), [])
+        queue.push(createTemporaryObject(fake, this, { id: 2, appName: "Calls", urgency: 2 }))
+        compare(shownIds(queue), [2])
+        queue.urgentBypass = false
+        queue.push(createTemporaryObject(fake, this, { id: 3, appName: "Calls", urgency: 2 }))
+        compare(shownIds(queue), [2])
+    }
+
+    function test_the_stats_count_arrivals_and_acts() {
+        var queue = createTemporaryObject(queueComponent, this, { maximum: 5 })
+        var list = make(queue, 2)
+        var day = Notifications.dayOf(Date.now())
+        compare(queue.stats[day].App[0], 2)
+        compare(queue.stats[day].App[1], 0)
+        list[0].closed(1)
+        compare(queue.stats[day].App[1], 1)
+    }
+
+    function test_snoozing_takes_the_row_out_and_announces_when() {
+        var queue = createTemporaryObject(queueComponent, this, { maximum: 5 })
+        make(queue, 1)
+        var seen = null
+        queue.snoozed.connect(function (row, until) { seen = { row: row, until: until } })
+        var until = queue.snooze(1, "15m")
+        verify(seen !== null)
+        compare(until, seen.until)
+        compare(seen.row.summary, "Title 1")
+        compare(historyIds(queue), [])
     }
 }

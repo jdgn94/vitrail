@@ -33,6 +33,11 @@ QtObject {
     property alias notificationPosition: barFile.notificationPosition
     property alias notificationMax: barFile.notificationMax
     property alias notificationDnd: barFile.notificationDnd
+    property alias notificationSnooze: barFile.notificationSnooze
+    property alias notificationMuted: barFile.notificationMuted
+    property alias notificationUrgentApps: barFile.notificationUrgentApps
+    property alias notificationUrgentBypass: barFile.notificationUrgentBypass
+    property alias notificationSnoozes: barFile.notificationSnoozes
     property alias clipboardMax: barFile.clipboardMax
     property alias clipboardPaste: barFile.clipboardPaste
     property alias mediaStyle: barFile.mediaStyle
@@ -113,6 +118,15 @@ QtObject {
         property string notificationPosition: "top-right"
         property int notificationMax: VitrailTokens.ranges.notifications.value
         property bool notificationDnd: false
+        // The cards: snooze them, the apps that are muted, and the apps whose
+        // notifications count as urgent (they bypass Do Not Disturb when the
+        // bypass is on).
+        property bool notificationSnooze: true
+        property string notificationMuted: ""
+        property string notificationUrgentApps: ""
+        property bool notificationUrgentBypass: true
+        // What was snoozed and when it comes back, as a JSON array.
+        property string notificationSnoozes: ""
         // What the clipboard store keeps, and whether picking an entry also
         // pastes it into the focused window.
         property int clipboardMax: 100

@@ -16,15 +16,17 @@ var PICTURE_MAX = 240
 // square, attachments and screenshots usually are not.
 var AVATAR_ASPECT = 1.25
 
-// The group a notification belongs to.
+// The group a notification belongs to: the app, and for a chat the
+// conversation (sender / thread), so two chats of one app are two groups.
 function groupKey(row) {
-    return row.appName || row.icon || "?"
+    var app = row.appName || row.icon || "?"
+    return row.conversation ? app + "\u0000" + row.conversation : app
 }
 
-// Splits `rows` (plain objects with appName, icon, arrived; the queue's history
-// order) into groups { key, appName, icon, rows }. Rows run newest first inside
-// a group and groups by their newest row, both falling back to the history
-// order when two arrived in the same millisecond.
+// Splits `rows` (plain objects with appName, icon, arrived, conversation; the
+// queue's history order) into groups { key, appName, conversation, icon, rows }.
+// Rows run newest first inside a group and groups by their newest row, both
+// falling back to the history order when two arrived in the same millisecond.
 function groupRows(rows, unknownLabel) {
     var order = {}
     var byKey = {}
@@ -37,6 +39,7 @@ function groupRows(rows, unknownLabel) {
             byKey[key] = {
                 key: key,
                 appName: row.appName || unknownLabel,
+                conversation: row.conversation || "",
                 icon: row.icon || "",
                 rows: []
             }

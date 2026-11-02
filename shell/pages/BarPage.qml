@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../../kit"
+import "../../kit/base"
 
 // Bar category: where the system bar docks, its style, the screen frame,
 // the side panels and where notifications appear. An empty preference
@@ -303,6 +304,70 @@ Item {
                         foreground: page.palette.foreground
                         accent: page.palette.primary
                         onMoved: page.prefs.notificationMax = value
+                    }
+                }
+
+                Section {
+                    Layout.fillWidth: true
+                    visible: page.tab === "notifications"
+                    icon: "notifications_active"
+                    title: page.t("bar.notifications.behaviour")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    VitrailSettingRow {
+                        icon: "snooze"
+                        label: page.t("bar.notifications.snooze")
+                        description: page.t("bar.notifications.snooze.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.notificationSnooze === undefined || page.prefs.notificationSnooze === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.notificationSnooze = value }
+                        }
+                    }
+
+                    VitrailField {
+                        id: mutedField
+
+                        Layout.fillWidth: true
+                        size: "sm"
+                        label: page.t("bar.notifications.muted")
+                        supportingText: page.t("bar.notifications.muted.help")
+                        text: page.prefs.notificationMuted || ""
+                        onTextChanged: if (mutedField.text !== (page.prefs.notificationMuted || ""))
+                                            page.prefs.notificationMuted = mutedField.text
+                    }
+
+                    VitrailField {
+                        id: urgentField
+
+                        Layout.fillWidth: true
+                        size: "sm"
+                        label: page.t("bar.notifications.urgent")
+                        supportingText: page.t("bar.notifications.urgent.help")
+                        text: page.prefs.notificationUrgentApps || ""
+                        onTextChanged: if (urgentField.text !== (page.prefs.notificationUrgentApps || ""))
+                                            page.prefs.notificationUrgentApps = urgentField.text
+                    }
+
+                    VitrailSettingRow {
+                        icon: "priority_high"
+                        label: page.t("bar.notifications.urgentBypass")
+                        description: page.t("bar.notifications.urgentBypass.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.notificationUrgentBypass === undefined
+                                     || page.prefs.notificationUrgentBypass === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.notificationUrgentBypass = value }
+                        }
                     }
                 }
             }

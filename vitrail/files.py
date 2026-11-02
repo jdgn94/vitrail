@@ -14,6 +14,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -93,3 +94,21 @@ def open_path(path: Path, run: Runner = run_text, spawn=subprocess.Popen) -> lis
     argv = [*file_manager(run), str(path)]
     spawn(argv)
     return argv
+
+
+def main(argv: list[str] | None = None) -> int:
+    """The bar's way in: a notification's attachment, a download's folder."""
+    args = list(sys.argv[1:] if argv is None else argv)
+    if len(args) == 2 and args[0] == "open":
+        open_path(Path(args[1]))
+        return 0
+    if len(args) == 2 and args[0] == "folder":
+        path = Path(args[1])
+        open_path(path if path.is_dir() else path.parent)
+        return 0
+    print("usage: files open <path> | folder <path>", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

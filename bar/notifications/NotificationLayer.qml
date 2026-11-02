@@ -46,6 +46,16 @@ Scope {
     property var queue
     property var strings: ({})
     property bool dnd: false
+    // What a notification's buttons ask the shell to do, and the settings they
+    // follow (snooze offered, muted apps, per-app counts today).
+    property var act: null
+    property bool snoozeEnabled: true
+    property string mutedApps: ""
+    property var stats: ({})
+    // The shell's: the search and which of the two lists is open.
+    property string query: ""
+    property bool mutedShown: false
+    property bool statsShown: false
     // The quick-notes widget's text.
     property string notes: ""
     // The player the panel's mini player follows.
@@ -68,6 +78,9 @@ Scope {
     signal openRequested()
     signal closeRequested()
     signal dndToggled()
+    signal queryEdited(string text)
+    signal mutedToggled()
+    signal statsToggled()
     signal sessionRequested(string key)
     signal noteAdded(string note)
     signal noteRemoved(int index)
@@ -217,8 +230,18 @@ Scope {
                 strings: root.strings
                 side: root.side
                 dnd: root.dnd
+                act: root.act
+                snoozeEnabled: root.snoozeEnabled
+                mutedApps: root.mutedApps
+                stats: root.stats
+                query: root.query
+                mutedShown: root.mutedShown
+                statsShown: root.statsShown
                 onCloseRequested: root.closeRequested()
                 onDndToggled: root.dndToggled()
+                onQueryEdited: function (text) { root.queryEdited(text) }
+                onMutedToggled: root.mutedToggled()
+                onStatsToggled: root.statsToggled()
 
                 // The widgets slot: now playing, quick notes, the session row.
                 MediaPanel {

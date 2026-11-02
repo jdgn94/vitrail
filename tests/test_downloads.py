@@ -285,5 +285,14 @@ class WordsTests(Folder):
         self.assertEqual(downloads.t("downloads.body.of", "1 B", "2 B", language="de"), "1 B von 2 B")
 
 
+class LockTests(unittest.TestCase):
+    def test_only_one_watcher_holds_the_session(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            first = downloads.acquire_lock(Path(folder))
+            self.assertIsNotNone(first)
+            self.assertIsNone(downloads.acquire_lock(Path(folder)))
+            first.close()
+
+
 if __name__ == "__main__":
     unittest.main()

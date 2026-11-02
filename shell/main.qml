@@ -22,7 +22,23 @@ Window {
 
     // The folder with one preference file per area (see Prefs.qml).
     readonly property string configDir: Args.value("--config", ".")
-    readonly property var i18n: Args.json("--i18n", ({ languages: [], strings: {} }))
+    // The translations, in a file the launcher writes: every language in one
+    // argument passes the kernel's 128 KiB limit as the strings grow.
+    // `--i18n` still serves a caller with a small bundle.
+    readonly property var i18n: {
+        var path = Args.value("--i18n-file", "")
+        if (path !== "") {
+            var request = new XMLHttpRequest()
+            try {
+                request.open("GET", "file://" + path, false)
+                request.send()
+                return JSON.parse(request.responseText)
+            } catch (error) {
+                return ({ languages: [], strings: {} })
+            }
+        }
+        return Args.json("--i18n", ({ languages: [], strings: {} }))
+    }
     readonly property var languages: app.i18n.languages || []
     readonly property var strings: (app.i18n.strings || {})[prefs.language] || ({})
     readonly property var palettes: Args.json("--palette", ({}))

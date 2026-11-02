@@ -5,19 +5,23 @@ import Quickshell.Widgets
 import "../kit"
 import "../kit/base"
 import "groups.js" as Groups
+import "notifications.js" as Notifications
 
 // Full-height notification panel on one side of the screen.
 //
 // The list is grouped by application, the app with the newest notification
 // first: one card per app, holding a header (icon, name, how many it holds,
 // clear and open/close buttons) over the notifications of that app, newest
-// first, each one a smaller card inside it (`NotificationEntry`). A group
-// starts closed and shows only its newest notification; open, all of them in a
-// body that scrolls past `Groups.BODY_MAX`. A click on the group card outside
-// a notification or a button toggles it. An expired notification keeps its row
-// and loses only the live actions.
+// first, each one a smaller card inside it (`NotificationEntry`). A chat is
+// grouped by conversation (sender / thread), so two threads of one app are two
+// groups. A group starts closed and shows only its newest notification; open,
+// all of them in a body that scrolls past `Groups.BODY_MAX`. A click on the
+// group card outside a notification or a button toggles it. An expired
+// notification keeps its row and loses only the live actions.
 //
-// `widgets` is the slot for the widgets that will come later.
+// The header searches what arrived, lists the muted apps and shows today's
+// counts per app (how many arrived, how many were acted on). The search text
+// and the two lists belong to the shell, so the IPC can open them too.
 Item {
     id: root
 
@@ -26,9 +30,22 @@ Item {
     property string side: "right"
     // Do Not Disturb: arrivals are listed, not toasted.
     property bool dnd: false
+    // What a button asks the shell to do, and the settings' switches.
+    property var act: null
+    property bool snoozeEnabled: true
+    property string mutedApps: ""
+    // The queue's per-app counts today.
+    property var stats: ({})
+    // The shell's: the search, and which of the two lists is open.
+    property string query: ""
+    property bool mutedShown: false
+    property bool statsShown: false
 
     signal closeRequested()
     signal dndToggled()
+    signal queryEdited(string text)
+    signal mutedToggled()
+    signal statsToggled()
 
     default property alias widgets: widgetsColumn.data
 
@@ -68,6 +85,8 @@ Item {
         var rows = []
         for (var i = 0; i < root.queue.history.count; i++) {
             var row = root.queue.history.get(i)
+            if (!Notifications.matches(root.query, row))
+                continue
             rows.push({
                 nid: row.nid,
                 summary: row.summary,
@@ -76,7 +95,9 @@ Item {
                 icon: row.icon,
                 image: row.image,
                 arrived: row.arrived,
-                expired: row.expired
+                expired: row.expired,
+                conversation: row.conversation,
+                urgent: row.urgent
             })
         }
         var list = Groups.groupRows(rows, root.t("notifications.unknownApp"))
@@ -97,16 +118,18 @@ Item {
                 groups.insert(k, {
                     key: group.key,
                     appName: group.appName,
+                    conversation: group.conversation,
                     icon: group.icon,
                     rows: group.rows,
                     count: group.rows.length,
-                    expanded: root.opened[group.key] === true
+                    expanded: root.query !== "" || root.opened[group.key] === true
                 })
                 continue
             }
             if (at !== k)
                 groups.move(at, k, 1)
             groups.setProperty(k, "appName", group.appName)
+            groups.setProperty(k, "conversation", group.conversation)
             groups.setProperty(k, "icon", group.icon)
             groups.setProperty(k, "count", group.rows.length)
             root.syncRows(groups.get(k).rows, group.rows)
@@ -174,6 +197,13 @@ Item {
     }
 
     onQueueChanged: root.sync()
+    onQueryChanged: {
+        root.sync()
+        if (search.text !== root.query)
+            search.text = root.query
+    }
+    onMutedAppsChanged: if (root.mutedShown && Notifications.list(root.mutedApps).length === 0)
+        root.mutedToggled()
 
     Connections {
         target: root.queue ? root.queue.history : null
@@ -200,6 +230,23 @@ Item {
             }
 
             VitrailButton {
+                visible: Notifications.list(root.mutedApps).length > 0
+                icon: root.mutedShown ? "notifications_active" : "notifications_off"
+                variant: "text"
+                tone: root.mutedShown ? "primary" : "secondary"
+                size: "sm"
+                onClicked: root.mutedToggled()
+            }
+
+            VitrailButton {
+                icon: "bar_chart"
+                variant: "text"
+                tone: root.statsShown ? "primary" : "secondary"
+                size: "sm"
+                onClicked: root.statsToggled()
+            }
+
+            VitrailButton {
                 icon: root.dnd ? "notifications_off" : "notifications"
                 variant: "text"
                 tone: root.dnd ? "primary" : "secondary"
@@ -223,6 +270,72 @@ Item {
             }
         }
 
+        // What arrived: the search keeps what matches, in every group.
+        VitrailField {
+            id: search
+
+            Layout.fillWidth: true
+            size: "sm"
+            placeholder: root.t("notifications.search")
+            text: root.query
+            onTextChanged: if (search.text !== root.query) root.queryEdited(search.text)
+            onEscaped: root.queryEdited("")
+        }
+
+        // The apps that will not be toasted, each one a click away from it.
+        Flow {
+            Layout.fillWidth: true
+            visible: root.mutedShown
+            spacing: VitrailTokens.gap("xs")
+
+            Repeater {
+                model: Notifications.list(root.mutedApps)
+
+                delegate: VitrailButton {
+                    required property var modelData
+
+                    variant: "tonal"
+                    tone: "secondary"
+                    size: "sm"
+                    icon: "notifications_active"
+                    text: modelData
+                    onClicked: if (root.act) root.act("unmute", modelData, 0)
+                }
+            }
+        }
+
+        // Today's counts: what arrives and what was acted on, per app.
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: root.statsShown
+            spacing: VitrailTokens.gap("xs")
+
+            VitrailText {
+                Layout.fillWidth: true
+                variant: "subtitle"
+                text: root.t("notifications.stats")
+            }
+
+            VitrailText {
+                Layout.fillWidth: true
+                visible: Notifications.statsList(root.stats, root.now).length === 0
+                variant: "content"
+                text: root.t("notifications.stats.empty")
+            }
+
+            Repeater {
+                model: Notifications.statsList(root.stats, root.now)
+
+                delegate: VitrailSettingRow {
+                    required property var modelData
+
+                    label: modelData.app
+                    description: root.t("notifications.stats.counts")
+                                     .replace("%1", modelData.seen).replace("%2", modelData.acted)
+                }
+            }
+        }
+
         // Nothing to read: a container with the icon and the line.
         Rectangle {
             id: emptyCard
@@ -243,7 +356,7 @@ Item {
 
                 VitrailIcon {
                     Layout.alignment: Qt.AlignHCenter
-                    icon: "notifications_off"
+                    icon: root.query !== "" ? "search_off" : "notifications_off"
                     size: "xl"
                     tone: "secondary"
                 }
@@ -253,7 +366,7 @@ Item {
                     variant: "content"
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
-                    text: root.t("notifications.empty")
+                    text: root.query !== "" ? root.t("notifications.search.empty") : root.t("notifications.empty")
                 }
             }
         }
@@ -354,7 +467,9 @@ Item {
                             variant: "body"
                             font.weight: Font.Medium
                             elide: Text.ElideRight
-                            text: group.model.appName
+                            text: group.model.conversation !== ""
+                                  ? group.model.appName + " · " + group.model.conversation
+                                  : group.model.appName
                         }
 
                         VitrailText {
@@ -430,7 +545,9 @@ Item {
                                         icon: model.icon,
                                         image: model.image,
                                         arrived: model.arrived,
-                                        expired: model.expired
+                                        expired: model.expired,
+                                        conversation: model.conversation,
+                                        urgent: model.urgent
                                     })
                                     // Slide in from above by one small gap.
                                     readonly property int rise: VitrailTokens.gap("sm")
@@ -440,6 +557,9 @@ Item {
                                     notification: root.queue ? root.queue.byId[model.nid] || null : null
                                     row: snapshot
                                     strings: root.strings
+                                    act: root.act
+                                    snoozeEnabled: root.snoozeEnabled
+                                    mutedApps: root.mutedApps
                                     arrived: model.arrived
                                     now: root.now
                                     opacity: root.settled ? 0 : 1

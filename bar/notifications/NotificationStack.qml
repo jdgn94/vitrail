@@ -9,6 +9,10 @@ Item {
 
     property var queue
     property var strings: ({})
+    // What a button asks the shell to do, and the settings' switches.
+    property var act: null
+    property bool snoozeEnabled: true
+    property string mutedApps: ""
     // Hangs from the bottom edge: the newest card goes at the bottom.
     property bool atBottom: false
     // Ticks so every card's "5 min" stays true.
@@ -43,12 +47,16 @@ Item {
             required property int nid
 
             width: list.width
+            height: implicitHeight
             notification: root.queue.byId[nid] || null
             queue: root.queue
             arrived: root.queue.arrived[nid] || Date.now()
             now: root.now
             newest: index === 0
             strings: root.strings
+            act: root.act
+            snoozeEnabled: root.snoozeEnabled
+            mutedApps: root.mutedApps
             // Fades in on its own: an add transition cut short by the next
             // arrival would leave it half transparent.
             opacity: 0
