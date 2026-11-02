@@ -235,6 +235,22 @@ setup_vpn() {
     run sudo "$ROOT_DIR/vpn/install.sh" --mode "$VPN_MODE"
 }
 
+# The VPN's own folders belong to the user: ~/.config/vitrail-vpn holds the
+# document (which connections the automatic choice may use) and
+# ~/.local/share/vitrail-vpn the OpenVPN files Vitrail copied there. Both 0700,
+# files 0600; the migration moves the old misc.ini key out once.
+prepare_vpn_storage() {
+    local config="${HOME_DIR}/.config/vitrail-vpn" data="${HOME_DIR}/.local/share/vitrail-vpn"
+    if [[ $DRY_RUN -eq 1 ]]; then
+        printf '  %s$ install -d -m 0700 %s %s%s\n' "$DIM" "$config" "$data" "$RESET"
+        return 0
+    fi
+    install -d -m 0700 "$config" "$data"
+    PYTHONPATH="$ROOT_DIR" HOME="$HOME_DIR" XDG_CONFIG_HOME="${HOME_DIR}/.config" \
+        env -u XDG_DATA_HOME python3 -m vitrail.cli migrate >/dev/null 2>&1 \
+        || warn "could not migrate the VPN settings; the settings window will"
+}
+
 confirm() {
     local answer
     printf '%s [y/N] ' "$1"
@@ -685,6 +701,7 @@ main() {
     enable_file_index
     setup_display_control
     enable_settings_watch
+    prepare_vpn_storage
     setup_vpn
 
     info ""

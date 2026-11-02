@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Qt.labs.settings 1.1
 import "../../kit"
 import "../../kit/base"
 import "../../bar/network/network.js" as Network
@@ -20,8 +21,10 @@ import "../vpnview.js" as VpnView
 // traffic mode, domain list and `enabled` marker (the state's `vpn`). It has
 // three views: the connections (`VpnList`), the global settings (`VpnGlobal`)
 // and one connection's settings (`VpnConnection`); `--view global|<id>` opens
-// one. Vitrail keeps one thing of its own, in misc.ini (`vpnSettings`, edited
-// by shell/vpnsettings.js): which connections the automatic choice may use.
+// one. Vitrail keeps one thing of its own, in its private folder
+// (`~/.config/vitrail-vpn`, edited by shell/vpnsettings.js): which connections
+// the automatic choice may use. The folder belongs to the system user, so no
+// rule, credential or file is shared with another one.
 // Passwords never travel in a request: `sendSecret` writes them to a private
 // file under the runtime folder and the request names only its nonce.
 Item {
@@ -36,6 +39,8 @@ Item {
     // $XDG_RUNTIME_DIR (a private folder, "" when there is none): where a
     // password may be left for the helper.
     property string runtime: ""
+    // The VPN's private folder (~/.config/vitrail-vpn): the document lives there.
+    property string vpnDirectory: ""
     property string tab: "internet"
     // The VPN view to open at first: "global", or a connection's id.
     property string view: ""
@@ -75,7 +80,7 @@ Item {
 
     // The VPN document (Vitrail's own part), and the view that is open:
     // "list", "global" or "connection" (of `vpnId`).
-    readonly property var doc: VpnDoc.parse(page.prefs.vpnSettings)
+    readonly property var doc: VpnDoc.parse(vpnFile.vpnSettings)
     property string vpnView: "list"
     property string vpnId: ""
 
@@ -129,7 +134,18 @@ Item {
     // Stores a changed document (null: nothing changed).
     function save(next) {
         if (next !== null)
-            page.prefs.vpnSettings = VpnDoc.stringify(next)
+            vpnFile.vpnSettings = VpnDoc.stringify(next)
+    }
+
+    // The document: one QSettings value in the private VPN folder, outside the
+    // preference files (vitrail/vpndoc.py migrates the old misc.ini key).
+    Settings {
+        id: vpnFile
+
+        fileName: page.vpnDirectory + "/settings.ini"
+        category: "vpn"
+
+        property string vpnSettings: ""
     }
 
     function toggle(on, request) {

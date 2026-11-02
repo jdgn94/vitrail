@@ -20,13 +20,16 @@ section empty with `available: false`.
 
 The VPN is hypraether's (`hypraether-vpn`): connections, credentials (name,
 user name, password), the global traffic mode and domain list, and the
-`enabled` marker (autostart) are all its own. Vitrail keeps only one thing of
-its own, `vpnSettings` in misc.ini: which connections the automatic choice
-may use. A password never rides in a request, a preference or the state: the
-window writes it to `$XDG_RUNTIME_DIR/vitrail-secret-<nonce>.ini` (the request
-carries the nonce), this module hands it to the tool as a `--pass-file` and
-deletes both files whatever happens. Logs name the verb and the credential
-only.
+`enabled` marker (autostart) are all its own. Vitrail keeps one thing of its
+own, the document in `~/.config/vitrail-vpn` (`vitrail/vpndoc.py`): which
+connections the automatic choice may use, and the .ovpn files it copied into
+`~/.local/share/vitrail-vpn` before handing them to the tool. Both folders
+belong to the system user (0700, files 0600), so no account, file or rule is
+shared with another one. A password never rides in a request, a preference or
+the state: the window writes it to `$XDG_RUNTIME_DIR/vitrail-secret-<nonce>.ini`
+(the request carries the nonce), this module hands it to the tool as a
+`--pass-file` and deletes both files whatever happens. Logs name the verb and
+the credential only.
 """
 
 from __future__ import annotations
@@ -49,6 +52,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from . import prefs
+from . import vpndoc
 
 STATE_FILE = "network-state.json"
 # How long `bluetoothctl scan` looks around, as the bar's launcher does.
@@ -83,7 +87,7 @@ LONG_READ = 20
 # keys of its shape (required, optional), each one validated.
 NONCE = re.compile(r"^[0-9a-f]{32}$")
 SHAPES = {
-    "vpn-import": ({"file"}, {"name", "credential"}),
+    "vpn-import": ({"file"}, {"name", "credential", "move"}),
     "vpn-cred-add": ({"name", "user", "nonce"}, set()),
     "vpn-cred-update": ({"name"}, {"rename", "user", "nonce"}),
     "vpn-cred-assign": ({"name", "ids"}, set()),
@@ -202,6 +206,7 @@ def valid_ids(value: object) -> bool:
 FIELDS: dict[str, Callable[[object], bool]] = {
     "file": valid_file, "name": valid_label, "credential": valid_label, "rename": valid_label,
     "user": valid_user, "ids": valid_ids, "nonce": lambda text: isinstance(text, str) and NONCE.match(text) is not None,
+    "move": lambda value: isinstance(value, bool),
 }
 
 
@@ -544,13 +549,17 @@ def state(run: Runner = run_text, quality: dict | None = None, marker: Path | No
 
 
 def write_state(data: dict, folder: Path | None = None) -> Path:
-    """Replaces network-state.json whole, so the page never reads half of it."""
+    """Replaces network-state.json whole, so the page never reads half of it.
+    It names the user's own files: readable by its owner only."""
     folder = folder or prefs.config_dir()
     folder.mkdir(parents=True, exist_ok=True)
     target = folder / STATE_FILE
     partial = target.with_suffix(".tmp")
-    partial.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
+    handle = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(handle, "w", encoding="utf-8") as out:
+        out.write(json.dumps(data, separators=(",", ":")))
     os.replace(partial, target)
+    os.chmod(target, 0o600)
     return target
 
 
@@ -634,16 +643,9 @@ def resolve_url(url: str, resolver: Resolver = lookup, directory: Directory = tr
     return found | {"retry": True} if retry else found
 
 
-def excluded(config: Path) -> set[str]:
-    """The connections the user kept out of the automatic choice: `vpnSettings`
-    in misc.ini is `{"connections": {"<id>": {"auto": false}}}`. Read-only: the
-    page is its one writer."""
-    text = prefs.read_prefs(config).get("vpnSettings", "")
-    try:
-        # QSettings leaves a value without commas unquoted but still escaped.
-        document = json.loads(qt_value(text) if text.startswith("{\\") else text)
-    except ValueError:
-        return set()
+def excluded(document: dict) -> set[str]:
+    """The connections the user kept out of the automatic choice: the document
+    of `vitrail/vpndoc.py` is `{"connections": {"<id>": {"auto": false}}}`."""
     connections = document.get("connections") if isinstance(document, dict) else None
     if not isinstance(connections, dict):
         return set()
@@ -841,6 +843,8 @@ def log(line: str) -> None:
 
 
 Act = Callable[..., "tuple[int, str]"]
+# Copies a picked .ovpn into the private folder: (source, move) -> the copy.
+Store = Callable[[Path, bool], Path]
 
 
 def run_logged(verb: str, argv: list[str], act: Act) -> int:
@@ -895,8 +899,26 @@ def add_domains(url: str, act: Act, run: Runner, resolver: Resolver, directory: 
     return code
 
 
-def connect_best(verb: str, tunnels: list[dict], quality: dict, folder: Path, act: Act) -> int:
-    chosen = best(tunnels, quality, excluded(folder))
+def import_file(argument: str, act: Act, store: Store) -> int:
+    """`vpn-import`: the picked file is copied into Vitrail's private folder
+    first and the tool imports that copy, so the connection never depends on a
+    file the user may move or delete afterwards. The original goes only when
+    the request asks to move it."""
+    data = payload("vpn-import", argument)
+    try:
+        stored = store(Path(data["file"]), bool(data.get("move", False)))
+    except (OSError, ValueError) as error:
+        log(f"vpn-import failed: {error}")
+        return 1
+    log(label("vpn-import", argument))
+    argv = ["hypraether-vpn", "import", str(stored),
+            *(["--name", data["name"]] if "name" in data else []),
+            *(["--credential", data["credential"]] if "credential" in data else [])]
+    return run_logged("vpn-import", argv, act)
+
+
+def connect_best(verb: str, tunnels: list[dict], quality: dict, document: dict, act: Act) -> int:
+    chosen = best(tunnels, quality, excluded(document))
     if chosen is None:
         log(f"{verb} skipped (no connection)")
         return 0
@@ -907,7 +929,8 @@ def connect_best(verb: str, tunnels: list[dict], quality: dict, folder: Path, ac
 def apply(request: str, folder: Path | None = None, act: Act = run_action, run: Runner = run_text, *,
           resolver: Resolver = lookup, directory: Directory = transparency, pinger: Pinger = ping_host,
           read: Callable[[str], str] = read_config, runtime: Path | None = None, marker: Path | None = None,
-          secret_wait: float = SECRET_WAIT) -> int:
+          secret_wait: float = SECRET_WAIT, doc_folder: Path | None = None,
+          store: Store = vpndoc.store_file) -> int:
     """Runs one request, logs it, and rewrites the state file. 0 when it ran
     (or was only a refresh, a probe or a skipped request), 2 when refused, 1
     when the command failed."""
@@ -931,7 +954,9 @@ def apply(request: str, folder: Path | None = None, act: Act = run_action, run: 
     elif verb == "vpn-best":
         tunnels = parse_vpn(run(["hypraether-vpn", "list", "--json"]) or "")
         quality = probe(tunnels, pinger, read)
-        code = connect_best(verb, tunnels, quality, folder, act)
+        code = connect_best(verb, tunnels, quality, vpndoc.read_doc(doc_folder), act)
+    elif verb == "vpn-import":
+        code = import_file(argument, act, store)
     elif verb == "vpn-domain-add":
         log(request)
         code = add_domains(argument, act, run, resolver, directory)
@@ -972,7 +997,7 @@ def network_up(run: Runner) -> bool:
 
 def autostart(folder: Path | None = None, act: Act = run_action, run: Runner = run_text, *,
               pinger: Pinger = ping_host, read: Callable[[str], str] = read_config, runtime: Path | None = None,
-              marker: Path | None = None, session: str | None = None,
+              marker: Path | None = None, session: str | None = None, doc_folder: Path | None = None,
               sleep: Callable[[float], None] = time.sleep) -> int:
     """hypraether's login rule for the VPN, once per session (see
     `startup_action`). When it connects and nothing could be measured, it waits
@@ -1005,7 +1030,7 @@ def autostart(folder: Path | None = None, act: Act = run_action, run: Runner = r
                 waited += NETWORK_POLL
             if waited:
                 quality = probe(tunnels, pinger, read)
-        code = connect_best("autostart", tunnels, quality, folder, act)
+        code = connect_best("autostart", tunnels, quality, vpndoc.read_doc(doc_folder), act)
     write_state(state(run, quality, marker), folder)
     return code
 

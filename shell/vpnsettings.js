@@ -1,10 +1,10 @@
 .pragma library
 
-// The one thing Vitrail keeps of its own about the VPN, in misc.ini
-// (`vpnSettings`, one JSON text): which connections the automatic choice may
-// use. Everything else (connections, credentials, mode, domains, the
-// autostart marker) is hypraether-vpn's. vitrail/network.py reads it to pick
-// the best connection.
+// The one thing Vitrail keeps of its own about the VPN, in its private folder
+// (`~/.config/vitrail-vpn/settings.ini`, `vpnSettings`: one JSON text): which
+// connections the automatic choice may use. Everything else (connections,
+// credentials, mode, domains, the autostart marker) is hypraether-vpn's.
+// vitrail/network.py reads it to pick the best connection.
 //
 //   { "connections": { "<id>": { "auto": false } } }     absent = true
 //

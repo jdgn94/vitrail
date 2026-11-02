@@ -250,7 +250,14 @@ the window declares it in another file, or the path unit watches another set.
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
 | `connection.ini` | `connectionRequest`, `connectionSeq` (the Connection page's request, run once per counter value) |
-| `misc.ini` | `selftest` (written by the smoke test), `quickNotes`, `clipboardColors`, `vpnSettings` (the VPN tab's one Vitrail-only document: which connections the automatic choice may use) and any key the map does not list |
+| `misc.ini` | `selftest` (written by the smoke test), `quickNotes`, `clipboardColors` and any key the map does not list |
+
+The VPN keeps its own document outside these files, in a folder of its own:
+`~/.config/vitrail-vpn/settings.ini` (`vpnSettings`: which connections the
+automatic choice may use) and `~/.local/share/vitrail-vpn/` (the OpenVPN files
+Vitrail copied there). Both are created 0700, their files 0600, and they follow
+`$HOME`: every system user has its own document, files and rules, and the
+migration moves the old `vpnSettings` out of `misc.ini` once.
 
 A key shared by several pages (`radius`, `blurStrength`, `surfaceStyle`,
 `surfaceOpacity`) lives with the page that owns it, Appearance. To add a
@@ -337,13 +344,19 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   config, `env LANG=C ping -c 3 -W 1`, side by side), packet loss breaking a
   tie; nothing measured, the first. Vitrail adds one filter: a connection
   switched off under "Use for the automatic choice" (`vpnSettings` in
-  `misc.ini`, `{"connections": {"<id>": {"auto": false}}}`) is left out unless
-  that leaves nothing. At login the bar runs `python3 -m vitrail.network
-  autostart` once per graphical session (a stamp under `$XDG_RUNTIME_DIR`,
-  keyed by the compositor instance, so restarting the bar never undoes a
-  disconnect): the marker with nothing up and a credential connects the best
-  (waiting up to 30 s for NetworkManager when nothing could be measured), a
-  tunnel up without the marker records the marker, otherwise nothing happens.
+  `~/.config/vitrail-vpn/settings.ini`, `{"connections": {"<id>": {"auto":
+  false}}}`) is left out unless that leaves nothing.
+
+  An import copies the picked `.ovpn` into `~/.local/share/vitrail-vpn` first
+  (0700/0600, verified by its digest) and hands that copy to the tool, so the
+  connection never depends on a file the user may move; "Move the original
+  file" deletes it only after the copy is verified. At login the bar runs
+  `python3 -m vitrail.network autostart` once per graphical session (a stamp
+  under `$XDG_RUNTIME_DIR`, keyed by the compositor instance, so restarting the
+  bar never undoes a disconnect): the marker with nothing up and a credential
+  connects the best (waiting up to 30 s for NetworkManager when nothing could
+  be measured), a tunnel up without the marker records the marker, otherwise
+  nothing happens.
 
   Passwords never travel in `connection.ini`, `misc.ini`, the state, an
   argument or a log. The page writes the password with `Qt.labs.settings` to
@@ -354,7 +367,9 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   files older than five minutes are swept at every request. The file dialog of
   the import form is `QtQuick.Dialogs.FileDialog`; `bin/vitrail-settings`
   sets `QT_QPA_PLATFORMTHEME=xdgdesktopportal` for the window so it reaches the
-  desktop's portal (under `qt6ct` Qt draws a plain dialog of its own).
+  desktop's portal (under `qt6ct` Qt draws a plain dialog of its own). The
+  settings window runs with `umask 077`, so every file it writes (the VPN
+  document included) is its user's alone.
 - **Language:** `ON SAVE`, everything else is `LIVE`.
 
 `LIVE` means the value is written as soon as you change it and applied by

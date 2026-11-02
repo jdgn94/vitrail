@@ -80,6 +80,7 @@ SHELL_WORDS = {
     "if", "then", "else", "elif", "fi", "for", "while", "until", "do", "done", "case", "esac", "in", "function",
     "return", "exit", "local", "export", "readonly", "declare", "set", "unset", "shift", "source", "exec", "eval",
     "command", "trap", "read", "cd", "wait", "break", "continue", "unlock", "mapfile", "printf", "echo", "test",
+    "umask",
     "[", "[[", "!", "{", "}", "(", ")", "usage", "info", "warn", "die", "run", "ok", "not_ok", "flag", "read_ini",
     "esac;", "fi;", "done;", "then;", "do;",
 }

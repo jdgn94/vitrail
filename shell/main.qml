@@ -32,10 +32,12 @@ Window {
     readonly property var zones: Args.json("--zones", ([]))
     readonly property string systemZone: Args.value("--timezone", "")
     readonly property bool systemNtp: Args.value("--ntp", "yes") === "yes"
-    // Ethernet, Wi-Fi, VPN and Bluetooth as they were at launch.
+    // The Connection page: Ethernet, Wi-Fi, VPN and Bluetooth as they were at launch.
     readonly property var network: Args.json("--network", ({}))
     // $XDG_RUNTIME_DIR: a private folder where a password may be left for the helper.
     readonly property string runtimeDir: Args.value("--runtime", "")
+    // The VPN's private folder (~/.config/vitrail-vpn): its document lives there.
+    readonly property string vpnDir: Args.value("--vpn", app.configDir + "/../vitrail-vpn")
     readonly property bool daytime: {
         var hour = new Date().getHours()
         return hour >= 7 && hour < 19
@@ -366,6 +368,7 @@ Window {
                                     network: app.network
                                     configDir: app.configDir
                                     runtime: app.runtimeDir
+                                    vpnDirectory: app.vpnDir
                                     tab: Args.value("--tab", "internet")
                                     view: Args.value("--view", "")
                                 }

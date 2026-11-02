@@ -19,6 +19,7 @@ from vitrail import (
     safe_mode,
     style,
     system_theme,
+    vpndoc,
     wallpaper,
     wallpaperd,
 )
@@ -247,8 +248,11 @@ def _set(args: argparse.Namespace) -> int:
 
 
 def _migrate(args: argparse.Namespace) -> int:
-    if prefs.migrate(prefs.config_dir()):
+    config = prefs.config_dir()
+    if prefs.migrate(config):
         _say("Settings split into one file per area (backup: settings.ini.before-split)")
+    if vpndoc.migrate(config):
+        _say("VPN settings moved to the private vitrail-vpn folder")
     return 0
 
 

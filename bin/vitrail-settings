@@ -10,8 +10,13 @@ HERE="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
 SHELL_DIR="$(cd -- "${HERE}/../shell" && pwd)"
 
 CONFIG="${XDG_CONFIG_HOME:-${HOME}/.config}/vitrail"
+VPN_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/vitrail-vpn"
 
-mkdir -p -- "${CONFIG}"
+# Everything the window writes is its user's alone: the VPN document names
+# connections, credentials and rules. Folders 0700, files 0600 from here on.
+umask 077
+
+mkdir -p -- "${CONFIG}" "${VPN_DIR}"
 
 # A legacy settings.ini becomes one file per area before the window reads them.
 if command -v python3 >/dev/null 2>&1; then
@@ -75,4 +80,5 @@ exec qml6 -I "${HERE}/.." "${SHELL_DIR}/main.qml" -- \
     --network "${network}" \
     --home "${HOME}" \
     --runtime "${XDG_RUNTIME_DIR:-}" \
+    --vpn "${VPN_DIR}" \
     "$@"

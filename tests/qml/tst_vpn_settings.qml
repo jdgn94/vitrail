@@ -2,8 +2,8 @@ import QtQuick
 import QtTest
 import "../../shell/vpnsettings.js" as Doc
 
-// The one VPN document Vitrail keeps (misc.ini `vpnSettings`): which
-// connections the automatic choice may use.
+// The one VPN document Vitrail keeps (~/.config/vitrail-vpn/settings.ini):
+// which connections the automatic choice may use.
 TestCase {
     name: "VpnSettings"
 

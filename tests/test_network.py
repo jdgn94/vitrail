@@ -6,13 +6,14 @@ from __future__ import annotations
 import io
 import json
 import os
+import stat
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from vitrail import network
+from vitrail import network, vpndoc
 
 DEVICES = (
     "eno1:ethernet:connected:Wired profile\n"
@@ -390,6 +391,9 @@ class VpnRequestTests(unittest.TestCase):
         self.assertEqual(
             self.argv(req("vpn-import", {"file": "/x/y.ovpn", "name": "My server", "credential": "spare"})),
             ["hypraether-vpn", "import", "/x/y.ovpn", "--name", "My server", "--credential", "spare"])
+        # Moving the original is Vitrail's step, not an argument of the tool.
+        self.assertEqual(self.argv(req("vpn-import", {"file": "/x/y.ovpn", "move": True})),
+                         ["hypraether-vpn", "import", "/x/y.ovpn"])
 
     def test_a_credential_add_hands_the_password_over_by_file_only(self) -> None:
         argv = self.argv(req("vpn-cred-add", {"name": "work", "user": "me", "nonce": NONCE}), "/run/p")
@@ -421,6 +425,7 @@ class VpnRequestTests(unittest.TestCase):
             req("vpn-import", {"file": "/x/y.ovpn", "name": "-x"}),
             req("vpn-import", {"file": "/x/y.ovpn", "credential": "--pass"}),
             req("vpn-import", {"file": "/x/y.ovpn", "extra": 1}),
+            req("vpn-import", {"file": "/x/y.ovpn", "move": "yes"}),
             req("vpn-import", {"file": 5}),
             req("vpn-cred-add", {"name": "work", "user": "me"}),
             req("vpn-cred-add", {"name": "work", "user": "me", "nonce": "short"}),
@@ -508,6 +513,8 @@ class VpnHarness(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.folder = Path(self.tmp.name) / "config"
         self.runtime = Path(self.tmp.name) / "run"
+        self.vpn = Path(self.tmp.name) / "vpn"
+        self.share = Path(self.tmp.name) / "share"
         self.folder.mkdir()
         self.runtime.mkdir()
         self.calls: list[list[str]] = []
@@ -515,6 +522,9 @@ class VpnHarness(unittest.TestCase):
         self.pinged: list[str] = []
         self.codes: dict[str, int] = {}
         self.marker = Path(self.tmp.name) / "enabled"
+
+    def store(self, source: Path, move: bool = False) -> Path:
+        return vpndoc.store_file(source, move, self.share)
 
     def act(self, argv: list[str], timeout: int = 0) -> tuple[int, str]:
         self.calls.append(argv)
@@ -532,7 +542,8 @@ class VpnHarness(unittest.TestCase):
             result = network.apply(request, self.folder, self.act, fake(outputs), resolver=lookup,
                                    directory=transparency, pinger=self.pinger,
                                    read=lambda path: self.CONFIGS.get(path, ""),
-                                   runtime=self.runtime, marker=self.marker, **extra)
+                                   runtime=self.runtime, marker=self.marker,
+                                   doc_folder=self.vpn, store=self.store, **extra)
         path = self.folder / network.STATE_FILE
         written = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
         return result, log.getvalue(), written
@@ -717,10 +728,33 @@ class CredentialApplyTests(VpnHarness):
         _r, log, _w = self.apply("vpn-cred-remove:work")
         self.assertIn("Connection: vpn-cred-remove work", log)
 
-    def test_an_import_logs_the_file_name_and_runs_the_tool(self) -> None:
-        _r, log, _w = self.apply(req("vpn-import", {"file": "/home/me/x.ovpn", "credential": "spare"}))
-        self.assertEqual(self.calls, [["hypraether-vpn", "import", "/home/me/x.ovpn", "--credential", "spare"]])
+    def picked(self, name: str = "x.ovpn", text: str = "client\n") -> Path:
+        folder = Path(self.tmp.name) / "picked"
+        folder.mkdir(exist_ok=True)
+        path = folder / name
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def test_an_import_copies_the_file_privately_and_gives_the_copy_to_the_tool(self) -> None:
+        source = self.picked()
+        _r, log, _w = self.apply(req("vpn-import", {"file": str(source), "credential": "spare"}))
+        stored = self.share / "x.ovpn"
+        self.assertEqual(self.calls, [["hypraether-vpn", "import", str(stored), "--credential", "spare"]])
+        self.assertEqual(stored.read_text(encoding="utf-8"), "client\n")
+        self.assertEqual(stat.S_IMODE(stored.stat().st_mode), 0o600)
+        self.assertTrue(source.exists())
         self.assertIn("Connection: vpn-import x.ovpn", log)
+
+    def test_a_move_removes_the_original_after_the_copy(self) -> None:
+        source = self.picked()
+        self.apply(req("vpn-import", {"file": str(source), "move": True}))
+        self.assertFalse(source.exists())
+        self.assertEqual(self.calls[0][2], str(self.share / "x.ovpn"))
+
+    def test_an_import_of_a_file_that_is_not_there_runs_nothing(self) -> None:
+        result, log, _w = self.apply(req("vpn-import", {"file": str(Path(self.tmp.name) / "gone.ovpn")}))
+        self.assertEqual((result, self.calls), (1, []))
+        self.assertIn("vpn-import failed", log)
 
 
 class ProbeTests(unittest.TestCase):
@@ -810,38 +844,18 @@ class BestTests(unittest.TestCase):
 
 
 class ExcludedTests(unittest.TestCase):
-    def test_the_auto_flag_is_read_through_the_preference_files(self) -> None:
+    def test_the_auto_flag_is_read_from_the_vpn_document(self) -> None:
+        self.assertEqual(network.excluded({}), set())
+        self.assertEqual(network.excluded({"connections": "no"}), set())
+        document = {"connections": {"us-1": {"auto": False}, "us-2": {"auto": True}, "us-3": {}, "us-4": 5},
+                    "users": [{"id": "old"}], "assignments": []}
+        self.assertEqual(network.excluded(document), {"us-1"})
+
+    def test_the_document_is_read_from_the_private_folder(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
-            config = Path(folder)
-            self.assertEqual(network.excluded(config), set())
-            (config / "misc.ini").write_text("[misc]\nvpnSettings=not json\n", encoding="utf-8")
-            self.assertEqual(network.excluded(config), set())
-            document = {"connections": {"us-1": {"auto": False}, "us-2": {"auto": True}, "us-3": {}, "us-4": 5},
-                        "users": [{"id": "old"}], "assignments": []}
-            (config / "misc.ini").write_text(
-                "[misc]\nvpnSettings=" + json.dumps(json.dumps(document)) + "\n", encoding="utf-8")
-            self.assertEqual(network.excluded(config), {"us-1"})
-
-
-class QSettingsDocumentTests(unittest.TestCase):
-    """What Qt.labs.settings really wrote for the document: with one entry it
-    has no comma, so it is not quoted, only escaped; with two it is quoted."""
-
-    def read(self, line: str) -> set[str]:
-        with tempfile.TemporaryDirectory() as folder:
-            (Path(folder) / "misc.ini").write_text(f"[misc]\n{line}\n", encoding="utf-8")
-            return network.excluded(Path(folder))
-
-    def test_one_entry_is_escaped_but_not_quoted(self) -> None:
-        self.assertEqual(self.read('vpnSettings={\\"connections\\":{\\"us-1\\":{\\"auto\\":false}}}'), {"us-1"})
-
-    def test_several_entries_are_quoted_and_escaped(self) -> None:
-        line = 'vpnSettings="{\\"connections\\":{\\"us-1\\":{\\"auto\\":false},\\"us-2\\":{\\"auto\\":false}}}"'
-        self.assertEqual(self.read(line), {"us-1", "us-2"})
-
-    def test_nothing_left_out_is_an_empty_set(self) -> None:
-        self.assertEqual(self.read('vpnSettings={\\"connections\\":{}}'), set())
-        self.assertEqual(self.read("vpnSettings="), set())
+            self.assertEqual(network.excluded(vpndoc.read_doc(Path(folder))), set())
+            vpndoc.write_doc({"connections": {"us-1": {"auto": False}}}, Path(folder))
+            self.assertEqual(network.excluded(vpndoc.read_doc(Path(folder))), {"us-1"})
 
 
 class BestApplyTests(VpnHarness):
@@ -858,8 +872,7 @@ class BestApplyTests(VpnHarness):
 
     def test_the_exclusion_of_the_page_is_honoured(self) -> None:
         document = {"connections": {"us-2": {"auto": False}}}
-        (self.folder / "misc.ini").write_text(
-            "[misc]\nvpnSettings=" + json.dumps(json.dumps(document)) + "\n", encoding="utf-8")
+        vpndoc.write_doc(document, self.vpn)
         self.apply("vpn-best")
         self.assertEqual(self.calls, [["hypraether-vpn", "connect", "us-1"]])
 
@@ -925,7 +938,7 @@ class AutostartTests(VpnHarness):
             result = network.autostart(
                 self.folder, self.act, run or fake(outputs), pinger=pinger or self.pinger,
                 read=lambda path: self.CONFIGS.get(path, ""), runtime=self.runtime, marker=self.marker,
-                session=session, sleep=self.sleeps.append)
+                session=session, sleep=self.sleeps.append, doc_folder=self.vpn)
         return result, log.getvalue()
 
     def listing(self, active: bool) -> list[dict]:

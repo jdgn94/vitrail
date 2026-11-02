@@ -93,13 +93,16 @@ function request(verb, payload) {
     return verb + ":" + JSON.stringify(payload)
 }
 
-// The text of an import: only what was given.
-function importRequest(file, name, credential) {
+// The text of an import: only what was given. `move` asks the helper to delete
+// the picked file once its private copy is verified.
+function importRequest(file, name, credential, move) {
     var payload = { file: file }
     if (name.trim() !== "")
         payload.name = name.trim()
     if (credential !== "")
         payload.credential = credential
+    if (move)
+        payload.move = true
     return request("vpn-import", payload)
 }
 

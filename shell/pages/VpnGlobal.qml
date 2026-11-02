@@ -20,8 +20,9 @@ Item {
     property string removing: ""
     property string openGroup: ""
     // The credential an import takes: null until picked (the first one then),
-    // "" for none.
+    // "" for none. `moveFile` deletes the picked file once its copy is stored.
     property var chosen: null
+    property bool moveFile: false
     readonly property string importCredential: root.chosen !== null ? root.chosen
                                               : root.page.credentials.length > 0 ? root.page.credentials[0].name : ""
     readonly property bool secretsOk: root.page.runtime !== ""
@@ -84,7 +85,7 @@ Item {
             root.fail(importPath, "connection.vpn.import.invalid")
             return
         }
-        root.page.ask(View.importRequest(path, importName.text, root.importCredential))
+        root.page.ask(View.importRequest(path, importName.text, root.importCredential, root.moveFile))
         importPath.text = ""
         importName.text = ""
     }
@@ -595,6 +596,21 @@ Item {
                 foreground: root.page.palette.foreground
                 accent: root.page.palette.primary
                 onSelected: function (key) { root.chosen = key }
+            }
+
+            VitrailSettingRow {
+                icon: "drive_file_move"
+                label: root.t("connection.vpn.import.move")
+                description: root.t("connection.vpn.import.move.help")
+                foreground: root.page.palette.foreground
+                muted: root.page.palette.muted
+
+                VitrailSwitch {
+                    checked: root.moveFile
+                    foreground: root.page.palette.foreground
+                    accent: root.page.palette.primary
+                    onToggled: function (value) { root.moveFile = value }
+                }
             }
 
             VitrailButton {
