@@ -306,7 +306,7 @@ ShellRoot {
             shell.popupAnchor = Qt.rect(point.x, point.y, anchor.width, anchor.height)
         }
         shell.popupScreen = target
-        if (kind === "connection")
+        if (kind === "connection" || kind === "powerprofile")
             shell.refreshConnection()
         shell.popupKind = kind
         shell.popupOpen = true
@@ -1165,6 +1165,7 @@ ShellRoot {
                     switch (kind) {
                     case "network": return barItems.networkButton
                     case "vpn": return barItems.vpnButton
+                    case "powerprofile": return barItems.powerProfileButton
                     case "power": return barItems.powerButton
                     case "launcher": return launcherButton
                     case "clock": return clockButton
@@ -1340,6 +1341,7 @@ ShellRoot {
                             openKind: shell.popupKind
                             strings: shell.strings
                             trayStyle: shell.prefs.trayStyle || "inline"
+                            powerProfile: shell.powerProfile
                             onClicked: function (kind, item) { shell.togglePopup(kind, item, monitor.modelData) }
                             onHovered: function (kind, item) { shell.hoverPopup(kind, item, monitor.modelData) }
                             onTipHovered: function (item, on) { tooltips.hover(item, on) }
@@ -1728,6 +1730,13 @@ ShellRoot {
                             }
 
                             Popout {
+                                name: "powerprofile"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: powerProfileComponent
+                            }
+
+                            Popout {
                                 name: "power"
                                 current: popouts.name
                                 handover: popouts.handover
@@ -2003,6 +2012,19 @@ ShellRoot {
 
                     VpnPanel {
                         strings: shell.strings
+                    }
+                }
+
+                Component {
+                    id: powerProfileComponent
+
+                    PowerProfilePanel {
+                        strings: shell.strings
+                        profile: shell.powerProfile
+                        onProfileRequested: function (mode) {
+                            shell.powerProfile = mode
+                            powerWrite.run(Commands.powerSet(mode), "")
+                        }
                     }
                 }
 

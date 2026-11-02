@@ -20,9 +20,12 @@ GridLayout {
     property string barEdge: "left"
     property var strings: ({})
     property string trayStyle: "inline"
+    // The mode the power chip shows (power-profiles-daemon).
+    property string powerProfile: "balanced"
     // The buttons of the popouts that open without a click (IPC).
     readonly property Item networkButton: network
     readonly property Item vpnButton: vpn
+    readonly property Item powerProfileButton: profile
     readonly property Item powerButton: power
 
 
@@ -92,6 +95,20 @@ GridLayout {
                     root.tipHovered(vpn, hovered)
                     if (hovered)
                         root.hovered("vpn", vpn)
+                }
+            }
+
+            PowerProfileButton {
+                id: profile
+
+                strings: root.strings
+                profile: root.powerProfile
+                opened: root.open && root.openKind === "powerprofile"
+                onClicked: root.clicked("powerprofile", profile)
+                onHoveredChanged: {
+                    root.tipHovered(profile, hovered)
+                    if (hovered)
+                        root.hovered("powerprofile", profile)
                 }
             }
         }

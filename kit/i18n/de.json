@@ -354,5 +354,8 @@
   "connection.open": "Schnellverbindung",
   "bar.trayStyle": "Tray-Apps",
   "bar.trayStyle.inline": "Ausklappen",
-  "bar.trayStyle.popup": "Pop-up"
+  "bar.trayStyle.popup": "Pop-up",
+  "powerprofile.saver.detail": "Langsamere Takte und ein dunkleres Bild: der Akku hält länger.",
+  "powerprofile.balanced.detail": "Tempo, wenn es nötig ist, weniger Verbrauch, wenn nicht.",
+  "powerprofile.performance.detail": "Volle Leistung: mehr Wärme und mehr Akkuverbrauch."
 }

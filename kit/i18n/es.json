@@ -354,5 +354,8 @@
   "connection.open": "Conexión rápida",
   "bar.trayStyle": "Apps en bandeja",
   "bar.trayStyle.inline": "Desplegar",
-  "bar.trayStyle.popup": "Emergente"
+  "bar.trayStyle.popup": "Emergente",
+  "powerprofile.saver.detail": "Relojes más lentos y pantalla más tenue: la batería dura más.",
+  "powerprofile.balanced.detail": "Velocidad cuando hace falta, menos consumo cuando no.",
+  "powerprofile.performance.detail": "Máxima velocidad: más calor y más batería."
 }

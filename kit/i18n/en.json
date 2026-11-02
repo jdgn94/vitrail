@@ -354,5 +354,8 @@
   "connection.open": "Quick connection",
   "bar.trayStyle": "Tray apps",
   "bar.trayStyle.inline": "Fold out",
-  "bar.trayStyle.popup": "Popup"
+  "bar.trayStyle.popup": "Popup",
+  "powerprofile.saver.detail": "Slower clocks and a dimmer screen: the battery lasts longer.",
+  "powerprofile.balanced.detail": "Speed when it is needed, less power when it is not.",
+  "powerprofile.performance.detail": "Full speed: more heat and more battery used."
 }

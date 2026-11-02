@@ -354,5 +354,8 @@
   "connection.open": "Connexion rapide",
   "bar.trayStyle": "Apps de la zone",
   "bar.trayStyle.inline": "Déplier",
-  "bar.trayStyle.popup": "Pop-up"
+  "bar.trayStyle.popup": "Pop-up",
+  "powerprofile.saver.detail": "Fréquences plus basses et écran plus sombre : la batterie dure plus longtemps.",
+  "powerprofile.balanced.detail": "De la vitesse quand il en faut, moins de consommation sinon.",
+  "powerprofile.performance.detail": "Pleine vitesse : plus de chaleur et de batterie."
 }
