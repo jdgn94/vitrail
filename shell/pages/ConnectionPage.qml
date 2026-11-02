@@ -192,8 +192,9 @@ Item {
             Layout.fillWidth: true
             spacing: VitrailTokens.gap("sm")
 
-            VitrailSegmented {
-                options: [
+            VitrailTabs {
+                Layout.fillWidth: true
+                tabs: [
                     { key: "internet", icon: "public", label: page.t("connection.tab.internet") },
                     { key: "vpn", icon: "vpn_key", label: page.t("network.vpn") },
                     { key: "bluetooth", icon: "bluetooth", label: page.t("connection.bluetooth") }
@@ -203,8 +204,6 @@ Item {
                 accent: page.palette.primary
                 onSelected: page.tab = key
             }
-
-            Item { Layout.fillWidth: true }
 
             VitrailButton {
                 variant: "plain"

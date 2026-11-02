@@ -28,9 +28,9 @@ Item {
         VitrailTabs {
             Layout.fillWidth: true
             tabs: [
-                { key: "border", label: page.t("windows.tabBorder") },
-                { key: "opacity", label: page.t("windows.tabOpacity") },
-                { key: "layout", label: page.t("windows.tabLayout") }
+                { key: "border", icon: "border_style", label: page.t("windows.tabBorder") },
+                { key: "opacity", icon: "opacity", label: page.t("windows.tabOpacity") },
+                { key: "layout", icon: "view_column", label: page.t("windows.tabLayout") }
             ]
             current: page.tab
             foreground: page.palette.foreground

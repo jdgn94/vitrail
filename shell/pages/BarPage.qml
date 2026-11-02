@@ -41,10 +41,9 @@ Item {
         VitrailTabs {
             Layout.fillWidth: true
             tabs: [
-                { key: "layout", label: page.t("bar.section.layout") },
-                { key: "frame", label: page.t("bar.frame") },
-                { key: "panels", label: page.t("bar.section.panels") },
-                { key: "notifications", label: page.t("bar.section.notifications") }
+                { key: "layout", icon: "toolbar", label: page.t("bar.section.layout") },
+                { key: "frame", icon: "crop_free", label: page.t("bar.tab.framePanels") },
+                { key: "notifications", icon: "notifications", label: page.t("bar.section.notifications") }
             ]
             current: page.tab
             foreground: page.palette.foreground
@@ -221,7 +220,7 @@ Item {
 
                 Section {
                     Layout.fillWidth: true
-                    visible: page.tab === "panels"
+                    visible: page.tab === "frame"
                     icon: "view_sidebar"
                     title: page.t("bar.section.panels")
                     foreground: page.palette.foreground

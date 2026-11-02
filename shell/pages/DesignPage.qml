@@ -28,10 +28,9 @@ Item {
         VitrailTabs {
             Layout.fillWidth: true
             tabs: [
-                { key: "shape", label: page.t("design.section.shape") },
-                { key: "surface", label: page.t("section.surface") },
-                { key: "type", label: page.t("design.section.type") },
-                { key: "share", label: page.t("design.section.share") }
+                { key: "shape", icon: "straighten", label: page.t("design.tab.shapeType") },
+                { key: "surface", icon: "layers", label: page.t("section.surface") },
+                { key: "share", icon: "share", label: page.t("design.section.share") }
             ]
             current: page.tab
             foreground: page.palette.foreground
@@ -125,7 +124,7 @@ Item {
 
                 Section {
                     Layout.fillWidth: true
-                    visible: page.tab === "type"
+                    visible: page.tab === "shape"
                     icon: "text_fields"
                     title: page.t("design.section.type")
                     foreground: page.palette.foreground

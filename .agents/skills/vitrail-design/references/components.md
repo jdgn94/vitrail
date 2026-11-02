@@ -102,7 +102,26 @@ out and stops its timers when not running. `VitrailButton { busy }` swaps the
 icon (or starts the label) with it and ignores clicks; use it for anything that
 waits (polkit check, connecting).
 
+## Which selector when
+
+- **Tabs** (`VitrailTabs`) navigate: they switch which section is shown, the
+  content below changes and the rest of the page stays. Use them for a page's
+  subcategories.
+- **Segmented** (`VitrailSegmented`) chooses a value: a setting that is one of
+  a few options (`mediaStyle`, a power mode, a unit). The choice is data, not
+  navigation.
+- **Select** (`VitrailSelect`) opens a list when the options do not fit or are
+  many; the current value stays visible.
+- Rule of thumb: a section with a title and a body is tabs; a labelled setting
+  is segmented.
+
 ## Selection indicators
+
+`VitrailTabs` tabs are `{ key, label, icon }`: the optional `icon` (Material
+Symbol) sits before the label in its colour and opacity and fills when the tab
+is current; the underline spans icon and label. Every settings tab carries one
+(a page's tab reuses its section's glyph). One keyboard stop, Left / Right move
+the tab, a ring shows the focus.
 
 `VitrailSegmented` options are `{ key, label, icon }`: the optional `icon`
 (Material Symbol) sits before the label in the label's colour and fills when
@@ -127,7 +146,8 @@ input, language, datetime, connection, plugins. Pages: `Flickable` → `Section 
 label; description; <control> }`; sliders full width inside a Section. A page with
 more than one topic splits them into `VitrailTabs` subcategories
 (`property string tab`, sections `visible: page.tab === key`, scroll reset
-on tab change); single-topic pages (Colors, Language, Plugins) have none.
+on tab change); single-topic pages (Colors, Language) have none. Date & time
+(zone / clock) and Plugins (media / installed) are tabbed too.
 
 ## Pages that act on the system (ConnectionPage)
 
@@ -148,8 +168,9 @@ through files:
   that asked shows `VitrailButton { busy }`; the refresh button asks `refresh`.
 - Rows are `VitrailSettingRow` (state icon, name, `a · b · c` description) with
   a `tonal` `VitrailButton` (`secondary` tone when it undoes: Disconnect);
-  radios are a `VitrailSwitch` row. Tabs are a `VitrailSegmented` with icons
-  (one keyboard stop, Left / Right), then every control is Tab-reachable.
+  radios are a `VitrailSwitch` row. Tabs are a `VitrailTabs` with icons
+  (internet / VPN / Bluetooth) beside the refresh button; the page's controls
+  after it are Tab-reachable.
   A missing tool shows a one-line `content` text instead of its rows.
 
 ### Per-row editors and document pages (ConnectionPage, VPN tab)

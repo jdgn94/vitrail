@@ -20,6 +20,7 @@ Item {
     property var zones: []
     property string systemZone: ""
     property bool systemNtp: true
+    property string tab: "zone"
 
     // The zone clicked or searched; before any, the one in the settings or the system's.
     property string picked: ""
@@ -29,6 +30,8 @@ Item {
     readonly property var matches: Map.search(page.zones, search.text)
     readonly property bool ntp: page.prefs.ntp === "" ? page.systemNtp : page.prefs.ntp === "true"
     property real now: Date.now()
+
+    onTabChanged: scroller.contentY = 0
 
     function t(key) {
         var value = page.strings[key]
@@ -46,8 +49,30 @@ Item {
         onTriggered: page.now = Date.now()
     }
 
+    VitrailTabs {
+        id: tabBar
+
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        tabs: [
+            { key: "zone", icon: "public", label: page.t("datetime.zone") },
+            { key: "clock", icon: "schedule", label: page.t("datetime.clock") }
+        ]
+        current: page.tab
+        foreground: page.palette.foreground
+        accent: page.palette.primary
+        onSelected: page.tab = key
+    }
+
     Flickable {
-        anchors.fill: parent
+        id: scroller
+
+        anchors.top: tabBar.bottom
+        anchors.topMargin: VitrailTokens.gap("lg")
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
         contentHeight: column.implicitHeight
         boundsBehavior: Flickable.StopAtBounds
         clip: true
@@ -60,6 +85,7 @@ Item {
 
             Section {
                 Layout.fillWidth: true
+                visible: page.tab === "zone"
                 icon: "public"
                 title: page.t("datetime.zone")
                 foreground: page.palette.foreground
@@ -211,6 +237,7 @@ Item {
 
             Section {
                 Layout.fillWidth: true
+                visible: page.tab === "clock"
                 icon: "update"
                 title: page.t("datetime.clock")
                 foreground: page.palette.foreground

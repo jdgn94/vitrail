@@ -100,8 +100,8 @@ Item {
         VitrailTabs {
             Layout.fillWidth: true
             tabs: [
-                { key: "keyboard", label: page.t("input.keyboard") },
-                { key: "mouse", label: page.t("input.mouse") }
+                { key: "keyboard", icon: "keyboard", label: page.t("input.keyboard") },
+                { key: "mouse", icon: "mouse", label: page.t("input.mouse") }
             ]
             current: page.tab
             foreground: page.palette.foreground

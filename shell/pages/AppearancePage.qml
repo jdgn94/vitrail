@@ -25,8 +25,8 @@ Item {
         VitrailTabs {
             Layout.fillWidth: true
             tabs: [
-                { key: "theme", label: page.t("section.theme") },
-                { key: "surface", label: page.t("section.surface") }
+                { key: "theme", icon: "palette", label: page.t("section.theme") },
+                { key: "surface", icon: "layers", label: page.t("section.surface") }
             ]
             current: page.tab
             foreground: page.palette.foreground

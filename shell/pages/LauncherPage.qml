@@ -55,8 +55,8 @@ Item {
         VitrailTabs {
             Layout.fillWidth: true
             tabs: [
-                { key: "general", label: page.t("launcher.section.general") },
-                { key: "web", label: page.t("launcher.section.web") }
+                { key: "general", icon: "apps", label: page.t("launcher.section.general") },
+                { key: "web", icon: "language", label: page.t("launcher.section.web") }
             ]
             current: page.tab
             foreground: page.palette.foreground

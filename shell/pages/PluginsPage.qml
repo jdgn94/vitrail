@@ -13,14 +13,39 @@ Item {
     property var prefs
     property var plugins: []
     property var strings
+    property string tab: "media"
+
+    onTabChanged: scroller.contentY = 0
 
     function t(key) {
         var value = page.strings[key]
         return value === undefined ? key : value
     }
 
+    VitrailTabs {
+        id: tabBar
+
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        tabs: [
+            { key: "media", icon: "music_note", label: page.t("plugins.section.media") },
+            { key: "installed", icon: "extension", label: page.t("plugins.section.installed") }
+        ]
+        current: page.tab
+        foreground: page.palette.foreground
+        accent: page.palette.primary
+        onSelected: page.tab = key
+    }
+
     Flickable {
-        anchors.fill: parent
+        id: scroller
+
+        anchors.top: tabBar.bottom
+        anchors.topMargin: VitrailTokens.gap("lg")
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
         contentHeight: column.implicitHeight
         boundsBehavior: Flickable.StopAtBounds
         clip: true
@@ -33,6 +58,7 @@ Item {
 
             Section {
                 Layout.fillWidth: true
+                visible: page.tab === "media"
                 icon: "music_note"
                 title: page.t("plugins.section.media")
                 foreground: page.palette.foreground
@@ -137,6 +163,7 @@ Item {
 
             Section {
                 Layout.fillWidth: true
+                visible: page.tab === "installed"
                 icon: "extension"
                 title: page.t("plugins.section.installed")
                 foreground: page.palette.foreground

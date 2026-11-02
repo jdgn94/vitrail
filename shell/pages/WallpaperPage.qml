@@ -477,7 +477,7 @@ Item {
                     VitrailTabs {
                         Layout.fillWidth: true
                         tabs: page.kinds.map(function (kind) {
-                            return { key: kind.key, label: page.t("wallpaper.kind." + kind.key) }
+                            return { key: kind.key, icon: kind.icon, label: page.t("wallpaper.kind." + kind.key) }
                         })
                         current: page.browse
                         foreground: page.palette.foreground
