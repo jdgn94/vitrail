@@ -23,6 +23,7 @@ import "notifications/notifications.js" as Notifications
 import "notes/notes.js" as Notes
 import "clipboard"
 import "dashboard"
+import "binds"
 import "media"
 import "launcher/commands.js" as Commands
 import "launcher/desktop.js" as LauncherDesktop
@@ -1374,6 +1375,19 @@ ShellRoot {
         }
     }
 
+    // The keybind cheatsheet (bin/vitrail-binds, Super+/).
+    IpcHandler {
+        target: "binds"
+
+        function toggle(): void {
+            shell.togglePopup("binds", null, null)
+        }
+
+        function close(): void {
+            shell.closePopup()
+        }
+    }
+
     // Hyprland may kill the shim outright: a question whose shim is gone
     // (its id starts with the shim's pid) leaves the screen.
     Timer {
@@ -1588,6 +1602,8 @@ ShellRoot {
                     case "dashboard": return barItems.dashboardButton
                     case "launcher": return launcherButton
                     case "clock": return clockButton
+                    // The cheatsheet has no button: it grows from the bar's centre.
+                    case "binds": return clockButton
                     default: return null
                     }
                 }
@@ -2186,6 +2202,13 @@ ShellRoot {
                             }
 
                             Popout {
+                                name: "binds"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: bindsComponent
+                            }
+
+                            Popout {
                                 name: "tray"
                                 current: popouts.name
                                 handover: popouts.handover
@@ -2450,6 +2473,15 @@ ShellRoot {
                         mediaIndex: shell.mprisIndex
                         mediaStyle: shell.prefs.mediaStyle || "disc"
                         onPlayerChosen: function (index) { shell.mprisIndex = index }
+                    }
+                }
+
+                Component {
+                    id: bindsComponent
+
+                    BindsPopout {
+                        strings: shell.strings
+                        onDismissed: shell.closePopup()
                     }
                 }
 

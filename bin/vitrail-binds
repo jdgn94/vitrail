@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Opens or closes the keybind cheatsheet (Super+=slash in the Lua config),
+# through the bar's IPC so the popup comes and goes like every other one.
+set -euo pipefail
+
+HERE="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
+
+exec "${HERE}/vitrail-bar" ipc call binds toggle

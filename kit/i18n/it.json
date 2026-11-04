@@ -614,5 +614,21 @@
   "dashboard.disk": "Disco",
   "dashboard.network": "Rete",
   "dashboard.humidity": "Umidità",
-  "dashboard.wind": "Vento"
+  "dashboard.wind": "Vento",
+  "binds.title": "Scorciatoie da tastiera",
+  "binds.search": "Cerca scorciatoie",
+  "binds.empty": "Nessuna scorciatoia corrisponde",
+  "binds.unavailable": "Hyprland non è in esecuzione",
+  "binds.count": "%1 scorciatoie",
+  "binds.hint.navigate": "↑↓ Muovi",
+  "binds.hint.close": "Esc Chiudi",
+  "binds.group.window": "Finestre",
+  "binds.group.apps": "Applicazioni",
+  "binds.group.shell": "Shell",
+  "binds.group.focus": "Focus",
+  "binds.group.move": "Sposta finestre",
+  "binds.group.workspace": "Spazi di lavoro",
+  "binds.group.mouse": "Mouse",
+  "binds.group.media": "Media",
+  "binds.group.screenshot": "Schermate"
 }

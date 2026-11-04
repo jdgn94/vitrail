@@ -98,7 +98,7 @@ package to the manifest and a row here.
 
 | Package | Provides | Used for |
 |---|---|---|
-| `hyprland`, `hyprlock` | `hyprctl`, `hyprlock` | compositor control, lock screen |
+| `hyprland`, `hyprlock` | `hyprctl`, `hyprlock` | compositor control, the keybind cheatsheet, lock screen |
 | `quickshell`, `qt6-declarative` | `quickshell`, `qml6` | the bar and the settings window |
 | `matugen` | `matugen` | Material palette from the wallpaper |
 | `ffmpeg`, `imagemagick` | `ffmpeg`, `ffprobe`, `magick` | wallpaper import and optimisation |
@@ -651,6 +651,15 @@ keeps working.
 
 Both are also scriptable: `vitrail-bar ipc call panel toggle full|overlay`,
 `vitrail-bar ipc call panel close`. Panels are empty for now.
+
+### Keyboard shortcuts
+
+`Super + /` opens a searchable cheatsheet of every bind Hyprland reports
+(`vitrail-binds`, which toggles the bar's `binds` popup). Up and Down move
+through the list, Enter does nothing and Escape closes it; the search matches
+the keys, the modifiers and the bind's description. `vitrail binds state`
+prints the same data as JSON, and without Hyprland it reports
+`{"available": false, "rows": []}`.
 
 ### Session menu
 

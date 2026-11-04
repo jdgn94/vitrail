@@ -614,5 +614,21 @@
   "dashboard.disk": "Datenträger",
   "dashboard.network": "Netzwerk",
   "dashboard.humidity": "Luftfeuchtigkeit",
-  "dashboard.wind": "Wind"
+  "dashboard.wind": "Wind",
+  "binds.title": "Tastenkürzel",
+  "binds.search": "Tastenkürzel suchen",
+  "binds.empty": "Kein Kürzel passt",
+  "binds.unavailable": "Hyprland läuft nicht",
+  "binds.count": "%1 Kürzel",
+  "binds.hint.navigate": "↑↓ Bewegen",
+  "binds.hint.close": "Esc Schließen",
+  "binds.group.window": "Fenster",
+  "binds.group.apps": "Anwendungen",
+  "binds.group.shell": "Shell",
+  "binds.group.focus": "Fokus",
+  "binds.group.move": "Fenster verschieben",
+  "binds.group.workspace": "Arbeitsbereiche",
+  "binds.group.mouse": "Maus",
+  "binds.group.media": "Medien",
+  "binds.group.screenshot": "Bildschirmfotos"
 }

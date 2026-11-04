@@ -614,5 +614,21 @@
   "dashboard.disk": "Disk",
   "dashboard.network": "Network",
   "dashboard.humidity": "Humidity",
-  "dashboard.wind": "Wind"
+  "dashboard.wind": "Wind",
+  "binds.title": "Keyboard shortcuts",
+  "binds.search": "Search shortcuts",
+  "binds.empty": "No shortcut matches",
+  "binds.unavailable": "Hyprland is not running",
+  "binds.count": "%1 shortcuts",
+  "binds.hint.navigate": "↑↓ Move",
+  "binds.hint.close": "Esc Close",
+  "binds.group.window": "Windows",
+  "binds.group.apps": "Applications",
+  "binds.group.shell": "Shell",
+  "binds.group.focus": "Focus",
+  "binds.group.move": "Move windows",
+  "binds.group.workspace": "Workspaces",
+  "binds.group.mouse": "Mouse",
+  "binds.group.media": "Media",
+  "binds.group.screenshot": "Screenshots"
 }

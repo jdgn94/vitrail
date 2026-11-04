@@ -614,5 +614,21 @@
   "dashboard.disk": "Disco",
   "dashboard.network": "Rede",
   "dashboard.humidity": "Umidade",
-  "dashboard.wind": "Vento"
+  "dashboard.wind": "Vento",
+  "binds.title": "Atalhos de teclado",
+  "binds.search": "Pesquisar atalhos",
+  "binds.empty": "Nenhum atalho corresponde",
+  "binds.unavailable": "O Hyprland não está em execução",
+  "binds.count": "%1 atalhos",
+  "binds.hint.navigate": "↑↓ Mover",
+  "binds.hint.close": "Esc Fechar",
+  "binds.group.window": "Janelas",
+  "binds.group.apps": "Aplicações",
+  "binds.group.shell": "Shell",
+  "binds.group.focus": "Foco",
+  "binds.group.move": "Mover janelas",
+  "binds.group.workspace": "Áreas de trabalho",
+  "binds.group.mouse": "Rato",
+  "binds.group.media": "Multimédia",
+  "binds.group.screenshot": "Capturas de ecrã"
 }

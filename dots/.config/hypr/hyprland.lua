@@ -77,6 +77,7 @@ hl.bind(mod .. " + ALT + period", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-b
 hl.bind(mod .. " + CTRL + period", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard pick"), { description = "shell/clipboard-pick" })
 hl.bind(mod .. " + P", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call panel toggle full"), { description = "shell/panel" })
 hl.bind(mod .. " + SHIFT + P", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call panel toggle overlay"), { description = "shell/panel-overlay" })
+hl.bind(mod .. " + slash", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-binds"), { description = "shell/shortcuts" })
 
 -- Focus.
 hl.bind(mod .. " + left", hl.dsp.focus({ direction = "left" }), { description = "focus/left" })

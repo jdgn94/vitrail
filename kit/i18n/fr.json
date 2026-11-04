@@ -614,5 +614,21 @@
   "dashboard.disk": "Disque",
   "dashboard.network": "Réseau",
   "dashboard.humidity": "Humidité",
-  "dashboard.wind": "Vent"
+  "dashboard.wind": "Vent",
+  "binds.title": "Raccourcis clavier",
+  "binds.search": "Rechercher un raccourci",
+  "binds.empty": "Aucun raccourci ne correspond",
+  "binds.unavailable": "Hyprland n’est pas en cours d’exécution",
+  "binds.count": "%1 raccourcis",
+  "binds.hint.navigate": "↑↓ Déplacer",
+  "binds.hint.close": "Esc Fermer",
+  "binds.group.window": "Fenêtres",
+  "binds.group.apps": "Applications",
+  "binds.group.shell": "Shell",
+  "binds.group.focus": "Focus",
+  "binds.group.move": "Déplacer les fenêtres",
+  "binds.group.workspace": "Espaces de travail",
+  "binds.group.mouse": "Souris",
+  "binds.group.media": "Médias",
+  "binds.group.screenshot": "Captures d’écran"
 }

@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from vitrail import (
+    binds,
     brightness,
     clipboard,
     colors,
@@ -131,6 +132,9 @@ def _parser() -> argparse.ArgumentParser:
 
     resources_parser = sub.add_parser("resources", help="cpu, memory, temperature, network and disk as JSON")
     resources_parser.add_argument("action", choices=("state",))
+
+    binds_parser = sub.add_parser("binds", help="the keyboard shortcuts Hyprland reports, as JSON")
+    binds_parser.add_argument("action", choices=("state",))
     return parser
 
 
@@ -355,6 +359,11 @@ def _resources(args: argparse.Namespace) -> int:
     return 0
 
 
+def _binds(args: argparse.Namespace) -> int:
+    _say(json.dumps(binds.state()))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
@@ -397,6 +406,8 @@ def main(argv: list[str] | None = None) -> int:
         return _weather(args)
     if args.command == "resources":
         return _resources(args)
+    if args.command == "binds":
+        return _binds(args)
     parser.print_help()
     return 0
 
