@@ -17,6 +17,11 @@ ColumnLayout {
 
     readonly property var devices: root.output ? root.controller.sinks : root.controller.sources
     readonly property var current: root.output ? root.controller.sink : root.controller.source
+    // The apps with an open stream: one row each, if the preference allows.
+    readonly property var apps: root.output ? root.controller.outputApps : root.controller.inputApps
+    readonly property bool showApps: root.output ? root.controller.showOutputApps
+                                                 : root.controller.showInputApps
+    readonly property bool hasApps: root.showApps && root.apps.length > 0
 
     spacing: VitrailTokens.gap("xs")
 
@@ -51,6 +56,37 @@ ColumnLayout {
                     else
                         root.controller.pickInput(row.modelData)
                 }
+            }
+        }
+    }
+
+    // The apps that are playing (or using the microphone), one row each.
+    VitrailText {
+        Layout.fillWidth: true
+        Layout.leftMargin: VitrailTokens.gap("sm")
+        visible: root.hasApps
+        variant: "label"
+        text: root.t(root.output ? "osd.apps" : "osd.micApps")
+    }
+
+    Scroller {
+        visible: root.hasApps
+        visibleRows: 4
+
+        Repeater {
+            model: root.apps
+
+            delegate: AppRow {
+                required property var modelData
+
+                width: parent.width
+                group: modelData
+                step: root.controller.appStep
+                iconSource: root.controller.iconSource(modelData)
+                tooltip: modelData.name
+                onFocusRequested: root.controller.focusApp(modelData)
+                onMuteRequested: root.controller.toggleAppMute(modelData)
+                onMoved: function (value) { root.controller.setAppVolume(modelData, value / 100) }
             }
         }
     }
