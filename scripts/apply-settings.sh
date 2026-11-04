@@ -39,9 +39,8 @@ tab_numbers="$(read_ini tabNumbers false)"
 term_scheme="$(read_ini terminalScheme system)"
 font_size="$(read_ini fontSize 13)"
 # The family comes back already validated against what is installed; kitty
-# never reads a raw preference line.
+# never reads a raw preference line. Empty means "keep kitty.conf's own font".
 font_console="$(PYTHONPATH="$(dirname -- "${SELF}")/.." python3 -m vitrail.fonts console-family 2>/dev/null || true)"
-[[ -n "$font_console" ]] || font_console="JetBrainsMono Nerd Font"
 term_padding="$(read_ini terminalPadding 6)"
 window_layout="$(read_ini windowLayout dwindle)"
 visible_columns="$(read_ini visibleColumns 2)"
@@ -199,11 +198,13 @@ tabIcons=$(flag "$tab_icons")
 tabNumbers=$(flag "$tab_numbers")
 colorScheme=$term_scheme
 EOF
-cat >"$CONFIG_DIR/kitty-user.conf" <<EOF
-font_family $font_console
-font_size $font_size
-window_padding_width $term_padding
-EOF
+{
+    if [[ -n "$font_console" ]]; then
+        printf 'font_family %s\n' "$font_console"
+    fi
+    printf 'font_size %s\n' "$font_size"
+    printf 'window_padding_width %s\n' "$term_padding"
+} >"$CONFIG_DIR/kitty-user.conf"
 cache_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/vitrail/generated"
 cat >"$CONFIG_DIR/kitty-colors.conf" <<EOF
 include $cache_dir/terminal/kitty-$term_scheme.conf
