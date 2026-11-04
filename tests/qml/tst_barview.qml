@@ -1,6 +1,6 @@
 import QtQuick
 import QtTest
-import "../../shell/barview.js" as BarView
+import "../../bar/barview.js" as BarView
 
 // The bar's per-monitor overrides: one JSON object in bar.ini, keyed by the
 // Hyprland output name. Only edge and style may differ from the global bar.

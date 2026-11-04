@@ -61,7 +61,7 @@ class RecipeTests(unittest.TestCase):
                         self.assertNotIn(forbidden, argument)
 
     def test_the_qml_list_matches_the_recipes(self) -> None:
-        text = (ROOT / "kit" / "effects.js").read_text(encoding="utf-8")
+        text = (ROOT / "bar" / "effects.js").read_text(encoding="utf-8")
         names = re.findall(r'"([^"]+)"', text.split("NAMES =", 1)[1].split("]", 1)[0])
         self.assertEqual(names, NAMES)
 

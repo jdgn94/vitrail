@@ -11,6 +11,7 @@ import "../session"
 import "../notes"
 import "../media"
 import "../toggles"
+import "../capture"
 
 // The notification panel of one monitor: full height on the notification side,
 // built like the OSD. The panel stays on the monitor it was opened on (`pinned`)

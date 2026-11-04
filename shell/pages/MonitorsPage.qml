@@ -3,10 +3,10 @@ import QtQuick.Layouts
 import Qt.labs.folderlistmodel
 import "../../kit"
 import "../../kit/base"
-import "../../kit/effects.js" as Effects
-import "../barview.js" as BarView
+import "../../bar/effects.js" as Effects
+import "../../bar/barview.js" as BarView
 import "../monitorsview.js" as View
-import "../wallpapermonitors.js" as Wallpaper
+import "../../bar/wallpapermonitors.js" as Wallpaper
 
 // Monitors category: one card per Hyprland output, with the mode, scale,
 // rotation, position, mirror and enabled state the user wants it to keep.

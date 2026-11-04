@@ -1,6 +1,6 @@
 import QtQuick
 import QtTest
-import "../../shell/wallpapermonitors.js" as Wallpaper
+import "../../bar/wallpapermonitors.js" as Wallpaper
 
 // The per-monitor wallpaper document: tolerant parsing, one patch at a time.
 TestCase {

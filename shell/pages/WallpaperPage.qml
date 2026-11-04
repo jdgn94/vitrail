@@ -5,7 +5,7 @@ import QtQuick.Effects
 import Qt.labs.folderlistmodel
 import "../../kit"
 import "../../kit/base"
-import "../../kit/effects.js" as Effects
+import "../../bar/effects.js" as Effects
 import "../reorder.js" as Reorder
 
 // Wallpaper category: the settings shared by every kind (fit, rotation, the

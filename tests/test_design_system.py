@@ -138,6 +138,23 @@ class ComposedLayerTests(unittest.TestCase):
                     self.assertNotIn(primitive, text)
 
 
+class BarShellRootTests(unittest.TestCase):
+    """Quickshell loads bar/shell.qml with bar/ as its root: an import that
+    escapes it (../../) is unavailable at runtime and takes the whole shell
+    down, which qmllint cannot see."""
+
+    def test_no_bar_import_escapes_the_shell_root(self) -> None:
+        import re as _re
+
+        for path in sorted((ROOT / "bar").rglob("*")):
+            if path.suffix not in (".qml", ".js") or "kit" in path.parts:
+                continue
+            text = path.read_text(encoding="utf-8")
+            for target in _re.findall(r'(?m)^\s*(?:\.import\s+)?import\s+"([^"]+)"', text):
+                with self.subTest(file=str(path.relative_to(ROOT)), target=target):
+                    self.assertFalse(target.startswith("../../"), f"{path.relative_to(ROOT)} imports outside bar/")
+
+
 class GlassLayerRuleTests(unittest.TestCase):
     """Every translucent bar layer is blurred by the vitrail-glass rule, in
     the config and in the rule apply-settings.sh redefines."""

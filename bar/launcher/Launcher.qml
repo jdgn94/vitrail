@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Hyprland
 import "../kit"
 import "../kit/base"
-import "../../kit/effects.js" as Effects
+import "../effects.js" as Effects
 import "query.js" as Query
 import "search.js" as Search
 import "apps.js" as Apps

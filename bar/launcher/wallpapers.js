@@ -3,7 +3,7 @@
 // this module only reads its output and matches the query.
 .pragma library
 
-.import "../../kit/effects.js" as Effects
+.import "../effects.js" as Effects
 .import "search.js" as Search
 
 var WALLPAPER = /\.(png|jpe?g|webp|bmp|svg|mp4|webm|mkv|mov|m4v|avi)$/i

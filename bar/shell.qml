@@ -11,10 +11,10 @@ import "kit"
 import "kit/base"
 import "kit/composed"
 import "kit/frame.js" as Frame
-import "../kit/effects.js" as Effects
+import "effects.js" as Effects
 import "prefs.js" as Prefs
-import "../shell/barview.js" as BarView
-import "../shell/wallpapermonitors.js" as WallpaperMonitors
+import "barview.js" as BarView
+import "wallpapermonitors.js" as WallpaperMonitors
 import "clock"
 import "dialogs"
 import "launcher"
