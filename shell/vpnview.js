@@ -36,7 +36,7 @@ function registrable(host) {
     return labels.slice(-2).join(".")
 }
 
-// hypraether's flat domain list ([{ domain, ips }], ips a count) grouped by
+// vitrail-vpn's flat domain list ([{ domain, ips }], ips a count) grouped by
 // registrable domain: [{ root, count, ips, domains: [{ domain, ips }] }],
 // groups and names sorted. Nothing is stored: the list is the only truth.
 function groupDomains(list) {

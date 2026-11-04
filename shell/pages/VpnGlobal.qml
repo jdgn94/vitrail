@@ -4,7 +4,7 @@ import "../../kit"
 import "../../kit/base"
 import "../vpnview.js" as View
 
-// The VPN settings that belong to hypraether-vpn as a whole: the traffic mode,
+// The VPN settings that belong to vitrail-vpn as a whole: the traffic mode,
 // connecting at startup (its `enabled` marker), the URL list (its domain list),
 // the credentials (name, user name, password) and, below, the import form
 // (`VpnImport`).

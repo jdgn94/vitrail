@@ -546,7 +546,7 @@ enable_settings_watch() {
 
 # The VPN's login rule is a user unit, not the bar: after a login the tunnel
 # comes up even if Quickshell never starts, and a shell restart never repeats
-# it. The tunnel itself is hypraether-vpn's system unit; this only enables the
+# it. The tunnel itself is vitrail-vpn's system unit; this only enables the
 # rule. `--vpn none` leaves it off.
 enable_vpn_autostart() {
     [[ "$VPN_MODE" == "none" || -z "$VPN_MODE" ]] && return 0

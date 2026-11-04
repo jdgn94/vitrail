@@ -95,7 +95,7 @@ Every external program or library Vitrail calls at runtime (a `Process`
 command, `subprocess`, a shell script, a Hyprland `exec_cmd`) must be declared
 in the installer's package manifest (`packages/*.txt`, installed by
 `install.sh`) and documented in the README's "Runtime dependencies" table. A
-program that is not packaged by Vitrail (`hypraether-vpn`) is allowlisted with
+program that is not packaged by Vitrail (`vitrail-vpn`) is allowlisted with
 a comment in `tests/test_dependencies.py`.
 
 ### Enforcement

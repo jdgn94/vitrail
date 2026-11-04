@@ -5,9 +5,9 @@
 #   sudo ./uninstall.sh
 #
 # What it removes:
-#   - every hypraether-vpn@<id> tunnel (stopped) and its unit template
-#   - /etc/hypraether/vpn/ (env, scripts) and the /usr/local/bin
-#     hypraether-vpn CLI symlink
+#   - every vitrail-vpn@<id> tunnel (stopped) and its unit template
+#   - /etc/vitrail/vpn/ (env, scripts) and the /usr/local/bin
+#     vitrail-vpn CLI symlink
 #   - the vpn-auth-watchdog service and its state
 #   - the polkit rule for passwordless tunnel control
 #   - the nftables split-tunnel ruleset (restores /etc/nftables.conf.orig
@@ -16,8 +16,8 @@
 #     split config
 #   - the 'vpn' routing table entry in /etc/iproute2/rt_tables
 #
-# Your per-user connections (~/.config/hypraether/vpn) are NOT touched —
-# remove them yourself with `hypraether-vpn remove <id>` for each one.
+# Your per-user connections (~/.config/vitrail-vpn) are NOT touched —
+# remove them yourself with `vitrail-vpn remove <id>` for each one.
 #
 # NOTE: the openvpn / dnsmasq / nftables / NetworkManager packages themselves
 # are left installed; only this project's configuration is removed.
@@ -35,8 +35,8 @@ info() { printf '\033[32m[INFO]\033[0m  %s\n' "$*"; }
 warn() { printf '\033[33m[WARN]\033[0m  %s\n' "$*"; }
 
 # Stop and disable every tunnel instance
-if systemctl list-unit-files | grep -q 'hypraether-vpn@'; then
-    mapfile -t UNITS < <(systemctl list-unit-files 'hypraether-vpn@*' --no-legend --plain | cut -d' ' -f1)
+if systemctl list-unit-files | grep -q 'vitrail-vpn@'; then
+    mapfile -t UNITS < <(systemctl list-unit-files 'vitrail-vpn@*' --no-legend --plain | cut -d' ' -f1)
     for unit in "${UNITS[@]}"; do
         systemctl stop "$unit" 2>/dev/null || true
         systemctl disable "$unit" 2>/dev/null || true
@@ -45,9 +45,9 @@ if systemctl list-unit-files | grep -q 'hypraether-vpn@'; then
 fi
 
 # Remove the unit template
-if [[ -f /etc/systemd/system/hypraether-vpn@.service ]]; then
-    rm -f /etc/systemd/system/hypraether-vpn@.service
-    info "Removed unit template /etc/systemd/system/hypraether-vpn@.service"
+if [[ -f /etc/systemd/system/vitrail-vpn@.service ]]; then
+    rm -f /etc/systemd/system/vitrail-vpn@.service
+    info "Removed unit template /etc/systemd/system/vitrail-vpn@.service"
 fi
 
 # Remove the AUTH_FAILED watchdog
@@ -60,13 +60,13 @@ rm -f /etc/vpn-auth-watchdog.conf
 rm -rf /var/lib/vpn-auth-watchdog
 
 # Remove the project's system dir and the CLI symlink
-rm -rf /etc/hypraether/vpn
-rm -f /usr/local/bin/hypraether-vpn
-info "Removed /etc/hypraether/vpn and the hypraether-vpn CLI symlink."
+rm -rf /etc/vitrail/vpn
+rm -f /usr/local/bin/vitrail-vpn
+info "Removed /etc/vitrail/vpn and the vitrail-vpn CLI symlink."
 
 # Remove the polkit rule
-rm -f /etc/polkit-1/rules.d/50-hypraether-vpn.rules
-info "Removed polkit rule /etc/polkit-1/rules.d/50-hypraether-vpn.rules"
+rm -f /etc/polkit-1/rules.d/50-vitrail-vpn.rules
+info "Removed polkit rule /etc/polkit-1/rules.d/50-vitrail-vpn.rules"
 
 systemctl daemon-reload 2>/dev/null || true
 
@@ -96,4 +96,4 @@ fi
 
 printf '\n\033[32mSplit-tunnel VPN configuration removed.\033[0m\n'
 printf 'Packages (openvpn, dnsmasq, nftables) were left installed.\n'
-printf 'Your connections (~/.config/hypraether/vpn) were left untouched.\n'
+printf 'Your connections (~/.config/vitrail-vpn) were left untouched.\n'

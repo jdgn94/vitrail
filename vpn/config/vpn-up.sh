@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /etc/hypraether/vpn/vpn-up.sh
+# /etc/vitrail/vpn/vpn-up.sh
 #
 # Called by OpenVPN after the tunnel interface comes up.
 # Sets up the split-tunnel policy routing so that only fwmark 0x4555 traffic

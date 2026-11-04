@@ -7,8 +7,8 @@ import "../vpnsettings.js" as VpnDoc
 import "../vpnview.js" as View
 
 // One connection's settings. Its name, provider, region and config file are
-// hypraether's and read-only; the credential it uses is assigned through
-// `hypraether-vpn credential assign`; whether the automatic choice may pick it
+// vitrail-vpn's and read-only; the credential it uses is assigned through
+// `vitrail-vpn credential assign`; whether the automatic choice may pick it
 // is Vitrail's own (~/.config/vitrail-vpn/settings.ini); removing it deletes it
 // from the tool.
 Item {

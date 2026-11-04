@@ -5,7 +5,7 @@ import "../kit/base"
 import "vpn.js" as Vpn
 
 // The VPN button: a closed shield when a tunnel is up, an open one when not.
-// The tunnels come from `hypraether-vpn list --json`.
+// The tunnels come from `vitrail-vpn list --json`.
 Item {
     id: root
 
@@ -67,7 +67,7 @@ Item {
     Process {
         id: list
 
-        command: ["hypraether-vpn", "list", "--json"]
+        command: ["vitrail-vpn", "list", "--json"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {

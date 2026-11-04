@@ -6,8 +6,8 @@
 Every path follows `$XDG_CONFIG_HOME` / `$XDG_DATA_HOME` (the home when unset),
 so two system users never share a file, an account or a rule: each one gets its
 own document in its own home. Everything else the VPN keeps — the connections,
-credentials and mode in hypraether's vault, the `enabled` marker — is already
-hypraether-vpn's and lives under the same home.
+credentials and mode in vitrail-vpn's vault, the `enabled` marker — is already
+vitrail-vpn's and lives under the same home.
 
 The document is one QSettings value, `vpnSettings` in the `[vpn]` section, the
 same text that used to live in `misc.ini`: the settings window writes it with
@@ -34,7 +34,7 @@ CONFIG_NAME = "vitrail-vpn"
 DATA_NAME = "vitrail-vpn"
 # The old place of the key, in misc.ini; migrate() moves it and deletes it.
 LEGACY_KEY = "vpnSettings"
-# A picked config is a .ovpn or a .conf, as hypraether-vpn imports them.
+# A picked config is a .ovpn or a .conf, as vitrail-vpn imports them.
 SUFFIXES = (".ovpn", ".conf")
 MAX_NAME = 120
 CHUNK = 1024 * 1024
@@ -104,8 +104,9 @@ def _write_private(path: Path, text: str) -> None:
 def qt_quote(text: str) -> str:
     """A value as Qt.labs.settings reads one back: quoted, with `\\` and `"`
     escaped (a string with a comma would be read as a list otherwise)."""
-    escaped = (text.replace("\\", "\\\\").replace('"', '\\"')
-               .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t"))
+    escaped = (
+        text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+    )
     return f'"{escaped}"'
 
 

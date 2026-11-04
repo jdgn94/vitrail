@@ -1,4 +1,4 @@
-# Tab bar for Hypraether's kitty, in three styles that mirror the prompt header:
+# Tab bar for Vitrail's kitty, in three styles that mirror the prompt header:
 #
 #   capsule  a rounded pill per tab, in the tab's own fill
 #   tonal    coloured text, tabs divided by a thin rule
@@ -10,7 +10,7 @@
 # wrapped below: a left-click over the icon closes the tab, and hovering it
 # turns it into the error colour.
 #
-# Settings come from ~/.config/hypraether/header.conf (written by the Terminal
+# Settings come from ~/.config/vitrail-vpn/header.conf (written by the Terminal
 # settings page) and roles from the generated prompt palette, both re-read when
 # their mtime changes. Defaults here must equal terminal-header.ts's.
 import json
@@ -109,18 +109,40 @@ def _role(name: str, fallback: int) -> int:
 
 # Foreground process -> glyph. Unknown processes get the cube.
 ICONS = {
-    "zsh": "", "bash": "", "fish": "", "sh": "",
-    "nvim": "", "vim": "", "vi": "",
-    "git": "", "lazygit": "", "tig": "",
-    "ssh": "", "mosh": "",
-    "python": "", "python3": "", "ipython": "",
-    "node": "", "npm": "", "pnpm": "", "yarn": "", "bun": "",
-    "docker": "", "podman": "",
-    "cargo": "", "rustc": "",
+    "zsh": "",
+    "bash": "",
+    "fish": "",
+    "sh": "",
+    "nvim": "",
+    "vim": "",
+    "vi": "",
+    "git": "",
+    "lazygit": "",
+    "tig": "",
+    "ssh": "",
+    "mosh": "",
+    "python": "",
+    "python3": "",
+    "ipython": "",
+    "node": "",
+    "npm": "",
+    "pnpm": "",
+    "yarn": "",
+    "bun": "",
+    "docker": "",
+    "podman": "",
+    "cargo": "",
+    "rustc": "",
     "go": "",
-    "htop": "", "btop": "", "top": "",
-    "man": "", "less": "",
-    "yazi": "", "ranger": "", "lf": "", "mc": "",
+    "htop": "",
+    "btop": "",
+    "top": "",
+    "man": "",
+    "less": "",
+    "yazi": "",
+    "ranger": "",
+    "lf": "",
+    "mc": "",
     "claude": "",
 }
 UNKNOWN_ICON = ""

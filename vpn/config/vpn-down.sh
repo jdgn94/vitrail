@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /etc/hypraether/vpn/vpn-down.sh
+# /etc/vitrail/vpn/vpn-down.sh
 #
 # Called by OpenVPN when the tunnel goes down. Cleans up the split-tunnel
 # routing and SNAT rules created by vpn-up.sh.

@@ -1,9 +1,8 @@
-> Vendored into Vitrail from the Hypraether project. The runtime paths keep
-> the `hypraether` name (`/etc/hypraether/vpn`, `~/.config/hypraether/vpn`,
-> the `hypraether-vpn` CLI) so the existing installation keeps working.
-> Renaming them is a separate migration.
+> The VPN module is Vitrail's own: everything lives under Vitrail's names
+> (`/etc/vitrail/vpn`, `~/.config/vitrail-vpn`, the `vitrail-vpn` CLI and
+> the `vitrail-vpn@.service` units).
 
-# Hypraether Domain-Based Split-Tunnel VPN
+# Vitrail Domain-Based Split-Tunnel VPN
 
 Route **only** a curated list of domains through an OpenVPN tunnel (e.g.
 ProtonVPN free, US exit) while **everything else** keeps using your normal
@@ -12,7 +11,7 @@ connection. Built for Arch Linux and Arch-based distros using `systemd`,
 
 Multiple connections are supported, each with its **own** `.ovpn` and its
 **own** username/password. Credentials live in a private **sqlite vault**
-(`~/.config/hypraether/vpn/vault.db`, mode 600) — never in a plaintext
+(`~/.config/vitrail-vpn/vault.db`, mode 600) — never in a plaintext
 auth file. Every connection is tagged with a **provider** (proton, mullvad,
 ...) and a **region** (US, JP, DE, ...) so the desktop shell can group them.
 
@@ -57,7 +56,7 @@ switching region/provider stops the current tunnel and starts the new one.
 ## Two traffic modes
 
 The VPN works in two **global** modes (chosen at install time, stored as
-`VPN_MODE` in `/etc/hypraether/vpn/env`):
+`VPN_MODE` in `/etc/vitrail/vpn/env`):
 
 | Mode    | Meaning                                                          | The dnsmasq domain list holds |
 | ------- | ---------------------------------------------------------------- | ----------------------------- |
@@ -81,7 +80,7 @@ only ever reachable through the `vpn` table, so single-active, `vpn-up.sh`
 and the `.ovpn` conversion are identical.
 
 To switch modes after install: use the **Settings → Network & Wi-Fi → VPN**
-traffic-mode control in the shell, or `hypraether-vpn mode <split|full>` from
+traffic-mode control in the shell, or `vitrail-vpn mode <split|full>` from
 the CLI (both go through the root helper via pkexec, allowed passwordless by
 the installer's polkit rule). The domain list keeps its contents but changes
 meaning — re-edit it to match.
@@ -98,7 +97,7 @@ in `config/vpn-bypass.conf` (starts empty).
 ## Installation
 
 The installer sets up the **system infrastructure** (packages, dnsmasq/
-nftables/routing, the `hypraether-vpn@.service` template, credential
+nftables/routing, the `vitrail-vpn@.service` template, credential
 wrappers, polkit rule, CLI symlink). Connections are imported **per user**
 afterwards, since credentials belong to the user's session, not to root.
 
@@ -110,8 +109,8 @@ Then, as your normal user, import each `.ovpn` (each can have its own
 credentials):
 
 ```bash
-hypraether-vpn import ./us-free-21.protonvpn.udp.ovpn --user MyOpenVpnUser --pass-file ./password.txt
-hypraether-vpn connect us-free-21-protonvpn-udp
+vitrail-vpn import ./us-free-21.protonvpn.udp.ovpn --user MyOpenVpnUser --pass-file ./password.txt
+vitrail-vpn connect us-free-21-protonvpn-udp
 ```
 
 Provider and region are auto-detected from the filename/`remote` lines
@@ -129,7 +128,7 @@ Provider and region are auto-detected from the filename/`remote` lines
 
 ## The credential vault
 
-`~/.config/hypraether/vpn/vault.db` (sqlite, mode 600, owned by you) holds
+`~/.config/vitrail-vpn/vault.db` (sqlite, mode 600, owned by you) holds
 **two** things: saved **credentials** (named username/password pairs) and
 **connections** (generated split-tunnel configs), each linked to the
 credential it uses. One credential can serve several connections — e.g. a
@@ -147,7 +146,7 @@ Settings UI. A tunnel found already running at shell start with no marker
 recorded into it instead, so it survives the next reboot too.
 
 At runtime the root wrapper `vpn-auth-prep.sh` (the `ExecStartPre` of each
-`hypraether-vpn@<id>.service`) reads the vault, follows the connection →
+`vitrail-vpn@<id>.service`) reads the vault, follows the connection →
 credential link, and writes a transient `0600` auth file under `/run`
 (tmpfs) that OpenVPN reads via `auth-user-pass`. It is regenerated on every
 start and removed on stop; the only plaintext copy that ever exists is that
@@ -162,7 +161,7 @@ unit's journal. The shell's Settings → Network & Wi-Fi → VPN section
 manages both lists (add/rename/change-password/delete credentials, import
 connections, assign a credential to a connection).
 
-## CLI reference (`hypraether-vpn`)
+## CLI reference (`vitrail-vpn`)
 
 ### Connections
 
@@ -188,7 +187,7 @@ connections, assign a credential to a connection).
 
 Importing, listing and rotating credentials run entirely as your user.
 `connect`/`disconnect`/`remove` touch systemd; the installer's polkit rule
-grants _your user only_ passwordless control over `hypraether-vpn@*` units.
+grants _your user only_ passwordless control over `vitrail-vpn@*` units.
 
 ## Getting ProtonVPN credentials
 
@@ -214,18 +213,18 @@ Free ProtonVPN servers occasionally go down. List **several free US servers**
 in the imported config and let OpenVPN pick whichever answers:
 
 1. Download the `.ovpn` of 2–5 free **US** servers.
-2. In `~/.config/hypraether/vpn/connections/<id>.conf`, keep **all** the
+2. In `~/.config/vitrail-vpn/connections/<id>.conf`, keep **all** the
    `remote` lines (e.g. 5 servers × 5 ports). The config has `remote-random`,
    so OpenVPN tries them until one connects.
 3. Use the **username without suffix** in the vault so each entry IP can
    assign any valid free exit.
-4. `hypraether-vpn disconnect <id> && hypraether-vpn connect <id>`.
+4. `vitrail-vpn disconnect <id> && vitrail-vpn connect <id>`.
 
 ## Verifying it works
 
 ```bash
 # Tunnel is up
-systemctl status hypraether-vpn@<id>
+systemctl status vitrail-vpn@<id>
 
 # A tunneled domain's IP routes via the tunnel (table vpn)
 ip route get 160.79.104.10 mark 0x4555
@@ -256,12 +255,12 @@ The split tunnel depends on dnsmasq seeing the DNS queries for your domains.
 
 | Task                | Command                                                          |
 | ------------------- | ---------------------------------------------------------------- |
-| List connections    | `hypraether-vpn list`                                            |
-| Check active tunnel | `hypraether-vpn status` / `systemctl status hypraether-vpn@<id>` |
-| Stop tunnel         | `hypraether-vpn disconnect <id>`                                 |
-| Rotate credentials  | `hypraether-vpn creds <id> --pass-file f`                        |
-| Show traffic mode   | `hypraether-vpn mode`                                            |
-| Switch traffic mode | `hypraether-vpn mode split\|full` (or the Settings UI)           |
+| List connections    | `vitrail-vpn list`                                            |
+| Check active tunnel | `vitrail-vpn status` / `systemctl status vitrail-vpn@<id>` |
+| Stop tunnel         | `vitrail-vpn disconnect <id>`                                 |
+| Rotate credentials  | `vitrail-vpn creds <id> --pass-file f`                        |
+| Show traffic mode   | `vitrail-vpn mode`                                            |
+| Switch traffic mode | `vitrail-vpn mode split\|full` (or the Settings UI)           |
 | See tunnel IP       | `ip addr show tun0`                                              |
 | Uninstall           | `sudo ./uninstall.sh`                                            |
 
@@ -273,7 +272,7 @@ time to time, which makes OpenVPN fail with `AUTH_FAILED`. The watchdog
 
 1. Sends you a **critical desktop notification** and **opens the Proton
    dashboard** where the OpenVPN/IKEv2 password is reset.
-2. **Watches the vault** — the moment you run `hypraether-vpn creds <id>`
+2. **Watches the vault** — the moment you run `vitrail-vpn creds <id>`
    (which updates `vault.db`), it **restarts the active tunnel**.
 3. A 900s **cooldown** prevents notification spam while credentials are still
    wrong.
@@ -286,9 +285,9 @@ vpn-auth-watchdog (cooldown ok)
         ├─► notify-send (critical) + xdg-open Proton dashboard
         │
         │   ...you reset the OpenVPN password on the Proton page and run:
-        │   hypraether-vpn creds <id> --pass-file <new-password.txt>
+        │   vitrail-vpn creds <id> --pass-file <new-password.txt>
         ▼
-watchdog sees vault.db changed → systemctl restart hypraether-vpn@<id>
+watchdog sees vault.db changed → systemctl restart vitrail-vpn@<id>
         ▼
 tunnel back up
 ```
@@ -303,15 +302,15 @@ Domains are managed from the **settings UI** (Settings → Network & Wi-Fi →
 VPN → Domains) or the CLI — no manual config editing:
 
 ```bash
-hypraether-vpn domain add anthropic.com     # resolves its IPs + applies
-hypraether-vpn domain remove openai.com
-hypraether-vpn domain list                  # shows each domain + its IPs
-hypraether-vpn domain refresh               # re-resolve every domain
+vitrail-vpn domain add anthropic.com     # resolves its IPs + applies
+vitrail-vpn domain remove openai.com
+vitrail-vpn domain list                  # shows each domain + its IPs
+vitrail-vpn domain refresh               # re-resolve every domain
 ```
 
 Adding a domain (or refreshing) regenerates the dnsmasq config at
 `/etc/NetworkManager/dnsmasq.d/vpn-mode.conf` from the list
-(`~/.config/hypraether/vpn/domains`, one per line) **and** inserts the
+(`~/.config/vitrail-vpn/domains`, one per line) **and** inserts the
 domain's current A/AAAA records into the active mode's nftables set
 (`vpn_ips`/`vpn_ips6` in split, `bypass_ips`/`bypass_ips6` in full) — it
 takes effect immediately, while dnsmasq keeps the entries fresh as the
@@ -327,7 +326,7 @@ automatically.
 `ip route get <resolved-ip> mark 0x4555`.
 
 To remove a domain, delete it in the settings UI or
-`hypraether-vpn domain remove <domain>`.
+`vitrail-vpn domain remove <domain>`.
 
 ## Project layout
 
@@ -342,12 +341,12 @@ vpn/
 │   ├── nftables.conf           # split-mode fwmark ruleset (additive)
 │   ├── nftables-bypass.conf    # full-mode ruleset (mark all, clear exclusions)
 │   ├── vpn-up.sh / vpn-down.sh # policy routing + SNAT on tunnel up/down
-│   ├── hypraether-vpn@.service # systemd template: one instance per connection
-│   ├── env.example             # /etc/hypraether/vpn/env (vault/conf dir paths)
-│   ├── 50-hypraether-vpn.rules # polkit: passwordless tunnel control
+│   ├── vitrail-vpn@.service # systemd template: one instance per connection
+│   ├── env.example             # /etc/vitrail/vpn/env (vault/conf dir paths)
+│   ├── 50-vitrail-vpn.rules # polkit: passwordless tunnel control
 │   └── vpn-auth-watchdog.service/.conf
 ├── scripts/
-│   ├── vpn_manager.py          # the `hypraether-vpn` CLI (vault + systemd + domains)
+│   ├── vpn_manager.py          # the `vitrail-vpn` CLI (vault + systemd + domains)
 │   ├── ovpn2split.py           # converts a stock .ovpn into a split config
 │   ├── vpn-mode.sh             # root: switch split<->full mode (real root copy)
 │   ├── vpn-domain.sh           # root: apply domain list (regen dnsmasq + insert IPs)
@@ -362,7 +361,7 @@ vpn/
 Per-user state (never committed):
 
 ```
-~/.config/hypraether/vpn/
+~/.config/vitrail-vpn/
 ├── vault.db                    # sqlite credential vault (600)
 ├── mode                        # current traffic mode, for the settings UI
 ├── domains                     # tunnel domain list (one per line)
@@ -370,7 +369,7 @@ Per-user state (never committed):
 └── connections/<id>.conf       # generated split-tunnel configs
 ```
 
-Installed (system) state: `/etc/hypraether/vpn/` holds every root script
+Installed (system) state: `/etc/vitrail/vpn/` holds every root script
 (up/down, prep/clean, watchdog, `vpn-client-conf.py`, `vpn-mode.sh`,
 `vpn-domain.sh`) plus `config/` (the mode rulesets) as **real root-owned
 copies**, and the env file. Never symlinks into the clone: root runs them
@@ -385,9 +384,9 @@ read files there the user owns.
 - **Tunnel connects but immediately gets `AUTH_FAILED`** — the OpenVPN
   credentials were rejected. Rotate them: reset at `account.protonvpn.com →
 Settings → OpenVPN / IKEv2 username/password`, then
-  `hypraether-vpn creds <id> --pass-file <file>`.
-- **`hypraether-vpn connect` fails with polkit denial** — the installer's
-  polkit rule may be missing (`/etc/polkit-1/rules.d/50-hypraether-vpn.rules`)
+  `vitrail-vpn creds <id> --pass-file <file>`.
+- **`vitrail-vpn connect` fails with polkit denial** — the installer's
+  polkit rule may be missing (`/etc/polkit-1/rules.d/50-vitrail-vpn.rules`)
   or installed for a different user than the one running the command.
 - **Domain hangs but `nft list set ip vpn_split vpn_ips` is empty** — DoH is
   enabled in the browser, or dnsmasq isn't the resolver (`resolv.conf` must

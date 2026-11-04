@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-# /etc/hypraether/vpn/vpn-mode.sh
+# /etc/vitrail/vpn/vpn-mode.sh
 #
 # Switch the VPN traffic mode:
 #   split — only the domains on the list go through the tunnel
 #   full  — everything goes through the tunnel except the excluded domains
 #
-# Installs the mode's nftables ruleset (from /etc/hypraether/vpn/config/,
-# root-owned copies made by vpn/install.sh), reloads it, records VPN_MODE in /etc/hypraether/
+# Installs the mode's nftables ruleset (from /etc/vitrail/vpn/config/,
+# root-owned copies made by vpn/install.sh), reloads it, records VPN_MODE in /etc/vitrail/
 # vpn/env plus a user-readable mirror for the settings UI, then re-applies
 # the tunnel domain list through vpn-domain.sh (the dnsmasq config is
 # generated from the list, so its set targets follow the mode). The domain
 # list keeps its contents but changes meaning per mode — manage it in the
-# settings UI or with `hypraether-vpn domain`.
+# settings UI or with `vitrail-vpn domain`.
 #
 # Installed as a real root-owned copy (NOT a symlink): it is the pkexec
 # target from the settings UI, and pkexec refuses symlinks / a helper a
 # non-root user could rewrite.
 #
 # Usage:
-#   /etc/hypraether/vpn/vpn-mode.sh <split|full>
+#   /etc/vitrail/vpn/vpn-mode.sh <split|full>
 set -euo pipefail
 
 MODE="${1:?usage: vpn-mode.sh <split|full>}"
@@ -35,7 +35,7 @@ info() { printf '\033[32m[INFO]\033[0m  %s\n' "$*"; }
 
 [[ $EUID -ne 0 ]] && die "Run as root: sudo $0 $MODE"
 
-VPN_DIR="/etc/hypraether/vpn"
+VPN_DIR="/etc/vitrail/vpn"
 CONFIG_DIR="$VPN_DIR/config"
 ENV_FILE="$VPN_DIR/env"
 
@@ -79,4 +79,4 @@ fi
 
 printf '\n\033[32mVPN mode switched to %s.\033[0m\n' "$MODE"
 printf 'Manage the domain list in the settings UI or with:\n'
-printf '  hypraether-vpn domain add|remove <domain>\n'
+printf '  vitrail-vpn domain add|remove <domain>\n'

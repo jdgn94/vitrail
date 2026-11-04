@@ -17,7 +17,7 @@ import "../vpnview.js" as VpnView
 // request (vitrail.network apply) and rewrites network-state.json, which this
 // page polls while it waits. `tab` is also the --tab deep link.
 //
-// The VPN tab shows hypraether-vpn's own model: its connections, credentials,
+// The VPN tab shows vitrail-vpn's own model: its connections, credentials,
 // traffic mode, domain list and `enabled` marker (the state's `vpn`). It has
 // four views: the connections (`VpnList`), the global settings (`VpnGlobal`),
 // one connection's settings (`VpnConnection`) and the import form

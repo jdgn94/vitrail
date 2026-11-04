@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /etc/hypraether/vpn/vpn-auth-watchdog.sh
+# /etc/vitrail/vpn/vpn-auth-watchdog.sh
 #
 # Watches the OpenVPN services and notifies the desktop user when a tunnel
 # has connection problems:
@@ -10,8 +10,8 @@
 #     notifies with the connection name.
 #   - A unit stuck in systemd's `failed` state: notifies.
 #
-# Credentials live in the sqlite vault (~/.config/hypraether/vpn/vault.db,
-# see vpn_manager.py); the vault mtime is watched so that `hypraether-vpn
+# Credentials live in the sqlite vault (~/.config/vitrail-vpn/vault.db,
+# see vpn_manager.py); the vault mtime is watched so that `vitrail-vpn
 # creds <id>` restarts the affected tunnels automatically.
 #
 # A cooldown (default 900s) between notifications avoids spam while a
@@ -21,7 +21,7 @@
 # notifications to the graphical session and restarts systemd units).
 set -euo pipefail
 
-ENV_FILE="/etc/hypraether/vpn/env"
+ENV_FILE="/etc/vitrail/vpn/env"
 CONF="/etc/vpn-auth-watchdog.conf"
 STATE_DIR="/var/lib/vpn-auth-watchdog"
 STATE_FILE="$STATE_DIR/last-notify"
@@ -51,7 +51,7 @@ send_desktop_notify() {
         runuser -u "$NOTIFY_USER" -- \
             env XDG_RUNTIME_DIR="/run/user/$NOTIFY_UID" \
             DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$NOTIFY_UID/bus" \
-            notify-send -u "$urgency" -a "Hypraether VPN" "$summary" "$body" \
+            notify-send -u "$urgency" -a "Vitrail VPN" "$summary" "$body" \
             >/dev/null 2>&1 || true
     fi
 }
@@ -69,22 +69,22 @@ record_trigger() {
     echo "$(now)" >"$STATE_FILE"
 }
 
-# extract_id <journal-line> -> connection id, from the `hypraether-vpn@<id>[...]`
-# process prefix, the `hypraether-vpn@<id>.service:` unit message, or
+# extract_id <journal-line> -> connection id, from the `vitrail-vpn@<id>[...]`
+# process prefix, the `vitrail-vpn@<id>.service:` unit message, or
 # systemd's "split-tunnel VPN (<id>)" start message.
 extract_id() {
     local line="$1" id
-    id="$(printf '%s' "$line" | sed -n 's/.*\(hypraether-vpn@[a-zA-Z0-9-]*\)\[.*/\1/p' | sed 's/^hypraether-vpn@//')"
+    id="$(printf '%s' "$line" | sed -n 's/.*\(vitrail-vpn@[a-zA-Z0-9-]*\)\[.*/\1/p' | sed 's/^vitrail-vpn@//')"
     if [[ -n "$id" ]]; then
         echo "$id"
         return
     fi
-    id="$(printf '%s' "$line" | sed -n 's/.*\(hypraether-vpn@[a-zA-Z0-9-]*\)\.service:.*/\1/p' | sed 's/^hypraether-vpn@//')"
+    id="$(printf '%s' "$line" | sed -n 's/.*\(vitrail-vpn@[a-zA-Z0-9-]*\)\.service:.*/\1/p' | sed 's/^vitrail-vpn@//')"
     if [[ -n "$id" ]]; then
         echo "$id"
         return
     fi
-    printf '%s' "$line" | sed -n 's/.*Hypraether split-tunnel VPN (\([a-zA-Z0-9-]*\)).*/\1/p'
+    printf '%s' "$line" | sed -n 's/.*Vitrail split-tunnel VPN (\([a-zA-Z0-9-]*\)).*/\1/p'
 }
 
 handle_auth_failed() {
@@ -96,7 +96,7 @@ handle_auth_failed() {
     record_trigger
     log "AUTH_FAILED detected ($id). Notifying user and opening dashboard."
     send_desktop_notify critical "VPN AUTH_FAILED" \
-        "The provider rejected the OpenVPN credentials for $id.\nUpdate them with:\n  hypraether-vpn creds $id\n\nThe tunnel restarts automatically once the vault changes."
+        "The provider rejected the OpenVPN credentials for $id.\nUpdate them with:\n  vitrail-vpn creds $id\n\nThe tunnel restarts automatically once the vault changes."
     if [[ -n "${NOTIFY_USER:-}" ]]; then
         runuser -u "$NOTIFY_USER" -- xdg-open "$PROTON_DASHBOARD" >/dev/null 2>&1 || true
     fi
@@ -111,7 +111,7 @@ handle_connection_problem() {
     record_trigger
     log "connection problem ($id): $detail. Notifying user."
     send_desktop_notify normal "VPN connection problem" \
-        "$id: $detail.\nCheck the tunnel with: hypraether-vpn status"
+        "$id: $detail.\nCheck the tunnel with: vitrail-vpn status"
 }
 
 restart_tunnels() {
@@ -119,17 +119,17 @@ restart_tunnels() {
     while IFS= read -r unit; do
         [[ -n "$unit" ]] || continue
         systemctl restart "$unit" || log "restart of $unit failed"
-    done < <(systemctl list-units 'hypraether-vpn@*.service' --no-legend --plain | awk '$3 == "active" { print $1 }')
+    done < <(systemctl list-units 'vitrail-vpn@*.service' --no-legend --plain | awk '$3 == "active" { print $1 }')
 }
 
 # ---------------------------------------------------------------------------
 # Loops
 # ---------------------------------------------------------------------------
-log "Starting watchdogs for hypraether-vpn@* (cooldown=${COOLDOWN_SECONDS}s, notify=${NOTIFY_USER:-root})."
+log "Starting watchdogs for vitrail-vpn@* (cooldown=${COOLDOWN_SECONDS}s, notify=${NOTIFY_USER:-root})."
 
 # Tail the journal and react to failure signals.
 # shellcheck disable=SC2016
-journalctl -f -u 'hypraether-vpn@*' -o short | while IFS= read -r line; do
+journalctl -f -u 'vitrail-vpn@*' -o short | while IFS= read -r line; do
     id="$(extract_id "$line")"
     id="${id:-unknown}"
     case "$line" in
@@ -151,7 +151,7 @@ journalctl -f -u 'hypraether-vpn@*' -o short | while IFS= read -r line; do
         *"Connection refused"*)
             handle_connection_problem "$id" "the server refused the connection"
             ;;
-        *"Failed to start Hypraether split-tunnel VPN"* | *"Failed with result"*)
+        *"Failed to start Vitrail split-tunnel VPN"* | *"Failed with result"*)
             handle_connection_problem "$id" "the service failed to start"
             ;;
     esac
@@ -179,7 +179,7 @@ VAULT_PID=$!
 # whatever slips through while the unit stays down.
 while true; do
     sleep 15
-    failed="$(systemctl list-units 'hypraether-vpn@*.service' --no-legend --plain | awk '$3 == "failed" { print $1 }' | sed 's/^hypraether-vpn@//' | tr '\n' ' ')"
+    failed="$(systemctl list-units 'vitrail-vpn@*.service' --no-legend --plain | awk '$3 == "failed" { print $1 }' | sed 's/^vitrail-vpn@//' | tr '\n' ' ')"
     if [[ -n "$failed" ]]; then
         handle_connection_problem "${failed% }" "the service is in a failed state"
     fi

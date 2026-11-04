@@ -4,7 +4,7 @@ import "../../kit"
 import "../../kit/base"
 import "../../bar/network/vpn.js" as Vpn
 
-// The VPN tab's first view: hypraether's connections, each with its settings
+// The VPN tab's first view: vitrail-vpn's connections, each with its settings
 // button at the left, its ping and quality (every connection, as the last probe
 // measured it) and Connect / Disconnect; the buttons to add a connection and
 // to the global settings close the section.

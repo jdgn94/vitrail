@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""hypraether-vpn — manage the project's split-tunnel OpenVPN connections.
+"""vitrail-vpn — manage the project's split-tunnel OpenVPN connections.
 
 Every connection is a generated split-tunnel client config (see
 ovpn2split.py) plus a row in a private sqlite vault
-(~/.config/hypraether/vpn/vault.db, mode 600). Credentials live in their
+(~/.config/vitrail-vpn/vault.db, mode 600). Credentials live in their
 own reusable table: one named username/password pair can be shared by any
 number of connections (e.g. one ProtonVPN credential across several .ovpn
-files). The runtime tunnel is a hypraether-vpn@<id>.service instance; a
+files). The runtime tunnel is a vitrail-vpn@<id>.service instance; a
 root wrapper (vpn-auth-prep.sh) reads the vault on start and hands the
 credentials to OpenVPN via a transient 0600 file under /run (tmpfs).
 
 All vault/config work runs as the invoking user; only start/stop touch
-systemd, which the installer's polkit rule allows for hypraether-vpn@*
+systemd, which the installer's polkit rule allows for vitrail-vpn@*
 units. Only one tunnel is active at a time (shared 'vpn' routing table).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,7 +34,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from ovpn2split import convert  # noqa: E402
 
 CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-VPN_DIR = CONFIG_HOME / "hypraether" / "vpn"
+VPN_DIR = CONFIG_HOME / "vitrail-vpn"
 VAULT_PATH = VPN_DIR / "vault.db"
 CONF_DIR = VPN_DIR / "connections"
 # User-readable mirror of the global traffic mode, written by vpn-mode.sh /
@@ -48,8 +49,8 @@ DOMAINS_FILE = VPN_DIR / "domains"
 # active, regardless of whether the shell or a terminal drove the change.
 ENABLED_FILE = VPN_DIR / "enabled"
 
-AUTH_FILE = "/run/hypraether-vpn/{id}/auth.txt"
-UNIT_TEMPLATE = "hypraether-vpn@{id}.service"
+AUTH_FILE = "/run/vitrail-vpn/{id}/auth.txt"
+UNIT_TEMPLATE = "vitrail-vpn@{id}.service"
 
 # Substrings (lowercased) used to guess the provider from a filename or the
 # `remote` host lines of a .ovpn. Order matters: first match wins.
@@ -71,38 +72,267 @@ PROVIDER_KEYWORDS: dict[str, list[str]] = {
 }
 
 ISO3166_ALPHA2 = {
-    "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT",
-    "AU", "AW", "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI",
-    "BJ", "BL", "BM", "BN", "BO", "BQ", "BR", "BS", "BT", "BV", "BW", "BY",
-    "BZ", "CA", "CC", "CD", "CF", "CG", "CH", "CI", "CK", "CL", "CM", "CN",
-    "CO", "CR", "CU", "CV", "CW", "CX", "CY", "CZ", "DE", "DJ", "DK", "DM",
-    "DO", "DZ", "EC", "EE", "EG", "EH", "ER", "ES", "ET", "FI", "FJ", "FK",
-    "FM", "FO", "FR", "GA", "GB", "GD", "GE", "GF", "GG", "GH", "GI", "GL",
-    "GM", "GN", "GP", "GQ", "GR", "GS", "GT", "GU", "GW", "GY", "HK", "HM",
-    "HN", "HR", "HT", "HU", "ID", "IE", "IL", "IM", "IN", "IO", "IQ", "IR",
-    "IS", "IT", "JE", "JM", "JO", "JP", "KE", "KG", "KH", "KI", "KM", "KN",
-    "KP", "KR", "KW", "KY", "KZ", "LA", "LB", "LC", "LI", "LK", "LR", "LS",
-    "LT", "LU", "LV", "LY", "MA", "MC", "MD", "ME", "MF", "MG", "MH", "MK",
-    "ML", "MM", "MN", "MO", "MP", "MQ", "MR", "MS", "MT", "MU", "MV", "MW",
-    "MX", "MY", "MZ", "NA", "NC", "NE", "NF", "NG", "NI", "NL", "NO", "NP",
-    "NR", "NU", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PK", "PL", "PM",
-    "PN", "PR", "PS", "PT", "PW", "PY", "QA", "RE", "RO", "RS", "RU", "RW",
-    "SA", "SB", "SC", "SD", "SE", "SG", "SH", "SI", "SJ", "SK", "SL", "SM",
-    "SN", "SO", "SR", "SS", "ST", "SV", "SX", "SY", "SZ", "TC", "TD", "TF",
-    "TG", "TH", "TJ", "TK", "TL", "TM", "TN", "TO", "TR", "TT", "TV", "TW",
-    "TZ", "UA", "UG", "UM", "US", "UY", "UZ", "VA", "VC", "VE", "VG", "VI",
-    "VN", "VU", "WF", "WS", "YE", "YT", "ZA", "ZM", "ZW",
+    "AD",
+    "AE",
+    "AF",
+    "AG",
+    "AI",
+    "AL",
+    "AM",
+    "AO",
+    "AQ",
+    "AR",
+    "AS",
+    "AT",
+    "AU",
+    "AW",
+    "AX",
+    "AZ",
+    "BA",
+    "BB",
+    "BD",
+    "BE",
+    "BF",
+    "BG",
+    "BH",
+    "BI",
+    "BJ",
+    "BL",
+    "BM",
+    "BN",
+    "BO",
+    "BQ",
+    "BR",
+    "BS",
+    "BT",
+    "BV",
+    "BW",
+    "BY",
+    "BZ",
+    "CA",
+    "CC",
+    "CD",
+    "CF",
+    "CG",
+    "CH",
+    "CI",
+    "CK",
+    "CL",
+    "CM",
+    "CN",
+    "CO",
+    "CR",
+    "CU",
+    "CV",
+    "CW",
+    "CX",
+    "CY",
+    "CZ",
+    "DE",
+    "DJ",
+    "DK",
+    "DM",
+    "DO",
+    "DZ",
+    "EC",
+    "EE",
+    "EG",
+    "EH",
+    "ER",
+    "ES",
+    "ET",
+    "FI",
+    "FJ",
+    "FK",
+    "FM",
+    "FO",
+    "FR",
+    "GA",
+    "GB",
+    "GD",
+    "GE",
+    "GF",
+    "GG",
+    "GH",
+    "GI",
+    "GL",
+    "GM",
+    "GN",
+    "GP",
+    "GQ",
+    "GR",
+    "GS",
+    "GT",
+    "GU",
+    "GW",
+    "GY",
+    "HK",
+    "HM",
+    "HN",
+    "HR",
+    "HT",
+    "HU",
+    "ID",
+    "IE",
+    "IL",
+    "IM",
+    "IN",
+    "IO",
+    "IQ",
+    "IR",
+    "IS",
+    "IT",
+    "JE",
+    "JM",
+    "JO",
+    "JP",
+    "KE",
+    "KG",
+    "KH",
+    "KI",
+    "KM",
+    "KN",
+    "KP",
+    "KR",
+    "KW",
+    "KY",
+    "KZ",
+    "LA",
+    "LB",
+    "LC",
+    "LI",
+    "LK",
+    "LR",
+    "LS",
+    "LT",
+    "LU",
+    "LV",
+    "LY",
+    "MA",
+    "MC",
+    "MD",
+    "ME",
+    "MF",
+    "MG",
+    "MH",
+    "MK",
+    "ML",
+    "MM",
+    "MN",
+    "MO",
+    "MP",
+    "MQ",
+    "MR",
+    "MS",
+    "MT",
+    "MU",
+    "MV",
+    "MW",
+    "MX",
+    "MY",
+    "MZ",
+    "NA",
+    "NC",
+    "NE",
+    "NF",
+    "NG",
+    "NI",
+    "NL",
+    "NO",
+    "NP",
+    "NR",
+    "NU",
+    "NZ",
+    "OM",
+    "PA",
+    "PE",
+    "PF",
+    "PG",
+    "PH",
+    "PK",
+    "PL",
+    "PM",
+    "PN",
+    "PR",
+    "PS",
+    "PT",
+    "PW",
+    "PY",
+    "QA",
+    "RE",
+    "RO",
+    "RS",
+    "RU",
+    "RW",
+    "SA",
+    "SB",
+    "SC",
+    "SD",
+    "SE",
+    "SG",
+    "SH",
+    "SI",
+    "SJ",
+    "SK",
+    "SL",
+    "SM",
+    "SN",
+    "SO",
+    "SR",
+    "SS",
+    "ST",
+    "SV",
+    "SX",
+    "SY",
+    "SZ",
+    "TC",
+    "TD",
+    "TF",
+    "TG",
+    "TH",
+    "TJ",
+    "TK",
+    "TL",
+    "TM",
+    "TN",
+    "TO",
+    "TR",
+    "TT",
+    "TV",
+    "TW",
+    "TZ",
+    "UA",
+    "UG",
+    "UM",
+    "US",
+    "UY",
+    "UZ",
+    "VA",
+    "VC",
+    "VE",
+    "VG",
+    "VI",
+    "VN",
+    "VU",
+    "WF",
+    "WS",
+    "YE",
+    "YT",
+    "ZA",
+    "ZM",
+    "ZW",
 }
 
 
 def die(message: str, code: int = 1) -> None:
-    print(f"hypraether-vpn: {message}", file=sys.stderr)
+    print(f"vitrail-vpn: {message}", file=sys.stderr)
     sys.exit(code)
 
 
 # ---------------------------------------------------------------------------
 # Vault
 # ---------------------------------------------------------------------------
+
 
 def _connect(readonly: bool = False) -> sqlite3.Connection:
     if readonly:
@@ -161,6 +391,7 @@ def _now() -> str:
 
 # --- credentials ---
 
+
 def list_credentials() -> list[dict[str, str | int]]:
     db = _connect()
     rows = db.execute(
@@ -170,10 +401,7 @@ def list_credentials() -> list[dict[str, str | int]]:
            FROM credentials c ORDER BY c.name"""
     ).fetchall()
     db.close()
-    return [
-        {"id": r[0], "name": r[1], "username": r[2], "used_by": r[3]}
-        for r in rows
-    ]
+    return [{"id": r[0], "name": r[1], "username": r[2], "used_by": r[3]} for r in rows]
 
 
 def get_credential(name: str) -> dict[str, str | int] | None:
@@ -192,8 +420,7 @@ def add_credential(name: str, username: str, password: str) -> int:
     now = _now()
     db = _connect()
     cur = db.execute(
-        "INSERT INTO credentials (name, username, password, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO credentials (name, username, password, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
         (name, username, password, now, now),
     )
     db.commit()
@@ -225,8 +452,7 @@ def update_credential(
     values.append(_now())
     values.append(name)
     db.execute(
-        f"UPDATE credentials SET {', '.join(f'{f} = ?' for f in fields)} "
-        "WHERE name = ?",
+        f"UPDATE credentials SET {', '.join(f'{f} = ?' for f in fields)} WHERE name = ?",
         values,
     )
     db.commit()
@@ -238,21 +464,13 @@ def remove_credential(name: str) -> list[str]:
     (their `credential_id` is nulled — a tunnel has no auth until another
     credential is assigned)."""
     db = _connect()
-    cred = db.execute(
-        "SELECT id FROM credentials WHERE name = ?", (name,)
-    ).fetchone()
+    cred = db.execute("SELECT id FROM credentials WHERE name = ?", (name,)).fetchone()
     if cred is None:
         db.close()
         return []
-    affected = [
-        r[0]
-        for r in db.execute(
-            "SELECT id FROM connections WHERE credential_id = ?", (cred[0],)
-        ).fetchall()
-    ]
+    affected = [r[0] for r in db.execute("SELECT id FROM connections WHERE credential_id = ?", (cred[0],)).fetchall()]
     db.execute(
-        "UPDATE connections SET credential_id = NULL, updated_at = ? "
-        "WHERE credential_id = ?",
+        "UPDATE connections SET credential_id = NULL, updated_at = ? WHERE credential_id = ?",
         (_now(), cred[0]),
     )
     db.execute("DELETE FROM credentials WHERE id = ?", (cred[0],))
@@ -274,6 +492,7 @@ def connection_ids_for_credential(name: str) -> list[str]:
 
 
 # --- connections ---
+
 
 def get_connection(conn_id: str) -> dict[str, str | None] | None:
     db = _connect()
@@ -347,9 +566,7 @@ def upsert_connection(
 
 def set_connection_credential(conn_id: str, credential_name: str) -> None:
     db = _connect()
-    cred = db.execute(
-        "SELECT id FROM credentials WHERE name = ?", (credential_name,)
-    ).fetchone()
+    cred = db.execute("SELECT id FROM credentials WHERE name = ?", (credential_name,)).fetchone()
     if cred is None:
         db.close()
         die(f'no credential "{credential_name}"')
@@ -375,8 +592,7 @@ def set_connection_credentials(conn_id: str, username: str, password: str) -> No
     if row is not None:
         now = _now()
         db.execute(
-            "UPDATE credentials SET username = ?, password = ?, updated_at = ? "
-            "WHERE id = ?",
+            "UPDATE credentials SET username = ?, password = ?, updated_at = ? WHERE id = ?",
             (username, password, now, row[0]),
         )
         db.commit()
@@ -398,10 +614,9 @@ def delete_connection(conn_id: str) -> None:
 # systemd
 # ---------------------------------------------------------------------------
 
+
 def _systemctl(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["systemctl", *args], capture_output=True, text=True, check=False
-    )
+    return subprocess.run(["systemctl", *args], capture_output=True, text=True, check=False)
 
 
 def unit_name(conn_id: str) -> str:
@@ -460,6 +675,7 @@ def restart_credential_tunnels(name: str) -> None:
 # Metadata detection
 # ---------------------------------------------------------------------------
 
+
 def sanitize_id(raw: str) -> str:
     clean = re.sub(r"[^a-z0-9]+", "-", raw.lower()).strip("-")
     return clean or "vpn"
@@ -494,9 +710,8 @@ def detect_region(filename: str, remote_hosts: list[str]) -> str | None:
 # Credentials (input helpers)
 # ---------------------------------------------------------------------------
 
-def collect_credentials(
-    user: str | None, password: str | None, pass_file: str | None
-) -> tuple[str, str]:
+
+def collect_credentials(user: str | None, password: str | None, pass_file: str | None) -> tuple[str, str]:
     if pass_file:
         password = Path(pass_file).read_text(encoding="utf-8").strip()
         if not password:
@@ -526,7 +741,7 @@ def resolve_credential(
     reuse if it exists, else create it."""
     if reuse:
         if get_credential(reuse) is None:
-            die(f'no credential "{reuse}" (add one with `hypraether-vpn credential add`)')
+            die(f'no credential "{reuse}" (add one with `vitrail-vpn credential add`)')
         return reuse
     if create_name:
         if get_credential(create_name) is not None:
@@ -547,6 +762,7 @@ def resolve_credential(
 # Commands
 # ---------------------------------------------------------------------------
 
+
 def cmd_import(args: argparse.Namespace) -> None:
     _ensure_vault()
     ovpn = Path(args.ovpn).expanduser()
@@ -557,7 +773,7 @@ def cmd_import(args: argparse.Namespace) -> None:
     if not re.fullmatch(r"[a-z0-9-]+", conn_id):
         die(f"invalid connection id (a-z0-9- only): {conn_id}")
     if get_connection(conn_id) is not None and not args.force:
-        die(f"connection \"{conn_id}\" already exists (use --force to overwrite)")
+        die(f'connection "{conn_id}" already exists (use --force to overwrite)')
 
     text = ovpn.read_text(encoding="utf-8")
     remote_hosts = parse_remotes(text)
@@ -566,8 +782,12 @@ def cmd_import(args: argparse.Namespace) -> None:
     name = args.name or ovpn.name
 
     credential_name = resolve_credential(
-        args.credential, args.credential_name, args.user, args.password,
-        args.pass_file, conn_id,
+        args.credential,
+        args.credential_name,
+        args.user,
+        args.password,
+        args.pass_file,
+        conn_id,
     )
     cred = get_credential(credential_name)
     assert cred is not None
@@ -581,12 +801,12 @@ def cmd_import(args: argparse.Namespace) -> None:
     os.chmod(config_path, 0o600)
 
     upsert_connection(conn_id, name, provider, region, cred["id"], str(config_path))
-    print(f"Imported \"{conn_id}\" -> {config_path}")
+    print(f'Imported "{conn_id}" -> {config_path}')
     print(f"  name:       {name}")
     print(f"  provider:   {provider or '(unknown)'}")
     print(f"  region:     {region or '(unknown)'}")
     print(f"  credential: {credential_name}")
-    print(f"  connect:    hypraether-vpn connect {conn_id}")
+    print(f"  connect:    vitrail-vpn connect {conn_id}")
 
 
 def cmd_list(args: argparse.Namespace) -> None:
@@ -607,7 +827,7 @@ def cmd_list(args: argparse.Namespace) -> None:
         print(json.dumps(entries, indent=2))
         return
     if not entries:
-        print("No connections. Import one with: hypraether-vpn import <file.ovpn>")
+        print("No connections. Import one with: vitrail-vpn import <file.ovpn>")
         return
     width = max(len(c["id"]) for c in entries)
     for entry in entries:
@@ -615,10 +835,7 @@ def cmd_list(args: argparse.Namespace) -> None:
         region = entry["region"] or "-"
         provider = entry["provider"] or "-"
         credential = entry["credential"] or "-"
-        print(
-            f"{marker} {entry['id'].ljust(width)}  {region:<3}  {provider:<10}  "
-            f"{credential:<16}  {entry['name']}"
-        )
+        print(f"{marker} {entry['id'].ljust(width)}  {region:<3}  {provider:<10}  {credential:<16}  {entry['name']}")
     print("\n* = active")
 
 
@@ -626,12 +843,9 @@ def cmd_connect(args: argparse.Namespace) -> None:
     _ensure_vault()
     conn = get_connection(args.id)
     if conn is None:
-        die(f"no connection \"{args.id}\" in the vault")
+        die(f'no connection "{args.id}" in the vault')
     if not conn["credential"]:
-        die(
-            f"connection \"{args.id}\" has no credential assigned "
-            f"(use `hypraether-vpn credential assign <name> {args.id}`)"
-        )
+        die(f'connection "{args.id}" has no credential assigned (use `vitrail-vpn credential assign <name> {args.id}`)')
     for other in active_ids():
         if other != args.id:
             print(f"Stopping {other} (single active tunnel)...")
@@ -663,13 +877,10 @@ def cmd_creds(args: argparse.Namespace) -> None:
     _ensure_vault()
     conn = get_connection(args.id)
     if conn is None:
-        die(f"no connection \"{args.id}\" in the vault")
+        die(f'no connection "{args.id}" in the vault')
     cred_name = conn["credential"]
     if not cred_name:
-        die(
-            f"connection \"{args.id}\" has no credential assigned "
-            f"(use `hypraether-vpn credential assign <name> {args.id}`)"
-        )
+        die(f'connection "{args.id}" has no credential assigned (use `vitrail-vpn credential assign <name> {args.id}`)')
     cred = get_credential(cred_name)
     assert cred is not None
 
@@ -694,7 +905,7 @@ def cmd_creds(args: argparse.Namespace) -> None:
         die("empty password")
 
     update_credential(cred_name, username=username, password=password)
-    print(f"Updated credential \"{cred_name}\" (used by \"{args.id}\")")
+    print(f'Updated credential "{cred_name}" (used by "{args.id}")')
     if is_active(args.id):
         print("Restarting tunnel to pick them up...")
         restart_unit(args.id)
@@ -704,13 +915,13 @@ def cmd_remove(args: argparse.Namespace) -> None:
     _ensure_vault()
     conn = get_connection(args.id)
     if conn is None:
-        die(f"no connection \"{args.id}\" in the vault")
+        die(f'no connection "{args.id}" in the vault')
     if is_active(args.id):
         stop_unit(args.id)
     Path(conn["config_path"]).unlink(missing_ok=True)
     delete_connection(args.id)
     sync_enabled_marker()
-    print(f"Removed \"{args.id}\"")
+    print(f'Removed "{args.id}"')
 
 
 def cmd_status(args: argparse.Namespace) -> None:
@@ -751,7 +962,7 @@ def cmd_mode(args: argparse.Namespace) -> None:
     # real root-owned helper via pkexec, allowed passwordless by the
     # installer's polkit rule.
     result = subprocess.run(
-        ["pkexec", "/etc/hypraether/vpn/vpn-mode.sh", args.mode],
+        ["pkexec", "/etc/vitrail/vpn/vpn-mode.sh", args.mode],
         capture_output=True,
         text=True,
         check=False,
@@ -763,9 +974,7 @@ def cmd_mode(args: argparse.Namespace) -> None:
 
 # --- domain subcommands ---
 
-DOMAIN_RE = re.compile(
-    r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
-)
+DOMAIN_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
 
 
 def read_domains() -> list[str]:
@@ -785,9 +994,7 @@ def read_domains() -> list[str]:
 
 def write_domains(domains: list[str]) -> None:
     VPN_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
-    DOMAINS_FILE.write_text(
-        "\n".join(domains) + ("\n" if domains else ""), encoding="utf-8"
-    )
+    DOMAINS_FILE.write_text("\n".join(domains) + ("\n" if domains else ""), encoding="utf-8")
 
 
 def resolve_domain_ips(domain: str) -> list[str]:
@@ -816,7 +1023,7 @@ def apply_domains() -> None:
     """Apply the domain list as root (regenerate dnsmasq config + insert the
     domains' current IPs into the active mode's nftables sets)."""
     result = subprocess.run(
-        ["pkexec", "/etc/hypraether/vpn/vpn-domain.sh", "apply"],
+        ["pkexec", "/etc/vitrail/vpn/vpn-domain.sh", "apply"],
         capture_output=True,
         text=True,
         check=False,
@@ -855,15 +1062,12 @@ def cmd_domain_remove(args: argparse.Namespace) -> None:
 
 def cmd_domain_list(args: argparse.Namespace) -> None:
     _ensure_vault()
-    entries = [
-        {"domain": domain, "ips": resolve_domain_ips(domain)}
-        for domain in read_domains()
-    ]
+    entries = [{"domain": domain, "ips": resolve_domain_ips(domain)} for domain in read_domains()]
     if args.json:
         print(json.dumps(entries, indent=2))
         return
     if not entries:
-        print("No domains in the list. Add one with: hypraether-vpn domain add <domain>")
+        print("No domains in the list. Add one with: vitrail-vpn domain add <domain>")
         return
     width = max(len(entry["domain"]) for entry in entries)
     for entry in entries:
@@ -878,6 +1082,7 @@ def cmd_domain_refresh(args: argparse.Namespace) -> None:
 
 
 # --- credential subcommands ---
+
 
 def cmd_credential_add(args: argparse.Namespace) -> None:
     _ensure_vault()
@@ -898,7 +1103,7 @@ def cmd_credential_list(args: argparse.Namespace) -> None:
         print(json.dumps(creds, indent=2))
         return
     if not creds:
-        print("No credentials. Add one with: hypraether-vpn credential add <name>")
+        print("No credentials. Add one with: vitrail-vpn credential add <name>")
         return
     width = max(len(c["name"]) for c in creds)
     for c in creds:
@@ -924,9 +1129,7 @@ def cmd_credential_update(args: argparse.Namespace) -> None:
             die(f"password file is empty: {args.pass_file}")
     elif args.password is not None:
         password = args.password
-    elif (
-        args.rename is None and args.user is None
-    ):
+    elif args.rename is None and args.user is None:
         username = input(f"OpenVPN username [{existing['username']}]: ").strip()
         password = getpass.getpass("OpenVPN password: ")
     if username == "":
@@ -934,10 +1137,8 @@ def cmd_credential_update(args: argparse.Namespace) -> None:
     if password == "":
         die("empty password")
 
-    update_credential(
-        args.name, rename=args.rename, username=username, password=password
-    )
-    print(f"Updated credential \"{args.name}\"")
+    update_credential(args.name, rename=args.rename, username=username, password=password)
+    print(f'Updated credential "{args.name}"')
     restart_credential_tunnels(args.name)
 
 
@@ -949,7 +1150,7 @@ def cmd_credential_assign(args: argparse.Namespace) -> None:
         if get_connection(conn_id) is None:
             die(f'no connection "{conn_id}" in the vault')
         set_connection_credential(conn_id, args.name)
-    print(f"Assigned credential \"{args.name}\" to: {', '.join(args.ids)}")
+    print(f'Assigned credential "{args.name}" to: {", ".join(args.ids)}')
 
 
 def cmd_credential_remove(args: argparse.Namespace) -> None:
@@ -963,8 +1164,7 @@ def cmd_credential_remove(args: argparse.Namespace) -> None:
     sync_enabled_marker()
     print(f'Removed credential "{args.name}"')
     if affected:
-        print("  connections left without a credential (reassign with "
-              "`hypraether-vpn credential assign <name> <id>`):")
+        print("  connections left without a credential (reassign with `vitrail-vpn credential assign <name> <id>`):")
         for conn_id in affected:
             print(f"    {conn_id}")
 
@@ -972,6 +1172,7 @@ def cmd_credential_remove(args: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)

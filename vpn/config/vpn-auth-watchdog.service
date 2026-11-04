@@ -3,7 +3,7 @@
 # Watches the OpenVPN services for connection problems (AUTH_FAILED, TLS
 # failures, start failures, units stuck in a failed state), notifies the
 # desktop user, and restarts the active tunnels when the credentials vault
-# changes (hypraether-vpn creds <id>).
+# changes (vitrail-vpn creds <id>).
 
 [Unit]
 Description=VPN connection watchdog (problem notifications + credential rotation)
@@ -12,7 +12,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/etc/hypraether/vpn/vpn-auth-watchdog.sh
+ExecStart=/etc/vitrail/vpn/vpn-auth-watchdog.sh
 Environment=COOLDOWN_SECONDS=900
 Restart=always
 RestartSec=15

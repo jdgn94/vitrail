@@ -1,5 +1,5 @@
 """The Connection page's data: requests become argv lists, and what nmcli,
-bluetoothctl and hypraether-vpn print becomes the page's state."""
+bluetoothctl and vitrail-vpn print becomes the page's state."""
 
 from __future__ import annotations
 
@@ -24,50 +24,73 @@ DEVICES = (
     "A0\\:1B\\:9E\\:B3\\:9A\\:65:bt:disconnected:\n"
     "lo:loopback:connected (externally):lo\n"
 )
-WIFI = (
-    "*:Home\\: 5G:78:WPA2\n"
-    ":Cafe:55:--\n"
-    ":Home\\: 5G:40:WPA2\n"
-    ":Neighbour:81:WPA2 WPA3\n"
-    ":Cafe:30:--\n"
-    "::20:WPA2\n"
-)
+WIFI = "*:Home\\: 5G:78:WPA2\n:Cafe:55:--\n:Home\\: 5G:40:WPA2\n:Neighbour:81:WPA2 WPA3\n:Cafe:30:--\n::20:WPA2\n"
 IP4 = "IP4.ADDRESS[1]:192.168.1.116/24\nIP4.ADDRESS[2]:10.0.0.2/8\nIP4.GATEWAY:192.168.1.1\n"
 BT_SHOW = "Controller 00:1A:7D:DA:71:10 (public)\n\tName: home-pc\n\tPowered: yes\n"
-BT_DEVICES = "Device A0:1B:9E:B3:9A:65 Juan's A56\nDevice 11:22:33:44:55:66 Buds\nDevice A0:1B:9E:B3:9A:65 again\nnoise\n"
+BT_DEVICES = (
+    "Device A0:1B:9E:B3:9A:65 Juan's A56\nDevice 11:22:33:44:55:66 Buds\nDevice A0:1B:9E:B3:9A:65 again\nnoise\n"
+)
 BT_INFO = {
     "A0:1B:9E:B3:9A:65": "Device A0:1B:9E:B3:9A:65 (public)\n\tAlias: Juan's A56\n\tPaired: yes\n\tConnected: yes\n"
-                         "\tBattery Percentage: 0x58 (88)\n",
+    "\tBattery Percentage: 0x58 (88)\n",
     "11:22:33:44:55:66": "Device 11:22:33:44:55:66 (public)\n\tAlias: Buds\n\tPaired: no\n\tConnected: no\n",
 }
-VPN = json.dumps([
-    {"id": "us-1", "name": "us-1.proton.udp.ovpn", "provider": "proton", "region": "US",
-     "credential": "secret name", "config_path": "/x/us-1.conf", "active": True},
-    {"id": "us-2", "name": "us-2.proton.udp.ovpn", "provider": "proton", "region": "US",
-     "credential": "secret name", "config_path": "/x/us-2.conf", "active": False},
-    {"id": "us-3", "name": "us-3.proton.udp.ovpn", "provider": "proton", "region": "US",
-     "config_path": "/x/us-3.conf", "active": False},
-    {"name": "no id"},
-])
-CREDENTIALS = json.dumps([
-    {"id": 1, "name": "secret name", "username": "someone", "used_by": 2, "password": "must-not-pass"},
-    {"id": 2, "name": "spare", "username": "other", "used_by": 0},
-    {"name": 3},
-])
-DOMAIN_LIST = json.dumps([
-    {"domain": "example.com", "ips": ["93.184.216.34", "2606:2800::1"]},
-    {"domain": "www.example.com", "ips": []},
-    {"domain": 5},
-])
+VPN = json.dumps(
+    [
+        {
+            "id": "us-1",
+            "name": "us-1.proton.udp.ovpn",
+            "provider": "proton",
+            "region": "US",
+            "credential": "secret name",
+            "config_path": "/x/us-1.conf",
+            "active": True,
+        },
+        {
+            "id": "us-2",
+            "name": "us-2.proton.udp.ovpn",
+            "provider": "proton",
+            "region": "US",
+            "credential": "secret name",
+            "config_path": "/x/us-2.conf",
+            "active": False,
+        },
+        {
+            "id": "us-3",
+            "name": "us-3.proton.udp.ovpn",
+            "provider": "proton",
+            "region": "US",
+            "config_path": "/x/us-3.conf",
+            "active": False,
+        },
+        {"name": "no id"},
+    ]
+)
+CREDENTIALS = json.dumps(
+    [
+        {"id": 1, "name": "secret name", "username": "someone", "used_by": 2, "password": "must-not-pass"},
+        {"id": 2, "name": "spare", "username": "other", "used_by": 0},
+        {"name": 3},
+    ]
+)
+DOMAIN_LIST = json.dumps(
+    [
+        {"domain": "example.com", "ips": ["93.184.216.34", "2606:2800::1"]},
+        {"domain": "www.example.com", "ips": []},
+        {"domain": 5},
+    ]
+)
 
 
 def fake(outputs: dict[str, str | None]):
     """A runner that answers by the command's first words."""
+
     def run(argv: list[str]) -> str | None:
         for prefix, text in outputs.items():
             if " ".join(argv).startswith(prefix):
                 return text
         return None
+
     return run
 
 
@@ -76,10 +99,10 @@ EVERYTHING = {
     "nmcli radio wifi": "enabled\n",
     "nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY": WIFI,
     "nmcli -t -f IP4.ADDRESS,IP4.GATEWAY device show eno1": IP4,
-    "hypraether-vpn list --json": VPN,
-    "hypraether-vpn credential list --json": CREDENTIALS,
-    "hypraether-vpn domain list --json": DOMAIN_LIST,
-    "hypraether-vpn mode": "full\n",
+    "vitrail-vpn list --json": VPN,
+    "vitrail-vpn credential list --json": CREDENTIALS,
+    "vitrail-vpn domain list --json": DOMAIN_LIST,
+    "vitrail-vpn mode": "full\n",
     "bluetoothctl show": BT_SHOW,
     "bluetoothctl devices": BT_DEVICES,
     "bluetoothctl info A0:1B:9E:B3:9A:65": BT_INFO["A0:1B:9E:B3:9A:65"],
@@ -101,12 +124,14 @@ class RequestTests(unittest.TestCase):
         self.assertEqual(self.argv("wifi-off"), ["nmcli", "radio", "wifi", "off"])
         self.assertEqual(self.argv("wifi-connect:Home: 5G"), ["nmcli", "device", "wifi", "connect", "Home: 5G"])
         self.assertEqual(self.argv("wifi-disconnect"), ["nmcli", "device", "disconnect", "wlan0"])
-        self.assertEqual(self.argv("vpn-up:us-1"), ["hypraether-vpn", "connect", "us-1"])
-        self.assertEqual(self.argv("vpn-down:us-1"), ["hypraether-vpn", "disconnect", "us-1"])
+        self.assertEqual(self.argv("vpn-up:us-1"), ["vitrail-vpn", "connect", "us-1"])
+        self.assertEqual(self.argv("vpn-down:us-1"), ["vitrail-vpn", "disconnect", "us-1"])
         self.assertEqual(self.argv("bt-on"), ["bluetoothctl", "power", "on"])
         self.assertEqual(self.argv("bt-off"), ["bluetoothctl", "power", "off"])
         self.assertEqual(self.argv("bt-connect:a0:1b:9e:b3:9a:65"), ["bluetoothctl", "connect", "A0:1B:9E:B3:9A:65"])
-        self.assertEqual(self.argv("bt-disconnect:A0:1B:9E:B3:9A:65"), ["bluetoothctl", "disconnect", "A0:1B:9E:B3:9A:65"])
+        self.assertEqual(
+            self.argv("bt-disconnect:A0:1B:9E:B3:9A:65"), ["bluetoothctl", "disconnect", "A0:1B:9E:B3:9A:65"]
+        )
         self.assertEqual(self.argv("bt-scan"), ["bluetoothctl", "--timeout", "6", "scan", "on"])
 
     def test_refresh_runs_nothing_and_a_missing_wifi_device_skips_the_disconnect(self) -> None:
@@ -114,16 +139,38 @@ class RequestTests(unittest.TestCase):
         self.assertIsNone(self.argv("wifi-disconnect", device=""))
 
     def test_unknown_verbs_and_malformed_requests_are_refused(self) -> None:
-        for request in ("", "reboot", "wifi-on:x", "wifi-connect", "wifi-connect:", "vpn-up", "bt-scan:now",
-                        "WIFI-ON", " wifi-on", "wifi-on\n", "rm -rf /"):
+        for request in (
+            "",
+            "reboot",
+            "wifi-on:x",
+            "wifi-connect",
+            "wifi-connect:",
+            "vpn-up",
+            "bt-scan:now",
+            "WIFI-ON",
+            " wifi-on",
+            "wifi-on\n",
+            "rm -rf /",
+        ):
             with self.subTest(request=request), self.assertRaises(ValueError):
                 network.parse(request)
 
     def test_arguments_cannot_smuggle_options_or_shell(self) -> None:
-        for request in ("wifi-connect:--help", "wifi-connect:-x", "wifi-connect:" + "a" * 33, "wifi-connect:a\nb",
-                        "vpn-up:--all", "vpn-up:a b", "vpn-up:a;reboot", "vpn-up:$(id)", "vpn-down:../x",
-                        "bt-connect:not-a-mac", "bt-connect:AA:BB:CC:DD:EE", "bt-connect:AA:BB:CC:DD:EE:FF;id",
-                        "bt-disconnect:--help"):
+        for request in (
+            "wifi-connect:--help",
+            "wifi-connect:-x",
+            "wifi-connect:" + "a" * 33,
+            "wifi-connect:a\nb",
+            "vpn-up:--all",
+            "vpn-up:a b",
+            "vpn-up:a;reboot",
+            "vpn-up:$(id)",
+            "vpn-down:../x",
+            "bt-connect:not-a-mac",
+            "bt-connect:AA:BB:CC:DD:EE",
+            "bt-connect:AA:BB:CC:DD:EE:FF;id",
+            "bt-disconnect:--help",
+        ):
             with self.subTest(request=request), self.assertRaises(ValueError):
                 network.parse(request)
 
@@ -139,7 +186,9 @@ class ParsingTests(unittest.TestCase):
 
     def test_devices(self) -> None:
         devices = network.parse_devices(DEVICES)
-        self.assertEqual(devices[0], {"name": "eno1", "type": "ethernet", "state": "connected", "connection": "Wired profile"})
+        self.assertEqual(
+            devices[0], {"name": "eno1", "type": "ethernet", "state": "connected", "connection": "Wired profile"}
+        )
         self.assertEqual(devices[4]["name"], "A0:1B:9E:B3:9A:65")
 
     def test_wifi_keeps_one_entry_per_name_and_the_one_in_use_first(self) -> None:
@@ -154,10 +203,13 @@ class ParsingTests(unittest.TestCase):
 
     def test_bluetooth(self) -> None:
         self.assertEqual(network.parse_bluetooth_show(BT_SHOW), {"present": True, "powered": True})
-        self.assertEqual(network.parse_bluetooth_show("No default controller available\n"),
-                         {"present": False, "powered": False})
-        self.assertEqual(network.parse_bluetooth_devices(BT_DEVICES),
-                         [("A0:1B:9E:B3:9A:65", "Juan's A56"), ("11:22:33:44:55:66", "Buds")])
+        self.assertEqual(
+            network.parse_bluetooth_show("No default controller available\n"), {"present": False, "powered": False}
+        )
+        self.assertEqual(
+            network.parse_bluetooth_devices(BT_DEVICES),
+            [("A0:1B:9E:B3:9A:65", "Juan's A56"), ("11:22:33:44:55:66", "Buds")],
+        )
         info = network.parse_bluetooth_info(BT_INFO["A0:1B:9E:B3:9A:65"])
         self.assertEqual(info, {"paired": True, "connected": True, "battery": 88, "alias": "Juan's A56"})
         self.assertIsNone(network.parse_bluetooth_info(BT_INFO["11:22:33:44:55:66"])["battery"])
@@ -165,34 +217,59 @@ class ParsingTests(unittest.TestCase):
     def test_vpn_keeps_what_the_page_shows(self) -> None:
         tunnels = network.parse_vpn(VPN)
         self.assertEqual([one["id"] for one in tunnels], ["us-1", "us-2", "us-3"])
-        self.assertEqual(tunnels[0], {"id": "us-1", "name": "us-1.proton.udp.ovpn", "provider": "proton",
-                                      "region": "US", "credential": "secret name", "config_path": "/x/us-1.conf",
-                                      "active": True})
+        self.assertEqual(
+            tunnels[0],
+            {
+                "id": "us-1",
+                "name": "us-1.proton.udp.ovpn",
+                "provider": "proton",
+                "region": "US",
+                "credential": "secret name",
+                "config_path": "/x/us-1.conf",
+                "active": True,
+            },
+        )
         self.assertEqual(tunnels[2]["credential"], "")
         self.assertEqual(network.parse_vpn("not json"), [])
 
     def test_credentials_never_carry_a_password(self) -> None:
-        self.assertEqual(network.parse_credentials(CREDENTIALS), [
-            {"name": "secret name", "username": "someone", "usedBy": 2},
-            {"name": "spare", "username": "other", "usedBy": 0},
-        ])
+        self.assertEqual(
+            network.parse_credentials(CREDENTIALS),
+            [
+                {"name": "secret name", "username": "someone", "usedBy": 2},
+                {"name": "spare", "username": "other", "usedBy": 0},
+            ],
+        )
         self.assertEqual(network.parse_credentials("not json"), [])
 
     def test_the_domain_list_keeps_a_count_of_addresses(self) -> None:
-        self.assertEqual(network.parse_domains(DOMAIN_LIST), [
-            {"domain": "example.com", "ips": 2}, {"domain": "www.example.com", "ips": 0}])
+        self.assertEqual(
+            network.parse_domains(DOMAIN_LIST),
+            [{"domain": "example.com", "ips": 2}, {"domain": "www.example.com", "ips": 0}],
+        )
         self.assertEqual(network.parse_domains("{}"), [])
 
 
 class StateTests(unittest.TestCase):
     def test_the_state_of_a_full_system(self) -> None:
         data = network.state(fake(EVERYTHING), bluetooth_present=controller(True))
-        self.assertEqual(data["ethernet"]["devices"], [{
-            "name": "eno1", "type": "ethernet", "state": "connected", "connection": "Wired profile",
-            "address": "192.168.1.116/24", "gateway": "192.168.1.1"}])
+        self.assertEqual(
+            data["ethernet"]["devices"],
+            [
+                {
+                    "name": "eno1",
+                    "type": "ethernet",
+                    "state": "connected",
+                    "connection": "Wired profile",
+                    "address": "192.168.1.116/24",
+                    "gateway": "192.168.1.1",
+                }
+            ],
+        )
         self.assertTrue(data["ethernet"]["available"])
-        self.assertEqual((data["wifi"]["available"], data["wifi"]["enabled"], data["wifi"]["device"]),
-                         (True, True, "wlan0"))
+        self.assertEqual(
+            (data["wifi"]["available"], data["wifi"]["enabled"], data["wifi"]["device"]), (True, True, "wlan0")
+        )
         self.assertEqual(len(data["wifi"]["networks"]), 3)
         self.assertTrue(data["vpn"]["available"])
         self.assertEqual(data["vpn"]["mode"], "full")
@@ -214,18 +291,32 @@ class StateTests(unittest.TestCase):
         self.assertFalse(data["ethernet"]["available"])
         self.assertEqual(data["ethernet"]["devices"], [])
         self.assertEqual(data["wifi"], {"available": False, "enabled": False, "device": "", "networks": []})
-        self.assertEqual(data["vpn"], {"available": False, "tunnels": [], "credentials": [], "mode": "split",
-                                       "domains": [], "enabled": False, "quality": {}})
+        self.assertEqual(
+            data["vpn"],
+            {
+                "available": False,
+                "tunnels": [],
+                "credentials": [],
+                "mode": "split",
+                "domains": [],
+                "enabled": False,
+                "quality": {},
+            },
+        )
         self.assertEqual(data["bluetooth"], {"available": False, "powered": False, "devices": []})
 
     def test_nameless_beacons_found_by_a_scan_are_not_listed_but_paired_ones_are(self) -> None:
         listed = BT_DEVICES + "Device 00:04:EA:A4:48:90 00-04-EA-A4-48-90\n"
         data = network.state(fake({**EVERYTHING, "bluetoothctl devices": listed}), bluetooth_present=controller(True))
-        self.assertEqual([one["mac"] for one in data["bluetooth"]["devices"]], ["A0:1B:9E:B3:9A:65", "11:22:33:44:55:66"])
+        self.assertEqual(
+            [one["mac"] for one in data["bluetooth"]["devices"]], ["A0:1B:9E:B3:9A:65", "11:22:33:44:55:66"]
+        )
 
     def test_without_a_bluetooth_controller_the_devices_are_not_listed(self) -> None:
-        data = network.state(fake({**EVERYTHING, "bluetoothctl show": "No default controller available\n"}),
-                              bluetooth_present=controller(True))
+        data = network.state(
+            fake({**EVERYTHING, "bluetoothctl show": "No default controller available\n"}),
+            bluetooth_present=controller(True),
+        )
         self.assertFalse(data["bluetooth"]["available"])
         self.assertEqual(data["bluetooth"]["devices"], [])
 
@@ -254,8 +345,10 @@ class StateTests(unittest.TestCase):
             waited.append(kwargs["timeout"])
             raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
 
-        with mock.patch.object(network.shutil, "which", return_value="/usr/bin/x"), \
-                mock.patch.object(network.subprocess, "run", fake_run):
+        with (
+            mock.patch.object(network.shutil, "which", return_value="/usr/bin/x"),
+            mock.patch.object(network.subprocess, "run", fake_run),
+        ):
             self.assertIsNone(network.run_text(["bluetoothctl", "show"]))
             self.assertIsNone(network.run_text(["nmcli", "radio", "wifi"]))
         self.assertEqual(waited, [network.BLUETOOTH_READ, network.READ_TIMEOUT])
@@ -272,15 +365,18 @@ class ApplyTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as folder, redirect_stdout(io.StringIO()) as log:
             result = network.apply(request, Path(folder), act, fake(EVERYTHING if outputs is None else outputs))
-            written = json.loads((Path(folder) / network.STATE_FILE).read_text(encoding="utf-8")) \
-                if (Path(folder) / network.STATE_FILE).exists() else None
+            written = (
+                json.loads((Path(folder) / network.STATE_FILE).read_text(encoding="utf-8"))
+                if (Path(folder) / network.STATE_FILE).exists()
+                else None
+            )
         return result, calls, log.getvalue(), written
 
     def test_a_request_runs_its_command_logs_it_and_writes_the_fresh_state(self) -> None:
         result, calls, log, written = self.run_apply("vpn-down:us-2")
         self.assertEqual(result, 0)
-        self.assertEqual(calls, [(["hypraether-vpn", "disconnect", "us-2"], 60)])
-        self.assertIn("Connection: vpn-down:us-2 -> hypraether-vpn disconnect us-2", log)
+        self.assertEqual(calls, [(["vitrail-vpn", "disconnect", "us-2"], 60)])
+        self.assertIn("Connection: vpn-down:us-2 -> vitrail-vpn disconnect us-2", log)
         self.assertIn("Connection: vpn-down done", log)
         self.assertEqual(written["wifi"]["device"], "wlan0")
 
@@ -314,6 +410,7 @@ class ApplyTests(unittest.TestCase):
         self.assertIsNotNone(written)
         self.assertEqual(self.run_apply("refresh", {})[1], [])
 
+
 DOMAIN_ADDRESSES = {
     "example.com": ["93.184.216.34", "2606:2800::1"],
     "www.example.com": ["93.184.216.34"],
@@ -326,8 +423,19 @@ def lookup(host: str) -> list[str]:
 
 
 def transparency(domain: str) -> list[str]:
-    return ["example.com\n*.example.com", "WWW.example.com", "mail.example.com", "gone.example.com",
-            "example.org", "evil-example.com", "a.b.example.com"] if domain == "example.com" else []
+    return (
+        [
+            "example.com\n*.example.com",
+            "WWW.example.com",
+            "mail.example.com",
+            "gone.example.com",
+            "example.org",
+            "evil-example.com",
+            "a.b.example.com",
+        ]
+        if domain == "example.com"
+        else []
+    )
 
 
 def offline(_name: str) -> list[str]:
@@ -341,10 +449,26 @@ class TargetTests(unittest.TestCase):
         self.assertEqual(network.host_of("sub.example.co.uk"), "sub.example.co.uk")
 
     def test_anything_else_is_not_a_host(self) -> None:
-        for text in ("", "-example.com", "--help", "ftp://example.com", "https://", "example", "a b.com",
-                     "exa;mple.com", "https://user@example.com", "https://exa mple.com", "$(id).com",
-                     "a" * 64 + ".com", ("a." * 130) + "com", "https://example.com/" + "x" * 2100,
-                     "example.com\n", "-.com", "a..com", "https://127.0.0.1"):
+        for text in (
+            "",
+            "-example.com",
+            "--help",
+            "ftp://example.com",
+            "https://",
+            "example",
+            "a b.com",
+            "exa;mple.com",
+            "https://user@example.com",
+            "https://exa mple.com",
+            "$(id).com",
+            "a" * 64 + ".com",
+            ("a." * 130) + "com",
+            "https://example.com/" + "x" * 2100,
+            "example.com\n",
+            "-.com",
+            "a..com",
+            "https://127.0.0.1",
+        ):
             with self.subTest(text=text):
                 self.assertIsNone(network.host_of(text))
 
@@ -371,8 +495,10 @@ class ResolveTests(unittest.TestCase):
     def test_the_list_is_capped(self) -> None:
         many = {f"h{n}.example.com": [f"10.0.0.{n % 250}"] for n in range(200)}
         found = network.resolve_url(
-            "example.com", lambda host: many.get(host, ["1.1.1.1"] if host == "example.com" else []),
-            lambda _domain: list(many))
+            "example.com",
+            lambda host: many.get(host, ["1.1.1.1"] if host == "example.com" else []),
+            lambda _domain: list(many),
+        )
         self.assertEqual(len(found["domains"]), network.MAX_DOMAINS + 1)
         self.assertIn("example.com", found["domains"])
 
@@ -408,15 +534,17 @@ class VpnRequestTests(unittest.TestCase):
         return network.command(verb, argument, secret=secret)
 
     def test_the_simple_verbs_become_the_tools_argv(self) -> None:
-        self.assertEqual(self.argv("vpn-off"), ["hypraether-vpn", "disconnect"])
-        self.assertEqual(self.argv("vpn-mode:full"), ["hypraether-vpn", "mode", "full"])
-        self.assertEqual(self.argv("vpn-mode:split"), ["hypraether-vpn", "mode", "split"])
-        self.assertEqual(self.argv("vpn-domain-remove:www.example.com"),
-                         ["hypraether-vpn", "domain", "remove", "www.example.com"])
-        self.assertEqual(self.argv("vpn-domain-refresh"), ["hypraether-vpn", "domain", "refresh"])
-        self.assertEqual(self.argv("vpn-remove:us-1"), ["hypraether-vpn", "remove", "us-1"])
-        self.assertEqual(self.argv("vpn-cred-remove:jdgn protonvpn"),
-                         ["hypraether-vpn", "credential", "remove", "jdgn protonvpn"])
+        self.assertEqual(self.argv("vpn-off"), ["vitrail-vpn", "disconnect"])
+        self.assertEqual(self.argv("vpn-mode:full"), ["vitrail-vpn", "mode", "full"])
+        self.assertEqual(self.argv("vpn-mode:split"), ["vitrail-vpn", "mode", "split"])
+        self.assertEqual(
+            self.argv("vpn-domain-remove:www.example.com"), ["vitrail-vpn", "domain", "remove", "www.example.com"]
+        )
+        self.assertEqual(self.argv("vpn-domain-refresh"), ["vitrail-vpn", "domain", "refresh"])
+        self.assertEqual(self.argv("vpn-remove:us-1"), ["vitrail-vpn", "remove", "us-1"])
+        self.assertEqual(
+            self.argv("vpn-cred-remove:jdgn protonvpn"), ["vitrail-vpn", "credential", "remove", "jdgn protonvpn"]
+        )
 
     def test_verbs_that_run_several_commands_or_none_have_no_single_argv(self) -> None:
         for request in ("vpn-best", "vpn-probe", "vpn-domain-add:https://example.com"):
@@ -424,39 +552,67 @@ class VpnRequestTests(unittest.TestCase):
                 self.assertIsNone(self.argv(request))
 
     def test_an_import_names_the_file_and_only_what_was_given(self) -> None:
-        self.assertEqual(self.argv(req("vpn-import", {"file": "/home/a b/x.ovpn"})),
-                         ["hypraether-vpn", "import", "/home/a b/x.ovpn"])
+        self.assertEqual(
+            self.argv(req("vpn-import", {"file": "/home/a b/x.ovpn"})), ["vitrail-vpn", "import", "/home/a b/x.ovpn"]
+        )
         self.assertEqual(
             self.argv(req("vpn-import", {"file": "/x/y.ovpn", "name": "My server", "credential": "spare"})),
-            ["hypraether-vpn", "import", "/x/y.ovpn", "--name", "My server", "--credential", "spare"])
+            ["vitrail-vpn", "import", "/x/y.ovpn", "--name", "My server", "--credential", "spare"],
+        )
         # Moving the original is Vitrail's step, not an argument of the tool.
-        self.assertEqual(self.argv(req("vpn-import", {"file": "/x/y.ovpn", "move": True})),
-                         ["hypraether-vpn", "import", "/x/y.ovpn"])
+        self.assertEqual(
+            self.argv(req("vpn-import", {"file": "/x/y.ovpn", "move": True})), ["vitrail-vpn", "import", "/x/y.ovpn"]
+        )
 
     def test_a_credential_add_hands_the_password_over_by_file_only(self) -> None:
         argv = self.argv(req("vpn-cred-add", {"name": "work", "user": "me", "nonce": NONCE}), "/run/p")
-        self.assertEqual(argv, ["hypraether-vpn", "credential", "add", "work", "--user", "me", "--pass-file", "/run/p"])
+        self.assertEqual(argv, ["vitrail-vpn", "credential", "add", "work", "--user", "me", "--pass-file", "/run/p"])
         self.assertNotIn(NONCE, " ".join(argv))
 
     def test_a_credential_update_changes_only_what_was_asked(self) -> None:
-        self.assertEqual(self.argv(req("vpn-cred-update", {"name": "work", "rename": "job"})),
-                         ["hypraether-vpn", "credential", "update", "work", "--rename", "job"])
-        self.assertEqual(self.argv(req("vpn-cred-update", {"name": "work", "user": "me", "nonce": NONCE}), "/run/p"),
-                         ["hypraether-vpn", "credential", "update", "work", "--user", "me", "--pass-file", "/run/p"])
+        self.assertEqual(
+            self.argv(req("vpn-cred-update", {"name": "work", "rename": "job"})),
+            ["vitrail-vpn", "credential", "update", "work", "--rename", "job"],
+        )
+        self.assertEqual(
+            self.argv(req("vpn-cred-update", {"name": "work", "user": "me", "nonce": NONCE}), "/run/p"),
+            ["vitrail-vpn", "credential", "update", "work", "--user", "me", "--pass-file", "/run/p"],
+        )
 
     def test_a_credential_assign_lists_the_connections(self) -> None:
-        self.assertEqual(self.argv(req("vpn-cred-assign", {"name": "work", "ids": ["us-1", "us-2"]})),
-                         ["hypraether-vpn", "credential", "assign", "work", "us-1", "us-2"])
+        self.assertEqual(
+            self.argv(req("vpn-cred-assign", {"name": "work", "ids": ["us-1", "us-2"]})),
+            ["vitrail-vpn", "credential", "assign", "work", "us-1", "us-2"],
+        )
 
     def test_malformed_vpn_requests_are_refused(self) -> None:
         bad = [
-            "vpn-best:x", "vpn-off:x", "vpn-probe:", "vpn-mode", "vpn-mode:", "vpn-mode:both", "vpn-mode:SPLIT",
-            "vpn-domain-add", "vpn-domain-add:--help", "vpn-domain-add:a b.com", "vpn-domain-add:ftp://x.com",
-            "vpn-domain-remove:--all", "vpn-domain-remove:a b.com", "vpn-domain-remove:x;reboot.com",
-            "vpn-domain-remove:single", "vpn-remove:--all", "vpn-remove:../x", "vpn-remove:a b",
-            "vpn-cred-remove:", "vpn-cred-remove:-x", "vpn-cred-remove:a\nb", "vpn-cred-remove:" + "a" * 65,
+            "vpn-best:x",
+            "vpn-off:x",
+            "vpn-probe:",
+            "vpn-mode",
+            "vpn-mode:",
+            "vpn-mode:both",
+            "vpn-mode:SPLIT",
+            "vpn-domain-add",
+            "vpn-domain-add:--help",
+            "vpn-domain-add:a b.com",
+            "vpn-domain-add:ftp://x.com",
+            "vpn-domain-remove:--all",
+            "vpn-domain-remove:a b.com",
+            "vpn-domain-remove:x;reboot.com",
+            "vpn-domain-remove:single",
+            "vpn-remove:--all",
+            "vpn-remove:../x",
+            "vpn-remove:a b",
+            "vpn-cred-remove:",
+            "vpn-cred-remove:-x",
+            "vpn-cred-remove:a\nb",
+            "vpn-cred-remove:" + "a" * 65,
             "vpn-cred-remove: padded ",
-            "vpn-import:not json", "vpn-import:[]", "vpn-import:{}",
+            "vpn-import:not json",
+            "vpn-import:[]",
+            "vpn-import:{}",
             req("vpn-import", {"file": "relative/x.ovpn"}),
             req("vpn-import", {"file": "/x/y.txt"}),
             req("vpn-import", {"file": "/x/y.ovpn\n"}),
@@ -492,6 +648,7 @@ class SecretTests(unittest.TestCase):
     """The password travels in a file the window writes through Qt.labs.settings
     (an ini under $XDG_RUNTIME_DIR, named by a nonce); the lines below are what
     Qt 6.11 really wrote for each password."""
+
     WRITTEN = [
         ("plain", "password=plain"),
         ("@start", "password=@@start"),
@@ -515,22 +672,35 @@ class SecretTests(unittest.TestCase):
                 self.assertEqual(network.read_secret_text(f"[secret]\n{line}\n"), password)
 
     def test_a_file_without_a_usable_password_is_refused(self) -> None:
-        for text in ("", "[secret]\n", "[secret]\npassword=\n", '[secret]\npassword=""\n', "[secret]\nother=x\n",
-                     "[secret]\npassword=@Variant(abc)\n", "[secret]\npassword=a\\x1b\n"):
+        for text in (
+            "",
+            "[secret]\n",
+            "[secret]\npassword=\n",
+            '[secret]\npassword=""\n',
+            "[secret]\nother=x\n",
+            "[secret]\npassword=@Variant(abc)\n",
+            "[secret]\npassword=a\\x1b\n",
+        ):
             with self.subTest(text=text), self.assertRaises(ValueError):
                 network.read_secret_text(text)
 
     def test_stale_secret_files_are_swept_and_fresh_ones_kept(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             runtime = Path(folder)
-            names = {"vitrail-secret-" + NONCE + ".ini": 10_000, "vitrail-pass-" + NONCE: 10_000,
-                     "vitrail-secret-" + OTHER_NONCE + ".ini": 5, "unrelated.txt": 10_000}
+            names = {
+                "vitrail-secret-" + NONCE + ".ini": 10_000,
+                "vitrail-pass-" + NONCE: 10_000,
+                "vitrail-secret-" + OTHER_NONCE + ".ini": 5,
+                "unrelated.txt": 10_000,
+            }
             for name, age in names.items():
                 (runtime / name).write_text("x", encoding="utf-8")
                 os.utime(runtime / name, (1_000_000 - age, 1_000_000 - age))
             network.sweep_secrets(runtime, now=1_000_000)
-            self.assertEqual(sorted(path.name for path in runtime.iterdir()),
-                             ["unrelated.txt", "vitrail-secret-" + OTHER_NONCE + ".ini"])
+            self.assertEqual(
+                sorted(path.name for path in runtime.iterdir()),
+                ["unrelated.txt", "vitrail-secret-" + OTHER_NONCE + ".ini"],
+            )
 
 
 class VpnHarness(unittest.TestCase):
@@ -543,8 +713,12 @@ class VpnHarness(unittest.TestCase):
         "/x/us-2.conf": "remote c.example.net 1194\n",
         "/x/us-3.conf": "remote d.example.net 1194\n",
     }
-    PINGS = {"a.example.net": (40.0, 0), "b.example.net": (60.0, 0), "c.example.net": (30.0, 10),
-             "d.example.net": (5.0, 0)}
+    PINGS = {
+        "a.example.net": (40.0, 0),
+        "b.example.net": (60.0, 0),
+        "c.example.net": (30.0, 10),
+        "d.example.net": (5.0, 0),
+    }
 
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -577,11 +751,21 @@ class VpnHarness(unittest.TestCase):
     def apply(self, request: str, outputs: dict | None = None, **extra):
         outputs = self.OUTPUTS if outputs is None else outputs
         with redirect_stdout(io.StringIO()) as log:
-            result = network.apply(request, self.folder, self.act, fake(outputs), resolver=lookup,
-                                   directory=transparency, pinger=self.pinger,
-                                   read=lambda path: self.CONFIGS.get(path, ""),
-                                   runtime=self.runtime, marker=self.marker,
-                                   doc_folder=self.vpn, store=self.store, **extra)
+            result = network.apply(
+                request,
+                self.folder,
+                self.act,
+                fake(outputs),
+                resolver=lookup,
+                directory=transparency,
+                pinger=self.pinger,
+                read=lambda path: self.CONFIGS.get(path, ""),
+                runtime=self.runtime,
+                marker=self.marker,
+                doc_folder=self.vpn,
+                store=self.store,
+                **extra,
+            )
         path = self.folder / network.STATE_FILE
         written = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
         return result, log.getvalue(), written
@@ -594,10 +778,12 @@ class VpnHarness(unittest.TestCase):
 
 class SimpleVpnApplyTests(VpnHarness):
     def test_a_simple_verb_runs_its_argv_logs_it_and_rewrites_the_state(self) -> None:
-        for request, argv in (("vpn-mode:full", ["hypraether-vpn", "mode", "full"]),
-                              ("vpn-off", ["hypraether-vpn", "disconnect"]),
-                              ("vpn-domain-refresh", ["hypraether-vpn", "domain", "refresh"]),
-                              ("vpn-remove:us-3", ["hypraether-vpn", "remove", "us-3"])):
+        for request, argv in (
+            ("vpn-mode:full", ["vitrail-vpn", "mode", "full"]),
+            ("vpn-off", ["vitrail-vpn", "disconnect"]),
+            ("vpn-domain-refresh", ["vitrail-vpn", "domain", "refresh"]),
+            ("vpn-remove:us-3", ["vitrail-vpn", "remove", "us-3"]),
+        ):
             with self.subTest(request=request):
                 self.calls.clear()
                 result, log, written = self.apply(request)
@@ -630,16 +816,21 @@ class SimpleVpnApplyTests(VpnHarness):
 
 
 class DomainApplyTests(VpnHarness):
-    OUTPUTS = {**EVERYTHING, "hypraether-vpn domain list --json": json.dumps(
-        [{"domain": "example.com", "ips": ["1.2.3.4"]}])}
+    OUTPUTS = {
+        **EVERYTHING,
+        "vitrail-vpn domain list --json": json.dumps([{"domain": "example.com", "ips": ["1.2.3.4"]}]),
+    }
 
     def test_adding_a_url_adds_the_host_and_the_live_subdomains_it_found(self) -> None:
         result, log, _written = self.apply("vpn-domain-add:https://www.example.com/x")
         self.assertEqual(result, 0)
-        self.assertEqual(self.calls, [
-            ["hypraether-vpn", "domain", "add", "www.example.com"],
-            ["hypraether-vpn", "domain", "add", "mail.example.com"],
-        ])
+        self.assertEqual(
+            self.calls,
+            [
+                ["vitrail-vpn", "domain", "add", "www.example.com"],
+                ["vitrail-vpn", "domain", "add", "mail.example.com"],
+            ],
+        )
         self.assertIn("vpn-domain-add done (2 added)", log)
 
     def test_names_the_tool_already_lists_are_not_added_again(self) -> None:
@@ -648,9 +839,17 @@ class DomainApplyTests(VpnHarness):
 
     def test_offline_the_host_alone_is_still_added(self) -> None:
         with redirect_stdout(io.StringIO()):
-            network.apply("vpn-domain-add:https://nothing.test", self.folder, self.act, fake(self.OUTPUTS),
-                          resolver=lambda _host: [], directory=offline, runtime=self.runtime, marker=self.marker)
-        self.assertEqual(self.calls, [["hypraether-vpn", "domain", "add", "nothing.test"]])
+            network.apply(
+                "vpn-domain-add:https://nothing.test",
+                self.folder,
+                self.act,
+                fake(self.OUTPUTS),
+                resolver=lambda _host: [],
+                directory=offline,
+                runtime=self.runtime,
+                marker=self.marker,
+            )
+        self.assertEqual(self.calls, [["vitrail-vpn", "domain", "add", "nothing.test"]])
 
     def test_a_failed_add_of_the_host_gives_one_and_the_rest_still_runs(self) -> None:
         self.codes["domain add"] = 1
@@ -662,9 +861,16 @@ class DomainApplyTests(VpnHarness):
     def test_the_subdomains_are_capped(self) -> None:
         many = {f"h{n}.example.com": ["10.0.0.1"] for n in range(200)}
         with redirect_stdout(io.StringIO()):
-            network.apply("vpn-domain-add:example.com", self.folder, self.act, fake(self.OUTPUTS),
-                          resolver=lambda host: many.get(host, ["1.1.1.1"]), directory=lambda _d: list(many),
-                          runtime=self.runtime, marker=self.marker)
+            network.apply(
+                "vpn-domain-add:example.com",
+                self.folder,
+                self.act,
+                fake(self.OUTPUTS),
+                resolver=lambda host: many.get(host, ["1.1.1.1"]),
+                directory=lambda _d: list(many),
+                runtime=self.runtime,
+                marker=self.marker,
+            )
         self.assertLessEqual(len(self.calls), network.MAX_DOMAINS + 1)
 
 
@@ -677,7 +883,7 @@ class CredentialApplyTests(VpnHarness):
         result, log, written = self.apply(self.add_request())
         self.assertEqual(result, 0)
         argv = self.calls[0]
-        self.assertEqual(argv[:6], ["hypraether-vpn", "credential", "add", "work", "--user", "me-user"])
+        self.assertEqual(argv[:6], ["vitrail-vpn", "credential", "add", "work", "--user", "me-user"])
         self.assertEqual(argv[6], "--pass-file")
         # While the tool ran the file held exactly the password, with no newline.
         self.assertEqual(list(self.seen_files[0].values()).count("s3cr;et,pw"), 1)
@@ -693,8 +899,9 @@ class CredentialApplyTests(VpnHarness):
             return 0, ""
 
         with redirect_stdout(io.StringIO()):
-            network.apply(self.add_request(), self.folder, act, fake(EVERYTHING), runtime=self.runtime,
-                          marker=self.marker)
+            network.apply(
+                self.add_request(), self.folder, act, fake(EVERYTHING), runtime=self.runtime, marker=self.marker
+            )
         self.assertEqual(modes, [0o600])
 
     def test_files_are_deleted_when_the_tool_fails(self) -> None:
@@ -712,8 +919,9 @@ class CredentialApplyTests(VpnHarness):
             raise RuntimeError("tool exploded")
 
         with redirect_stdout(io.StringIO()), self.assertRaises(RuntimeError):
-            network.apply(self.add_request(), self.folder, act, fake(EVERYTHING), runtime=self.runtime,
-                          marker=self.marker)
+            network.apply(
+                self.add_request(), self.folder, act, fake(EVERYTHING), runtime=self.runtime, marker=self.marker
+            )
         self.assertEqual(list(self.runtime.iterdir()), [])
 
     def test_neither_the_password_nor_the_username_is_ever_logged_or_stored(self) -> None:
@@ -735,22 +943,25 @@ class CredentialApplyTests(VpnHarness):
 
     def test_without_a_runtime_directory_a_password_request_is_refused(self) -> None:
         with redirect_stdout(io.StringIO()) as log:
-            result = network.apply(self.add_request(), self.folder, self.act, fake(EVERYTHING), runtime=None,
-                                   marker=self.marker)
+            result = network.apply(
+                self.add_request(), self.folder, self.act, fake(EVERYTHING), runtime=None, marker=self.marker
+            )
         self.assertEqual((result, self.calls), (1, []))
         self.assertIn("no runtime directory", log.getvalue())
 
     def test_an_update_without_a_new_password_needs_no_file(self) -> None:
         result, log, _written = self.apply(req("vpn-cred-update", {"name": "work", "rename": "job"}))
-        self.assertEqual((result, self.calls),
-                         (0, [["hypraether-vpn", "credential", "update", "work", "--rename", "job"]]))
+        self.assertEqual(
+            (result, self.calls), (0, [["vitrail-vpn", "credential", "update", "work", "--rename", "job"]])
+        )
         self.assertIn("Connection: vpn-cred-update work", log)
 
     def test_an_update_with_a_new_password_passes_the_file(self) -> None:
         self.write_secret(NONCE, "password=new")
         self.apply(req("vpn-cred-update", {"name": "work", "user": "me", "nonce": NONCE}))
-        self.assertEqual(self.calls[0][:7],
-                         ["hypraether-vpn", "credential", "update", "work", "--user", "me", "--pass-file"])
+        self.assertEqual(
+            self.calls[0][:7], ["vitrail-vpn", "credential", "update", "work", "--user", "me", "--pass-file"]
+        )
         self.assertEqual(list(self.runtime.iterdir()), [])
 
     def test_stale_files_of_other_requests_are_swept_first(self) -> None:
@@ -762,7 +973,7 @@ class CredentialApplyTests(VpnHarness):
     def test_the_other_credential_verbs_log_the_name_only(self) -> None:
         _r, log, _w = self.apply(req("vpn-cred-assign", {"name": "work", "ids": ["us-1", "us-2"]}))
         self.assertIn("Connection: vpn-cred-assign work", log)
-        self.assertEqual(self.calls, [["hypraether-vpn", "credential", "assign", "work", "us-1", "us-2"]])
+        self.assertEqual(self.calls, [["vitrail-vpn", "credential", "assign", "work", "us-1", "us-2"]])
         _r, log, _w = self.apply("vpn-cred-remove:work")
         self.assertIn("Connection: vpn-cred-remove work", log)
 
@@ -777,7 +988,7 @@ class CredentialApplyTests(VpnHarness):
         source = self.picked()
         _r, log, _w = self.apply(req("vpn-import", {"file": str(source), "credential": "spare"}))
         stored = self.share / "x.ovpn"
-        self.assertEqual(self.calls, [["hypraether-vpn", "import", str(stored), "--credential", "spare"]])
+        self.assertEqual(self.calls, [["vitrail-vpn", "import", str(stored), "--credential", "spare"]])
         self.assertEqual(stored.read_text(encoding="utf-8"), "client\n")
         self.assertEqual(stat.S_IMODE(stored.stat().st_mode), 0o600)
         self.assertTrue(source.exists())
@@ -796,9 +1007,11 @@ class CredentialApplyTests(VpnHarness):
 
 
 class ProbeTests(unittest.TestCase):
-    PING = ("PING a (1.2.3.4) 56(84) bytes of data.\n\n--- a ping statistics ---\n"
-            "3 packets transmitted, 3 received, 0% packet loss, time 2003ms\n"
-            "rtt min/avg/max/mdev = 10.100/12.500/15.000/1.000 ms\n")
+    PING = (
+        "PING a (1.2.3.4) 56(84) bytes of data.\n\n--- a ping statistics ---\n"
+        "3 packets transmitted, 3 received, 0% packet loss, time 2003ms\n"
+        "rtt min/avg/max/mdev = 10.100/12.500/15.000/1.000 ms\n"
+    )
     LOST = "3 packets transmitted, 0 received, 100% packet loss, time 2048ms\n"
 
     def test_ping_output_gives_the_mean_rtt_and_the_loss(self) -> None:
@@ -807,27 +1020,40 @@ class ProbeTests(unittest.TestCase):
         self.assertEqual(network.parse_ping("garbage"), (None, None))
 
     def test_the_remote_hosts_come_from_the_config_three_at_most(self) -> None:
-        text = "client\nremote a.example.net 1194\nremote b.example.net 443\nremote 10.0.0.1 1\nremote d.example.net 2\n"
+        text = (
+            "client\nremote a.example.net 1194\nremote b.example.net 443\nremote 10.0.0.1 1\nremote d.example.net 2\n"
+        )
         self.assertEqual(network.remote_hosts(text), ["a.example.net", "b.example.net", "10.0.0.1"])
         self.assertEqual(network.remote_hosts("remote -x 1\nremote a;b 2\nremote a.b\nnothing"), [])
 
     def test_latency_is_the_mean_of_the_hosts_and_loss_the_worst(self) -> None:
-        tunnels = [{"id": "a", "config_path": "/a"}, {"id": "b", "config_path": "/b"},
-                   {"id": "c", "config_path": "/c"}]
-        configs = {"/a": "remote h1.example.net 1\nremote h2.example.net 1\n", "/b": "remote h3.example.net 1\n",
-                   "/c": "# no remote\n"}
+        tunnels = [{"id": "a", "config_path": "/a"}, {"id": "b", "config_path": "/b"}, {"id": "c", "config_path": "/c"}]
+        configs = {
+            "/a": "remote h1.example.net 1\nremote h2.example.net 1\n",
+            "/b": "remote h3.example.net 1\n",
+            "/c": "# no remote\n",
+        }
         pings = {"h1.example.net": (10.0, 0), "h2.example.net": (30.0, 33), "h3.example.net": (None, 100)}
         got = network.probe(tunnels, lambda host: pings[host], lambda path: configs[path])
-        self.assertEqual(got, {"a": {"latency": 20.0, "loss": 33}, "b": {"latency": None, "loss": 100},
-                               "c": {"latency": None, "loss": None}})
+        self.assertEqual(
+            got,
+            {
+                "a": {"latency": 20.0, "loss": 33},
+                "b": {"latency": None, "loss": 100},
+                "c": {"latency": None, "loss": None},
+            },
+        )
 
     def test_a_host_shared_by_two_connections_is_pinged_once(self) -> None:
         seen: list[str] = []
-        network.probe([{"id": "a", "config_path": "/a"}, {"id": "b", "config_path": "/a"}],
-                      lambda host: seen.append(host) or (1.0, 0), lambda _p: "remote h.example.net 1\n")
+        network.probe(
+            [{"id": "a", "config_path": "/a"}, {"id": "b", "config_path": "/a"}],
+            lambda host: seen.append(host) or (1.0, 0),
+            lambda _p: "remote h.example.net 1\n",
+        )
         self.assertEqual(seen, ["h.example.net"])
 
-    def test_the_ping_argv_is_the_one_hypraether_uses(self) -> None:
+    def test_the_ping_argv_is_the_one_vitrail_vpn_uses(self) -> None:
         done = mock.Mock(stdout=self.PING)
         with mock.patch.object(network.subprocess, "run", return_value=done) as run:
             self.assertEqual(network.ping_host("a.example.net"), (12.5, 0))
@@ -885,8 +1111,11 @@ class ExcludedTests(unittest.TestCase):
     def test_the_auto_flag_is_read_from_the_vpn_document(self) -> None:
         self.assertEqual(network.excluded({}), set())
         self.assertEqual(network.excluded({"connections": "no"}), set())
-        document = {"connections": {"us-1": {"auto": False}, "us-2": {"auto": True}, "us-3": {}, "us-4": 5},
-                    "users": [{"id": "old"}], "assignments": []}
+        document = {
+            "connections": {"us-1": {"auto": False}, "us-2": {"auto": True}, "us-3": {}, "us-4": 5},
+            "users": [{"id": "old"}],
+            "assignments": [],
+        }
         self.assertEqual(network.excluded(document), {"us-1"})
 
     def test_the_document_is_read_from_the_private_folder(self) -> None:
@@ -901,21 +1130,21 @@ class BestApplyTests(VpnHarness):
         result, log, written = self.apply("vpn-best")
         self.assertEqual(result, 0)
         # us-3 has no credential; us-1 averages 50 ms and us-2 answers in 30 ms.
-        self.assertEqual(self.calls, [["hypraether-vpn", "connect", "us-2"]])
+        self.assertEqual(self.calls, [["vitrail-vpn", "connect", "us-2"]])
         # Every connection is measured, the one without a credential too.
         self.assertEqual(sorted(self.pinged), ["a.example.net", "b.example.net", "c.example.net", "d.example.net"])
         self.assertEqual(written["vpn"]["quality"]["us-1"], {"latency": 50.0, "loss": 0})
         self.assertEqual(written["vpn"]["quality"]["us-2"], {"latency": 30.0, "loss": 10})
-        self.assertIn("vpn-best -> hypraether-vpn connect us-2", log)
+        self.assertIn("vpn-best -> vitrail-vpn connect us-2", log)
 
     def test_the_exclusion_of_the_page_is_honoured(self) -> None:
         document = {"connections": {"us-2": {"auto": False}}}
         vpndoc.write_doc(document, self.vpn)
         self.apply("vpn-best")
-        self.assertEqual(self.calls, [["hypraether-vpn", "connect", "us-1"]])
+        self.assertEqual(self.calls, [["vitrail-vpn", "connect", "us-1"]])
 
     def test_without_connections_nothing_runs(self) -> None:
-        result, log, _written = self.apply("vpn-best", {"hypraether-vpn list --json": "[]"})
+        result, log, _written = self.apply("vpn-best", {"vitrail-vpn list --json": "[]"})
         self.assertEqual((result, self.calls), (0, []))
         self.assertIn("no connection", log)
 
@@ -933,11 +1162,15 @@ class BestApplyTests(VpnHarness):
         self.assertEqual(written["vpn"]["quality"]["us-1"], {"latency": 50.0, "loss": 0})
 
     def test_the_state_alone_never_pings_and_drops_connections_that_are_gone(self) -> None:
-        (self.folder / network.STATE_FILE).write_text(json.dumps(
-            {"vpn": {"quality": {"us-1": {"latency": 1.0, "loss": 0}, "gone": {"latency": 2.0, "loss": 0}}}}),
-            encoding="utf-8")
-        data = network.state(fake(EVERYTHING), network.load_quality(self.folder), marker=self.marker,
-                             bluetooth_present=controller(True))
+        (self.folder / network.STATE_FILE).write_text(
+            json.dumps(
+                {"vpn": {"quality": {"us-1": {"latency": 1.0, "loss": 0}, "gone": {"latency": 2.0, "loss": 0}}}}
+            ),
+            encoding="utf-8",
+        )
+        data = network.state(
+            fake(EVERYTHING), network.load_quality(self.folder), marker=self.marker, bluetooth_present=controller(True)
+        )
         self.assertEqual(data["vpn"]["quality"], {"us-1": {"latency": 1.0, "loss": 0}})
         self.assertEqual(self.pinged, [])
 
@@ -948,7 +1181,7 @@ class BestApplyTests(VpnHarness):
 
 
 class StartupTests(unittest.TestCase):
-    def test_the_login_rule_of_hypraether(self) -> None:
+    def test_the_login_rule_of_vitrail_vpn(self) -> None:
         active = [{"id": "a", "credential": "c", "active": True}]
         idle = [{"id": "a", "credential": "c", "active": False}]
         bare = [{"id": "a", "credential": "", "active": False}]
@@ -968,21 +1201,34 @@ class AutostartTests(VpnHarness):
         self.connectivity = "full\n"
 
     def outputs(self, listed: list[dict] | None = None) -> dict:
-        return {**EVERYTHING, "nmcli networking connectivity": self.connectivity,
-                **({} if listed is None else {"hypraether-vpn list --json": json.dumps(listed)})}
+        return {
+            **EVERYTHING,
+            "nmcli networking connectivity": self.connectivity,
+            **({} if listed is None else {"vitrail-vpn list --json": json.dumps(listed)}),
+        }
 
     def start(self, outputs: dict | None = None, session: str | None = "sig-1", run=None, pinger=None):
         outputs = self.outputs() if outputs is None else outputs
         with redirect_stdout(io.StringIO()) as log:
             result = network.autostart(
-                self.folder, self.act, run or fake(outputs), pinger=pinger or self.pinger,
-                read=lambda path: self.CONFIGS.get(path, ""), runtime=self.runtime, marker=self.marker,
-                session=session, sleep=self.sleeps.append, doc_folder=self.vpn)
+                self.folder,
+                self.act,
+                run or fake(outputs),
+                pinger=pinger or self.pinger,
+                read=lambda path: self.CONFIGS.get(path, ""),
+                runtime=self.runtime,
+                marker=self.marker,
+                session=session,
+                sleep=self.sleeps.append,
+                doc_folder=self.vpn,
+            )
         return result, log.getvalue()
 
     def listing(self, active: bool) -> list[dict]:
-        return [{"id": "us-1", "name": "n", "credential": "c", "config_path": "/x/us-1.conf", "active": active},
-                {"id": "us-2", "name": "n", "credential": "c", "config_path": "/x/us-2.conf", "active": False}]
+        return [
+            {"id": "us-1", "name": "n", "credential": "c", "config_path": "/x/us-1.conf", "active": active},
+            {"id": "us-2", "name": "n", "credential": "c", "config_path": "/x/us-2.conf", "active": False},
+        ]
 
     def test_without_the_marker_and_without_a_tunnel_nothing_happens(self) -> None:
         self.assertEqual(self.start(self.outputs(self.listing(False)))[0], 0)
@@ -1001,7 +1247,7 @@ class AutostartTests(VpnHarness):
     def test_the_marker_with_nothing_up_connects_the_best(self) -> None:
         self.marker.write_text("", encoding="utf-8")
         result, log = self.start(self.outputs(self.listing(False)))
-        self.assertEqual((result, self.calls), (0, [["hypraether-vpn", "connect", "us-2"]]))
+        self.assertEqual((result, self.calls), (0, [["vitrail-vpn", "connect", "us-2"]]))
         self.assertEqual(self.sleeps, [])
         self.assertIn("autostart", log)
 
@@ -1031,9 +1277,16 @@ class AutostartTests(VpnHarness):
     def test_without_a_runtime_directory_nothing_runs(self) -> None:
         self.marker.write_text("", encoding="utf-8")
         with redirect_stdout(io.StringIO()):
-            result = network.autostart(self.folder, self.act, fake(self.outputs(self.listing(False))),
-                                       pinger=self.pinger, runtime=None, marker=self.marker, session="s",
-                                       sleep=self.sleeps.append)
+            result = network.autostart(
+                self.folder,
+                self.act,
+                fake(self.outputs(self.listing(False))),
+                pinger=self.pinger,
+                runtime=None,
+                marker=self.marker,
+                session="s",
+                sleep=self.sleeps.append,
+            )
         self.assertEqual((result, self.calls), (0, []))
 
     def test_nothing_measured_waits_for_the_network_then_measures_again(self) -> None:
@@ -1051,7 +1304,7 @@ class AutostartTests(VpnHarness):
 
         self.start(run=run, pinger=pinger)
         self.assertEqual(len(self.sleeps), 2)
-        self.assertEqual(self.calls, [["hypraether-vpn", "connect", "us-2"]])
+        self.assertEqual(self.calls, [["vitrail-vpn", "connect", "us-2"]])
 
     def test_the_wait_is_bounded_and_the_connection_happens_anyway(self) -> None:
         self.marker.write_text("", encoding="utf-8")
@@ -1059,7 +1312,7 @@ class AutostartTests(VpnHarness):
         self.PINGS = {}
         self.start(self.outputs(self.listing(False)))
         self.assertEqual(sum(self.sleeps), network.NETWORK_WAIT)
-        self.assertEqual(self.calls, [["hypraether-vpn", "connect", "us-1"]])
+        self.assertEqual(self.calls, [["vitrail-vpn", "connect", "us-1"]])
 
     def test_the_state_is_rewritten_so_the_page_sees_it(self) -> None:
         self.marker.write_text("", encoding="utf-8")
@@ -1075,17 +1328,23 @@ class AutostartTests(VpnHarness):
 
 class MainTests(unittest.TestCase):
     def test_a_request_is_read_as_qsettings_stored_it(self) -> None:
-        stored = ['vpn-import:{\\"file\\":\\"/x/y.ovpn\\"}',
-                  '"vpn-cred-update:{\\"name\\":\\"a\\",\\"user\\":\\"b\\"}"', "vpn-up:us-1"]
+        stored = [
+            'vpn-import:{\\"file\\":\\"/x/y.ovpn\\"}',
+            '"vpn-cred-update:{\\"name\\":\\"a\\",\\"user\\":\\"b\\"}"',
+            "vpn-up:us-1",
+        ]
         decoded = [network.qt_value(text) for text in stored]
-        self.assertEqual(decoded, ['vpn-import:{"file":"/x/y.ovpn"}',
-                                   'vpn-cred-update:{"name":"a","user":"b"}', "vpn-up:us-1"])
+        self.assertEqual(
+            decoded, ['vpn-import:{"file":"/x/y.ovpn"}', 'vpn-cred-update:{"name":"a","user":"b"}', "vpn-up:us-1"]
+        )
         for request in decoded:
             network.parse(request)
 
     def test_main_applies_the_decoded_request(self) -> None:
-        with mock.patch.object(network, "apply", return_value=0) as apply, \
-                mock.patch.object(network, "runtime_dir", return_value=None):
+        with (
+            mock.patch.object(network, "apply", return_value=0) as apply,
+            mock.patch.object(network, "runtime_dir", return_value=None),
+        ):
             self.assertEqual(network.main(["apply", 'vpn-import:{\\"file\\":\\"/x/y.ovpn\\"}']), 0)
         self.assertEqual(apply.call_args.args[0], 'vpn-import:{"file":"/x/y.ovpn"}')
 

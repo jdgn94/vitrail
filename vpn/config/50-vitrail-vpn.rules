@@ -1,12 +1,12 @@
-// /etc/polkit-1/rules.d/50-hypraether-vpn.rules
+// /etc/polkit-1/rules.d/50-vitrail-vpn.rules
 //
 // Let the desktop user control this project's VPN from the user session
 // without a password prompt, strictly scoped:
-//   1. start/stop the split-tunnel instances (hypraether-vpn@<id>.service)
+//   1. start/stop the split-tunnel instances (vitrail-vpn@<id>.service)
 //   2. switch the global traffic mode (split/full) via pkexec on the real
-//      root-owned helper /etc/hypraether/vpn/vpn-mode.sh
+//      root-owned helper /etc/vitrail/vpn/vpn-mode.sh
 //   3. apply the tunnel's domain list (resolve IPs + nftables sets) via
-//      pkexec on /etc/hypraether/vpn/vpn-domain.sh
+//      pkexec on /etc/vitrail/vpn/vpn-domain.sh
 //
 // @VPN_USER@ is substituted by install.sh with the user that ran it.
 polkit.addRule(function (action, subject) {
@@ -15,7 +15,7 @@ polkit.addRule(function (action, subject) {
     subject.user == "@VPN_USER@"
   ) {
     var unit = action.lookup("unit");
-    if (unit && /^hypraether-vpn@[a-zA-Z0-9-]+\.service$/.test(unit)) {
+    if (unit && /^vitrail-vpn@[a-zA-Z0-9-]+\.service$/.test(unit)) {
       return polkit.Result.YES;
     }
   }
@@ -25,8 +25,8 @@ polkit.addRule(function (action, subject) {
   if (
     action.id == "org.freedesktop.policykit.exec" &&
     subject.user == "@VPN_USER@" &&
-    (action.lookup("program") == "/etc/hypraether/vpn/vpn-mode.sh" ||
-      action.lookup("program") == "/etc/hypraether/vpn/vpn-domain.sh")
+    (action.lookup("program") == "/etc/vitrail/vpn/vpn-mode.sh" ||
+      action.lookup("program") == "/etc/vitrail/vpn/vpn-domain.sh")
   ) {
     return polkit.Result.YES;
   }

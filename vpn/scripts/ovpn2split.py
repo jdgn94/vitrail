@@ -18,14 +18,15 @@ Credentials are never embedded here: `--auth-file` points at the transient
 tmpfs file that vpn-auth-prep.sh writes per connection (vpn_manager.py
 passes it), so nothing on disk holds the password persistently.
 """
+
 from __future__ import annotations
 
 import argparse
 import re
 
-DEFAULT_AUTH_FILE = "/run/hypraether-vpn/<id>/auth.txt"
-DEFAULT_UP = "/etc/hypraether/vpn/vpn-up.sh"
-DEFAULT_DOWN = "/etc/hypraether/vpn/vpn-down.sh"
+DEFAULT_AUTH_FILE = "/run/vitrail-vpn/<id>/auth.txt"
+DEFAULT_UP = "/etc/vitrail/vpn/vpn-up.sh"
+DEFAULT_DOWN = "/etc/vitrail/vpn/vpn-down.sh"
 
 
 def build_split_block(auth_file: str, up_script: str, down_script: str) -> str:
@@ -57,8 +58,8 @@ def strip_managed_lines(text: str) -> str:
         "script-security",
         "up /etc/openvpn/update-resolv-conf",
         "down /etc/openvpn/update-resolv-conf",
-        "up /etc/hypraether/vpn/vpn-up.sh",
-        "down /etc/hypraether/vpn/vpn-down.sh",
+        "up /etc/vitrail/vpn/vpn-up.sh",
+        "down /etc/vitrail/vpn/vpn-down.sh",
         "redirect-gateway",
     )
     kept: list[str] = []

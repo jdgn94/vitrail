@@ -2,8 +2,8 @@
 Description=Connect the best VPN after login
 
 [Service]
-# The rule only decides whether to raise the tunnel; hypraether-vpn starts it
-# as the system unit hypraether-vpn@<id>.service (Restart=on-failure), so the
+# The rule only decides whether to raise the tunnel; vitrail-vpn starts it
+# as the system unit vitrail-vpn@<id>.service (Restart=on-failure), so the
 # connection never belongs to the shell. Run once per login: the helper's own
 # stamp under $XDG_RUNTIME_DIR keeps a restart from connecting again.
 Type=oneshot

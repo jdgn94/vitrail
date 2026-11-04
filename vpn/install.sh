@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# install.sh - Installer for the Hypraether Domain-Based Split-Tunnel VPN
+# install.sh - Installer for the Vitrail Domain-Based Split-Tunnel VPN
 #
 # Installs the SYSTEM infrastructure only: packages, the dnsmasq/nftables/
-# routing config, the hypraether-vpn@.service template, the root credential
-# wrappers, the polkit rule and the `hypraether-vpn` CLI symlink.
+# routing config, the vitrail-vpn@.service template, the root credential
+# wrappers, the polkit rule and the `vitrail-vpn` CLI symlink.
 #
-# Two traffic modes are supported (global, stored in /etc/hypraether/vpn/env
+# Two traffic modes are supported (global, stored in /etc/vitrail/vpn/env
 # as VPN_MODE):
 #   split — only the domains on the list go through the tunnel (default)
 #   full  — everything goes through the tunnel except the excluded domains
 #
 # Connections are imported per-user afterwards (NOT as root) so that each
 # .ovpn keeps its own credentials in the user's sqlite vault:
-#   hypraether-vpn import /path/to/downloaded.ovpn [--provider] [--region]
+#   vitrail-vpn import /path/to/downloaded.ovpn [--provider] [--region]
 #                        [--user NAME] [--pass-file FILE]
 #
 # Usage:
@@ -38,18 +38,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-VPN_DIR="/etc/hypraether/vpn"
+VPN_DIR="/etc/vitrail/vpn"
 ENV_FILE="$VPN_DIR/env"
 NM_DNS_CONF="/etc/NetworkManager/conf.d/dns.conf"
 # The dnsmasq domain config (/etc/NetworkManager/dnsmasq.d/vpn-mode.conf) is
 # generated from the user's domain list by vpn-domain.sh — no static file here.
 NFT_CONF="/etc/nftables.conf"
 RT_TABLES="/etc/iproute2/rt_tables"
-UNIT_TEMPLATE="/etc/systemd/system/hypraether-vpn@.service"
+UNIT_TEMPLATE="/etc/systemd/system/vitrail-vpn@.service"
 WATCHDOG_UNIT="/etc/systemd/system/vpn-auth-watchdog.service"
 WATCHDOG_CONF="/etc/vpn-auth-watchdog.conf"
-POLKIT_RULE="/etc/polkit-1/rules.d/50-hypraether-vpn.rules"
-CLI_LINK="/usr/local/bin/hypraether-vpn"
+POLKIT_RULE="/etc/polkit-1/rules.d/50-vitrail-vpn.rules"
+CLI_LINK="/usr/local/bin/vitrail-vpn"
 
 VPN_USER=""
 DO_WATCHDOG=1
@@ -155,20 +155,20 @@ install_project_dir() {
     [[ -n "$user_home" ]] || die "Cannot resolve home for user $VPN_USER"
     {
         printf 'VPN_USER=%s\n' "$VPN_USER"
-        printf 'VPN_VAULT=%s/.config/hypraether/vpn/vault.db\n' "$user_home"
-        printf 'VPN_CONF_DIR=%s/.config/hypraether/vpn/connections\n' "$user_home"
+        printf 'VPN_VAULT=%s/.config/vitrail-vpn/vault.db\n' "$user_home"
+        printf 'VPN_CONF_DIR=%s/.config/vitrail-vpn/connections\n' "$user_home"
         printf 'VPN_MODE=%s\n' "$VPN_MODE"
     } >"$ENV_FILE"
     chmod 600 "$ENV_FILE"
 
     # User-readable mirror of the mode for the settings UI. Written as the
     # user: root writing into the user's tree would follow their symlinks.
-    as_user mkdir -p -m 700 "$user_home/.config/hypraether/vpn"
-    printf '%s\n' "$VPN_MODE" | as_user sh -c 'umask 077; cat >"$1"' sh "$user_home/.config/hypraether/vpn/mode"
+    as_user mkdir -p -m 700 "$user_home/.config/vitrail-vpn"
+    printf '%s\n' "$VPN_MODE" | as_user sh -c 'umask 077; cat >"$1"' sh "$user_home/.config/vitrail-vpn/mode"
 
     # Seed the tunnel domain list on first install with the mode's defaults
     # (split = the services the project targets; full = nothing excluded).
-    local domains_file="$user_home/.config/hypraether/vpn/domains"
+    local domains_file="$user_home/.config/vitrail-vpn/domains"
     if [[ ! -f "$domains_file" ]]; then
         local default_domains=()
         if [[ "$VPN_MODE" == "split" ]]; then
@@ -222,7 +222,7 @@ install_configs() {
 }
 
 install_units() {
-    install -m 644 "$REPO_ROOT/vpn/config/hypraether-vpn@.service" "$UNIT_TEMPLATE"
+    install -m 644 "$REPO_ROOT/vpn/config/vitrail-vpn@.service" "$UNIT_TEMPLATE"
     install -m 644 "$REPO_ROOT/vpn/config/vpn-auth-watchdog.service" "$WATCHDOG_UNIT"
 
     # Desktop user to notify (the watchdog daemon runs as root).
@@ -241,9 +241,9 @@ install_units() {
 install_polkit() {
     install -d -m 755 /etc/polkit-1/rules.d
     sed "s/@VPN_USER@/$VPN_USER/g" \
-        "$REPO_ROOT/vpn/config/50-hypraether-vpn.rules" >"$POLKIT_RULE"
+        "$REPO_ROOT/vpn/config/50-vitrail-vpn.rules" >"$POLKIT_RULE"
     chmod 644 "$POLKIT_RULE"
-    info "Installed $POLKIT_RULE (passwordless control of hypraether-vpn@* for $VPN_USER)."
+    info "Installed $POLKIT_RULE (passwordless control of vitrail-vpn@* for $VPN_USER)."
 }
 
 install_cli() {
@@ -283,19 +283,19 @@ print_summary() {
     else
         printf '                     only listed domains through the tunnel\n'
     fi
-    printf 'Tunnel units:        hypraether-vpn@<id>.service (one per connection)\n'
-    printf 'CLI:                 hypraether-vpn\n'
+    printf 'Tunnel units:        vitrail-vpn@<id>.service (one per connection)\n'
+    printf 'CLI:                 vitrail-vpn\n'
     printf 'Watchdog:            vpn-auth-watchdog.service (problem notifications)\n'
     printf '\nNext step — import a connection as your user (NOT root):\n'
-    printf '  hypraether-vpn import /path/to/downloaded.ovpn --user MyUser \\\n'
+    printf '  vitrail-vpn import /path/to/downloaded.ovpn --user MyUser \\\n'
     printf '                     --pass-file ./password.txt\n'
-    printf '  hypraether-vpn connect <id>\n'
+    printf '  vitrail-vpn connect <id>\n'
     printf '\nDomains:             manage in the settings UI, or:\n'
-    printf '                     hypraether-vpn domain add|remove <domain>\n'
-    printf '                     hypraether-vpn domain list\n'
+    printf '                     vitrail-vpn domain add|remove <domain>\n'
+    printf '                     vitrail-vpn domain list\n'
     printf '\nRoute check:         ip route get 160.79.104.10 mark 0x4555\n'
     printf 'DNS resolver:        cat /etc/resolv.conf  (must contain 127.0.0.1)\n'
-    printf '\nSwitch mode later:   sudo /etc/hypraether/vpn/vpn-mode.sh split|full\n'
+    printf '\nSwitch mode later:   sudo /etc/vitrail/vpn/vpn-mode.sh split|full\n'
     printf '\nIMPORTANT: disable DNS-over-HTTPS in your browser so that the local\n'
     printf 'dnsmasq keeps populating the nftables sets (Firefox: Settings > DNS\n'
     printf 'over HTTPS > OFF). Chrome uses the system resolver by default.\n'

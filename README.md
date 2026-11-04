@@ -83,7 +83,7 @@ package to the manifest and a row here.
 | `networkmanager`, `bluez-utils`, `wireplumber`, `power-profiles-daemon` | `nmcli`, `bluetoothctl`, `wpctl`, `powerprofilesctl` | the panel's quick toggles, the connection panel (networks, Bluetooth, power profile) and the settings window's Connection page (`vitrail.network`: Wi-Fi, Bluetooth and VPN state and requests) |
 | `awww`, `mpvpaper` | `awww`, `awww-daemon`, `mpvpaper` | still wallpapers with transitions (awww) and animated ones (mpvpaper with VA-API) |
 
-`hypraether-vpn` comes from the VPN module (`vpn/`), not from the manifest.
+`vitrail-vpn` comes from the VPN module (`vpn/`), not from the manifest.
 `ping` (iputils, in the Arch `base` group, so not in the manifest) measures the
 latency of each VPN connection for the VPN tab and for the automatic choice of
 the best one. `xdg-desktop-portal-gtk` (in `packages/base.txt`) or any other
@@ -92,7 +92,7 @@ dialog.
 
 ## VPN
 
-`vpn/` is the domain-based split tunnel imported from Hypraether: OpenVPN,
+`vpn/` is the domain-based split tunnel imported from Vitrail: OpenVPN,
 dnsmasq, nftables and policy routing. The installer drives it:
 
 ```sh
@@ -102,21 +102,21 @@ dnsmasq, nftables and policy routing. The installer drives it:
 ```
 
 In the interactive installer it is a radio menu after the package questions.
-Credentials live in a private sqlite vault (`~/.config/hypraether/vpn/vault.db`,
+Credentials live in a private sqlite vault (`~/.config/vitrail-vpn/vault.db`,
 mode 600) and never in the repository; `vpn/.gitignore` blocks `*.ovpn` and
 `vault.db`.
 
-The tunnel is hypraether-vpn's own **system unit**
-(`hypraether-vpn@<id>.service`, started by `hypraether-vpn connect`, with
+The tunnel is vitrail-vpn's own **system unit**
+(`vitrail-vpn@<id>.service`, started by `vitrail-vpn connect`, with
 `Restart=on-failure`), never a child of Vitrail: stopping or restarting the bar
 leaves the connection exactly where it was. The **login rule** is the
 `vitrail-vpn-autostart.service` user unit (installed with the dotfiles and
 enabled by `install.sh` when the VPN is installed): it runs
 `vitrail-network autostart`, which connects the best connection while
-`~/.config/hypraether/vpn/enabled` asks for it. As a unit, it does not depend on
+`~/.config/vitrail-vpn/enabled` asks for it. As a unit, it does not depend on
 the bar — the tunnel comes up after a login even if Quickshell never starts.
 Logs: `journalctl --user -u vitrail-vpn-autostart` for the rule and
-`journalctl -u "hypraether-vpn@*"` for the tunnel.
+`journalctl -u "vitrail-vpn@*"` for the tunnel.
 
 ## Network
 
@@ -320,11 +320,11 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   `--tab internet|vpn|bluetooth` opens a tab; `--view global|<connection id>`
   opens a VPN view.
 
-  The VPN tab shows **hypraether-vpn's own model**, never a parallel list. The
+  The VPN tab shows **vitrail-vpn's own model**, never a parallel list. The
   state's `vpn` has `tunnels` (id, name, provider, region, credential,
   config_path, active), `credentials` (name, username, usedBy; no password),
   `mode` (`split`/`full`), `domains` (domain, address count), `enabled` (the
-  tool's `~/.config/hypraether/vpn/enabled` marker), `quality` (`{id: {latency,
+  tool's `~/.config/vitrail-vpn/enabled` marker), `quality` (`{id: {latency,
   loss}}` from the last probe; `state` never pings). Four views: the
   connections (a `tune` button at the left of each row opens its settings, the
   ping and quality level (good < 100 ms and no loss, fair < 250 ms and at most
@@ -360,7 +360,7 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   on runs `vpn-best`, off runs `vpn-off`, and Connect / Disconnect on any row
   moves it through the tool; Vitrail keeps no copy.
 
-  The automatic choice is hypraether's rule: of the connections with a
+  The automatic choice is vitrail-vpn's rule: of the connections with a
   credential (all if none has one) the measured one with the lowest latency
   (mean of the average round trips of up to three `remote` hosts of its
   config, `env LANG=C ping -c 3 -W 1`, side by side), packet loss breaking a

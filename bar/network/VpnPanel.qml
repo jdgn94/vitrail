@@ -150,9 +150,9 @@ Item {
                         onTriggered: {
                             root.pending = connection.modelData.id
                             if (connection.modelData.active)
-                                root.runCommand(["hypraether-vpn", "disconnect"])
+                                root.runCommand(["vitrail-vpn", "disconnect"])
                             else
-                                root.runCommand(["hypraether-vpn", "connect", connection.modelData.id])
+                                root.runCommand(["vitrail-vpn", "connect", connection.modelData.id])
                         }
                     }
                 }
@@ -179,7 +179,7 @@ Item {
     Process {
         id: list
 
-        command: ["hypraether-vpn", "list", "--json"]
+        command: ["vitrail-vpn", "list", "--json"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {

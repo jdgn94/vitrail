@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""/etc/hypraether/vpn/vpn-client-conf.py
+"""/etc/vitrail/vpn/vpn-client-conf.py
 
 Builds the config root's OpenVPN actually runs from the user's connection
 file. The user's file is user-writable and the service starts without a
@@ -24,8 +24,8 @@ WHITESPACE = " \t\n\r\v\f"
 # OpenVPN refuses lines over 256 bytes (2.7.7); releases that instead parsed
 # the overflow as a line of its own would let an option hide there.
 MAX_LINE = 250
-UP_SCRIPT = "/etc/hypraether/vpn/vpn-up.sh"
-DOWN_SCRIPT = "/etc/hypraether/vpn/vpn-down.sh"
+UP_SCRIPT = "/etc/vitrail/vpn/vpn-up.sh"
+DOWN_SCRIPT = "/etc/vitrail/vpn/vpn-down.sh"
 
 # Regenerated below with root's own values, whatever the file said.
 MANAGED = {"up", "down", "script-security", "auth-user-pass"}

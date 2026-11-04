@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# /etc/hypraether/vpn/vpn-auth-prep.sh
+# /etc/vitrail/vpn/vpn-auth-prep.sh
 #
-# ExecStartPre of hypraether-vpn@<id>.service: read the credentials for the
+# ExecStartPre of vitrail-vpn@<id>.service: read the credentials for the
 # instance from the sqlite vault and write them to a transient auth file
 # under /run (tmpfs) that OpenVPN reads via `auth-user-pass`. Nothing on
 # disk persists the password; the file is regenerated on every start and
 # removed on stop (see vpn-auth-clean.sh). Also builds the client config
 # OpenVPN runs from the user's connection file (vpn-client-conf.py).
 #
-# Runs as root. The vault path comes from /etc/hypraether/vpn/env so the
+# Runs as root. The vault path comes from /etc/vitrail/vpn/env so the
 # unit never hardcodes a user's home (see vpn_manager.py).
 set -euo pipefail
 
@@ -18,14 +18,14 @@ ID="${1:?usage: vpn-auth-prep.sh <id>}"
     exit 1
 }
 
-ENV_FILE="/etc/hypraether/vpn/env"
+ENV_FILE="/etc/vitrail/vpn/env"
 if [[ -f "$ENV_FILE" ]]; then
     # shellcheck disable=SC1091
     source "$ENV_FILE"
 fi
 
 [[ -n "${VPN_VAULT:-}" ]] || {
-    echo "vpn-auth-prep: VPN_VAULT not set (is /etc/hypraether/vpn/env installed?)" >&2
+    echo "vpn-auth-prep: VPN_VAULT not set (is /etc/vitrail/vpn/env installed?)" >&2
     exit 1
 }
 [[ -n "${VPN_USER:-}" && -n "${VPN_CONF_DIR:-}" ]] || {
@@ -37,12 +37,12 @@ fi
     exit 1
 }
 
-AUTH_DIR="/run/hypraether-vpn/$ID"
+AUTH_DIR="/run/vitrail-vpn/$ID"
 AUTH_FILE="$AUTH_DIR/auth.txt"
 
 install -d -m 700 "$AUTH_DIR"
 
-python3 -I /etc/hypraether/vpn/vpn-client-conf.py "$VPN_USER" \
+python3 -I /etc/vitrail/vpn/vpn-client-conf.py "$VPN_USER" \
     "$VPN_CONF_DIR/$ID.conf" "$AUTH_DIR/client.conf" "$AUTH_FILE"
 
 python3 -I - "$VPN_VAULT" "$ID" "$AUTH_FILE" "$VPN_USER" <<'PY'

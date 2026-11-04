@@ -25,6 +25,7 @@ Usage:
   proton-anon-refresh.py --check             # only validate API reachability
   proton-anon-refresh.py --dry-run           # mint creds but do not write/restart
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,7 +48,7 @@ USER_AGENT = f"ProtonVPN/{APP_VERSION} (Android 15; google sdk_gphone64_x86_64)"
 ACCEPT = "application/vnd.protonmail.v1+json"
 
 DEFAULT_ID = "proton-us"
-AUTH_PATH = "/run/hypraether-vpn/{id}/auth.txt"
+AUTH_PATH = "/run/vitrail-vpn/{id}/auth.txt"
 
 # Split-tunnel option block, mirroring what ovpn2split.py injects.
 SPLIT_BLOCK = """pull-filter ignore "redirect-gateway"
@@ -62,14 +63,15 @@ explicit-exit-notify
 resolv-retry infinite
 
 script-security 2
-up /etc/hypraether/vpn/vpn-up.sh
-down /etc/hypraether/vpn/vpn-down.sh
+up /etc/vitrail/vpn/vpn-up.sh
+down /etc/vitrail/vpn/vpn-down.sh
 
 """
 
 
-def http_json(url: str, headers: dict[str, str], data: dict | None = None,
-              method: str | None = None) -> tuple[int, dict, dict]:
+def http_json(
+    url: str, headers: dict[str, str], data: dict | None = None, method: str | None = None
+) -> tuple[int, dict, dict]:
     """Perform an HTTPS request and return (status, parsed JSON body, response headers)."""
     body = json.dumps(data).encode() if data is not None else None
     req = urllib.request.Request(url, data=body, method=method or ("POST" if data is not None else "GET"))
@@ -189,9 +191,11 @@ def pick_us_free_server(uid: str, token: str, session_id: str) -> tuple[str, int
         "Authorization": f"Bearer {token}",
         "Cookie": f"Session-Id={session_id}; Tag=vpn-b",
     }
-    url = (f"{API_BASE}/vpn/v1/logicals?WithTranslations=en"
-           "&WithEntriesForProtocols=WireGuardUDP%2CWireGuardTCP%2COpenVPNUDP%2COpenVPNTCP%2CWireGuardTLS"
-           "&WithState=true")
+    url = (
+        f"{API_BASE}/vpn/v1/logicals?WithTranslations=en"
+        "&WithEntriesForProtocols=WireGuardUDP%2CWireGuardTCP%2COpenVPNUDP%2COpenVPNTCP%2CWireGuardTLS"
+        "&WithState=true"
+    )
     status, body, _ = http_json(url, headers)
     if status != 200 or body.get("Code") != 1000:
         raise RuntimeError(f"logicals fetch failed: HTTP {status} {body}")
@@ -231,9 +235,7 @@ def read_cert_blocks(conf_path: str) -> tuple[str, str]:
     return extract_block(conf, "ca"), extract_block(conf, "tls-crypt")
 
 
-def build_config(
-    entry_ip: str, port: int, ca_block: str, tls_crypt_block: str, auth_path: str
-) -> str:
+def build_config(entry_ip: str, port: int, ca_block: str, tls_crypt_block: str, auth_path: str) -> str:
     """Compose the full split-tunnel client config for the anonymous server."""
     return f"""# Regenerated automatically by proton-anon-refresh.py
 client
@@ -277,9 +279,7 @@ def store_credentials(conn_id: str, auth_user: str, auth_pass: str) -> None:
 
 def restart_tunnel(conn_id: str) -> None:
     """Restart the tunnel (runs as the user via the installer's polkit rule)."""
-    subprocess.run(
-        ["systemctl", "restart", f"hypraether-vpn@{conn_id}.service"], check=True
-    )
+    subprocess.run(["systemctl", "restart", f"vitrail-vpn@{conn_id}.service"], check=True)
 
 
 def check_api() -> None:
@@ -290,16 +290,14 @@ def check_api() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--id", default=DEFAULT_ID,
-                        help="connection id to update (default: proton-us)")
+    parser.add_argument("--id", default=DEFAULT_ID, help="connection id to update (default: proton-us)")
     parser.add_argument("--check", action="store_true", help="only validate API reachability")
     parser.add_argument("--dry-run", action="store_true", help="mint creds but do not write files or restart")
     args = parser.parse_args()
 
     conn = get_connection(args.id)
     if conn is None:
-        print(f'ERROR: no connection "{args.id}" in the vault; import one first',
-              file=sys.stderr)
+        print(f'ERROR: no connection "{args.id}" in the vault; import one first', file=sys.stderr)
         return 1
 
     try:
@@ -324,7 +322,10 @@ def main() -> int:
         print("Reading certificate blocks from existing config...")
         ca_block, tls_crypt_block = read_cert_blocks(conn["config_path"])
         conf_text = build_config(
-            entry_ip, port, ca_block, tls_crypt_block,
+            entry_ip,
+            port,
+            ca_block,
+            tls_crypt_block,
             AUTH_PATH.format(id=args.id),
         )
         print(f"Storing credentials in the vault and writing {conn['config_path']}...")
@@ -332,7 +333,7 @@ def main() -> int:
         with open(conn["config_path"], "w", encoding="utf-8") as fh:
             fh.write(conf_text)
         os.chmod(conn["config_path"], 0o600)
-        print(f"Restarting hypraether-vpn@{args.id}...")
+        print(f"Restarting vitrail-vpn@{args.id}...")
         restart_tunnel(args.id)
         print("Done. Tunnel restarted with fresh anonymous credentials.")
         return 0

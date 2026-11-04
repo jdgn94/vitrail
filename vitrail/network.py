@@ -5,7 +5,7 @@ The window cannot run commands, so this module does both halves:
     python3 -m vitrail.network state            prints the state as JSON
     python3 -m vitrail.network apply <request>  runs one request, then
                                                 rewrites network-state.json
-    python3 -m vitrail.network autostart        hypraether's login rule for
+    python3 -m vitrail.network autostart        vitrail-vpn's login rule for
                                                 the VPN, once per session
 
 `bin/vitrail-settings` injects `state` at launch; `scripts/apply-settings.sh`
@@ -19,7 +19,7 @@ below exist, every argument is validated and travels as one argv item:
 nothing goes through a shell. Every tool is optional: a missing one leaves its
 section empty with `available: false`.
 
-The VPN is hypraether's (`hypraether-vpn`): connections, credentials (name,
+The VPN is vitrail-vpn's (`vitrail-vpn`): connections, credentials (name,
 user name, password), the global traffic mode and domain list, and the
 `enabled` marker (autostart) are all its own. Vitrail keeps one thing of its
 own, the document in `~/.config/vitrail-vpn` (`vitrail/vpndoc.py`): which
@@ -67,7 +67,7 @@ BLUETOOTH_SYSFS = Path("/sys/class/bluetooth")
 ACT_TIMEOUT = 60
 
 MAC = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
-# A hypraether-vpn connection id: "us-free-12-protonvpn-udp".
+# A vitrail-vpn connection id: "us-free-12-protonvpn-udp".
 VPN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 # What a host label, and a whole host name, may look like (ASCII: an internet
@@ -304,7 +304,7 @@ def command(verb: str, argument: str = "", wifi_device: str = "", secret: str = 
     is the password file of a credential request. None for `refresh`, which only
     reads, for the requests that run several commands (or none), and for a
     Wi-Fi disconnect when no Wi-Fi device is known."""
-    tool = ["hypraether-vpn"]
+    tool = ["vitrail-vpn"]
     match verb:
         case "wifi-on" | "wifi-off":
             return ["nmcli", "radio", "wifi", verb.removeprefix("wifi-")]
@@ -461,7 +461,7 @@ def json_list(text: str) -> list:
 
 
 def parse_vpn(text: str) -> list[dict]:
-    """`hypraether-vpn list --json`, keeping what the page and the rules use."""
+    """`vitrail-vpn list --json`, keeping what the page and the rules use."""
     return [
         {key: one.get(key) or "" for key in ("id", "name", "provider", "region", "credential", "config_path")}
         | {"active": bool(one.get("active"))}
@@ -471,7 +471,7 @@ def parse_vpn(text: str) -> list[dict]:
 
 
 def parse_credentials(text: str) -> list[dict]:
-    """`hypraether-vpn credential list --json`: name, user name and how many
+    """`vitrail-vpn credential list --json`: name, user name and how many
     connections use it. The tool never prints a password; none is kept."""
     return [
         {
@@ -485,7 +485,7 @@ def parse_credentials(text: str) -> list[dict]:
 
 
 def parse_domains(text: str) -> list[dict]:
-    """`hypraether-vpn domain list --json`: each domain with how many addresses it has now."""
+    """`vitrail-vpn domain list --json`: each domain with how many addresses it has now."""
     return [
         {"domain": one["domain"], "ips": len(one["ips"]) if isinstance(one.get("ips"), list) else 0}
         for one in json_list(text)
@@ -494,7 +494,7 @@ def parse_domains(text: str) -> list[dict]:
 
 
 def parse_mode(text: str) -> str:
-    """`hypraether-vpn mode`: split or full (split when it says anything else)."""
+    """`vitrail-vpn mode`: split or full (split when it says anything else)."""
     return "full" if text.strip() == "full" else "split"
 
 
@@ -502,7 +502,7 @@ def parse_mode(text: str) -> str:
 
 
 def read_timeout(argv: list[str]) -> int:
-    if argv[:3] == ["hypraether-vpn", "domain", "list"]:
+    if argv[:3] == ["vitrail-vpn", "domain", "list"]:
         return LONG_READ
     return BLUETOOTH_READ if argv[0] == "bluetoothctl" else READ_TIMEOUT
 
@@ -550,24 +550,24 @@ def wifi(run: Runner, devices: list[dict]) -> dict:
 
 
 def marker_path() -> Path:
-    """hypraether's `enabled` marker: it exists while a tunnel is up (the tool
+    """vitrail-vpn's `enabled` marker: it exists while a tunnel is up (the tool
     keeps it for every connect, disconnect and removal, from any frontend)."""
     config = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
-    return Path(config) / "hypraether" / "vpn" / "enabled"
+    return Path(config) / "vitrail-vpn" / "enabled"
 
 
 def vpn(run: Runner, quality: dict | None = None, marker: Path | None = None) -> dict:
-    """The VPN as hypraether has it. `quality` is the last probe's (see
+    """The VPN as vitrail-vpn has it. `quality` is the last probe's (see
     `probe`): state() itself never pings."""
-    listed = run(["hypraether-vpn", "list", "--json"])
+    listed = run(["vitrail-vpn", "list", "--json"])
     tunnels = parse_vpn(listed or "")
     ids = {one["id"] for one in tunnels}
     return {
         "available": listed is not None,
         "tunnels": tunnels,
-        "credentials": parse_credentials(run(["hypraether-vpn", "credential", "list", "--json"]) or ""),
-        "mode": parse_mode(run(["hypraether-vpn", "mode"]) or ""),
-        "domains": parse_domains(run(["hypraether-vpn", "domain", "list", "--json"]) or ""),
+        "credentials": parse_credentials(run(["vitrail-vpn", "credential", "list", "--json"]) or ""),
+        "mode": parse_mode(run(["vitrail-vpn", "mode"]) or ""),
+        "domains": parse_domains(run(["vitrail-vpn", "domain", "list", "--json"]) or ""),
         "enabled": listed is not None and (marker or marker_path()).exists(),
         "quality": {key: value for key, value in (quality or {}).items() if key in ids},
     }
@@ -737,7 +737,7 @@ def excluded(document: dict) -> set[str]:
 
 
 def domain_list(run: Runner) -> list[dict]:
-    return parse_domains(run(["hypraether-vpn", "domain", "list", "--json"]) or "")
+    return parse_domains(run(["vitrail-vpn", "domain", "list", "--json"]) or "")
 
 
 def read_config(path: str) -> str:
@@ -778,7 +778,7 @@ Pinger = Callable[[str], "tuple[float | None, int | None]"]
 
 
 def probe(tunnels: list[dict], pinger: Pinger = ping_host, read: Callable[[str], str] = read_config) -> dict[str, dict]:
-    """hypraether's measure: ping up to three of each connection's remote hosts
+    """vitrail-vpn's measure: ping up to three of each connection's remote hosts
     side by side. Latency is the mean of the hosts' average round trips, loss
     the worst of their losses; None when no host said."""
     hosts = {one["id"]: remote_hosts(read(one["config_path"])) for one in tunnels}
@@ -797,7 +797,7 @@ def probe(tunnels: list[dict], pinger: Pinger = ping_host, read: Callable[[str],
 
 
 def best(tunnels: list[dict], quality: dict, left_out: set[str]) -> str | None:
-    """hypraether's rule: of the connections that have a credential (all, when
+    """vitrail-vpn's rule: of the connections that have a credential (all, when
     none has), the measured one with the lowest latency, loss breaking a tie;
     nothing measured, the first. Vitrail's one addition: a connection the user
     left out of the automatic choice does not compete, unless that empties the
@@ -838,7 +838,7 @@ def load_quality(folder: Path) -> dict:
 
 
 def startup_action(enabled: bool, tunnels: list[dict]) -> str:
-    """hypraether's login rule. A tunnel up without the marker records it
+    """vitrail-vpn's login rule. A tunnel up without the marker records it
     ("mark-enabled"); the marker with nothing up and a connection with a
     credential connects the best one ("connect"); everything else is "none"
     (off stays off)."""
@@ -992,7 +992,7 @@ def add_domains(url: str, act: Act, run: Runner, resolver: Resolver, directory: 
     for name in names:
         if name in known:
             continue
-        done, last = act(["hypraether-vpn", "domain", "add", name], ACT_TIMEOUT)
+        done, last = act(["vitrail-vpn", "domain", "add", name], ACT_TIMEOUT)
         added += done == 0
         if done != 0:
             log(f"domain add failed ({done}): {last}")
@@ -1017,7 +1017,7 @@ def import_file(argument: str, act: Act, store: Store) -> int:
         return 1
     log(label("vpn-import", argument))
     argv = [
-        "hypraether-vpn",
+        "vitrail-vpn",
         "import",
         str(stored),
         *(["--name", data["name"]] if "name" in data else []),
@@ -1031,8 +1031,8 @@ def connect_best(verb: str, tunnels: list[dict], quality: dict, document: dict, 
     if chosen is None:
         log(f"{verb} skipped (no connection)")
         return 0
-    log(f"{verb} -> hypraether-vpn connect {chosen}")
-    return run_logged(verb, ["hypraether-vpn", "connect", chosen], act)
+    log(f"{verb} -> vitrail-vpn connect {chosen}")
+    return run_logged(verb, ["vitrail-vpn", "connect", chosen], act)
 
 
 def apply(
@@ -1070,9 +1070,9 @@ def apply(
             act(["nmcli", "device", "wifi", "rescan"], READ_TIMEOUT)
     elif verb == "vpn-probe":
         log(verb)
-        quality = probe(parse_vpn(run(["hypraether-vpn", "list", "--json"]) or ""), pinger, read)
+        quality = probe(parse_vpn(run(["vitrail-vpn", "list", "--json"]) or ""), pinger, read)
     elif verb == "vpn-best":
-        tunnels = parse_vpn(run(["hypraether-vpn", "list", "--json"]) or "")
+        tunnels = parse_vpn(run(["vitrail-vpn", "list", "--json"]) or "")
         quality = probe(tunnels, pinger, read)
         code = connect_best(verb, tunnels, quality, vpndoc.read_doc(doc_folder), act)
     elif verb == "vpn-import":
@@ -1131,7 +1131,7 @@ def autostart(
     doc_folder: Path | None = None,
     sleep: Callable[[float], None] = time.sleep,
 ) -> int:
-    """hypraether's login rule for the VPN, once per session (see
+    """vitrail-vpn's login rule for the VPN, once per session (see
     `startup_action`). When it connects and nothing could be measured, it waits
     up to NETWORK_WAIT seconds for NetworkManager to report full connectivity,
     measures again, and connects the best anyway."""
@@ -1142,9 +1142,9 @@ def autostart(
         return 0
     folder = folder or prefs.config_dir()
     marker = marker or marker_path()
-    listed = run(["hypraether-vpn", "list", "--json"])
+    listed = run(["vitrail-vpn", "list", "--json"])
     if listed is None:
-        log("autostart skipped (hypraether-vpn is not available)")
+        log("autostart skipped (vitrail-vpn is not available)")
         return 0
     tunnels = parse_vpn(listed)
     action = startup_action(marker.exists(), tunnels)

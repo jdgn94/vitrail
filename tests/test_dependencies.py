@@ -75,8 +75,8 @@ SYSTEM = {
 
 # Programs that are not packaged by Vitrail, with the reason.
 EXTERNAL = {
-    # The VPN module (vpn/) installs it itself, from the Hypraether project.
-    "hypraether-vpn",
+    # The VPN module (vpn/) installs it itself, from the Vitrail VPN module.
+    "vitrail-vpn",
     # Hyprland's own dialog, replaced by scripts/hyprland-dialog.sh when the
     # bar runs; the real one ships with the hyprland package.
     "hyprland-dialog",
@@ -355,7 +355,7 @@ class DependencyTests(unittest.TestCase):
             "gsettings",
             "kitty",
             "hyprlock",
-            "hypraether-vpn",
+            "vitrail-vpn",
             "qalc",
             "xdg-open",
             "wl-copy",

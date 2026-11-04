@@ -1,8 +1,8 @@
-# ~/.config/hypraether/vpn/connections/proton-us.conf
+# ~/.config/vitrail-vpn/connections/proton-us.conf
 #
 # TEMPLATE for the split-tunnel OpenVPN client configuration.
 #
-# This is what `hypraether-vpn import` generates from a stock provider .ovpn
+# This is what `vitrail-vpn import` generates from a stock provider .ovpn
 # file. Do NOT hand-edit the embedded <ca>/<tls-crypt> blocks — they are
 # copied verbatim from the .ovpn you download. Instead, keep your .ovpn up
 # to date and re-import it.
@@ -13,10 +13,10 @@
 #   - `pull-filter ignore "dhcp-option DNS"`   : keep using the local dnsmasq
 #     as resolver so domains keep populating the nftables sets.
 #   - `route-nopull`                           : ignore server-pushed routes.
-#   - `auth-user-pass /run/hypraether-vpn/<id>/auth.txt` : transient tmpfs
+#   - `auth-user-pass /run/vitrail-vpn/<id>/auth.txt` : transient tmpfs
 #     credentials written by vpn-auth-prep.sh from the sqlite vault.
 #   - `up`/`down` scripts                     : install/remove the policy routing
-#     and SNAT rules (see /etc/hypraether/vpn/).
+#     and SNAT rules (see /etc/vitrail/vpn/).
 #   - ping/connect-retry options               : resilient auto-reconnect.
 
 client
@@ -55,7 +55,7 @@ reneg-sec 0
 remote-cert-tls server
 
 # -- BEGIN: split-tunnel adaptations (added by ovpn2split.py) ---------------
-auth-user-pass /run/hypraether-vpn/proton-us/auth.txt
+auth-user-pass /run/vitrail-vpn/proton-us/auth.txt
 
 pull-filter ignore "redirect-gateway"
 pull-filter ignore "dhcp-option DNS"
@@ -69,8 +69,8 @@ explicit-exit-notify
 resolv-retry infinite
 
 script-security 2
-up /etc/hypraether/vpn/vpn-up.sh
-down /etc/hypraether/vpn/vpn-down.sh
+up /etc/vitrail/vpn/vpn-up.sh
+down /etc/vitrail/vpn/vpn-down.sh
 # -- END: split-tunnel adaptations ------------------------------------------
 
 # -- BEGIN: cert/key blocks from your provider's .ovpn ----------------------

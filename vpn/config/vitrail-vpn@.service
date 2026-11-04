@@ -1,31 +1,31 @@
-# /etc/systemd/system/hypraether-vpn@.service
+# /etc/systemd/system/vitrail-vpn@.service
 #
-# One instance per split-tunnel connection: hypraether-vpn@<id>.service,
+# One instance per split-tunnel connection: vitrail-vpn@<id>.service,
 # where <id> is a connection id from the sqlite vault (see vpn_manager.py).
 #
 # Credentials are never persisted as plaintext: vpn-auth-prep.sh reads the
 # vault on start and writes a transient 0600 file under /run (tmpfs) that
 # OpenVPN reads via `auth-user-pass`. The connection config lives in the
-# user's config dir (paths come from /etc/hypraether/vpn/env); OpenVPN runs
+# user's config dir (paths come from /etc/vitrail/vpn/env); OpenVPN runs
 # the root-checked copy vpn-auth-prep.sh builds from it under /run, never the
 # user-writable file itself.
 #
 # Only one instance should run at a time (the shared 'vpn' routing table);
-# `hypraether-vpn connect` enforces that.
+# `vitrail-vpn connect` enforces that.
 
 [Unit]
-Description=Hypraether split-tunnel VPN (%i)
+Description=Vitrail split-tunnel VPN (%i)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-EnvironmentFile=/etc/hypraether/vpn/env
-RuntimeDirectory=hypraether-vpn
+EnvironmentFile=/etc/vitrail/vpn/env
+RuntimeDirectory=vitrail-vpn
 RuntimeDirectoryMode=0755
-ExecStartPre=/etc/hypraether/vpn/vpn-auth-prep.sh %i
-ExecStart=/usr/bin/openvpn --config /run/hypraether-vpn/%i/client.conf
-ExecStopPost=/etc/hypraether/vpn/vpn-auth-clean.sh %i
+ExecStartPre=/etc/vitrail/vpn/vpn-auth-prep.sh %i
+ExecStart=/usr/bin/openvpn --config /run/vitrail-vpn/%i/client.conf
+ExecStopPost=/etc/vitrail/vpn/vpn-auth-clean.sh %i
 Restart=on-failure
 RestartSec=10
 

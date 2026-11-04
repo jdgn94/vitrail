@@ -2,7 +2,7 @@ import QtQuick
 import QtTest
 import "../../bar/network/vpn.js" as Vpn
 
-// How a hypraether-vpn connection reads in the bar.
+// How a vitrail-vpn connection reads in the bar.
 TestCase {
     name: "Vpn"
 

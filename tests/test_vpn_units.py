@@ -1,7 +1,7 @@
 """The VPN outlives the shell.
 
-hypraether-vpn raises the tunnel as a system unit
-(`hypraether-vpn@<id>.service`); Vitrail commands it and never owns the
+vitrail-vpn raises the tunnel as a system unit
+(`vitrail-vpn@<id>.service`); Vitrail commands it and never owns the
 process, so stopping or restarting the bar leaves the connection alone. What
 must not depend on the shell is the login rule: a user unit runs
 `vitrail-network autostart` at every login, so the tunnel comes up even when
