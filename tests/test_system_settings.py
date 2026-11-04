@@ -6,7 +6,6 @@ prints it instead of running it, so nothing here touches the real machine.
 
 from __future__ import annotations
 
-import os
 import shutil
 import stat
 import subprocess
@@ -22,20 +21,20 @@ HELPER = ROOT / "scripts" / "vitrail-locale-helper.sh"
 
 STUBS = {
     # Reads answer from the environment; any set-* lands in $STUB_LOG.
-    "timedatectl": r'''
+    "timedatectl": r"""
 case "$*" in
     "show -p Timezone --value") echo "${STUB_TZ:-Europe/Madrid}" ;;
     "show -p NTP --value") echo "${STUB_NTP:-yes}" ;;
     *) echo "timedatectl $*" >>"$STUB_LOG" ;;
 esac
-''',
-    "localectl": r'''
+""",
+    "localectl": r"""
 case "$1" in
     status) echo "   System Locale: LANG=${STUB_LANG:-en_US.UTF-8}" ;;
     list-locales) printf '%s\n' ${STUB_LOCALES:-C.UTF-8 en_US.UTF-8} ;;
     *) echo "localectl $*" >>"$STUB_LOG" ;;
 esac
-''',
+""",
     "pkexec": 'echo "pkexec $*" >>"$STUB_LOG"',
     "hyprctl": 'echo "hyprctl $*" >>"$STUB_LOG"; echo ok',
     "python3": "exit 0",
@@ -81,8 +80,7 @@ class Sandbox(unittest.TestCase):
         }
         if hyprland:
             base["HYPRLAND_INSTANCE_SIGNATURE"] = "test"
-        result = subprocess.run(["bash", str(APPLY)], capture_output=True, text=True,
-                                env={**base, **env}, timeout=30)
+        result = subprocess.run(["bash", str(APPLY)], capture_output=True, text=True, env={**base, **env}, timeout=30)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         return result.stdout
 
@@ -119,8 +117,7 @@ class TimezoneTests(Sandbox):
         self.assertNotIn("timedatectl", self.apply())
 
     def test_a_zone_that_is_not_in_tzdata_is_refused(self) -> None:
-        for bad in ("../etc/passwd", "Europe/../../etc/passwd", "Nowhere/Land", "/etc/passwd",
-                    "Europe/Paris;reboot"):
+        for bad in ("../etc/passwd", "Europe/../../etc/passwd", "Nowhere/Land", "/etc/passwd", "Europe/Paris;reboot"):
             with self.subTest(zone=bad):
                 self.settings(timezone=bad, languageSystem="false")
                 out = self.apply()
@@ -154,10 +151,13 @@ class LocaleTests(Sandbox):
         self.settings(language="es")
         out = self.apply()
         lines = [line for line in out.splitlines() if line.startswith("dry-run:")]
-        self.assertEqual(lines, [
-            f"dry-run: pkexec {self.helper} es_ES.UTF-8",
-            "dry-run: localectl set-locale LANG=es_ES.UTF-8",
-        ])
+        self.assertEqual(
+            lines,
+            [
+                f"dry-run: pkexec {self.helper} es_ES.UTF-8",
+                "dry-run: localectl set-locale LANG=es_ES.UTF-8",
+            ],
+        )
         self.assertEqual(self.calls(), "")
 
     def test_an_available_locale_is_only_set(self) -> None:
@@ -195,9 +195,15 @@ class StampTests(Sandbox):
     def run_lib(self, script: str, dry: str = "0") -> subprocess.CompletedProcess:
         return subprocess.run(
             ["bash", "-c", f'source "{ROOT}/scripts/lib/system.sh"; {script}'],
-            capture_output=True, text=True, timeout=30,
-            env={"PATH": f"{self.stubs}:/usr/bin:/bin", "HOME": str(self.dir),
-                 "XDG_CACHE_HOME": str(self.dir / "cache"), "VITRAIL_DRY_RUN": dry},
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env={
+                "PATH": f"{self.stubs}:/usr/bin:/bin",
+                "HOME": str(self.dir),
+                "XDG_CACHE_HOME": str(self.dir / "cache"),
+                "VITRAIL_DRY_RUN": dry,
+            },
         )
 
     def test_a_request_is_remembered_and_only_a_new_value_acts_again(self) -> None:
@@ -223,16 +229,16 @@ class LocaleHelperTests(Sandbox):
     def setUp(self) -> None:
         super().setUp()
         self.supported = self.dir / "SUPPORTED"
-        self.supported.write_text(
-            "en_US.UTF-8 UTF-8\nes_ES.UTF-8 UTF-8\nes_ES ISO-8859-1\n",
-            encoding="utf-8")
+        self.supported.write_text("en_US.UTF-8 UTF-8\nes_ES.UTF-8 UTF-8\nes_ES ISO-8859-1\n", encoding="utf-8")
         self.gen = self.dir / "locale.gen"
         self.gen.write_text("#en_US.UTF-8 UTF-8\n#  es_ES.UTF-8 UTF-8\n", encoding="utf-8")
         write_executable(self.dir / "locale-gen", f'echo generated >>"{self.log}"')
         text = HELPER.read_text(encoding="utf-8")
-        for old, new in (("/usr/share/i18n/SUPPORTED", self.supported),
-                         ("/etc/locale.gen", self.gen),
-                         ("/usr/bin/locale-gen", self.dir / "locale-gen")):
+        for old, new in (
+            ("/usr/share/i18n/SUPPORTED", self.supported),
+            ("/etc/locale.gen", self.gen),
+            ("/usr/bin/locale-gen", self.dir / "locale-gen"),
+        ):
             self.assertIn(old, text)
             text = text.replace(old, str(new))
         self.script = self.dir / "helper.sh"
@@ -259,8 +265,18 @@ class LocaleHelperTests(Sandbox):
 
     def test_rejects_anything_that_is_not_a_supported_utf8_locale(self) -> None:
         before = self.gen.read_text()
-        for bad in ("", "xx_YY.UTF-8", "es_ES", "es_ES.UTF-8 UTF-8", "../../etc/passwd",
-                    "es_ES.UTF-8\nfoo", "es_ES.UTF-8;rm -rf /", "es_.*", "-n", "ES_es.UTF-8"):
+        for bad in (
+            "",
+            "xx_YY.UTF-8",
+            "es_ES",
+            "es_ES.UTF-8 UTF-8",
+            "../../etc/passwd",
+            "es_ES.UTF-8\nfoo",
+            "es_ES.UTF-8;rm -rf /",
+            "es_.*",
+            "-n",
+            "ES_es.UTF-8",
+        ):
             with self.subTest(locale=bad):
                 result = self.run_helper(bad)
                 self.assertNotEqual(result.returncode, 0)

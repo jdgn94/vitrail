@@ -126,7 +126,6 @@ def collect(
     # 5. Color
     cache_base = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
     theme_file = cache_base / "vitrail" / "generated" / "theme.json"
-    color_valid = False
     if not theme_file.exists():
         color_info = {
             "path": str(theme_file),
@@ -138,7 +137,6 @@ def collect(
     else:
         try:
             json.loads(theme_file.read_text(encoding="utf-8"))
-            color_valid = True
             color_info = {
                 "path": str(theme_file),
                 "exists": True,

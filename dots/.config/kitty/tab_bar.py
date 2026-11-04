@@ -15,7 +15,6 @@
 # their mtime changes. Defaults here must equal terminal-header.ts's.
 import json
 import os
-import re
 from kitty.fast_data_types import (
     GLFW_MOUSE_BUTTON_LEFT,
     GLFW_RELEASE,

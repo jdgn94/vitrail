@@ -9,7 +9,6 @@ Adding a language means dropping a JSON file in kit/i18n/.
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -39,10 +38,7 @@ def load() -> dict[str, dict]:
 def bundle() -> dict:
     languages = load()
     return {
-        "languages": [
-            {"key": code, "label": languages[code]["_label"]}
-            for code in sorted(languages)
-        ],
+        "languages": [{"key": code, "label": languages[code]["_label"]} for code in sorted(languages)],
         "strings": languages,
     }
 

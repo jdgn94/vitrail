@@ -214,6 +214,26 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] `vitrail update --dry-run` muestra el plan del instalador sin cambiar
       nada.
 
+## v1 — paquete, update, desinstalación, GPU, snapshots, primer arranque
+
+- [ ] `vitrail version` responde con versión, método y commit.
+- [ ] `vitrail update --check` con la rama al día: `behind: false`; con un
+  commit nuevo: `behind: true`.
+- [ ] `vitrail update` en una copia de prueba mueve el checkout, toma snapshot
+  (`vitrail snapshot list` lo enseña) y relanza el instalador.
+- [ ] `vitrail doctor --report /tmp/r.txt` escribe el informe sin rutas de
+  usuario y sale 1 si hay problemas.
+- [ ] `./uninstall.sh --dry-run` no cambia nada; `./uninstall.sh` quita solo
+  los enlaces; `--purge` mueve `~/.config/vitrail` a un backup.
+- [ ] `pacman -Q mesa vulkan-radeon` (o el de tu GPU) coincide con lo que el
+  instalador eligió; `--gpu nvidia` en `--dry-run` lo cambia.
+- [ ] En una máquina sin fondo elegido, `vitrail welcome` pone uno, aplica la
+  paleta y abre Appearance.
+- [ ] `scripts/release.sh --dry-run` con el árbol limpio anuncia
+  `vitrail-1.0.0.tar.gz`; con un cambio versionado se niega.
+- [ ] `yay -S vitrail`/`vitrail-git` en una VM instala y `vitrail-install`
+  enlaza el home; `vitrail update` entonces solo re-ejecuta el instalador.
+
 ### Diferidos (decide si lo quieres)
 
 - Selector vacío si una clave guardada está vacía **y** la lista en vivo

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 import tempfile
 import unittest
@@ -18,8 +17,7 @@ class FakeNotifier:
         self.sent: list[dict] = []
 
     def send(self, summary, body, actions=None, hints=None, replace=0, timeout=0) -> int:
-        self.sent.append({"summary": summary, "body": body, "actions": actions,
-                          "hints": hints, "replace": replace})
+        self.sent.append({"summary": summary, "body": body, "actions": actions, "hints": hints, "replace": replace})
         return len(self.sent)
 
 
@@ -64,8 +62,9 @@ class JobTests(unittest.TestCase):
         clock.tick(125)
         job.finish()
         last = notifier.sent[-1]
-        self.assertEqual((last["summary"], last["hints"]["x-vitrail-state"], last["actions"]),
-                         ("Copying photos", "done", []))
+        self.assertEqual(
+            (last["summary"], last["hints"]["x-vitrail-state"], last["actions"]), ("Copying photos", "done", [])
+        )
         self.assertIn("2:05", last["body"])
 
     def test_a_failure_and_a_cancel_say_so(self) -> None:
@@ -126,8 +125,7 @@ class RegistryTests(unittest.TestCase):
     def test_a_job_whose_process_is_gone_is_forgotten(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "1-dead.json"
-            path.write_text(json.dumps({"pid": 2_000_000_000, "name": "Old", "app": "Vitrail"}),
-                            encoding="utf-8")
+            path.write_text(json.dumps({"pid": 2_000_000_000, "name": "Old", "app": "Vitrail"}), encoding="utf-8")
             self.assertEqual(jobs.jobs_running(Path(folder)), [])
             self.assertFalse(path.exists())
 
@@ -141,10 +139,13 @@ class ArgvTests(unittest.TestCase):
             return 0
 
         with mock.patch.object(jobs, "run", fake_run):
-            self.assertEqual(jobs.main(["run", "--name", "Backup", "--app", "rsync", "--total", "10",
-                                        "--", "rsync", "-a", "a", "b"]), 0)
-        self.assertEqual(seen, {"argv": ["rsync", "-a", "a", "b"], "name": "Backup",
-                                "app": "rsync", "total": 10})
+            self.assertEqual(
+                jobs.main(
+                    ["run", "--name", "Backup", "--app", "rsync", "--total", "10", "--", "rsync", "-a", "a", "b"]
+                ),
+                0,
+            )
+        self.assertEqual(seen, {"argv": ["rsync", "-a", "a", "b"], "name": "Backup", "app": "rsync", "total": 10})
 
     def test_a_command_is_required(self) -> None:
         with mock.patch("sys.stderr"):

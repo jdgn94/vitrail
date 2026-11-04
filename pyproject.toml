@@ -26,3 +26,7 @@ dev = [
 line-length = 120
 target-version = "py311"
 extend-exclude = [".venv", "graphify-out"]
+
+# The gate is undefined names and unused imports; the formatter runs on commit.
+[tool.ruff.lint]
+select = ["E9", "F"]
