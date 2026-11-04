@@ -598,5 +598,21 @@
   "tooltip.notifications": "Notifiche",
   "tooltip.notificationsHint": "Clic sinistro: il centro · clic destro: silenzia per un'ora",
   "tooltip.notificationsCount": "%1 nel centro · clic destro: silenzia per un'ora",
-  "tooltip.notificationsMuted": "Silenziate · clic destro per riattivarle"
+  "tooltip.notificationsMuted": "Silenziate · clic destro per riattivarle",
+  "dashboard.title": "Dashboard",
+  "dashboard.tooltip": "Meteo, prestazioni e contenuti multimediali",
+  "dashboard.tab.calendar": "Calendario",
+  "dashboard.tab.weather": "Meteo",
+  "dashboard.tab.performance": "Prestazioni",
+  "dashboard.tab.media": "Media",
+  "dashboard.weather.empty": "Nessun dato meteo",
+  "dashboard.performance.empty": "Ancora nessun dato",
+  "dashboard.media.empty": "Niente in riproduzione",
+  "dashboard.cpu": "CPU",
+  "dashboard.memory": "Memoria",
+  "dashboard.temperature": "Temperatura",
+  "dashboard.disk": "Disco",
+  "dashboard.network": "Rete",
+  "dashboard.humidity": "Umidità",
+  "dashboard.wind": "Vento"
 }

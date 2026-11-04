@@ -598,5 +598,21 @@
   "tooltip.notifications": "Notificaciones",
   "tooltip.notificationsHint": "Clic izquierdo: el centro · clic derecho: silenciar una hora",
   "tooltip.notificationsCount": "%1 en el centro · clic derecho: silenciar una hora",
-  "tooltip.notificationsMuted": "Silenciadas · clic derecho para reactivarlas"
+  "tooltip.notificationsMuted": "Silenciadas · clic derecho para reactivarlas",
+  "dashboard.title": "Panel",
+  "dashboard.tooltip": "Tiempo, rendimiento y multimedia",
+  "dashboard.tab.calendar": "Calendario",
+  "dashboard.tab.weather": "Tiempo",
+  "dashboard.tab.performance": "Rendimiento",
+  "dashboard.tab.media": "Multimedia",
+  "dashboard.weather.empty": "Aún no hay datos del tiempo",
+  "dashboard.performance.empty": "Aún no hay datos",
+  "dashboard.media.empty": "Nada en reproducción",
+  "dashboard.cpu": "CPU",
+  "dashboard.memory": "Memoria",
+  "dashboard.temperature": "Temperatura",
+  "dashboard.disk": "Disco",
+  "dashboard.network": "Red",
+  "dashboard.humidity": "Humedad",
+  "dashboard.wind": "Viento"
 }

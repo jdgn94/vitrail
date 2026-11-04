@@ -22,6 +22,7 @@ import "notifications"
 import "notifications/notifications.js" as Notifications
 import "notes/notes.js" as Notes
 import "clipboard"
+import "dashboard"
 import "media"
 import "launcher/commands.js" as Commands
 import "launcher/desktop.js" as LauncherDesktop
@@ -1584,6 +1585,7 @@ ShellRoot {
                     case "vpn": return barItems.vpnButton
                     case "powerprofile": return barItems.powerProfileButton
                     case "power": return barItems.powerButton
+                    case "dashboard": return barItems.dashboardButton
                     case "launcher": return launcherButton
                     case "clock": return clockButton
                     default: return null
@@ -2177,6 +2179,13 @@ ShellRoot {
                             }
 
                             Popout {
+                                name: "dashboard"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: dashboardComponent
+                            }
+
+                            Popout {
                                 name: "tray"
                                 current: popouts.name
                                 handover: popouts.handover
@@ -2425,6 +2434,21 @@ ShellRoot {
                         players: shell.mprisPlayers
                         index: shell.mprisIndex
                         strings: shell.strings
+                        onPlayerChosen: function (index) { shell.mprisIndex = index }
+                    }
+                }
+
+                Component {
+                    id: dashboardComponent
+
+                    DashboardPopout {
+                        open: shell.popupOpen && shell.popupKind === "dashboard"
+                        strings: shell.strings
+                        language: shell.prefs.language || "en"
+                        mediaPlayer: shell.mprisPlayer
+                        mediaPlayers: shell.mprisPlayers
+                        mediaIndex: shell.mprisIndex
+                        mediaStyle: shell.prefs.mediaStyle || "disc"
                         onPlayerChosen: function (index) { shell.mprisIndex = index }
                     }
                 }

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "dashboard"
 import "kit"
 import "kit/base"
 import "media"
@@ -30,6 +31,7 @@ GridLayout {
     readonly property Item vpnButton: vpn
     readonly property Item powerProfileButton: profile
     readonly property Item powerButton: power
+    readonly property Item dashboardButton: dashboard
 
 
     // The power button's left click opens the session menu; its right click
@@ -63,6 +65,20 @@ GridLayout {
         onMenuRequested: function (kind, item) { root.clicked(kind, item) }
         onHovered: function (kind, item) { root.hovered(kind, item) }
         onTipHovered: function (item, on) { root.tipHovered(item, on) }
+    }
+
+    DashboardButton {
+        id: dashboard
+
+        Layout.alignment: Qt.AlignHCenter
+        strings: root.strings
+        opened: root.open && root.openKind === "dashboard"
+        onClicked: root.clicked("dashboard", dashboard)
+        onHoveredChanged: {
+            root.tipHovered(dashboard, hovered)
+            if (hovered)
+                root.hovered("dashboard", dashboard)
+        }
     }
 
     // The connection buttons, together in a chip.

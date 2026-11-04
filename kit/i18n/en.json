@@ -598,5 +598,21 @@
   "tooltip.notifications": "Notifications",
   "tooltip.notificationsHint": "Left click: the centre · right click: silence for an hour",
   "tooltip.notificationsCount": "%1 in the centre · right click: silence for an hour",
-  "tooltip.notificationsMuted": "Silenced · right click to turn them back on"
+  "tooltip.notificationsMuted": "Silenced · right click to turn them back on",
+  "dashboard.title": "Dashboard",
+  "dashboard.tooltip": "Weather, performance and media",
+  "dashboard.tab.calendar": "Calendar",
+  "dashboard.tab.weather": "Weather",
+  "dashboard.tab.performance": "Performance",
+  "dashboard.tab.media": "Media",
+  "dashboard.weather.empty": "No weather data yet",
+  "dashboard.performance.empty": "No data yet",
+  "dashboard.media.empty": "Nothing playing",
+  "dashboard.cpu": "CPU",
+  "dashboard.memory": "Memory",
+  "dashboard.temperature": "Temperature",
+  "dashboard.disk": "Disk",
+  "dashboard.network": "Network",
+  "dashboard.humidity": "Humidity",
+  "dashboard.wind": "Wind"
 }
