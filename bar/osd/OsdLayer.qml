@@ -467,6 +467,7 @@ Scope {
         BrightnessCard {
             light: root.controller.light
             strings: root.strings
+            step: root.controller.brightnessStep
         }
     }
 

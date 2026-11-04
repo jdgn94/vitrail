@@ -11,6 +11,8 @@ ColumnLayout {
     // BrightnessState.
     property var light
     property var strings: ({})
+    // Percent one wheel notch moves.
+    property real step: VitrailTokens.osd.step
 
     spacing: VitrailTokens.gap("sm")
 
@@ -41,7 +43,7 @@ ColumnLayout {
             suffix: "%"
             from: 0
             to: 100
-            wheelStep: VitrailTokens.osd.step
+            wheelStep: root.step
             value: row.modelData.percent
             size: "sm"
             onMoved: function (value) { root.light.set(row.modelData.name, value) }

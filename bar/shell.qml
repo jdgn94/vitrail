@@ -605,6 +605,13 @@ ShellRoot {
         var value = shell.strings[key]
         return value === undefined ? key : value
     }
+    // A preference that reads as a switch (missing or empty: `fallback`).
+    function prefBool(key, fallback) {
+        var raw = shell.prefs[key]
+        if (raw === undefined || raw === "")
+            return fallback
+        return String(raw) !== "false" && String(raw) !== "0"
+    }
     property var palettes: ({})
     property date now: new Date()
     // Last panel variant opened; it is kept while the panel closes so the
@@ -1154,6 +1161,13 @@ ShellRoot {
     // monitor draws its own OsdLayer.
     OsdController {
         id: osdController
+
+        step: Number(shell.prefs.osdStep) || VitrailTokens.ranges.osdStep.value
+        brightnessStep: Number(shell.prefs.osdBrightnessStep) || VitrailTokens.ranges.osdBrightnessStep.value
+        appStep: Number(shell.prefs.soundStep) || VitrailTokens.ranges.soundStep.value
+        showOutputApps: shell.prefBool("soundOutputApps", true)
+        showInputApps: shell.prefBool("soundInputApps", true)
+        focusApps: shell.prefBool("soundFocusApps", true)
     }
 
     NotificationQueue {
@@ -1787,6 +1801,10 @@ ShellRoot {
                     focused: monitor.modelData === shell.focusedScreen
                     strings: shell.strings
                     opacityLevel: shell.barOpacity
+                    keysEnabled: shell.prefBool("osdKeys", true)
+                    keyTime: Number(shell.prefs.osdKeyTime) || VitrailTokens.ranges.osdKey.value
+                    hotZone: Number(shell.prefs.osdHotZone) || VitrailTokens.ranges.osdHot.value
+                    sliderSize: shell.prefs.osdSize || VitrailTokens.osd.size
                 }
 
                 // Notifications: a full-height panel that opens from a hot
