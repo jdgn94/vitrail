@@ -95,11 +95,28 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 
 - [ ] Con `appearance=light` y `appearance=dark`, las tres pestañas
       (Text / Icons / Cursor) se ven como en
-      `screenshots/p2.2-fonts-icons-cursor/fonts/<tab>/<tema>.png`.
+      `screenshots/p2.2-fonts-icons-cursor/fonts/<tab>/<tema>.png`, y los
+      diálogos en `.../<tab>/dialog-<tema>.png`.
 - [ ] Se puede recorrer entera con el teclado: `Tab` para entrar en cada
       selector, flechas para cambiar, `Enter` para abrir/cerrar.
 
-### 9. Al terminar
+### 9. Los mosaicos (los selectores nuevos)
+
+- [ ] **Text → System font**: al pulsar se abre un diálogo con "Aa" dibujado
+      en cada familia y el nombre debajo; abre en la familia elegida.
+- [ ] Escribe `inter` en **Search**: la rejilla se queda con las que coinciden.
+- [ ] Flechas mueven la selección, `Enter` elige, `Esc` y clic fuera cierran.
+- [ ] **Icons → App icon pack**: el campo muestra cuatro iconos del pack y su
+      nombre; el mosaico enseña ocho iconos por pack con el nombre debajo
+      (Adwaita, Papirus, breeze…).
+- [ ] **Cursor → Cursor theme**: cada celda enseña la flecha real de ese pack
+      (Bibata naranja/blanca, Adwaita…), no un icono genérico.
+- [ ] **Shell icons** sigue siendo el selector horizontal; el icono que tiene a
+      su izquierda cambia de forma al pasar de Rounded a Sharp a Outlined.
+- [ ] Elegir en un mosaico aplica igual que antes (journal, `fc-match`, o
+      `gsettings get … cursor-theme`).
+
+### 10. Al terminar
 
 - [ ] Todo lo anterior en verde.
 - [ ] Marca P2.2 como hecha en `docs/roadmap.md`
