@@ -53,6 +53,12 @@ QtObject {
     property alias soundInputApps: soundFile.soundInputApps
     property alias soundFocusApps: soundFile.soundFocusApps
     property alias soundStep: soundFile.soundStep
+    property alias fontSystem: fontsFile.fontSystem
+    property alias fontConsole: fontsFile.fontConsole
+    property alias uiIcons: fontsFile.uiIcons
+    property alias iconTheme: fontsFile.iconTheme
+    property alias cursorTheme: fontsFile.cursorTheme
+    property alias cursorSize: fontsFile.cursorSize
     property alias wallpaper: wallpaperFile.wallpaper
     property alias wallpaperMode: wallpaperFile.wallpaperMode
     property alias wallpaperDir: wallpaperFile.wallpaperDir
@@ -243,6 +249,22 @@ QtObject {
         property bool soundInputApps: true
         property bool soundFocusApps: true
         property int soundStep: VitrailTokens.ranges.soundStep.value
+    }
+
+    property Settings fontsSettings: Settings {
+        id: fontsFile
+
+        fileName: root.directory + "/fonts.ini"
+        category: "fonts"
+
+        // One system font for the whole session, a console font of its own,
+        // the shell's icon family, the apps' icon pack and the pointer.
+        property string fontSystem: "Roboto"
+        property string fontConsole: "JetBrainsMono Nerd Font"
+        property string uiIcons: "rounded"
+        property string iconTheme: "Adwaita"
+        property string cursorTheme: "Adwaita"
+        property int cursorSize: 24
     }
 
     property Settings launcherSettings: Settings {

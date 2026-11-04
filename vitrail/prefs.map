@@ -83,6 +83,14 @@ terminal tabStyle
 terminal tabIcons
 terminal tabNumbers
 
+# The fonts, the icon packs and the cursor of the whole session.
+fonts fontSystem
+fonts fontConsole
+fonts uiIcons
+fonts iconTheme
+fonts cursorTheme
+fonts cursorSize
+
 # The apps of the volume and microphone cards, and how they behave.
 sound soundOutputApps
 sound soundInputApps
