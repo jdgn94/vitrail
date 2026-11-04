@@ -551,6 +551,12 @@ ternaries, and Prettier cannot parse the pragma.
 
 Graph artifacts (`graphify-out/`) are regenerated and not versioned.
 
+## Documentation
+
+`docs/index.md` is the map: installation, features, theming (fonts, icons,
+cursors, Flatpak, Firefox), troubleshooting, the roadmap and the manual checks
+a release needs.
+
 ## Structure
 
 ```
