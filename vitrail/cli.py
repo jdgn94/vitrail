@@ -74,6 +74,8 @@ def _parser() -> argparse.ArgumentParser:
     mode.add_argument("action", choices=("apply",))
     mode.add_argument("--mode", choices=("dark", "light"), required=True)
 
+    sub.add_parser("version", help="print the version and how it was installed")
+
     updater = sub.add_parser("update", help="update the installed checkout from its branch")
     updater.add_argument("--check", action="store_true", help="only report the commits")
     updater.add_argument("--force", action="store_true", help="discard local changes")
@@ -323,6 +325,8 @@ def main(argv: list[str] | None = None) -> int:
         return _style(args)
     if args.command == "wallpaper":
         return _wallpaper(args)
+    if args.command == "version":
+        return update.version_command()
     if args.command == "update":
         return update.command(args)
     if args.command == "theme":

@@ -59,15 +59,22 @@ EOF
 # updater must replay. `vitrail update` reads it.
 write_install_state() {
     local folder="${XDG_DATA_HOME:-${HOME}/.local/share}/vitrail"
-    local commit="" branch="main"
+    local commit="" branch="main" method="copy" version="unknown"
     if git -C "$ROOT_DIR" rev-parse --git-dir >/dev/null 2>&1; then
         commit="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
         branch="$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
         [[ -n "$branch" ]] || branch="main"
+        method="git"
+    fi
+    # A tree under /usr comes from the package, even if it carries no .git.
+    case "$ROOT_DIR" in /usr/*) [[ "$method" == "git" ]] || method="package" ;; esac
+    if [[ -f "$ROOT_DIR/pyproject.toml" ]]; then
+        version="$(awk -F'"' '/^version[[:space:]]*=/{print $2; exit}' "$ROOT_DIR/pyproject.toml")"
+        [[ -n "$version" ]] || version="unknown"
     fi
     mkdir -p -- "$folder"
-    printf '{"root":"%s","commit":"%s","branch":"%s","remote":"origin","compositors":"%s","aur":"%s","vpn":"%s","installed":"%s"}\n' \
-        "$ROOT_DIR" "$commit" "$branch" "${SELECTED_COMPOSITORS[*]}" \
+    printf '{"root":"%s","version":"%s","method":"%s","commit":"%s","branch":"%s","remote":"origin","compositors":"%s","aur":"%s","vpn":"%s","installed":"%s"}\n' \
+        "$ROOT_DIR" "$version" "$method" "$commit" "$branch" "${SELECTED_COMPOSITORS[*]}" \
         "${SELECTED_HELPERS[*]}" "$VPN_MODE" "$(date +%Y-%m-%dT%H-%M-%S)" \
         >"$folder/install.json"
 }

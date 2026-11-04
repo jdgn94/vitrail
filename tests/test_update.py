@@ -36,6 +36,42 @@ class StateTests(unittest.TestCase):
             self.assertEqual(update.installed_version(tmp), "1.2.3")
 
 
+class VersionTests(unittest.TestCase):
+    def test_describe_names_the_version_and_the_method(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "pyproject.toml").write_text('[project]\nversion = "1.0.0"\n', encoding="utf-8")
+            text = update.describe({"root": tmp, "method": "package", "commit": "d" * 40})
+        self.assertEqual(text, "vitrail 1.0.0 (package, ddddddd)")
+
+    def test_without_a_record_the_version_command_still_answers(self) -> None:
+        import contextlib
+        import io
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(update.version_command(), 0)
+
+
+class MethodTests(unittest.TestCase):
+    def test_a_package_install_does_not_touch_git(self) -> None:
+        calls: list[list[str]] = []
+
+        def run(argv: list[str]) -> str:
+            calls.append(argv)
+            return ""
+
+        result = update.apply({"root": "/usr/share/vitrail", "method": "package", "commit": "e" * 40}, run)
+        self.assertEqual(result["method"], "package")
+        self.assertEqual(calls, [])
+
+    def test_a_plain_copy_is_refused(self) -> None:
+        result = update.apply({"root": "/tmp/x", "method": "copy"}, lambda argv: "")
+        self.assertEqual(result["error"], update.ERR_COPY)
+
+    def test_check_reports_the_method(self) -> None:
+        result = update.check({"root": "/tmp/x", "method": "copy", "commit": "f" * 40}, lambda argv: None)
+        self.assertEqual(result["method"], "copy")
+
+
 class RemoteTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()

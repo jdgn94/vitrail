@@ -24,6 +24,7 @@ STATE = "install.json"
 ERR_DIRTY = "the checkout has local changes; commit them or use --force"
 ERR_FETCH = "could not fetch the remote branch"
 ERR_MOVE = "could not move the checkout"
+ERR_COPY = "this is a plain copy, not a git checkout or a package; reinstall it"
 
 
 class UpdateError(RuntimeError):
@@ -70,6 +71,24 @@ def installed_version(root: str | Path) -> str:
     return ""
 
 
+def current_version(root: str | Path = "") -> str:
+    """The checkout's version, else the installed package's, else unknown."""
+    value = installed_version(root) if root else ""
+    if value:
+        return value
+    try:
+        from importlib.metadata import version as metadata
+
+        return metadata("vitrail")
+    except Exception:  # noqa: BLE001 — metadata raises its own types
+        return "unknown"
+
+
+def describe(document: dict) -> str:
+    commit = (document.get("commit") or "")[:7] or "unknown"
+    return f"vitrail {current_version(document.get('root', ''))} ({document.get('method') or 'unknown'}, {commit})"
+
+
 def remote_commit(document: dict, run: Runner = run_text) -> str:
     """The commit the tracked branch points at, or "" when unreachable."""
     root = document.get("root")
@@ -95,7 +114,8 @@ def check(document: dict, run: Runner = run_text) -> dict:
         "installed": installed,
         "remote": remote,
         "behind": bool(remote) and remote != installed,
-        "version": installed_version(document.get("root", "")),
+        "version": current_version(document.get("root", "")),
+        "method": document.get("method") or "git",
     }
 
 
@@ -103,6 +123,12 @@ def apply(document: dict, run: Runner = run_text, force: bool = False) -> dict:
     """Moves the checkout to the remote branch; {"commit"} or {"error"}."""
     if not document.get("root"):
         return {"error": "no install record: run the installer first"}
+    method = document.get("method") or "git"
+    if method == "package":
+        # The package manager moved the files; only the post steps are ours.
+        return {"commit": document.get("commit", ""), "method": "package"}
+    if method != "git":
+        return {"error": ERR_COPY}
     if is_dirty(document, run) and not force:
         return {"error": ERR_DIRTY}
     branch = document.get("branch") or "main"
@@ -146,11 +172,23 @@ def command(args) -> int:
     if "error" in result:
         print(f"update refused: {result['error']}")
         return 1
-    print(f"checkout at {result['commit'][:12]}")
+    if result.get("method") == "package":
+        print("installed as a package: run your package manager to update it")
+    else:
+        print(f"checkout at {result['commit'][:12]}")
     if not reinstall(document, dry_run=args.dry_run):
         print("the checkout moved but the installer did not run; run ./install.sh yourself")
         return 1
     print("updated")
+    return 0
+
+
+def version_command() -> int:
+    document = state()
+    if not document:
+        print(f"vitrail {current_version()} (not installed from a checkout)")
+        return 0
+    print(describe(document))
     return 0
 
 
