@@ -55,6 +55,30 @@ else
     not_ok "settings window renders" "selftest.png missing or empty"
 fi
 
+# Pages are built when their category is first shown, so the run above covers
+# only the first one: open each category on its own and require it to render.
+# A page that fails to build makes the selftest exit non-zero (LazyPage.qml).
+categories="$(grep -oP '^\s+\{ key: "\K\w+(?=", group:)' "$REPO/shell/main.qml")"
+pages="$(grep -c '^ *LazyPage {' "$REPO/shell/main.qml")"
+if [[ "$(wc -w <<<"$categories")" -ne "$pages" ]]; then
+    not_ok "every category has a page" "$(wc -w <<<"$categories") categories, $pages pages"
+fi
+for category in $categories; do
+    (
+        XDG_CONFIG_HOME="$tmp/config-$category" XDG_CACHE_HOME="$tmp/cache-$category" \
+            QT_QPA_PLATFORM=offscreen timeout 25 "$REPO/bin/vitrail-settings" \
+            --selftest --category "$category" >/dev/null 2>&1
+    ) &
+done
+wait
+for category in $categories; do
+    if [[ -s "$tmp/config-$category/vitrail/selftest.png" ]]; then
+        ok "category $category renders"
+    else
+        not_ok "category $category renders" "selftest.png missing: the page did not load"
+    fi
+done
+
 for screen in login lock; do
     target="$tmp/${screen}.png"
     if QT_QPA_PLATFORM=offscreen timeout 25 "$REPO/bin/vitrail-preview" "$screen" --grab "$target" >/dev/null 2>&1 \

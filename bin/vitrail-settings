@@ -18,58 +18,72 @@ umask 077
 
 mkdir -p -- "${CONFIG}" "${VPN_DIR}"
 
-# A legacy settings.ini becomes one file per area before the window reads them.
-if command -v python3 >/dev/null 2>&1; then
-    PYTHONPATH="${HERE}/.." python3 -m vitrail.cli migrate >/dev/null 2>&1 || true
-fi
+# The helpers below do not depend on each other, so they run together, each
+# writing its answer to a file in a private folder; `wait` joins them all
+# before the window starts. `migrate` (a legacy settings.ini becomes one file
+# per area) runs among them: none of the others reads the preference files, and
+# only the window does, after the `wait`.
 
-plugins="[]"
-if command -v python3 >/dev/null 2>&1; then
-    plugins="$(PYTHONPATH="${HERE}/.." python3 -m vitrail.plugins index 2>/dev/null || printf '[]')"
-fi
-
-i18n='{"languages":[],"strings":{}}'
 # The bundle is a file, not an argument: every language makes it longer than
 # the kernel's 128 KiB limit for one argument. The window reads it at start.
 CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/vitrail"
 i18n_file="${CACHE_DIR}/i18n-bundle.json"
 mkdir -p -- "${CACHE_DIR}"
-if command -v python3 >/dev/null 2>&1; then
-    if python3 "${HERE}/../scripts/i18n-bundle.py" >"${i18n_file}.part" 2>/dev/null; then
-        mv -- "${i18n_file}.part" "${i18n_file}"
-    else
-        rm -f -- "${i18n_file}.part"
-        printf '{"languages":[],"strings":{}}' >"${i18n_file}"
-    fi
-else
-    printf '{"languages":[],"strings":{}}' >"${i18n_file}"
-fi
 
-palette="{}"
-if command -v python3 >/dev/null 2>&1; then
-    palette="$(python3 "${HERE}/../scripts/palette-json.py" 2>/dev/null || printf '{}')"
-fi
+work="$(mktemp -d)"
+trap 'rm -rf -- "${work}"' EXIT
 
 # The time zone page: every zone with its UTC offset, and what the system uses
 # now. The window cannot read tzdata or run commands.
 zone=""
 ntp="yes"
-zones="[]"
 if command -v timedatectl >/dev/null 2>&1; then
     zone="$(timedatectl show -p Timezone --value 2>/dev/null || true)"
     ntp="$(timedatectl show -p NTP --value 2>/dev/null || printf yes)"
 fi
+
 if command -v python3 >/dev/null 2>&1; then
-    zones="$(PYTHONPATH="${HERE}/.." python3 -m vitrail.timezones index "${zone}" 2>/dev/null || printf '[]')"
+    PYTHONPATH="${HERE}/.." python3 -m vitrail.cli migrate >/dev/null 2>&1 &
+    {
+        PYTHONPATH="${HERE}/.." python3 -m vitrail.plugins index >"${work}/plugins" 2>/dev/null || printf '[]' >"${work}/plugins"
+    } &
+    {
+        if python3 "${HERE}/../scripts/i18n-bundle.py" >"${i18n_file}.part" 2>/dev/null; then
+            mv -- "${i18n_file}.part" "${i18n_file}"
+        else
+            rm -f -- "${i18n_file}.part"
+            printf '{"languages":[],"strings":{}}' >"${i18n_file}"
+        fi
+    } &
+    {
+        python3 "${HERE}/../scripts/palette-json.py" >"${work}/palette" 2>/dev/null || printf '{}' >"${work}/palette"
+    } &
+    {
+        PYTHONPATH="${HERE}/.." python3 -m vitrail.timezones index "${zone}" >"${work}/zones" 2>/dev/null || printf '[]' >"${work}/zones"
+    } &
+    # The Connection page: Ethernet, Wi-Fi, VPN and Bluetooth as they are now.
+    # Changes the page asks for come back through network-state.json (see
+    # vitrail/network.py).
+    {
+        PYTHONPATH="${HERE}/.." python3 -m vitrail.network state >"${work}/network" 2>/dev/null || printf '{}' >"${work}/network"
+    } &
+    wait
+else
+    printf '{"languages":[],"strings":{}}' >"${i18n_file}"
 fi
 
-# The Connection page: Ethernet, Wi-Fi, VPN and Bluetooth as they are now.
-# Changes the page asks for come back through network-state.json (see
-# vitrail/network.py).
-network='{}'
-if command -v python3 >/dev/null 2>&1; then
-    network="$(PYTHONPATH="${HERE}/.." python3 -m vitrail.network state 2>/dev/null || printf '{}')"
-fi
+# What a helper printed, or `fallback` when it printed nothing.
+answer() {
+    local text
+    text="$(cat -- "${work}/$1" 2>/dev/null || true)"
+    printf '%s' "${text:-$2}"
+}
+plugins="$(answer plugins '[]')"
+palette="$(answer palette '{}')"
+zones="$(answer zones '[]')"
+network="$(answer network '{}')"
+# `exec` below skips the EXIT trap.
+rm -rf -- "${work}"
 
 # Adaptive SVG previews read the files to fill their {{role}} placeholders.
 export QML_XHR_ALLOW_FILE_READ=1

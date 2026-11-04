@@ -66,6 +66,12 @@ Window {
     readonly property bool dark: prefs.appearance === "dark"
                                   || (prefs.appearance === "auto" && !app.daytime)
 
+    // What the pages bind to. A page declares properties named `prefs`,
+    // `palette` and `draft`, so `prefs: prefs` would read the page's own.
+    readonly property var store: prefs
+    readonly property var theme: palette
+    readonly property var pending: draft
+
     property string category: Args.value("--category", "appearance")
     property bool sidebarCollapsed: false
 
@@ -286,123 +292,149 @@ Window {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
 
-                                AppearancePage {
-                                    anchors.fill: parent
-                                    visible: app.category === "appearance"
-                                    palette: palette
-                                    prefs: prefs
-                                    strings: app.strings
+                                LazyPage {
+                                    shown: app.category === "appearance"
+
+                                    AppearancePage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                    }
                                 }
 
-                                WindowsPage {
-                                    anchors.fill: parent
-                                    visible: app.category === "windows"
-                                    palette: palette
-                                    prefs: prefs
-                                    strings: app.strings
-                                    screenWidth: app.screenWidth
-                                    tab: Args.value("--tab", "border")
+                                LazyPage {
+                                    shown: app.category === "windows"
+
+                                    WindowsPage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                        screenWidth: app.screenWidth
+                                        tab: Args.value("--tab", "border")
+                                    }
                                 }
 
-                                InputPage {
-                                    anchors.fill: parent
-                                    visible: app.category === "input"
-                                    palette: palette
-                                    prefs: prefs
-                                    strings: app.strings
+                                LazyPage {
+                                    shown: app.category === "input"
+
+                                    InputPage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                    }
                                 }
 
-                                DesignPage {
-                                    anchors.fill: parent
-                                    visible: app.category === "design"
-                                    palette: palette
-                                    prefs: prefs
-                                    strings: app.strings
+                                LazyPage {
+                                    shown: app.category === "design"
+
+                                    DesignPage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                    }
                                 }
 
-                                WallpaperPage {
-                                    anchors.fill: parent
-                                    visible: app.category === "wallpaper"
-                                    palette: palette
-                                    prefs: prefs
-                                    strings: app.strings
-                                    configDir: app.configDir
+                                LazyPage {
+                                    shown: app.category === "wallpaper"
+
+                                    WallpaperPage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                        configDir: app.configDir
+                                    }
                                 }
 
-                                BarPage {
-                                    anchors.fill: parent
-                                    visible: app.category === "bar"
-                                    palette: palette
-                                    prefs: prefs
-                                    strings: app.strings
+                                LazyPage {
+                                    shown: app.category === "bar"
+
+                                    BarPage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                    }
                                 }
 
-                                LanguagePage {
-                                    anchors.fill: parent
-                                    visible: app.category === "language"
-                                    palette: palette
-                                    prefs: prefs
-                                    draft: draft
-                                    strings: app.strings
-                                    languages: app.languages
+                                LazyPage {
+                                    shown: app.category === "language"
+
+                                    LanguagePage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        draft: app.pending
+                                        strings: app.strings
+                                        languages: app.languages
+                                    }
                                 }
 
-                                DateTimePage {
-                                    anchors.fill: parent
-                                    visible: app.category === "datetime"
-                                    palette: palette
-                                    prefs: prefs
-                                    strings: app.strings
-                                    zones: app.zones
-                                    systemZone: app.systemZone
-                                    systemNtp: app.systemNtp
+                                LazyPage {
+                                    shown: app.category === "datetime"
+
+                                    DateTimePage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                        zones: app.zones
+                                        systemZone: app.systemZone
+                                        systemNtp: app.systemNtp
+                                    }
                                 }
 
-                                TerminalPage {
-                                    anchors.fill: parent
-                                    visible: app.category === "terminal"
-                                    palette: palette
-                                    prefs: prefs
-                                    strings: app.strings
+                                LazyPage {
+                                    shown: app.category === "terminal"
+
+                                    TerminalPage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                    }
                                 }
 
-                                LauncherPage {
-                                    anchors.fill: parent
-                                    visible: app.category === "launcher"
-                                    tab: Args.value("--tab", "general")
-                                    palette: palette
-                                    prefs: prefs
-                                    strings: app.strings
+                                LazyPage {
+                                    shown: app.category === "launcher"
+
+                                    LauncherPage {
+                                        tab: Args.value("--tab", "general")
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                    }
                                 }
 
-                                ConnectionPage {
-                                    anchors.fill: parent
-                                    visible: app.category === "connection"
-                                    palette: palette
-                                    prefs: prefs
-                                    strings: app.strings
-                                    network: app.network
-                                    configDir: app.configDir
-                                    runtime: app.runtimeDir
-                                    vpnDirectory: app.vpnDir
-                                    tab: Args.value("--tab", "internet")
-                                    view: Args.value("--view", "")
+                                LazyPage {
+                                    shown: app.category === "connection"
+
+                                    ConnectionPage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                        network: app.network
+                                        configDir: app.configDir
+                                        runtime: app.runtimeDir
+                                        vpnDirectory: app.vpnDir
+                                        tab: Args.value("--tab", "internet")
+                                        view: Args.value("--view", "")
+                                    }
                                 }
 
-                                PluginsPage {
-                                    anchors.fill: parent
-                                    visible: app.category === "plugins"
-                                    palette: palette
-                                    prefs: prefs
-                                    plugins: app.plugins
-                                    strings: app.strings
+                                LazyPage {
+                                    shown: app.category === "plugins"
+
+                                    PluginsPage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        plugins: app.plugins
+                                        strings: app.strings
+                                    }
                                 }
 
-                                ColorsPage {
-                                    anchors.fill: parent
-                                    visible: app.category === "colors"
-                                    palette: palette
-                                    strings: app.strings
+                                LazyPage {
+                                    shown: app.category === "colors"
+
+                                    ColorsPage {
+                                        palette: app.theme
+                                        strings: app.strings
+                                    }
                                 }
 
                         }
