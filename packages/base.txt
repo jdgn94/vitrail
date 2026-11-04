@@ -37,9 +37,11 @@ imagemagick
 pipewire
 pipewire-pulse
 wireplumber
+fontconfig
 noto-fonts
 noto-fonts-emoji
 ttf-jetbrains-mono-nerd
+ttf-roboto
 qt6-base
 qt6-declarative
 qt6-wayland

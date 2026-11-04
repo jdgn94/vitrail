@@ -70,6 +70,7 @@ package to the manifest and a row here.
 | `networkmanager` | `nmcli` | wired profile, network popout |
 | `glib2` | `gsettings` | GTK light/dark |
 | `kitty` | `kitty` | terminal, launcher `>` mode |
+| `fontconfig` | `fc-list` | the installed font families the Fonts page offers |
 | `libqalculate` | `qalc` | launcher calculator and conversions (`=`) |
 | `plocate`, `fd` | `plocate`, `fd` | launcher file search (`/`); `plocate-updatedb.timer` is enabled by the installer |
 | `cliphist`, `wl-clipboard`, `wtype`, `hyprpicker` | `cliphist`, `wl-copy`, `wl-paste`, `wtype`, `hyprpicker` | launcher clipboard history (`;`), the clipboard panel (`Mod+.`) with emojis and the colour picker, and pasting a pick into the focused window |

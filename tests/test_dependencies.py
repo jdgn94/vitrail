@@ -97,6 +97,7 @@ PROVIDED_BY = {
     "awww": "awww",
     "awww-daemon": "awww",
     "mpvpaper": "mpvpaper",
+    "fc-list": "fontconfig",
     "ffmpeg": "ffmpeg",
     "ffprobe": "ffmpeg",
     "magick": "imagemagick",

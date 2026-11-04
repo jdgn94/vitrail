@@ -1,3 +1,6 @@
 # Packages that only exist in AUR, installed with the chosen helper.
 # Animated wallpapers (the stills use awww, from extra).
 mpvpaper
+# The shell's icons: Rounded, Sharp and Outlined are one variable font family
+# each, so the Fonts page can switch between them.
+ttf-material-symbols-variable-git
