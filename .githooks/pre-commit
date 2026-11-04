@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Format what is about to be committed.
+#
+#   Python: ruff (120 columns, the project's width).
+#   Shell:  shfmt (4 spaces, indented case arms, binary operators first).
+#
+# QML and the `.pragma library` JS stay hand-formatted on purpose: qmlformat
+# rewrites the import order, expands inline objects and collapses the aligned
+# ternaries, and Prettier cannot parse the pragma. Only files whose working
+# copy equals the index are touched, so unstaged work is never staged.
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)" || exit 0
+cd -- "$ROOT"
+
+mapfile -d '' staged < <(git diff --cached --name-only --diff-filter=ACMR -z)
+python_files=()
+shell_files=()
+
+for file in "${staged[@]}"; do
+    [[ -f "$file" ]] || continue
+    case "$file" in
+        *.py)
+            python_files+=("$file")
+            continue
+            ;;
+        .githooks/pre-commit)
+            # This hook is running: never rewrite it in place.
+            continue
+            ;;
+    esac
+    if head -n 1 -- "$file" | grep -qE '^#!.*(bash|/sh)( |$)'; then
+        shell_files+=("$file")
+    fi
+done
+
+# A file with unstaged changes is left as it is: formatting it would stage
+# work the author has not chosen to commit yet.
+ready() {
+    local file=$1
+    if git diff --quiet -- "$file"; then
+        return 0
+    fi
+    printf 'pre-commit: %s has unstaged changes; not reformatted\n' "$file" >&2
+    return 1
+}
+
+if ((${#python_files[@]})); then
+    ready_python=()
+    for file in "${python_files[@]}"; do
+        ready "$file" && ready_python+=("$file")
+    done
+    if ((${#ready_python[@]})); then
+        if command -v ruff >/dev/null 2>&1; then
+            ruff format -- "${ready_python[@]}"
+        elif command -v uv >/dev/null 2>&1; then
+            uv run --quiet --frozen --group dev ruff format -- "${ready_python[@]}"
+        else
+            printf 'pre-commit: ruff is missing (uv sync); Python left unformatted\n' >&2
+            ready_python=()
+        fi
+        if ((${#ready_python[@]})); then
+            git add -- "${ready_python[@]}"
+        fi
+    fi
+fi
+
+if ((${#shell_files[@]})); then
+    ready_shell=()
+    for file in "${shell_files[@]}"; do
+        ready "$file" && ready_shell+=("$file")
+    done
+    if ((${#ready_shell[@]})); then
+        if command -v shfmt >/dev/null 2>&1; then
+            shfmt -w -i 4 -ci -bn -- "${ready_shell[@]}"
+            git add -- "${ready_shell[@]}"
+        else
+            printf 'pre-commit: shfmt is missing; shell left unformatted\n' >&2
+        fi
+    fi
+fi

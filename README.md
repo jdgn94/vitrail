@@ -442,13 +442,23 @@ bash tests/qml_smoke.sh                       # QML lint + offscreen render
 uv run vitrail --help
 ```
 
-`graphify` is installed as a development dependency from the `graphifyy`
-package and stays isolated in `.venv`:
+`graphify` (the `graphifyy` package, in the `dev` group) builds the code graph
+in `graphify-out/`, which is git-ignored and never committed. The tracked hooks
+in `.githooks/` do the routine work: a **pre-commit** formats the staged Python
+with `ruff` (120 columns) and the staged shell with `shfmt` (4 spaces, indented
+case arms, operators first), and a **post-commit** refreshes the graph in the
+background (`scripts/graphify-refresh.sh`, detached, one build at a time).
+Enable them once per clone:
 
 ```sh
+scripts/install-hooks.sh
 uv run graphify --version
-uv run graphify install --platform opencode   # optional: agent skill
+graphify query "how does the frame open a popup"
 ```
+
+QML and the `.pragma library` JS are hand-formatted on purpose: `qmlformat`
+rewrites the import order, expands inline objects and collapses the aligned
+ternaries, and Prettier cannot parse the pragma.
 
 Graph artifacts (`graphify-out/`) are regenerated and not versioned.
 

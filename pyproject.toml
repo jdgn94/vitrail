@@ -18,4 +18,11 @@ packages = ["vitrail"]
 [dependency-groups]
 dev = [
     "graphifyy>=0.9.97",
+    "ruff>=0.17.3",
 ]
+
+[tool.ruff]
+# The code is written for 120 columns: keep the formatter from reflowing it.
+line-length = 120
+target-version = "py311"
+extend-exclude = [".venv", "graphify-out"]

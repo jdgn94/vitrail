@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Keep the knowledge graph fresh after every commit, detached: the commit is
+# over at once and `graphify-out/` (git-ignored) is never staged. The build
+# itself lives in scripts/graphify-refresh.sh, shared with the agents.
+set -u
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+[[ -x "$ROOT/scripts/graphify-refresh.sh" ]] || exit 0
+nohup "$ROOT/scripts/graphify-refresh.sh" >/dev/null 2>&1 &
+disown 2>/dev/null || true
+exit 0

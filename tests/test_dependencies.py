@@ -22,10 +22,53 @@ HYPRLAND_CONFIG = ROOT / "dots" / ".config" / "hypr" / "hyprland.lua"
 # Programs of the base system (coreutils, util-linux, procps, systemd, shell):
 # `base-devel` and the Arch `base` group are always there.
 SYSTEM = {
-    "sh", "bash", "env", "python3", "systemctl", "ip", "mkdir", "mv", "cp", "rm", "cat", "printf", "echo", "dirname",
-    "basename", "kill", "pkill", "sleep", "date", "ln", "readlink", "mktemp", "sort", "head", "tail", "tr", "cut",
-    "wc", "find", "grep", "sed", "awk", "paste", "test", "sudo", "git", "uname", "id", "true", "false", "timedatectl",
-    "localectl", "sleep", "pwd", "rfkill",
+    "sh",
+    "bash",
+    "env",
+    "python3",
+    "systemctl",
+    "ip",
+    "mkdir",
+    "mv",
+    "cp",
+    "rm",
+    "cat",
+    "printf",
+    "echo",
+    "dirname",
+    "basename",
+    "kill",
+    "pkill",
+    "sleep",
+    "date",
+    "ln",
+    "readlink",
+    "mktemp",
+    "sort",
+    "head",
+    "tail",
+    "tr",
+    "cut",
+    "wc",
+    "find",
+    "grep",
+    "sed",
+    "awk",
+    "paste",
+    "test",
+    "sudo",
+    "git",
+    "uname",
+    "id",
+    "true",
+    "false",
+    "timedatectl",
+    "localectl",
+    "sleep",
+    "pwd",
+    "rfkill",
+    "chmod",
+    "flock",
     # iputils is in the Arch `base` group: the VPN page's latency probe.
     "ping",
 }
@@ -37,6 +80,10 @@ EXTERNAL = {
     # Hyprland's own dialog, replaced by scripts/hyprland-dialog.sh when the
     # bar runs; the real one ships with the hyprland package.
     "hyprland-dialog",
+    # Development tools, not needed by the installed desktop: the code graph
+    # (graphifyy, from uv) and uv itself (scripts/graphify-refresh.sh).
+    "graphify",
+    "uv",
 }
 
 # Program -> the package that provides it. A program missing here is unknown.
@@ -74,21 +121,79 @@ PROVIDED_BY = {
     "ddcutil": "ddcutil",
     "grim": "grim",
     "slurp": "slurp",
-    }
+}
 
 # Shell words that start a command position but are not programs.
 SHELL_WORDS = {
-    "if", "then", "else", "elif", "fi", "for", "while", "until", "do", "done", "case", "esac", "in", "function",
-    "return", "exit", "local", "export", "readonly", "declare", "set", "unset", "shift", "source", "exec", "eval",
-    "command", "trap", "read", "cd", "wait", "break", "continue", "unlock", "mapfile", "printf", "echo", "test",
+    "if",
+    "then",
+    "else",
+    "elif",
+    "fi",
+    "for",
+    "while",
+    "until",
+    "do",
+    "done",
+    "case",
+    "esac",
+    "in",
+    "function",
+    "return",
+    "exit",
+    "local",
+    "export",
+    "readonly",
+    "declare",
+    "set",
+    "unset",
+    "shift",
+    "source",
+    "exec",
+    "eval",
+    "command",
+    "trap",
+    "read",
+    "cd",
+    "wait",
+    "break",
+    "continue",
+    "unlock",
+    "mapfile",
+    "printf",
+    "echo",
+    "test",
     "umask",
-    "[", "[[", "!", "{", "}", "(", ")", "usage", "info", "warn", "die", "run", "ok", "not_ok", "flag", "read_ini",
-    "esac;", "fi;", "done;", "then;", "do;",
+    "[",
+    "[[",
+    "!",
+    "{",
+    "}",
+    "(",
+    ")",
+    "usage",
+    "info",
+    "warn",
+    "die",
+    "run",
+    "ok",
+    "not_ok",
+    "flag",
+    "read_ini",
+    "esac;",
+    "fi;",
+    "done;",
+    "then;",
+    "do;",
 }
 
-QML_ARRAY = re.compile(r"""(?:command\s*[:=]|exec(?:Detached)?\()\s*\[\s*"([^"]+)"\s*(?:,\s*"-c"\s*,\s*"((?:[^"\\]|\\.)*)")?""")
+QML_ARRAY = re.compile(
+    r"""(?:command\s*[:=]|exec(?:Detached)?\()\s*\[\s*"([^"]+)"\s*(?:,\s*"-c"\s*,\s*"((?:[^"\\]|\\.)*)")?"""
+)
 JS_RETURN = re.compile(r"""return\s*\[\s*"([^"]+)"\s*(?:,\s*"-c"\s*,\s*"((?:[^"\\]|\\.)*)")?""")
-PY_CALL = re.compile(r'''\b(?:subprocess\.\w+|_?run|_call|spawn\w*|Popen)\(\s*(?:run\s*,\s*)?\[\s*"([\w.-]+)"|shutil\.which\(\s*"([\w.-]+)"|\b(?:command|cmd)\s*=\s*\[\s*"([\w.-]+)"|\breturn\s*\[\s*"([\w.-]+)"''')
+PY_CALL = re.compile(
+    r'''\b(?:subprocess\.\w+|_?run|_call|spawn\w*|Popen)\(\s*(?:run\s*,\s*)?\[\s*"([\w.-]+)"|shutil\.which\(\s*"([\w.-]+)"|\b(?:command|cmd)\s*=\s*\[\s*"([\w.-]+)"|\breturn\s*\[\s*"([\w.-]+)"'''
+)
 LUA_EXEC = re.compile(r"""exec_cmd\(\s*(?:home\s*\.\.\s*)?"((?:[^"\\]|\\.)+)\"""")
 COMMAND_V = re.compile(r"\bcommand\s+-v\s+([\w.-]+)")
 SEPARATORS = re.compile(r"\|\||&&|[;|&()`]|\$\(|\n")
@@ -241,8 +346,21 @@ class ScannerTests(unittest.TestCase):
 class DependencyTests(unittest.TestCase):
     def test_the_scan_sees_what_the_repo_runs(self) -> None:
         used = used_programs()
-        for program in ("hyprctl", "matugen", "ffmpeg", "magick", "nmcli", "gsettings", "kitty", "hyprlock",
-                        "hypraether-vpn", "qalc", "xdg-open", "wl-copy", "cliphist"):
+        for program in (
+            "hyprctl",
+            "matugen",
+            "ffmpeg",
+            "magick",
+            "nmcli",
+            "gsettings",
+            "kitty",
+            "hyprlock",
+            "hypraether-vpn",
+            "qalc",
+            "xdg-open",
+            "wl-copy",
+            "cliphist",
+        ):
             with self.subTest(program=program):
                 self.assertIn(program, used)
 

@@ -3,6 +3,14 @@
 When styling any Vitrail UI (frame, bar, popups, panels, variants, visual
 references), load the `vitrail-design` skill and record new patterns in it.
 
+## Knowledge graph
+
+Every finished task refreshes the graph in the background, without delaying the
+answer: `scripts/graphify-refresh.sh &` (the post-commit hook runs the same
+script; one build at a time, logged in `.git/graphify-hook.log`). `graphify-out/`
+is derived and git-ignored, so the graph is never committed. Read it with
+`graphify query "..."`, `graphify path "A" "B"` or `graphify explain "X"`.
+
 ## Design system (mandatory)
 
 Every visual element in a Vitrail UI comes from `kit/`. Nothing else.
