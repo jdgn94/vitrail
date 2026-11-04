@@ -464,8 +464,6 @@
   "notifications.snooze.15m": "15 min",
   "notifications.snooze.1h": "1 ora",
   "notifications.snooze.tomorrow": "Domani",
-  "notifications.search": "Cerca notifiche",
-  "notifications.search.empty": "Niente corrisponde alla ricerca",
   "notifications.stats": "Oggi",
   "notifications.stats.empty": "Oggi non è arrivato niente",
   "notifications.stats.counts": "%1 ricevute · %2 gestite",
@@ -485,5 +483,9 @@
   "session.confirm.go": "Continua",
   "session.confirm.download": "Download di %1",
   "session.confirm.update": "Aggiornamento pacchetti (%1)",
-  "session.confirm.job": "%1 è in esecuzione"
+  "session.confirm.job": "%1 è in esecuzione",
+  "tooltip.notifications": "Notifiche",
+  "tooltip.notificationsHint": "Clic sinistro: il centro · clic destro: silenzia per un'ora",
+  "tooltip.notificationsCount": "%1 nel centro · clic destro: silenzia per un'ora",
+  "tooltip.notificationsMuted": "Silenziate · clic destro per riattivarle"
 }

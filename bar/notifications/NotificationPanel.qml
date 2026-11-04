@@ -19,9 +19,9 @@ import "notifications.js" as Notifications
 // group card outside a notification or a button toggles it. An expired
 // notification keeps its row and loses only the live actions.
 //
-// The header searches what arrived, lists the muted apps and shows today's
-// counts per app (how many arrived, how many were acted on). The search text
-// and the two lists belong to the shell, so the IPC can open them too.
+// The header lists the muted apps and shows today's counts per app (how many
+// arrived, how many were acted on). Both lists belong to the shell, so the IPC
+// can open them too.
 Item {
     id: root
 
@@ -36,14 +36,18 @@ Item {
     property string mutedApps: ""
     // The queue's per-app counts today.
     property var stats: ({})
-    // The shell's: the search, and which of the two lists is open.
-    property string query: ""
+    // The shell's: which of the two lists is open.
     property bool mutedShown: false
     property bool statsShown: false
+    // How far the panel has come in from its edge (0 closed .. 1 in place):
+    // the list slides in from that side with it.
+    property real enter: 1
+    // "Clear all" runs the cards out towards the panel's edge before it
+    // empties the list.
+    property bool clearing: false
 
     signal closeRequested()
     signal dndToggled()
-    signal queryEdited(string text)
     signal mutedToggled()
     signal statsToggled()
 
@@ -66,6 +70,13 @@ Item {
         return value === undefined ? key : value
     }
 
+    function clearAll() {
+        if (root.clearing || !root.queue)
+            return
+        root.clearing = true
+        clearTimer.restart()
+    }
+
     function groupIndex(key) {
         for (var i = 0; i < groups.count; i++) {
             if (groups.get(i).key === key)
@@ -85,8 +96,6 @@ Item {
         var rows = []
         for (var i = 0; i < root.queue.history.count; i++) {
             var row = root.queue.history.get(i)
-            if (!Notifications.matches(root.query, row))
-                continue
             rows.push({
                 nid: row.nid,
                 summary: row.summary,
@@ -122,7 +131,7 @@ Item {
                     icon: group.icon,
                     rows: group.rows,
                     count: group.rows.length,
-                    expanded: root.query !== "" || root.opened[group.key] === true
+                    expanded: root.opened[group.key] === true
                 })
                 continue
             }
@@ -190,6 +199,17 @@ Item {
     property real now: Date.now()
 
     Timer {
+        id: clearTimer
+
+        interval: VitrailTokens.duration("base")
+        onTriggered: {
+            if (root.queue)
+                root.queue.clear()
+            root.clearing = false
+        }
+    }
+
+    Timer {
         interval: 30000
         running: groups.count > 0
         repeat: true
@@ -197,11 +217,6 @@ Item {
     }
 
     onQueueChanged: root.sync()
-    onQueryChanged: {
-        root.sync()
-        if (search.text !== root.query)
-            search.text = root.query
-    }
     onMutedAppsChanged: if (root.mutedShown && Notifications.list(root.mutedApps).length === 0)
         root.mutedToggled()
 
@@ -258,8 +273,8 @@ Item {
                 text: root.t("notifications.clear")
                 variant: "text"
                 size: "sm"
-                enabled: root.queue && root.queue.history.count > 0
-                onClicked: if (root.queue) root.queue.clear()
+                enabled: root.queue && root.queue.history.count > 0 && !root.clearing
+                onClicked: root.clearAll()
             }
 
             VitrailButton {
@@ -268,18 +283,6 @@ Item {
                 size: "sm"
                 onClicked: root.closeRequested()
             }
-        }
-
-        // What arrived: the search keeps what matches, in every group.
-        VitrailField {
-            id: search
-
-            Layout.fillWidth: true
-            size: "sm"
-            placeholder: root.t("notifications.search")
-            text: root.query
-            onTextChanged: if (search.text !== root.query) root.queryEdited(search.text)
-            onEscaped: root.queryEdited("")
         }
 
         // The apps that will not be toasted, each one a click away from it.
@@ -342,10 +345,14 @@ Item {
 
             Layout.fillWidth: true
             visible: groups.count === 0
+            // The card arrives as the cleared list leaves.
+            opacity: visible ? 1 : 0
             implicitHeight: emptyColumn.implicitHeight + 2 * VitrailTokens.gap("lg")
             radius: VitrailTokens.radius * 0.85
             color: Qt.rgba(VitrailTokens.color("surfaceHigh").r, VitrailTokens.color("surfaceHigh").g,
                            VitrailTokens.color("surfaceHigh").b, root.surface.raised)
+
+            Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
 
             ColumnLayout {
                 id: emptyColumn
@@ -356,7 +363,7 @@ Item {
 
                 VitrailIcon {
                     Layout.alignment: Qt.AlignHCenter
-                    icon: root.query !== "" ? "search_off" : "notifications_off"
+                    icon: "notifications_off"
                     size: "xl"
                     tone: "secondary"
                 }
@@ -366,7 +373,7 @@ Item {
                     variant: "content"
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
-                    text: root.query !== "" ? root.t("notifications.search.empty") : root.t("notifications.empty")
+                    text: root.t("notifications.empty")
                 }
             }
         }
@@ -380,6 +387,19 @@ Item {
             spacing: VitrailTokens.gap("sm")
             model: groups
 
+            // The list comes in from the panel's edge as it opens; "clear all"
+            // runs it back out the same side while it fades.
+            readonly property real fromEdge: root.side === "left" ? -1 : 1
+            opacity: root.clearing ? 0 : 1
+            transform: Translate {
+                x: (1 - root.enter) * list.fromEdge * VitrailTokens.gap("xl")
+                   + (root.clearing ? list.fromEdge * list.width * 0.55 : 0)
+
+                Behavior on x { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+            }
+
+            Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+
             // One app: a card that holds a header and its notifications, each
             // of them a smaller card of its own.
             delegate: Item {
@@ -389,10 +409,27 @@ Item {
                 required property int index
 
                 readonly property bool expanded: model.expanded
+                // Each group arrives just after the one above it, from the
+                // panel's edge.
+                property bool entered: false
 
                 width: ListView.view.width
                 implicitHeight: inner.implicitHeight + 2 * root.pad
                 height: implicitHeight
+                opacity: group.entered ? 1 : 0
+                transform: Translate {
+                    x: group.entered ? 0 : (root.side === "left" ? -VitrailTokens.gap("md") : VitrailTokens.gap("md"))
+
+                    Behavior on x { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+                }
+
+                Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+
+                Timer {
+                    interval: Math.min(group.index, 8) * 35
+                    running: !group.entered
+                    onTriggered: group.entered = true
+                }
 
                 Rectangle {
                     anchors.fill: parent

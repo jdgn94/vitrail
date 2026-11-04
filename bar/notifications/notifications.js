@@ -89,15 +89,6 @@ function conversation(notification) {
     return messaging(notification) ? String(notification.summary || "") : ""
 }
 
-// The panel's search: a row matches when the query is in its app, title or body.
-function matches(query, row) {
-    var needle = String(query || "").trim().toLowerCase()
-    if (needle === "")
-        return true
-    var haystack = [row.appName, row.summary, row.body, row.conversation].join(" ").toLowerCase()
-    return haystack.indexOf(needle) >= 0
-}
-
 // A body rendered as StyledText: its bare URLs become links, without touching
 // the ones the app already wrapped (`onLinkActivated` opens them).
 function linkify(text) {

@@ -65,15 +65,6 @@ TestCase {
                                              hints: { "x-vitrail-conversation": "thread 4" } }), "thread 4")
     }
 
-    function test_the_search_looks_at_the_app_the_title_and_the_body() {
-        var row = { appName: "Discord", summary: "Ana", body: "see you at 20:00", conversation: "Ana" }
-        verify(Notifications.matches("", row))
-        verify(Notifications.matches("disc", row))
-        verify(Notifications.matches("20:00", row))
-        verify(Notifications.matches("ana", row))
-        verify(!Notifications.matches("telegram", row))
-    }
-
     function test_a_bare_url_becomes_a_link() {
         compare(Notifications.linkify("see https://example.com/x now"),
                 'see <a href="https://example.com/x">https://example.com/x</a> now')

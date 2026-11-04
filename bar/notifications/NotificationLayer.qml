@@ -5,7 +5,6 @@ import QtQuick.Layouts
 import "../kit"
 import "../kit/base"
 import "../kit/composed"
-import "../kit/frame.js" as Frame
 import "../osd"
 import "../osd/osd.js" as Osd
 import "../session"
@@ -52,8 +51,7 @@ Scope {
     property bool snoozeEnabled: true
     property string mutedApps: ""
     property var stats: ({})
-    // The shell's: the search and which of the two lists is open.
-    property string query: ""
+    // The shell's: which of the two lists is open.
     property bool mutedShown: false
     property bool statsShown: false
     // The quick-notes widget's text.
@@ -78,7 +76,6 @@ Scope {
     signal openRequested()
     signal closeRequested()
     signal dndToggled()
-    signal queryEdited(string text)
     signal mutedToggled()
     signal statsToggled()
     signal sessionRequested(string key)
@@ -90,13 +87,14 @@ Scope {
     readonly property bool touching: stripHover.hovered || panelHover.hovered
     readonly property real gap: root.docked ? 0 : VitrailTokens.gap("md")
 
-    // The frame tab of the panel, for a docked bar's VitrailBar.tabs.
+    // The frame tab of the panel, for a docked bar's VitrailBar.tabs. Its
+    // length is the whole edge from the first frame: the panel comes out of
+    // the entire side, not from a point in the middle of it.
     readonly property var tab: root.docked && root.active && root.pinned && liquid.shown && holder.width > 0 ? {
         edge: root.side,
         reveal: liquid.look.reveal,
         swell: liquid.look.swell,
-        rect: Frame.liquidRect(Qt.rect(holder.x, holder.y, holder.width, holder.height), root.side, null,
-                               liquid.look.spread, 0, 0)
+        rect: Qt.rect(holder.x, holder.y, holder.width, holder.height)
     } : null
     readonly property var tabs: root.tab ? [root.tab] : []
 
@@ -226,6 +224,7 @@ Scope {
                 width: holder.width - 2 * VitrailTokens.gap("sm")
                 height: holder.height - 2 * VitrailTokens.gap("sm")
                 opacity: liquid.look.content
+                enter: liquid.look.content
                 queue: root.queue
                 strings: root.strings
                 side: root.side
@@ -234,12 +233,10 @@ Scope {
                 snoozeEnabled: root.snoozeEnabled
                 mutedApps: root.mutedApps
                 stats: root.stats
-                query: root.query
                 mutedShown: root.mutedShown
                 statsShown: root.statsShown
                 onCloseRequested: root.closeRequested()
                 onDndToggled: root.dndToggled()
-                onQueryEdited: function (text) { root.queryEdited(text) }
                 onMutedToggled: root.mutedToggled()
                 onStatsToggled: root.statsToggled()
 

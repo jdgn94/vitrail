@@ -31,6 +31,7 @@ bar panelPush
 bar notificationPosition
 bar notificationMax
 bar notificationDnd
+bar notificationMuteUntil
 bar notificationSnooze
 bar notificationMuted
 bar notificationUrgentApps

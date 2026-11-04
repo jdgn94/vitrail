@@ -33,6 +33,7 @@ QtObject {
     property alias notificationPosition: barFile.notificationPosition
     property alias notificationMax: barFile.notificationMax
     property alias notificationDnd: barFile.notificationDnd
+    property alias notificationMuteUntil: barFile.notificationMuteUntil
     property alias notificationSnooze: barFile.notificationSnooze
     property alias notificationMuted: barFile.notificationMuted
     property alias notificationUrgentApps: barFile.notificationUrgentApps
@@ -118,6 +119,8 @@ QtObject {
         property string notificationPosition: "top-right"
         property int notificationMax: VitrailTokens.ranges.notifications.value
         property bool notificationDnd: false
+        // When the bell's one-hour silence ends (ms; "0" when none).
+        property string notificationMuteUntil: "0"
         // The cards: snooze them, the apps that are muted, and the apps whose
         // notifications count as urgent (they bypass Do Not Disturb when the
         // bypass is on).

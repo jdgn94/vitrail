@@ -84,8 +84,7 @@ ShellRoot {
                                            || Notifications.enabled(shell.prefs.notificationSnooze)
     property string storedNotifications: ""
     property bool restoringNotifications: false
-    // The panel's search and the two lists it opens (so the IPC drives them).
-    property string notificationsQuery: ""
+    // The two lists the panel opens (so the IPC drives them).
     property bool notificationsMutedShown: false
     property bool notificationsStatsShown: false
 
@@ -223,6 +222,40 @@ ShellRoot {
         if (target)
             shell.notificationsScreen = target
         shell.notificationsOpen = true
+    }
+
+    // The bell beside the launcher: open on this monitor, close the same one.
+    function toggleNotifications(screen) {
+        if (shell.notificationsOpen && shell.notificationsScreen === screen)
+            shell.notificationsOpen = false
+        else
+            shell.openNotifications(screen)
+    }
+
+    // A right click on the bell: silence for an hour (or turn it off when it
+    // was already on). The preference keeps it across a reload; the timer
+    // below ends it.
+    function toggleNotificationMute() {
+        if (shell.dnd) {
+            shell.dnd = false
+            shell.setPref("notificationDnd", "false")
+            shell.setPref("notificationMuteUntil", "0")
+            return
+        }
+        shell.dnd = true
+        shell.setPref("notificationDnd", "true")
+        shell.setPref("notificationMuteUntil", String(Date.now() + 60 * 60 * 1000))
+    }
+
+    function expireNotificationMute() {
+        var until = Number(shell.prefs.notificationMuteUntil || 0)
+        if (!(until > 0) || Date.now() < until)
+            return
+        shell.setPref("notificationMuteUntil", "0")
+        if (shell.dnd) {
+            shell.dnd = false
+            shell.setPref("notificationDnd", "false")
+        }
     }
 
     // The muted list and the stats share the panel's second slot.
@@ -1207,6 +1240,15 @@ ShellRoot {
         onTriggered: shell.wakeSnoozes()
     }
 
+    // A one-hour silence from the bell ends by itself.
+    Timer {
+        interval: 30000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: shell.expireNotificationMute()
+    }
+
     // --- system requests ------------------------------------------------------
     // Vitrail answers the system itself: it is the polkit agent (admin
     // passwords), and scripts/hyprland-dialog.sh hands it Hyprland's dialogs
@@ -1403,12 +1445,6 @@ ShellRoot {
         // The panel's "Clear all", for a script.
         function clear(): void {
             toasts.clear()
-        }
-
-        // What the panel shows: its search and its two extra lists.
-        function search(text: string): void {
-            shell.notificationsQuery = text
-            shell.openNotifications(shell.focusedScreen)
         }
 
         function muted(): void {
@@ -1629,28 +1665,47 @@ ShellRoot {
                                                           stackLiquid.look.spread, 0, 0) }]
                               : []).concat(osd.tabs).concat(notificationLayer.tabs)
 
-                        start: LauncherButton {
-                            id: launcherButton
+                        // The launcher, and the notification bell beside it.
+                        start: GridLayout {
+                            flow: bar.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+                            rowSpacing: bar.gap
+                            columnSpacing: bar.gap
 
-                            strings: shell.strings
-                            opened: (shell.popupOpen && shell.popupKind === "launcher" && shell.popupScreen === monitor.modelData)
-                                    || (shell.launcherOpen && shell.launcherScreen === monitor.modelData)
-                            onClicked: {
-                                // The popout is already here: the click is for it.
-                                if (shell.popupOpen && shell.popupKind === "launcher" && shell.popupScreen === monitor.modelData)
+                            LauncherButton {
+                                id: launcherButton
+
+                                strings: shell.strings
+                                opened: (shell.popupOpen && shell.popupKind === "launcher" && shell.popupScreen === monitor.modelData)
+                                        || (shell.launcherOpen && shell.launcherScreen === monitor.modelData)
+                                onClicked: {
+                                    // The popout is already here: the click is for it.
+                                    if (shell.popupOpen && shell.popupKind === "launcher" && shell.popupScreen === monitor.modelData)
+                                        shell.togglePopup("launcher", launcherButton, monitor.modelData)
+                                    else
+                                        shell.toggleLauncher(monitor.modelData, "")
+                                }
+                                onMenuRequested: {
+                                    shell.launcherOpen = false
+                                    shell.launcherMode = ""
                                     shell.togglePopup("launcher", launcherButton, monitor.modelData)
-                                else
-                                    shell.toggleLauncher(monitor.modelData, "")
+                                }
+                                onHoveredChanged: {
+                                    tooltips.hover(launcherButton, hovered)
+                                    if (hovered)
+                                        shell.hoverPopup("launcher", launcherButton, monitor.modelData)
+                                }
                             }
-                            onMenuRequested: {
-                                shell.launcherOpen = false
-                                shell.launcherMode = ""
-                                shell.togglePopup("launcher", launcherButton, monitor.modelData)
-                            }
-                            onHoveredChanged: {
-                                tooltips.hover(launcherButton, hovered)
-                                if (hovered)
-                                    shell.hoverPopup("launcher", launcherButton, monitor.modelData)
+
+                            NotificationButton {
+                                id: notificationButton
+
+                                strings: shell.strings
+                                opened: shell.notificationsOpen && shell.notificationsScreen === monitor.modelData
+                                muted: shell.dnd
+                                count: toasts.history.count
+                                onClicked: shell.toggleNotifications(monitor.modelData)
+                                onMutedRequested: shell.toggleNotificationMute()
+                                onHoveredChanged: tooltips.hover(notificationButton, hovered)
                             }
                         }
 
@@ -1760,10 +1815,8 @@ ShellRoot {
                     snoozeEnabled: shell.snoozeEnabled
                     mutedApps: shell.prefs.notificationMuted || ""
                     stats: toasts.stats
-                    query: shell.notificationsQuery
                     mutedShown: shell.notificationsMutedShown
                     statsShown: shell.notificationsStatsShown
-                    onQueryEdited: function (text) { shell.notificationsQuery = text }
                     onMutedToggled: shell.toggleNotificationList("muted")
                     onStatsToggled: shell.toggleNotificationList("stats")
                     mediaPlayer: shell.mprisPlayer
@@ -1781,6 +1834,8 @@ ShellRoot {
                     onDndToggled: {
                         shell.dnd = !shell.dnd
                         shell.setPref("notificationDnd", shell.dnd ? "true" : "false")
+                        // A manual answer wins over the bell's hour.
+                        shell.setPref("notificationMuteUntil", "0")
                     }
                     onSessionRequested: function (key) { shell.runSession(key) }
                     onNoteAdded: function (note) {

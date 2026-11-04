@@ -1,7 +1,7 @@
 # Notifications
 
 Incoming notifications show as toasts and go away (the panel below keeps the
-history the queue still holds). No bell, no bar button.
+history the queue still holds). A bell beside the launcher opens the centre.
 
 ## Files
 
@@ -25,12 +25,21 @@ history the queue still holds). No bell, no bar button.
   `NotificationPanel.qml`): full height on the notification side
   (`Notifications.sideFor`: never the bar's side; the OSD takes the opposite),
   `VitrailTokens.panel` wide, with a `widgets` slot.
-- Opens only from its hot zone after the dwell (`motion.dwell`) or by IPC
-  `notifications toggle|close`; never from a bar button. Closes `osd.hide` ms
-  after the pointer leaves the zone and the panel (edge-triggered: an IPC
-  opening stays until the pointer has been in and left, or IPC closes it).
+- Opens from its hot zone after the dwell (`motion.dwell`), by the bell, or by
+  IPC `notifications toggle|close`. Closes `osd.hide` ms after the pointer
+  leaves the zone and the panel (edge-triggered: an opening from the bell or
+  IPC stays until the pointer has been in and left, or IPC closes it).
 - Built like the OSD: `VitrailLiquid`; docked, a frame tab (`NotificationLayer.tabs`
-  into `VitrailBar.tabs`); floating, a `VitrailLiquidSkin` island.
+  into `VitrailBar.tabs`); floating, a `VitrailLiquidSkin` island. The tab's
+  rect is the **whole holder**, not `Frame.liquidRect`: the panel comes out of
+  the entire lateral edge (its depth reveals, its length does not grow from a
+  point in the middle). The content slides in from that side (`enter` =
+  `liquid.look.content`) and the groups appear one after the other (`index *
+  35 ms`, fading and rising `gap(md)` from the edge).
+- **Clear all** runs the list out towards the panel's side first (translate
+  `0.55 * width`, fade, `duration("base")`), then clears the queue; the empty
+  card fades in on the same beat. No search field: the header holds the muted
+  list, the stats, Do Not Disturb, Clear all and close.
 - Grouped by app (`groups.js`, tested in `tst_notification_groups.qml`): groups
   by their newest arrival, rows newest first. Two nested levels: the outer
   card is the application (ONE raised background with `root.pad`, hover lift,
@@ -104,11 +113,19 @@ history the queue still holds). No bell, no bar button.
 
 ## Do Not Disturb
 
+- **The bell** (`bar/notifications/NotificationButton.qml`) sits beside the
+  launcher in the bar's start group, in the bar's flow (below it on a vertical
+  bar). Left click opens/closes this monitor's panel
+  (`shell.toggleNotifications`). Right click silences everything for an hour:
+  `notificationDnd = true` plus `notificationMuteUntil` (epoch ms) in
+  `bar.ini`; a second right click turns it back on. A 30 s timer ends the hour
+  by itself, and the panel's own Do Not Disturb button clears the expiry (a
+  manual answer wins). Its tooltip names the state and the two clicks.
 - A button in the panel's header, next to `Clear all`: `notifications_off`,
   primary tone while it is on.
 - `notificationDnd` in `bar.ini`. While it is on, arrivals join the panel's
-  history and are never raised as a toast (the same `quiet` path the open
-  panel uses).
+  history and are never raised as a toast. An urgent notification with
+  `notificationUrgentBypass` still toasts.
 - The bar reads preferences with its own line-based parser (`bar/prefs.js`)
   and cannot write them, so the button writes through `vitrail config set`.
 
