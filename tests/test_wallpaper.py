@@ -239,7 +239,9 @@ class ImportTests(unittest.TestCase):
         (self.assets / "bad.mp4").write_bytes(b"junk")
 
         def reject(source, kind, work, **_kwargs):
-            return media.Result(None, media.Report(source.name, kind, 4, 0, "", "", "rejected", note="the video does not decode"))
+            return media.Result(
+                None, media.Report(source.name, kind, 4, 0, "", "", "rejected", note="the video does not decode")
+            )
 
         said: list[str] = []
         self.assertEqual(wallpaper.import_paths(self.folders, [self.assets], reject, said.append), [])
@@ -294,11 +296,64 @@ class ForceTests(unittest.TestCase):
         self.assertEqual(args.paths, ["a", "b"])
 
 
+class PickTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.config = self.root / "vitrail"
+        self.first = self.root / "a.png"
+        self.second = self.root / "b.png"
+        self.svg = self.root / "c.svg"
+        for path in (self.first, self.second):
+            path.write_bytes(b"png")
+        self.svg.write_text("<svg/>")
+        self.notes = self.root / "notes.txt"
+        self.notes.write_text("no")
+
+    def test_picking_shows_it_and_starts_the_selection(self) -> None:
+        self.assertEqual(wallpaper.pick(self.config, str(self.first)), str(self.first))
+        stored = prefs.read_prefs(self.config)
+        self.assertEqual(stored["wallpaper"], str(self.first))
+        self.assertEqual(stored["wallpaperSelection"], str(self.first))
+        self.assertEqual(stored["wallpaperType"], "image")
+
+    def test_picking_another_of_the_kind_joins_the_selection(self) -> None:
+        wallpaper.pick(self.config, str(self.first))
+        wallpaper.pick(self.config, str(self.second))
+        stored = prefs.read_prefs(self.config)
+        self.assertEqual(stored["wallpaper"], str(self.second))
+        self.assertEqual(wallpaper.parse_selection(stored["wallpaperSelection"]), [str(self.first), str(self.second)])
+
+    def test_another_kind_starts_over(self) -> None:
+        wallpaper.pick(self.config, str(self.first))
+        wallpaper.pick(self.config, str(self.svg))
+        stored = prefs.read_prefs(self.config)
+        self.assertEqual(stored["wallpaperSelection"], str(self.svg))
+        self.assertEqual(stored["wallpaperType"], "svg")
+
+    def test_something_that_is_not_a_wallpaper_is_refused(self) -> None:
+        self.assertIsNone(wallpaper.pick(self.config, str(self.notes)))
+        self.assertIsNone(wallpaper.pick(self.config, str(self.root / "gone.png")))
+        self.assertEqual(prefs.read_prefs(self.config).get("wallpaper", ""), "")
+
+    def test_the_cli_takes_the_pick_action(self) -> None:
+        args = cli._parser().parse_args(["wallpaper", "pick", "a.png"])
+        self.assertEqual((args.action, args.paths), ("pick", ["a.png"]))
+
+
 class AdaptSvgTests(unittest.TestCase):
     LADDER = (
-        "surface_container_lowest", "surface", "surface_container_low", "surface_container",
-        "surface_container_high", "surface_container_highest", "outline_variant", "outline",
-        "on_surface_variant", "on_surface",
+        "surface_container_lowest",
+        "surface",
+        "surface_container_low",
+        "surface_container",
+        "surface_container_high",
+        "surface_container_highest",
+        "outline_variant",
+        "outline",
+        "on_surface_variant",
+        "on_surface",
     )
 
     def roles(self, text: str) -> list[str]:
@@ -314,20 +369,23 @@ class AdaptSvgTests(unittest.TestCase):
 
     def test_every_notation_is_replaced(self) -> None:
         text = (
-            '<svg><defs><style>.a{fill:#3366CC}</style>'
+            "<svg><defs><style>.a{fill:#3366CC}</style>"
             '<linearGradient id="abc"><stop stop-color="#369" offset="0"/></linearGradient></defs>'
             '<rect style="fill:rgb(51, 102, 204);stroke:#102030"/>'
             '<rect fill="url(#abc)" stroke="#ffffff"/></svg>'
         )
         out = wallpaper.adapt_svg(text)
-        self.assertNotRegex(wallpaper.SEED_COMMENT.sub("", out).replace("url(#abc)", "").replace('id="abc"', ""), r"#[0-9a-fA-F]{3,6}\b|rgb\(")
+        self.assertNotRegex(
+            wallpaper.SEED_COMMENT.sub("", out).replace("url(#abc)", "").replace('id="abc"', ""),
+            r"#[0-9a-fA-F]{3,6}\b|rgb\(",
+        )
         self.assertIn("url(#abc)", out)
         self.assertEqual(len(self.roles(out)), 5)
 
     def test_icc_colour_hints_are_dropped(self) -> None:
         out = wallpaper.adapt_svg('<svg><stop stop-color="#edf8fe icc-color(sRGB, 0.9, 0.9, 1)"/></svg>')
         self.assertNotIn("icc-color", out)
-        self.assertIn("stop-color=\"{{", out)
+        self.assertIn('stop-color="{{', out)
 
     def test_the_dominant_saturated_colour_becomes_the_seed(self) -> None:
         text = '<svg><rect fill="#808080"/><rect fill="#cc3333"/><rect fill="#3366cc"/><rect fill="#3366cc"/></svg>'
@@ -364,8 +422,11 @@ class AdaptSvgTests(unittest.TestCase):
 
     def test_hue_groups_use_primary_secondary_tertiary(self) -> None:
         text = (
-            "<svg>" + '<rect fill="#2255cc"/>' * 4 + '<rect fill="#cc7722"/>' * 3
-            + '<rect fill="#22aa55"/>' * 2 + '<rect fill="#5588ee"/><rect fill="#ee9944"/></svg>'
+            "<svg>"
+            + '<rect fill="#2255cc"/>' * 4
+            + '<rect fill="#cc7722"/>' * 3
+            + '<rect fill="#22aa55"/>' * 2
+            + '<rect fill="#5588ee"/><rect fill="#ee9944"/></svg>'
         )
         roles = self.roles(wallpaper.adapt_svg(text))
         family = lambda role: role.replace("on_", "").replace("_container", "")
@@ -374,16 +435,18 @@ class AdaptSvgTests(unittest.TestCase):
         self.assertEqual({family(role) for role in roles[7:9]}, {"tertiary"})
 
     def test_lightness_picks_the_accent_step(self) -> None:
-        text = ('<svg><rect fill="#081850"/><rect fill="#103070"/><rect fill="#3060d0"/>'
-                '<rect fill="#a0c0ff"/></svg>')
+        text = '<svg><rect fill="#081850"/><rect fill="#103070"/><rect fill="#3060d0"/><rect fill="#a0c0ff"/></svg>'
         self.assertEqual(
             self.roles(wallpaper.adapt_svg(text)),
             ["on_primary", "primary_container", "primary", "on_primary_container"],
         )
 
     def test_the_biggest_hue_family_is_primary_and_gives_the_seed(self) -> None:
-        text = '<svg><rect fill="#e98f23"/>' + "".join(
-            f'<rect fill="{blue}"/>' for blue in ("#003d47", "#1e5663", "#6ba0a5", "#b6e0ea")) + "</svg>"
+        text = (
+            '<svg><rect fill="#e98f23"/>'
+            + "".join(f'<rect fill="{blue}"/>' for blue in ("#003d47", "#1e5663", "#6ba0a5", "#b6e0ea"))
+            + "</svg>"
+        )
         out = wallpaper.adapt_svg(text)
         self.assertEqual(self.roles(out)[0].replace("on_", "").replace("_container", ""), "secondary")
         self.assertEqual(wallpaper.svg_seed(out), "#003d47")

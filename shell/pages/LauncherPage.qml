@@ -114,7 +114,7 @@ Item {
                             required property string modelData
 
                             icon: ({ web: "language", calc: "calculate", run: "terminal", files: "folder", windows: "web_asset",
-                                     actions: "bolt", clipboard: "content_paste" })[mode.modelData]
+                                     actions: "bolt", clipboard: "content_paste", wallpaper: "wallpaper" })[mode.modelData]
                             label: page.t("launcher.mode." + mode.modelData)
                             description: page.t("launcher.prefix").replace("%1", Query.PREFIXES[mode.modelData])
                             foreground: page.palette.foreground

@@ -3,11 +3,12 @@
 //
 // A result: { id, group, title, subtitle, icon (Material), appIcon (theme),
 // run, busy }. `run.kind` is app, action kinds (see actions.js), web, calc,
-// run, file, window, clip or fill (put `text` in the field).
+// run, file, window, clip, wallpaper, effect or fill (put `text` in the field).
 .pragma library
 .import "query.js" as Query
 .import "search.js" as Search
 .import "results.js" as Results
+.import "wallpapers.js" as Wallpapers
 
 // Below this a match is noise in the mixed list.
 var MIN_APP = 0.3
@@ -143,6 +144,27 @@ function build(parsed, ctx) {
         }).slice(0, MAX_CLIPS).forEach(function (clip) {
             out.push({ id: "clip:" + clip.id, group: "clipboard", title: clip.preview, subtitle: "", icon: "content_paste",
                        run: { kind: "clip", id: clip.id } })
+        })
+        break
+    case "wallpaper":
+        var found = Wallpapers.filter(ctx.wallpapers ? ctx.wallpapers.items : [], text, ctx.t)
+        found.effects.forEach(function (name) {
+            var chosen = name === ctx.wallpaperEffect
+            out.push({
+                id: "effect:" + name, group: "effect", title: ctx.t("wallpaper.effect." + name),
+                subtitle: ctx.t("launcher.wallpaper.effect"), icon: chosen ? "check" : "auto_awesome",
+                run: { kind: "effect", effect: name }
+            })
+        })
+        found.wallpapers.forEach(function (file) {
+            var now = file.path === ctx.wallpaperCurrent
+            out.push({
+                id: "wallpaper:" + file.path, group: "wallpaper", title: file.name,
+                subtitle: now ? ctx.t("launcher.wallpaper.current") : ctx.t("launcher.wallpaper." + file.kind),
+                icon: file.kind === "video" ? "movie" : file.kind === "svg" ? "draw" : "image",
+                thumbnail: file.kind === "image" ? file.path : "",
+                run: { kind: "wallpaper", path: file.path }
+            })
         })
         break
     }

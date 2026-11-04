@@ -665,5 +665,14 @@
   "wallpaper.monitors.global": "Comme tout l'écran",
   "wallpaper.monitors.effect": "Effet",
   "wallpaper.monitors.effect.global": "Suivre tout l'écran",
-  "wallpaper.monitors.effect.imageOnly": "Les effets ne s'appliquent qu'aux images."
+  "wallpaper.monitors.effect.imageOnly": "Les effets ne s'appliquent qu'aux images.",
+  "launcher.group.effect": "Effets",
+  "launcher.group.wallpaper": "Fond d'écran",
+  "launcher.empty.wallpaper": "Aucun fond ne correspond",
+  "launcher.mode.wallpaper": "Fond d'écran",
+  "launcher.wallpaper.effect": "Effet pour tout l'écran",
+  "launcher.wallpaper.image": "Image",
+  "launcher.wallpaper.video": "Vidéo",
+  "launcher.wallpaper.svg": "SVG adaptatif",
+  "launcher.wallpaper.current": "Affiché maintenant"
 }

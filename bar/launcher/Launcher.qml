@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Hyprland
 import "../kit"
 import "../kit/base"
+import "../../kit/effects.js" as Effects
 import "query.js" as Query
 import "search.js" as Search
 import "apps.js" as Apps
@@ -13,6 +14,7 @@ import "engine.js" as Engine
 import "actions.js" as Actions
 import "commands.js" as Commands
 import "desktop.js" as Desktop
+import "wallpapers.js" as Wallpapers
 
 // Vitrail's application launcher, the content of the "launcher" popout.
 // Empty query: favourites, recent apps and every app by category. Typing: a
@@ -106,6 +108,10 @@ FocusScope {
     property var fileItems: []
     property var clips: []
     property string filesTool: "fd"
+    // The wallpaper library, listed once each time the mode is entered.
+    property var wallpaperFiles: []
+    property bool wallpaperLoaded: false
+    property string modeBefore: ""
 
     readonly property var shown: Engine.build(root.parsed, {
         apps: root.appItems, actions: root.actionItems, windows: root.windowItems,
@@ -113,6 +119,9 @@ FocusScope {
         engine: root.engine, bangs: root.bangs,
         calc: { query: root.calcQuery, text: root.calcText, busy: calcRun.busy },
         files: { query: root.fileQuery, items: root.fileItems, busy: fileRun.busy },
+        wallpapers: { items: root.wallpaperFiles, busy: wallpaperRun.busy },
+        wallpaperEffect: Effects.of(root.prefs.wallpaperEffect),
+        wallpaperCurrent: root.prefs.wallpaper || "",
         clips: root.clips, t: root.t, home: root.home
     })
 
@@ -171,6 +180,19 @@ FocusScope {
         Quickshell.execDetached(command)
     }
 
+    // The Python side of Vitrail; the caller sets PYTHONPATH.
+    function runCli(args) {
+        Quickshell.execDetached({ command: Commands.cli(args), environment: { PYTHONPATH: Quickshell.shellDir + "/.." } })
+    }
+
+    // The wallpaper library: its own folder, or the one the preference names.
+    function wallpaperLibrary() {
+        var dir = root.prefs.wallpaperDir || ""
+        if (dir.indexOf("~/") === 0)
+            return root.home + dir.slice(1)
+        return dir || root.home + "/.config/vitrail/wallpapers"
+    }
+
     function launchApp(item) {
         if (item.entry && typeof item.entry.execute === "function")
             item.entry.execute()
@@ -211,11 +233,17 @@ FocusScope {
         case "clip":
             root.detach(Commands.clipCopy(run.id))
             break
+        case "wallpaper":
+            root.runCli(["wallpaper", "pick", run.path])
+            break
+        case "effect":
+            root.runCli(["config", "set", "wallpaperEffect", run.effect])
+            break
         case "fill":
             field.text = run.text
             return
         case "cli":
-            Quickshell.execDetached({ command: Commands.cli(run.args), environment: { PYTHONPATH: Quickshell.shellDir + "/.." } })
+            root.runCli(run.args)
             break
         case "exec":
             root.detach(run.command)
@@ -383,6 +411,13 @@ FocusScope {
     onParsedChanged: {
         if (root.parsed.mode === "clipboard" && !clipRun.busy && root.clips.length === 0)
             clipRun.run(Commands.clipList(), "")
+        if (root.parsed.mode === "wallpaper" && root.modeBefore !== "wallpaper")
+            root.wallpaperLoaded = false
+        if (root.parsed.mode === "wallpaper" && !root.wallpaperLoaded && !wallpaperRun.busy) {
+            root.wallpaperLoaded = true
+            wallpaperRun.run(Commands.wallpapers(root.wallpaperLibrary()), "")
+        }
+        root.modeBefore = root.parsed.mode
         debounce.restart()
     }
 
@@ -418,6 +453,14 @@ FocusScope {
 
         onFinished: function (tag, output) {
             root.clips = Commands.parseClips(output, 200)
+        }
+    }
+
+    AsyncRun {
+        id: wallpaperRun
+
+        onFinished: function (tag, output) {
+            root.wallpaperFiles = Wallpapers.parse(output)
         }
     }
 
@@ -543,7 +586,8 @@ FocusScope {
                 property string tooltipDetail: root.t("launcher.chipHint")
                 readonly property bool hovered: chipHover.hovered
                 readonly property var glyphs: ({ all: "apps", web: "language", calc: "calculate", run: "terminal", files: "folder",
-                                                 windows: "web_asset", actions: "bolt", clipboard: "content_paste" })
+                                                 windows: "web_asset", actions: "bolt", clipboard: "content_paste",
+                                                 wallpaper: "wallpaper" })
 
                 implicitWidth: chipRow.implicitWidth + 2 * VitrailTokens.gap("md")
                 implicitHeight: chipRow.implicitHeight + 2 * VitrailTokens.gap("sm")
@@ -839,6 +883,7 @@ FocusScope {
                         subtitle: result.payload.subtitle || ""
                         appIcon: result.payload.appIcon || ""
                         glyph: result.payload.icon || "apps"
+                        thumbnail: result.payload.thumbnail || ""
                         busy: result.payload.busy === true
                         hasMenu: result.payload.group === "apps"
                         pinned: result.payload.group === "apps" && History.isPinned(root.state, result.payload.item ? result.payload.item.id : "")
@@ -866,6 +911,7 @@ FocusScope {
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
                 text: (fileRun.busy && root.parsed.mode === "files") || (calcRun.busy && root.parsed.mode === "calc")
+                      || (wallpaperRun.busy && root.parsed.mode === "wallpaper")
                       ? root.t("launcher.searching") : root.t("launcher.empty." + root.parsed.mode)
             }
 

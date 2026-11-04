@@ -71,8 +71,8 @@ def _parser() -> argparse.ArgumentParser:
     style_actions.add_parser("show", help="print the current style")
 
     paper = sub.add_parser("wallpaper", help="theme the wallpaper or rotate to the next one")
-    paper.add_argument("action", choices=("apply", "next", "sync", "import", "show", "stop", "status"))
-    paper.add_argument("paths", nargs="*", help="import: files or folders to add")
+    paper.add_argument("action", choices=("apply", "next", "sync", "import", "show", "stop", "status", "pick"))
+    paper.add_argument("paths", nargs="*", help="import: files or folders to add; pick: the wallpaper to show")
     paper.add_argument("--force", action="store_true", help="apply: extract even if unchanged")
 
     mode = sub.add_parser("theme", help="apply light or dark to GTK, Qt and Hyprland")
@@ -213,6 +213,16 @@ def _wallpaper(args: argparse.Namespace) -> int:
     if args.action == "next":
         chosen = wallpaper.advance(settings)
         _say(f"Wallpaper: {chosen}" if chosen else "Wallpaper: nothing to rotate")
+        return 0
+    if args.action == "pick":
+        if not args.paths:
+            _say("Wallpaper: pick needs a file")
+            return 2
+        chosen = wallpaper.pick(settings, str(Path(args.paths[0]).expanduser()))
+        if chosen is None:
+            _say(f"Wallpaper: not a wallpaper: {args.paths[0]}")
+            return 1
+        _say(f"Wallpaper: {chosen}")
         return 0
     cache = colors.cache_dir()
     if args.action == "show":

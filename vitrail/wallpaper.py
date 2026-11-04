@@ -387,6 +387,23 @@ def advance(config: Path) -> str | None:
     return None
 
 
+def pick(config: Path, path: str) -> str | None:
+    """Shows one wallpaper at once (the launcher's choice). Another kind starts
+    a new selection; one of the current kind joins it."""
+    if kind_of(path) is None or not Path(path).is_file():
+        return None
+    prefs = read_prefs(config)
+    selection = parse_selection(prefs.get("wallpaperSelection", ""))
+    if prefs.get("wallpaperType") != kind_of(path):
+        selection = [path]
+    elif path not in selection:
+        selection.append(path)
+    write_pref(config, "wallpaperType", kind_of(path) or "")
+    write_pref(config, "wallpaperSelection", join_selection(selection))
+    write_pref(config, "wallpaper", path)
+    return path
+
+
 def apply(
     config: Path,
     cache: Path,

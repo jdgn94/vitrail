@@ -3,8 +3,9 @@
 .pragma library
 
 // Modes after the mixed one, in the order Tab cycles through them.
-var MODES = ["web", "calc", "run", "files", "windows", "actions", "clipboard"]
-var PREFIXES = { web: "?", calc: "=", run: ">", files: "/", windows: "@", actions: ":", clipboard: ";" }
+var MODES = ["web", "calc", "run", "files", "windows", "actions", "clipboard", "wallpaper"]
+var PREFIXES = { web: "?", calc: "=", run: ">", files: "/", windows: "@", actions: ":", clipboard: ";",
+                 wallpaper: "wallpaper:" }
 
 // Search engines for the `?` mode. %s is the encoded query.
 var ENGINES = {
@@ -83,9 +84,10 @@ function bangs(stored) {
 
 // --- parsing ---------------------------------------------------------------
 
-function modeOfPrefix(char) {
+function modeOfPrefix(text) {
+    var value = String(text || "")
     for (var mode in PREFIXES) {
-        if (PREFIXES[mode] === char)
+        if (value.indexOf(PREFIXES[mode]) === 0)
             return mode
     }
     return ""
@@ -96,9 +98,9 @@ function parse(raw, opts) {
     var text = String(raw || "")
     var enabled = (opts && opts.enabled) || MODES
     var list = (opts && opts.bangs) || BUILTIN_BANGS
-    var mode = modeOfPrefix(text.charAt(0))
+    var mode = modeOfPrefix(text)
     if (mode && enabled.indexOf(mode) >= 0)
-        return { mode: mode, text: text.slice(1).trim(), bang: null }
+        return { mode: mode, text: text.slice(PREFIXES[mode].length).trim(), bang: null }
     var found = /^!(\S+)(?:\s+(.*))?$/.exec(text)
     if (found) {
         for (var i = 0; i < list.length; i++) {
@@ -112,7 +114,8 @@ function parse(raw, opts) {
 // The text with its mode replaced by another's prefix ("all" has none).
 function withMode(raw, mode) {
     var text = String(raw || "")
-    var rest = modeOfPrefix(text.charAt(0)) ? text.slice(1) : text
+    var found = modeOfPrefix(text)
+    var rest = found ? text.slice(PREFIXES[found].length) : text
     return (PREFIXES[mode] || "") + rest
 }
 

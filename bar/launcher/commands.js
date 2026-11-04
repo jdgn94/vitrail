@@ -15,6 +15,12 @@ function files(tool, query, limit, home) {
     return ["fd", "-i", "-a", "--max-results", String(limit), "--", query, home]
 }
 
+// The wallpaper library: every file two levels down (images/, svg/,
+// videos/), which wallpapers.js filters by extension and sorts by name.
+function wallpapers(library) {
+    return ["find", library, "-maxdepth", "2", "-type", "f"]
+}
+
 // Every application file with its text, so the launcher can see an app
 // installed while the shell was running.
 function scanDesktop() {

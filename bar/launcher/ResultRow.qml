@@ -15,6 +15,9 @@ Item {
     // A theme icon name and, when there is none, a Material glyph.
     property string appIcon: ""
     property string glyph: "apps"
+    // A picture to show instead of the icon (a wallpaper), wider than it.
+    property string thumbnail: ""
+    readonly property real artWidth: row.thumbnail !== "" ? Math.round(row.iconSize * 1.75) : row.iconSize
     property string hint: ""
     property bool selected: false
     property bool busy: false
@@ -58,14 +61,35 @@ Item {
 
         Item {
             // Icons differ in size; a fixed slot keeps the names aligned.
-            Layout.preferredWidth: row.iconSize
+            Layout.preferredWidth: row.artWidth
             Layout.preferredHeight: row.iconSize
+            clip: true
+
+            Image {
+                anchors.fill: parent
+                visible: row.thumbnail !== ""
+                source: row.thumbnail === "" ? "" : "file://" + row.thumbnail
+                sourceSize: Qt.size(width * 2, height * 2)
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                cache: false
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: VitrailTokens.radius / 3
+                color: "transparent"
+                visible: row.thumbnail !== ""
+                border.width: 1
+                border.color: row.selected ? VitrailTokens.color("primary") : VitrailTokens.color("foreground")
+                opacity: 0.25
+            }
 
             Image {
                 id: art
 
                 anchors.fill: parent
-                visible: status === Image.Ready
+                visible: row.thumbnail === "" && status === Image.Ready
                 sourceSize: Qt.size(width, height)
                 source: row.appIcon === "" ? "" : Quickshell.iconPath(row.appIcon, true)
                 asynchronous: true
@@ -73,7 +97,7 @@ Item {
 
             VitrailText {
                 anchors.centerIn: parent
-                visible: !art.visible
+                visible: row.thumbnail === "" && !art.visible
                 variant: "icon"
                 text: row.glyph
                 color: row.selected ? VitrailTokens.color("primary") : VitrailTokens.color("muted")

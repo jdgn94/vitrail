@@ -341,7 +341,7 @@ QtObject {
         // for the bar to clear what it remembers.
         property string launcherEngine: "duckduckgo"
         property string launcherBangs: ""
-        property string launcherModes: "web|calc|run|files|windows|actions|clipboard"
+        property string launcherModes: "web|calc|run|files|windows|actions|clipboard|wallpaper"
         property string launcherView: "grid"
         property string launcherClear: ""
     }

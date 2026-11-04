@@ -2,7 +2,7 @@
 .pragma library
 
 // How groups are ordered by default. `label` is launcher.group.<name>.
-var GROUPS = ["apps", "actions", "windows", "web", "calc", "files", "run", "clipboard"]
+var GROUPS = ["apps", "actions", "windows", "effect", "wallpaper", "web", "calc", "files", "run", "clipboard"]
 
 // Groups the results into sections in `order`, each capped by `caps[group]`.
 // -> { rows: [{ header, group } | { result, index }], list: [result] }.

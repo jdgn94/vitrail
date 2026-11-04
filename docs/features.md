@@ -22,8 +22,10 @@ the widgets slot:
 ## Launcher
 
 `Mod+D`: applications, windows, files, calculator, clipboard and web, with
-inline actions (`>` run, `=` calculate, `/` files, `;` clipboard). Keyboard
-only; the clip panel is `Mod+.`.
+inline actions (`>` run, `=` calculate, `/` files, `;` clipboard). The
+`wallpaper:` mode lists the library's pictures as thumbnails and the eighteen
+effects: choosing one shows that wallpaper (`vitrail wallpaper pick`) or sets
+the effect for the whole screen. Keyboard only; the clip panel is `Mod+.`.
 
 ## Capture
 
