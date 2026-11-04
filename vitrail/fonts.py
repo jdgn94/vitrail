@@ -15,9 +15,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
+import struct
 import subprocess
 import sys
+import zlib
 from pathlib import Path
 from typing import Callable
 from xml.sax.saxutils import escape
@@ -44,6 +47,22 @@ DEFAULT_ROOTS = [
     Path.home() / ".icons",
     Path.home() / ".local/share/icons",
 ]
+
+# The icons a pack's mosaic cell shows: common enough to exist in every theme.
+ICON_PREVIEWS = [
+    "folder",
+    "user-home",
+    "text-x-generic",
+    "image-x-generic",
+    "applications-system",
+    "web-browser",
+    "utilities-terminal",
+    "user-trash",
+]
+PREVIEW_SIZE = 48
+# An Xcursor's image chunks are named by nominal size; a 32 px arrow reads best.
+CURSOR_PREVIEW_SIZE = 32
+XCURSOR_IMAGE = 0xFFFD0002
 
 Runner = Callable[[list[str]], str | None]
 
@@ -122,22 +141,213 @@ def themes(roots: list[Path]) -> tuple[list[str], list[str]]:
             # written to (environment.d, gtk settings.ini).
             if any(ord(char) < 32 for char in path.name):
                 continue
-            if "cursors" in folders:
+            # `cursors` and `cursors_scalable` are both pointer content.
+            if any(name.startswith("cursors") for name in folders):
                 cursors.setdefault(path.name.casefold(), path.name)
-            if any(name != "cursors" for name in folders):
+            if any(not name.startswith("cursors") for name in folders):
                 icons.setdefault(path.name.casefold(), path.name)
     return (sorted(icons.values(), key=str.casefold), sorted(cursors.values(), key=str.casefold))
 
 
-def state(run: Runner = run_text, roots: list[Path] | None = None) -> dict:
+def preview_cache() -> Path:
+    base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
+    return Path(base) / "vitrail" / "fonts"
+
+
+# --- previews ----------------------------------------------------------------
+
+
+def _sections(path: Path) -> dict[str, dict[str, str]]:
+    """An index.theme as {section: {key: value}}."""
+    sections: dict[str, dict[str, str]] = {}
+    current: dict[str, str] | None = None
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return sections
+    for line in text.splitlines():
+        line = line.strip()
+        if line.startswith("[") and line.endswith("]"):
+            current = sections.setdefault(line[1:-1], {})
+        elif current is not None and "=" in line and not line.startswith("#"):
+            key, _, value = line.partition("=")
+            current[key.strip()] = value.strip()
+    return sections
+
+
+def theme_dir(name: str, roots: list[Path]) -> Path | None:
+    """The first folder in `roots` that holds the named theme."""
+    for root in roots:
+        candidate = root / name
+        if (candidate / "index.theme").is_file():
+            return candidate
+    return None
+
+
+def _theme_chain(theme: Path, roots: list[Path]) -> list[Path]:
+    """The theme and every theme it inherits from, parents last."""
+    seen: set[str] = set()
+    chain: list[Path] = []
+    pending = [theme]
+    while pending:
+        current = pending.pop(0)
+        if current.name in seen or not (current / "index.theme").is_file():
+            continue
+        seen.add(current.name)
+        chain.append(current)
+        inherits = _sections(current / "index.theme").get("Icon Theme", {}).get("Inherits", "")
+        for name in (part.strip() for part in inherits.split(",")):
+            if name:
+                parent = theme_dir(name, roots)
+                if parent is not None:
+                    pending.append(parent)
+    return chain
+
+
+def _dir_size(name: str, section: dict[str, str]) -> int:
+    raw = section.get("Size", "")
+    if raw.isdigit():
+        return int(raw)
+    digits = re.match(r"(\d+)", name)
+    return int(digits.group(1)) if digits else 9999
+
+
+def icon_previews(theme: Path, names: list[str], roots: list[Path]) -> dict[str, str]:
+    """The theme's own file for each name, nearest 48 px first."""
+    found: dict[str, str] = {}
+    for current in _theme_chain(theme, roots):
+        sections = _sections(current / "index.theme")
+        directories = [
+            part.strip() for part in sections.get("Icon Theme", {}).get("Directories", "").split(",") if part.strip()
+        ]
+        # Vector first (sharp at any size), then the size nearest the preview.
+        ranked = sorted(
+            directories,
+            key=lambda name: ("scalable" not in name, abs(_dir_size(name, sections.get(name, {})) - PREVIEW_SIZE)),
+        )
+        for name in names:
+            if name in found:
+                continue
+            for directory in ranked:
+                for suffix in (".svg", ".png"):
+                    path = current / directory / (name + suffix)
+                    if path.is_file():
+                        found[name] = str(path)
+                        break
+                if name in found:
+                    break
+    return found
+
+
+def _png(width: int, height: int, pixels: bytes) -> bytes:
+    """A straight-alpha RGBA PNG from Xcursor's premultiplied ARGB words."""
+    rows = bytearray()
+    for y in range(height):
+        rows.append(0)  # no filter
+        for x in range(width):
+            value = struct.unpack_from("<I", pixels, (y * width + x) * 4)[0]
+            alpha = (value >> 24) & 0xFF
+            red, green, blue = (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF
+            if 0 < alpha < 255:
+                red = min(255, red * 255 // alpha)
+                green = min(255, green * 255 // alpha)
+                blue = min(255, blue * 255 // alpha)
+            rows += bytes((red, green, blue, alpha))
+
+    def chunk(tag: bytes, body: bytes) -> bytes:
+        return struct.pack(">I", len(body)) + tag + body + struct.pack(">I", zlib.crc32(tag + body) & 0xFFFFFFFF)
+
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(bytes(rows), 9))
+        + chunk(b"IEND", b"")
+    )
+
+
+def xcursor_png(data: bytes) -> bytes | None:
+    """The PNG of the Xcursor image closest to 32 px, or None."""
+    if len(data) < 16 or data[:4] != b"Xcur":
+        return None
+    try:
+        _magic, header, _version, count = struct.unpack_from("<IIII", data, 0)
+    except struct.error:
+        return None
+    best: tuple[int, int, int, int] | None = None
+    for index in range(count):
+        try:
+            kind, subtype, position = struct.unpack_from("<III", data, header + index * 12)
+        except struct.error:
+            break
+        if kind != XCURSOR_IMAGE:
+            continue
+        try:
+            _h, _k, _s, _v, width, height, _xh, _yh, _delay = struct.unpack_from("<IIIIIIIII", data, position)
+        except struct.error:
+            continue
+        if not (0 < width <= 512 and 0 < height <= 512):
+            continue
+        if position + 36 + width * height * 4 > len(data):
+            continue
+        distance = abs(subtype - CURSOR_PREVIEW_SIZE)
+        if best is None or distance < best[0]:
+            best = (distance, width, height, position)
+    if best is None:
+        return None
+    _distance, width, height, position = best
+    return _png(width, height, data[position + 36 : position + 36 + width * height * 4])
+
+
+def cursor_preview(theme: Path, cache: Path) -> str:
+    """A cached PNG of the theme's arrow, or "" when it has no readable one."""
+    source = theme / "cursors" / "default"
+    if not source.is_file():
+        source = theme / "cursors" / "left_ptr"
+    if not source.is_file():
+        return ""
+    target = cache / f"{theme.name}.png"
+    try:
+        if target.is_file() and target.stat().st_mtime >= source.stat().st_mtime:
+            return str(target)
+        image = xcursor_png(source.read_bytes())
+    except OSError:
+        return ""
+    if image is None:
+        return ""
+    try:
+        cache.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(image)
+    except OSError:
+        return ""
+    return str(target)
+
+
+def state(run: Runner = run_text, roots: list[Path] | None = None, cache: Path | None = None) -> dict:
     """The lists the settings window offers: fonts, packs and cursors."""
+    roots = list(roots) if roots is not None else DEFAULT_ROOTS
+    cache = cache or preview_cache()
     text = run(font_query()) or ""
-    icons, cursors = themes(list(roots) if roots is not None else DEFAULT_ROOTS)
+    icons, cursors = themes(roots)
+    icon_files: dict[str, list[str]] = {}
+    for name in icons:
+        directory = theme_dir(name, roots)
+        if directory is not None:
+            found = icon_previews(directory, ICON_PREVIEWS, roots)
+            icon_files[name] = [found[icon] for icon in ICON_PREVIEWS if icon in found]
+    cursor_files: dict[str, str] = {}
+    for name in cursors:
+        directory = theme_dir(name, roots)
+        if directory is not None:
+            path = cursor_preview(directory, cache)
+            if path:
+                cursor_files[name] = path
     return {
         "fonts": families(text),
         "monospace": monospace(text),
         "iconThemes": icons,
         "cursorThemes": cursors,
+        "iconPreviews": icon_files,
+        "cursorPreviews": cursor_files,
     }
 
 

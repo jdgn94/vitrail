@@ -5,16 +5,18 @@ import "../../kit/base"
 import "../fontsview.js" as FontsView
 
 // Fonts category: one page for the whole session's type, the shell's icons,
-// the apps' icon pack and the pointer. The lists are what `vitrail.fonts
-// state` found on this machine; the apply script writes the choice to
-// fontconfig, GTK, qt6ct, kitty, the Hyprland cursor and environment.d.
+// the apps' icon pack and the pointer. Each choice opens a mosaic of what the
+// machine has (`vitrail.fonts state`: the lists and one preview per pack), and
+// the apply script writes the choice to fontconfig, GTK, qt6ct, kitty, the
+// Hyprland cursor and environment.d.
 Item {
     id: page
 
     property var palette
     property var prefs
     property var strings
-    property var fonts: ({ fonts: [], monospace: [], iconThemes: [], cursorThemes: [] })
+    property var fonts: ({ fonts: [], monospace: [], iconThemes: [], cursorThemes: [],
+                           iconPreviews: {}, cursorPreviews: {} })
     property string tab: "text"
 
     onTabChanged: scroller.contentY = 0
@@ -24,8 +26,29 @@ Item {
         return value === undefined ? key : value
     }
 
-    function options(names, current) {
-        return FontsView.options(names || [], current || "")
+    // The installed list as picker rows; `kind` adds the preview the mosaic
+    // and the trigger draw (a family's own letters, a pack's icons, a cursor).
+    // Only packs with a real preview are offered: a cursor-only theme that
+    // declares itself an icon theme would be a blank cell.
+    function iconOptions(names, current) {
+        var withPreview = (names || []).filter(function (name) {
+            return ((page.fonts.iconPreviews || {})[name] || []).length > 0
+        })
+        return page.options(withPreview, current, "icons")
+    }
+
+    function options(names, current, kind) {
+        var rows = FontsView.options(names || [], current || "")
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i]
+            if (kind === "font")
+                row.family = row.key
+            else if (kind === "icons")
+                row.icons = (page.fonts.iconPreviews || {})[row.key] || []
+            else if (kind === "cursor")
+                row.image = (page.fonts.cursorPreviews || {})[row.key] || ""
+        }
+        return rows
     }
 
     ColumnLayout {
@@ -75,10 +98,13 @@ Item {
                         foreground: page.palette.foreground
                         muted: page.palette.muted
 
-                        VitrailSelect {
-                            Layout.preferredWidth: 260
+                        VitrailPicker {
+                            objectName: "systemFontPicker"
+                            Layout.preferredWidth: 320
+                            label: page.t("fonts.system")
+                            searchHint: page.t("fonts.search")
                             current: page.prefs.fontSystem
-                            options: page.options(page.fonts.fonts, page.prefs.fontSystem)
+                            options: page.options(page.fonts.fonts, page.prefs.fontSystem, "font")
                             foreground: page.palette.foreground
                             accent: page.palette.primary
                             panel: page.palette.surfaceHigh
@@ -93,10 +119,13 @@ Item {
                         foreground: page.palette.foreground
                         muted: page.palette.muted
 
-                        VitrailSelect {
-                            Layout.preferredWidth: 260
+                        VitrailPicker {
+                            objectName: "consoleFontPicker"
+                            Layout.preferredWidth: 320
+                            label: page.t("fonts.console")
+                            searchHint: page.t("fonts.search")
                             current: page.prefs.fontConsole
-                            options: page.options(page.fonts.monospace, page.prefs.fontConsole)
+                            options: page.options(page.fonts.monospace, page.prefs.fontConsole, "font")
                             foreground: page.palette.foreground
                             accent: page.palette.primary
                             panel: page.palette.surfaceHigh
@@ -128,16 +157,29 @@ Item {
                         foreground: page.palette.foreground
                         muted: page.palette.muted
 
-                        VitrailSegmented {
-                            options: [
-                                { key: "rounded", label: page.t("fonts.uiIcons.rounded") },
-                                { key: "sharp", label: page.t("fonts.uiIcons.sharp") },
-                                { key: "outlined", label: page.t("fonts.uiIcons.outlined") }
-                            ]
-                            current: page.prefs.uiIcons
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            onSelected: page.prefs.uiIcons = key
+                        RowLayout {
+                            spacing: VitrailTokens.gap("md")
+
+                            // The chosen family's own glyph, beside the switch.
+                            VitrailText {
+                                variant: "icon"
+                                font.pixelSize: VitrailTokens.size("title")
+                                family: VitrailTokens.font.iconFamilyOf(page.prefs.uiIcons)
+                                text: "interests"
+                                color: page.palette.primary
+                            }
+
+                            VitrailSegmented {
+                                options: [
+                                    { key: "rounded", label: page.t("fonts.uiIcons.rounded") },
+                                    { key: "sharp", label: page.t("fonts.uiIcons.sharp") },
+                                    { key: "outlined", label: page.t("fonts.uiIcons.outlined") }
+                                ]
+                                current: page.prefs.uiIcons
+                                foreground: page.palette.foreground
+                                accent: page.palette.primary
+                                onSelected: page.prefs.uiIcons = key
+                            }
                         }
                     }
 
@@ -148,10 +190,13 @@ Item {
                         foreground: page.palette.foreground
                         muted: page.palette.muted
 
-                        VitrailSelect {
-                            Layout.preferredWidth: 260
+                        VitrailPicker {
+                            objectName: "iconThemePicker"
+                            Layout.preferredWidth: 320
+                            label: page.t("fonts.iconTheme")
+                            searchHint: page.t("fonts.search")
                             current: page.prefs.iconTheme
-                            options: page.options(page.fonts.iconThemes, page.prefs.iconTheme)
+                            options: page.iconOptions(page.fonts.iconThemes, page.prefs.iconTheme)
                             foreground: page.palette.foreground
                             accent: page.palette.primary
                             panel: page.palette.surfaceHigh
@@ -175,10 +220,14 @@ Item {
                         foreground: page.palette.foreground
                         muted: page.palette.muted
 
-                        VitrailSelect {
-                            Layout.preferredWidth: 260
+                        VitrailPicker {
+                            objectName: "cursorThemePicker"
+                            Layout.preferredWidth: 320
+                            label: page.t("fonts.cursor")
+                            searchHint: page.t("fonts.search")
                             current: page.prefs.cursorTheme
-                            options: page.options(page.fonts.cursorThemes, page.prefs.cursorTheme)
+                            options: page.options(page.fonts.cursorThemes, page.prefs.cursorTheme,
+                                                  "cursor")
                             foreground: page.palette.foreground
                             accent: page.palette.primary
                             panel: page.palette.surfaceHigh

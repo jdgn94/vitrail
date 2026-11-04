@@ -25,20 +25,8 @@ Window {
     // The translations, in a file the launcher writes: every language in one
     // argument passes the kernel's 128 KiB limit as the strings grow.
     // `--i18n` still serves a caller with a small bundle.
-    readonly property var i18n: {
-        var path = Args.value("--i18n-file", "")
-        if (path !== "") {
-            var request = new XMLHttpRequest()
-            try {
-                request.open("GET", "file://" + path, false)
-                request.send()
-                return JSON.parse(request.responseText)
-            } catch (error) {
-                return ({ languages: [], strings: {} })
-            }
-        }
-        return Args.json("--i18n", ({ languages: [], strings: {} }))
-    }
+    readonly property var i18n: Args.jsonFile("--i18n-file", "--i18n",
+                                              ({ languages: [], strings: {} }))
     readonly property var languages: app.i18n.languages || []
     readonly property var strings: (app.i18n.strings || {})[prefs.language] || ({})
     readonly property var palettes: Args.json("--palette", ({}))
@@ -52,8 +40,13 @@ Window {
     readonly property var network: Args.json("--network", ({}))
     // The Monitors page: Hyprland's outputs as they were at launch.
     readonly property var monitors: Args.json("--monitors", ({ available: false, monitors: [] }))
-    // The Fonts page: the families, icon packs and cursors found at launch.
-    readonly property var fonts: Args.json("--fonts", ({ fonts: [], monospace: [], iconThemes: [], cursorThemes: [] }))
+    // The Fonts page: the families, icon packs and cursors found at launch,
+    // with the preview file of each pack and cursor. A file: the previews
+    // make the document larger than one comfortable argument.
+    readonly property var fonts: Args.jsonFile("--fonts-file", "--fonts",
+                                               ({ fonts: [], monospace: [], iconThemes: [],
+                                                  cursorThemes: [], iconPreviews: {},
+                                                  cursorPreviews: {} }))
     // $XDG_RUNTIME_DIR: a private folder where a password may be left for the helper.
     readonly property string runtimeDir: Args.value("--runtime", "")
     // The VPN's private folder (~/.config/vitrail-vpn): its document lives there.

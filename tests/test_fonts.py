@@ -8,6 +8,8 @@ what the machine has.
 
 from __future__ import annotations
 
+import shutil
+import struct
 import tempfile
 import unittest
 from pathlib import Path
@@ -43,6 +45,7 @@ class ThemeTests(unittest.TestCase):
             ("Adwaita", ["cursors", "48x48"]),
             ("Papirus", ["48x48"]),
             ("OnlyCursor", ["cursors"]),
+            ("ScalableCursor", ["cursors_scalable"]),
             ("Junk", []),
         ):
             (self.root / name).mkdir(parents=True)
@@ -52,14 +55,12 @@ class ThemeTests(unittest.TestCase):
                 (self.root / name / "index.theme").write_text("[Icon Theme]\n", encoding="utf-8")
 
     def tearDown(self) -> None:
-        import shutil
-
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_icon_and_cursor_themes_are_found_by_their_shape(self) -> None:
         self.assertEqual(
             fonts.themes([self.root]),
-            (["Adwaita", "Papirus"], ["Adwaita", "OnlyCursor"]),
+            (["Adwaita", "Papirus"], ["Adwaita", "OnlyCursor", "ScalableCursor"]),
         )
 
     def test_a_folder_without_index_theme_is_not_a_theme(self) -> None:
@@ -80,8 +81,6 @@ class StateTests(unittest.TestCase):
         self.root = Path(self.tmp)
 
     def tearDown(self) -> None:
-        import shutil
-
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_state_lists_what_is_installed(self) -> None:
@@ -102,6 +101,86 @@ class StateTests(unittest.TestCase):
         self.assertEqual(state["monospace"], [])
 
 
+def xcursor(path: Path, width: int = 24, height: int = 24, argb: int = 0xFF0000FF) -> None:
+    """A one-image Xcursor file, as the themes ship them."""
+    chunk = struct.pack("<IIIIIIIII", 36, 0xFFFD0002, 24, 1, width, height, 0, 0, 0)
+    pixels = b"".join(struct.pack("<I", argb) for _ in range(width * height))
+    header = struct.pack("<IIII", 0x72756358, 16, 1, 1)
+    toc = struct.pack("<III", 0xFFFD0002, 24, 16 + 12)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(header + toc + chunk + pixels)
+
+
+class PreviewTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.mkdtemp()
+        self.root = Path(self.tmp)
+        self.icons = self.root / "icons"
+        self.cache = self.root / "cache"
+        adwaita = self.icons / "Adwaita"
+        (adwaita / "48x48" / "places").mkdir(parents=True)
+        (adwaita / "32x32" / "apps").mkdir(parents=True)
+        (adwaita / "cursors").mkdir()
+        (adwaita / "index.theme").write_text(
+            "[Icon Theme]\nDirectories=32x32/apps,48x48/places,scalable/apps\nInherits=hicolor\n"
+            "\n[32x32/apps]\nSize=32\n\n[48x48/places]\nSize=48\n"
+            "\n[scalable/apps]\nSize=48\nType=Scalable\n",
+            encoding="utf-8",
+        )
+        (adwaita / "48x48" / "places" / "folder.png").write_bytes(b"png")
+        (adwaita / "32x32" / "apps" / "web-browser.svg").write_text("<svg/>", encoding="utf-8")
+        (adwaita / "scalable" / "apps").mkdir(parents=True)
+        (adwaita / "scalable" / "apps" / "image-x-generic.svg").write_text("<svg/>", encoding="utf-8")
+        xcursor(adwaita / "cursors" / "default")
+        hicolor = self.icons / "hicolor"
+        (hicolor / "16x16" / "apps").mkdir(parents=True)
+        (hicolor / "index.theme").write_text(
+            "[Icon Theme]\nDirectories=16x16/apps\n\n[16x16/apps]\nSize=16\n", encoding="utf-8"
+        )
+        (hicolor / "16x16" / "apps" / "user-trash.svg").write_text("<svg/>", encoding="utf-8")
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_icon_previews_resolve_the_names_and_prefer_48_px(self) -> None:
+        found = fonts.icon_previews(self.icons / "Adwaita", ["folder", "web-browser"], [self.icons])
+        self.assertEqual(found["folder"], str(self.icons / "Adwaita" / "48x48" / "places" / "folder.png"))
+        self.assertEqual(found["web-browser"], str(self.icons / "Adwaita" / "32x32" / "apps" / "web-browser.svg"))
+
+    def test_a_vector_icon_is_preferred_over_the_nearest_size(self) -> None:
+        found = fonts.icon_previews(self.icons / "Adwaita", ["image-x-generic"], [self.icons])
+        self.assertTrue(found["image-x-generic"].endswith("image-x-generic.svg"))
+
+    def test_an_icon_missing_from_the_theme_comes_from_its_parent(self) -> None:
+        found = fonts.icon_previews(self.icons / "Adwaita", ["user-trash"], [self.icons])
+        self.assertEqual(found["user-trash"], str(self.icons / "hicolor" / "16x16" / "apps" / "user-trash.svg"))
+
+    def test_a_name_with_no_icon_anywhere_is_not_invented(self) -> None:
+        found = fonts.icon_previews(self.icons / "Adwaita", ["nope"], [self.icons])
+        self.assertEqual(found, {})
+
+    def test_the_cursor_preview_is_a_png_of_the_real_cursor(self) -> None:
+        path = fonts.cursor_preview(self.icons / "Adwaita", self.cache)
+        self.assertEqual(Path(path).read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+
+    def test_a_cursor_without_a_readable_file_has_no_preview(self) -> None:
+        empty = self.icons / "Bare"
+        (empty / "cursors").mkdir(parents=True)
+        (empty / "index.theme").write_text("[Icon Theme]\n", encoding="utf-8")
+        self.assertEqual(fonts.cursor_preview(empty, self.cache), "")
+
+    def test_the_cursor_preview_is_cached(self) -> None:
+        first = fonts.cursor_preview(self.icons / "Adwaita", self.cache)
+        stamp = Path(first).stat().st_mtime_ns
+        self.assertEqual(fonts.cursor_preview(self.icons / "Adwaita", self.cache), first)
+        self.assertEqual(Path(first).stat().st_mtime_ns, stamp)
+
+    def test_state_carries_the_previews(self) -> None:
+        state = fonts.state(run=lambda argv: "Roboto\t80\n", roots=[self.icons], cache=self.cache)
+        self.assertTrue(state["iconPreviews"]["Adwaita"][0].endswith("folder.png"))
+        self.assertTrue(state["cursorPreviews"]["Adwaita"].endswith(".png"))
+
+
 class ApplyTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.mkdtemp()
@@ -117,8 +196,6 @@ class ApplyTests(unittest.TestCase):
         (self.config / "qt6ct" / "qt6ct.conf").write_text("[Appearance]\n", encoding="utf-8")
 
     def tearDown(self) -> None:
-        import shutil
-
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def recording(self, text: str, calls: list[list[str]] | None = None):

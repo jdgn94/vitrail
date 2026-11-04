@@ -72,10 +72,17 @@ if command -v python3 >/dev/null 2>&1; then
         PYTHONPATH="${HERE}/.." python3 -m vitrail.monitors state >"${work}/monitors" 2>/dev/null \
             || printf '{"available":false,"monitors":[]}' >"${work}/monitors"
     } &
-    # The Fonts page: the fonts, icon packs and cursors this machine has.
+    # The Fonts page: the fonts, icon packs and cursors this machine has, with
+    # a preview file per pack and cursor. A file, not an argument: the paths
+    # pass the kernel's 128 KiB limit for one argument on a font-heavy machine.
     {
-        PYTHONPATH="${HERE}/.." python3 -m vitrail.fonts state >"${work}/fonts" 2>/dev/null \
-            || printf '{"fonts":[],"monospace":[],"iconThemes":[],"cursorThemes":[]}' >"${work}/fonts"
+        if PYTHONPATH="${HERE}/.." python3 -m vitrail.fonts state >"${CACHE_DIR}/fonts-state.json.part" 2>/dev/null; then
+            mv -- "${CACHE_DIR}/fonts-state.json.part" "${CACHE_DIR}/fonts-state.json"
+        else
+            rm -f -- "${CACHE_DIR}/fonts-state.json.part"
+            printf '{"fonts":[],"monospace":[],"iconThemes":[],"cursorThemes":[],"iconPreviews":{},"cursorPreviews":{}}' \
+                >"${CACHE_DIR}/fonts-state.json"
+        fi
     } &
     wait
 else
@@ -93,7 +100,7 @@ palette="$(answer palette '{}')"
 zones="$(answer zones '[]')"
 network="$(answer network '{}')"
 monitors="$(answer monitors '{"available":false,"monitors":[]}')"
-fonts="$(answer fonts '{"fonts":[],"monospace":[],"iconThemes":[],"cursorThemes":[]}')"
+fonts_file="${CACHE_DIR}/fonts-state.json"
 # `exec` below skips the EXIT trap.
 rm -rf -- "${work}"
 
@@ -117,7 +124,7 @@ exec qml6 -I "${HERE}/.." "${SHELL_DIR}/main.qml" -- \
     --ntp "${ntp}" \
     --network "${network}" \
     --monitors "${monitors}" \
-    --fonts "${fonts}" \
+    --fonts-file "${fonts_file}" \
     --home "${HOME}" \
     --runtime "${XDG_RUNTIME_DIR:-}" \
     --vpn "${VPN_DIR}" \

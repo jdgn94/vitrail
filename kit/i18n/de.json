@@ -67,6 +67,7 @@
   "fonts.cursor": "Zeigerthema",
   "fonts.cursor.help": "Ein bereits installiertes Paket; palettengefärbte Zeiger kommen mit P2.10.",
   "fonts.cursorSize": "Zeigergröße",
+  "fonts.search": "Suchen",
   "section.colors": "Farben",
   "windows.tabBorder": "Rahmen",
   "windows.tabOpacity": "Deckkraft",

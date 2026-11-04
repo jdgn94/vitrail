@@ -19,3 +19,20 @@ function json(name, fallback) {
         return fallback
     }
 }
+
+// Parses the JSON file named by `--<file>`; when it is missing or unreadable,
+// falls back to the JSON in `--<arg>` (a large document travels as a file).
+function jsonFile(fileName, argName, fallback) {
+    var path = value(fileName, "")
+    if (path !== "") {
+        try {
+            var request = new XMLHttpRequest()
+            request.open("GET", "file://" + path, false)
+            request.send()
+            return JSON.parse(request.responseText)
+        } catch (error) {
+            // Fall through to the argument.
+        }
+    }
+    return json(argName, fallback)
+}

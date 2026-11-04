@@ -479,6 +479,44 @@ Window {
 
         VitrailText {
             variant: "title"
+            text: "VitrailPicker · preview in the field, mosaic in the dialog"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("xl")
+
+            VitrailPicker {
+                Layout.preferredWidth: 320
+                label: "System font"
+                current: "Roboto"
+                options: [
+                    { key: "Roboto", label: "Roboto", family: "Roboto" },
+                    { key: "DejaVu Sans", label: "DejaVu Sans", family: "DejaVu Sans" },
+                    { key: "Noto Sans", label: "Noto Sans", family: "Noto Sans" }
+                ]
+            }
+
+            VitrailPicker {
+                Layout.preferredWidth: 320
+                label: "Cursor theme"
+                current: "Adwaita"
+                options: [
+                    { key: "Adwaita", label: "Adwaita" },
+                    { key: "Bibata", label: "Bibata" }
+                ]
+            }
+
+            VitrailPicker {
+                Layout.preferredWidth: 320
+                label: "Disabled"
+                enabled: false
+                current: "Adwaita"
+                options: [{ key: "Adwaita", label: "Adwaita" }]
+            }
+        }
+
+        VitrailText {
+            variant: "title"
             text: "VitrailIcon · size × tone × filled"
         }
 
