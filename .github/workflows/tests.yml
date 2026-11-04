@@ -1,0 +1,38 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --group dev
+      - run: uv run python -m unittest discover -s tests
+      - run: uv run ruff check .
+
+  shell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: syntax
+        run: |
+          for script in install.sh bootstrap.sh scripts/*.sh bin/*; do
+            [[ -f "$script" ]] && bash -n "$script"
+          done
+      - run: bash tests/install_test.sh
+
+  qml:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    timeout-minutes: 30
+    steps:
+      - run: pacman -Syu --noconfirm git python qt6-base qt6-declarative fontconfig
+      - uses: actions/checkout@v4
+      - run: git config --global --add safe.directory "$PWD"
+      - run: bash tests/qml_smoke.sh

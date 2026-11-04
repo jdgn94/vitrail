@@ -1,0 +1,28 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  tarball:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: version matches the tag
+        run: |
+          version="$(awk -F'"' '/^version[[:space:]]*=/{print $2; exit}' pyproject.toml)"
+          [[ "v${version}" == "${GITHUB_REF_NAME}" ]] || {
+            echo "tag ${GITHUB_REF_NAME} does not match pyproject ${version}" >&2
+            exit 1
+          }
+      - run: bash scripts/release.sh
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.sha256
