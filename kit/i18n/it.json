@@ -72,6 +72,7 @@
   "fonts.design": "Tinta della palette",
   "fonts.design.help": "Ricolora un pacchetto installato con la palette dello sfondo e lo usa come cursore.",
   "fonts.design.off": "Spento",
+  "fonts.iconsTint.help": "Ricolora le cartelle di un pacchetto installato con la palette dello sfondo.",
   "section.colors": "Colori",
   "windows.tabBorder": "Bordo",
   "windows.tabOpacity": "Opacità",

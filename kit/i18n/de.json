@@ -72,6 +72,7 @@
   "fonts.design": "Palettenfarbe",
   "fonts.design.help": "Färbt ein installiertes Paket mit der Palette des Hintergrunds und nutzt es als Zeiger.",
   "fonts.design.off": "Aus",
+  "fonts.iconsTint.help": "Färbt die Ordner eines installierten Pakets mit der Palette des Hintergrunds.",
   "section.colors": "Farben",
   "windows.tabBorder": "Rahmen",
   "windows.tabOpacity": "Deckkraft",

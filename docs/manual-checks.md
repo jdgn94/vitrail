@@ -147,6 +147,21 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] Un pack borrado a mano mientras está elegido: el log dice `refused` y el
       cursor cae en Adwaita, sin dejar el puntero sin tema.
 
+## P2.10b — Iconos adaptativos: carpetas (2026-11-04)
+
+- [ ] **Icons → Palette tint**: elige `Vitrail · Papirus`. Se crea
+      `~/.local/share/icons/vitrail-icons-Papirus` con solo las carpetas.
+- [ ] Abre el gestor de archivos (Nautilus): las carpetas salen con el color
+      de acento de la paleta, con la misma sombra y el mismo papel blanco del
+      pack original.
+- [ ] Una app nueva sin reiniciar el sistema usa el tema; una ventana GTK ya
+      abierta puede seguir con los iconos viejos (los temas de iconos no se
+      recargan en caliente).
+- [ ] `gsettings get org.gnome.desktop.interface icon-theme` →
+      `'vitrail-icons-Papirus'`; `qt6ct.conf` lleva el mismo nombre.
+- [ ] El tema generado aparece en **App icon pack** y se puede volver a él.
+- [ ] **Off** devuelve el pack original.
+
 ### Diferidos (decide si los quieres)
 
 - Selector vacío si una clave guardada está vacía **y** la lista en vivo

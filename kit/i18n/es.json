@@ -72,6 +72,7 @@
   "fonts.design": "Tinte de paleta",
   "fonts.design.help": "Retinta un pack instalado con la paleta del fondo y lo usa como cursor.",
   "fonts.design.off": "Apagado",
+  "fonts.iconsTint.help": "Retinta las carpetas de un pack instalado con la paleta del fondo.",
   "section.colors": "Colores",
   "windows.tabBorder": "Borde",
   "windows.tabOpacity": "Opacidad",

@@ -319,7 +319,10 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   `primary` (`vitrail/cursor.py`); the generated theme is then a normal entry
   in the cursor list and follows every palette change. The authoring guide —
   what makes a pack tint well, the Xcursor layout, and what each part of the
-  session picks up live (X11 included) — is `docs/cursors.md`. The window cannot run
+  session picks up live (X11 included) — is `docs/cursors.md`.
+  The same **Palette tint** on the Icons tab recolours only the folders of an
+  installed pack, keeping its shading and inheriting every other icon
+  (`vitrail/icons.py`); `docs/icons.md` is the authoring guide. The window cannot run
   commands, so `bin/vitrail-settings` injects `python3 -m vitrail.fonts state`
   as `--fonts`; `scripts/apply-settings.sh` runs `fonts apply` when
   `fonts.ini` changes, and a value that is not installed falls back to its

@@ -27,6 +27,7 @@ from typing import Callable
 from xml.sax.saxutils import escape
 
 from . import cursor as cursor_engine
+from . import icons as icon_engine
 from . import prefs
 from .system_theme import set_ini_key, take_file
 
@@ -359,9 +360,10 @@ def state(run: Runner = run_text, roots: list[Path] | None = None, cache: Path |
             if paths:
                 cursor_files[name] = paths
 
-    # The packs a Vitrail design can be built from: every installed cursor
-    # theme that is not itself generated.
+    # The packs a Vitrail design can be built from: every installed theme that
+    # is not itself generated.
     designs = [name for name in cursors if not name.startswith(cursor_engine.PREFIX)]
+    icon_designs = [name for name in icons if not name.startswith(icon_engine.PREFIX)]
 
     return {
         "fonts": families(text),
@@ -369,6 +371,7 @@ def state(run: Runner = run_text, roots: list[Path] | None = None, cache: Path |
         "iconThemes": icons,
         "cursorThemes": cursors,
         "cursorDesigns": designs,
+        "iconDesigns": icon_designs,
         "iconPreviews": icon_files,
         "cursorPreviews": cursor_files,
     }
@@ -484,7 +487,24 @@ def apply(
     # the other groups still apply.
     icons = ""
     if live["iconThemes"]:
-        icons = pick(values.get("iconTheme"), live["iconThemes"], DEFAULT_ICON_THEME, "icon theme")
+        icon_designs = [icon_engine.design_name(name) for name in live.get("iconDesigns", [])]
+        icons = pick(values.get("iconTheme"), live["iconThemes"] + icon_designs, DEFAULT_ICON_THEME, "icon theme")
+        pack = icon_engine.source_of(icons)
+        if pack:
+            source = theme_dir(pack, roots or DEFAULT_ROOTS)
+            if source is None:
+                log(f"refused: the pack {pack!r} of {icons!r} is not installed")
+                icons = DEFAULT_ICON_THEME
+                replaced = True
+            else:
+                target = ((data_home / "icons") if data_home else icon_engine.output_root()) / icons
+                icon_engine.build(
+                    source,
+                    target,
+                    palette if palette is not None else active_palette(),
+                    cache / "icon-themes",
+                    roots or DEFAULT_ROOTS,
+                )
     else:
         log("skipped: no icon theme found")
     cursor = ""

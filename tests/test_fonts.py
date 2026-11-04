@@ -182,6 +182,7 @@ class PreviewTests(unittest.TestCase):
         state = fonts.state(run=lambda argv: FACES, roots=[self.icons], cache=self.cache)
         self.assertIn("Adwaita", state["cursorDesigns"])
         self.assertIn("Adwaita", state["cursorThemes"])
+        self.assertIn("Adwaita", state["iconDesigns"])
 
     def test_state_carries_the_previews(self) -> None:
         state = fonts.state(run=lambda argv: "Roboto\t80\n", roots=[self.icons], cache=self.cache)
@@ -359,6 +360,33 @@ class ApplyTests(unittest.TestCase):
         )
         self.assertIn(
             'Gtk/CursorThemeName "Adwaita"', (self.config / "xsettingsd/xsettingsd.conf").read_text(encoding="utf-8")
+        )
+
+    def test_a_vitrail_icon_layer_is_built_before_it_is_set(self) -> None:
+        places = self.icons / "Adwaita" / "48x48" / "places"
+        places.mkdir(parents=True)
+        (places / "folder.svg").write_text('<path style="fill:#5294e2"/>', encoding="utf-8")
+        (self.icons / "Adwaita" / "index.theme").write_text(
+            "[Icon Theme]\nDirectories=48x48/places\n\n[48x48/places]\nSize=48\n", encoding="utf-8"
+        )
+        code = fonts.apply(
+            {"fontSystem": "Roboto", "iconTheme": "vitrail-icons-Adwaita", "cursorTheme": "Adwaita", "cursorSize": 24},
+            self.config,
+            run=self.recording(FACES),
+            roots=[self.icons],
+            hyprland=False,
+            x11=False,
+            palette={"primary": "#ff0000"},
+            data_home=self.root / "data",
+            cache=self.root / "cache",
+        )
+        self.assertEqual(code, 0)
+        theme = self.root / "data" / "icons" / "vitrail-icons-Adwaita"
+        self.assertTrue((theme / "48x48" / "places" / "folder.svg").is_file())
+        self.assertIn("Inherits=Adwaita", (theme / "index.theme").read_text(encoding="utf-8"))
+        self.assertIn(
+            "gtk-icon-theme-name=vitrail-icons-Adwaita",
+            (self.config / "gtk-3.0/settings.ini").read_text(encoding="utf-8"),
         )
 
     def test_a_theme_that_is_not_installed_falls_back(self) -> None:

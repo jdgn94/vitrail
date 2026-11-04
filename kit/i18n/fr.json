@@ -72,6 +72,7 @@
   "fonts.design": "Teinte de la palette",
   "fonts.design.help": "Recolore un pack installé avec la palette du fond d'écran et l'utilise comme curseur.",
   "fonts.design.off": "Désactivé",
+  "fonts.iconsTint.help": "Recolore les dossiers d'un pack installé avec la palette du fond d'écran.",
   "section.colors": "Couleurs",
   "windows.tabBorder": "Bordure",
   "windows.tabOpacity": "Opacité",

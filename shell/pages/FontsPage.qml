@@ -52,6 +52,35 @@ Item {
         return name.indexOf("vitrail-") === 0 ? name.substring(8) : ""
     }
 
+    // The Vitrail icon layer active now ("" when a plain pack is chosen).
+    function iconDesign() {
+        var name = page.prefs.iconTheme || ""
+        return name.indexOf("vitrail-icons-") === 0 ? name.substring(14) : ""
+    }
+
+    function iconDesignOptions(names, current) {
+        var rows = [{ key: "", label: page.t("fonts.design.off"), icons: [], glyph: "block" }]
+        var packs = FontsView.options(names || [], "", undefined)
+        for (var i = 0; i < packs.length; i++) {
+            var pack = packs[i].key
+            rows.push({
+                key: pack,
+                label: page.t("fonts.vitrail") + " · " + pack.replace(/-/g, " "),
+                icons: (page.fonts.iconPreviews || {})[pack] || []
+            })
+        }
+        if (current && (names || []).indexOf(current) < 0)
+            rows.splice(1, 0, { key: current, label: page.t("fonts.vitrail") + " · " + current,
+                                icons: (page.fonts.iconPreviews || {})[current] || [] })
+        return rows
+    }
+
+    function chooseIconDesign(design) {
+        var name = page.prefs.iconTheme || ""
+        var pack = name.indexOf("vitrail-icons-") === 0 ? name.substring(14) : name
+        page.prefs.iconTheme = design === "" ? (pack || "Adwaita") : "vitrail-icons-" + design
+    }
+
     // "Off" plus one Vitrail design per installed pack.
     function designOptions(names, current) {
         var rows = [{
@@ -237,6 +266,30 @@ Item {
                                 accent: page.palette.primary
                                 onSelected: page.prefs.uiIcons = key
                             }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "palette"
+                        label: page.t("fonts.design")
+                        description: page.t("fonts.iconsTint.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailPicker {
+                            objectName: "iconDesignPicker"
+                            Layout.preferredWidth: 320
+                            label: page.t("fonts.design")
+                            searchHint: page.t("fonts.search")
+                            triggerShown: 4
+                            triggerColumns: 2
+                            current: page.iconDesign()
+                            options: page.iconDesignOptions(page.fonts.iconDesigns,
+                                                            page.iconDesign())
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            panel: page.palette.surfaceHigh
+                            onSelected: page.chooseIconDesign(key)
                         }
                     }
 
