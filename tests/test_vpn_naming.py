@@ -17,7 +17,16 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 OLD_NAME = "hypraether"
 # The historical plans describe how the code arrived here; they are a record.
-SKIP_DIRS = {".git", "graphify-out", ".opencode_plans", "__pycache__", ".venv", "vitrail.egg-info", ".backup"}
+SKIP_DIRS = {
+    ".superpowers",
+    ".git",
+    "graphify-out",
+    ".opencode_plans",
+    "__pycache__",
+    ".venv",
+    "vitrail.egg-info",
+    ".backup",
+}
 SUFFIXES = {
     ".py",
     ".qml",
