@@ -1,8 +1,8 @@
 # OSD: volume, microphone, brightness
 
 Files: `bar/osd/` (`OsdLayer.qml` per monitor, `OsdController.qml` once,
-`OsdCell`, `DeviceCard`, `BrightnessCard`, `BrightnessState`, `DwellGate`; pure `osd.js`,
-`icons.js`, `brightness.js`, tested in `tests/qml/tst_osd.qml`), `vitrail/
+`OsdCell`, `AppRow`, `DeviceCard`, `BrightnessCard`, `BrightnessState`, `DwellGate`; pure `osd.js`,
+`audio.js`, `icons.js`, `brightness.js`, tested in `tests/qml/tst_osd.qml`), `vitrail/
 brightness.py` (ddcutil / brightnessctl, `tests/test_brightness.py`), tokens
 `osd` in `kit/tokens.js`.
 
@@ -46,6 +46,19 @@ brightness.py` (ddcutil / brightnessctl, `tests/test_brightness.py`), tokens
 - Hover a slider: a card opens beside it toward the screen interior (liquid
   skin joined to the panel by a neck): output devices (sets the default sink),
   input devices, or one slider per monitor (only with more than one).
+- The volume and microphone cards also list **one row per app with an open
+  stream** (playback for output, capture for input): the app icon focuses its
+  window, the speaker button mutes every stream of that app, and the slider is
+  the app's own volume (0–100 %). PipeWire multiplies it by the general
+  volume: general 80 % × app 50 % sounds at 40 % and the row still says 50 %;
+  the general is never written, and the app's percentage does not move when the
+  general changes. Streams of one app (browser tabs) are one row; its percentage
+  is the mean. `bar/osd/audio.js` groups them, tested in `tst_osd.qml`.
+- Every cell ends with a **settings gear** (after the percentage): volume and
+  microphone open Settings → Sound → Output / Input, brightness opens Bar → OSD.
+  Hovering the gear clears the card and shows `osd.settings` in the panel's
+  tooltip. The OSD's behaviour (keys, duration, hot zone, size, steps) and the
+  app lists live in those two settings places (`sound.ini`, `bar.ini`).
 - Media key / `osd` IPC / a change from outside (`wpctl`, headset keys): only
   that slider, `osd.key` ms, on the focused monitor (`OsdController.keyed`).
   The panel's own writes are not announced (`quiet`).
