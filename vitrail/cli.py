@@ -16,6 +16,7 @@ from vitrail import (
     doctor,
     plugins,
     prefs,
+    resources,
     safe_mode,
     style,
     system_theme,
@@ -127,6 +128,9 @@ def _parser() -> argparse.ArgumentParser:
     weather_parser = sub.add_parser("weather", help="the weather of the configured place")
     weather_parser.add_argument("action", choices=("state", "set-location"))
     weather_parser.add_argument("city", nargs="?", default="", help="set-location: the city")
+
+    resources_parser = sub.add_parser("resources", help="cpu, memory, temperature, network and disk as JSON")
+    resources_parser.add_argument("action", choices=("state",))
     return parser
 
 
@@ -346,6 +350,11 @@ def _weather(args: argparse.Namespace) -> int:
     return 0 if "current" in data else 1
 
 
+def _resources(args: argparse.Namespace) -> int:
+    _say(json.dumps(resources.sample()))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
@@ -386,6 +395,8 @@ def main(argv: list[str] | None = None) -> int:
         return plugins.main([args.action])
     if args.command == "weather":
         return _weather(args)
+    if args.command == "resources":
+        return _resources(args)
     parser.print_help()
     return 0
 
