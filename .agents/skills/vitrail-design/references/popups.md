@@ -103,8 +103,9 @@ timeline, ratios), `motion.smooth`.
   or `popout`. Super alone (release bind `SUPER + SUPER_L`) is the only
   launcher key, in hyprland.lua.
 - center: `ClockButton` (SystemClock; "HH\nMM" on a vertical bar) → popup
-  kind `clock` → `ClockPanel` (time, localized date, MonthGrid calendar with
-  month paging and a "today" button).
+  kind `dashboard` → `DashboardPopout`, whose header is the big clock and the
+  localized date, then the calendar tab (MonthGrid with month paging and a
+  "today" button), weather, performance and media.
 - end: `BarItems` (tray, the chip with `network`, `vpn` and the power profile,
   and power). Each button has its own popup: `NetworkPanel`, `VpnPanel` and
   `PowerProfilePanel` (the settings window's Connection page is where the link,
@@ -118,7 +119,7 @@ timeline, ratios), `motion.smooth`.
   (`shell.popupAnchor`, the item's rect) on that exact item; without one (IPC)
   on that popup's own button on the target screen (`monitor.anchorFor`).
   Kinds: `network` (the chip's network panel), `vpn`, `powerprofile`, `media`,
-  `clock`, `power`, `launcher`, `tray:<id>`.
+  `dashboard`, `power`, `launcher`, `tray:<id>`.
 - `bar/Popout.qml`: one named `Loader` per kind. Becoming current: load at
   once (the card needs its size), wait `handover`, then fade in (`slow`);
   leaving: fade out (`fast`), then unload. Closing the popup clears the

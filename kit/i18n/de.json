@@ -600,7 +600,6 @@
   "tooltip.notificationsCount": "%1 im Zentrum · Rechtsklick: eine Stunde stumm",
   "tooltip.notificationsMuted": "Stumm · Rechtsklick zum Wiedereinschalten",
   "dashboard.title": "Übersicht",
-  "dashboard.tooltip": "Wetter, Leistung und Medien",
   "dashboard.tab.calendar": "Kalender",
   "dashboard.tab.weather": "Wetter",
   "dashboard.tab.performance": "Leistung",

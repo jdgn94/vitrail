@@ -34,7 +34,13 @@ def popout_names() -> set[str]:
 class BarPopupKindTests(unittest.TestCase):
     def test_each_button_opens_its_own_popup(self) -> None:
         clicked, _ = kinds(BAR_ITEMS.read_text(encoding="utf-8"))
-        self.assertEqual(clicked, ["dashboard", "network", "vpn", "powerprofile", "power"])
+        self.assertEqual(clicked, ["network", "vpn", "powerprofile", "power"])
+
+    def test_the_clock_opens_the_dashboard(self) -> None:
+        source = SHELL.read_text(encoding="utf-8")
+        self.assertIn('togglePopup("dashboard", clockButton', source)
+        self.assertIn("dashboard", popout_names())
+        self.assertNotIn('name: "clock"', source)
 
     def test_hover_and_click_report_the_same_kind(self) -> None:
         clicked, hovered = kinds(BAR_ITEMS.read_text(encoding="utf-8"))

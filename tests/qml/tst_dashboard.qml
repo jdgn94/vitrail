@@ -71,6 +71,24 @@ TestCase {
         verify(findChild(box, "dashboardCalendar").visible)
     }
 
+    function test_the_dashboard_starts_with_the_clock_and_the_date() {
+        var when = new Date(2026, 10, 4, 14, 5)
+        var box = make({ now: when })
+        compare(findChild(box, "dashboardClock").text, "14:05")
+        var day = when.toLocaleDateString(Qt.locale("en"), "dddd d MMMM yyyy")
+        compare(findChild(box, "dashboardClockDate").text,
+                day.charAt(0).toUpperCase() + day.slice(1))
+    }
+
+    function test_the_calendar_pages_by_month_and_returns_to_today() {
+        var box = make({ now: new Date(2026, 10, 4, 14, 5) })
+        box.page(1)
+        compare(box.shown.getMonth(), 11)
+        verify(!box.showingThisMonth())
+        box.shown = new Date(box.now.getFullYear(), box.now.getMonth(), 1)
+        verify(box.showingThisMonth())
+    }
+
     function test_an_unknown_tab_is_ignored() {
         var box = make()
         box.showTab("nonsense")

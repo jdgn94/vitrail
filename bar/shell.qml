@@ -1654,9 +1654,8 @@ ShellRoot {
                     case "vpn": return barItems.vpnButton
                     case "powerprofile": return barItems.powerProfileButton
                     case "power": return barItems.powerButton
-                    case "dashboard": return barItems.dashboardButton
+                    case "dashboard": return clockButton
                     case "launcher": return launcherButton
-                    case "clock": return clockButton
                     // The cheatsheet has no button: it grows from the bar's centre.
                     case "binds": return clockButton
                     default: return null
@@ -1857,12 +1856,13 @@ ShellRoot {
 
                             vertical: bar.vertical
                             language: shell.prefs.language || "en"
-                            opened: shell.popupOpen && shell.popupKind === "clock" && shell.popupScreen === monitor.modelData
-                            onClicked: shell.togglePopup("clock", clockButton, monitor.modelData)
+                            strings: shell.strings
+                            opened: shell.popupOpen && shell.popupKind === "dashboard" && shell.popupScreen === monitor.modelData
+                            onClicked: shell.togglePopup("dashboard", clockButton, monitor.modelData)
                             onHoveredChanged: {
                                 tooltips.hover(clockButton, hovered)
                                 if (hovered)
-                                    shell.hoverPopup("clock", clockButton, monitor.modelData)
+                                    shell.hoverPopup("dashboard", clockButton, monitor.modelData)
                             }
                             }
                         }
@@ -2256,13 +2256,6 @@ ShellRoot {
                             }
 
                             Popout {
-                                name: "clock"
-                                current: popouts.name
-                                handover: popouts.handover
-                                sourceComponent: clockComponent
-                            }
-
-                            Popout {
                                 name: "media"
                                 current: popouts.name
                                 handover: popouts.handover
@@ -2447,15 +2440,6 @@ ShellRoot {
                                 }
                             }
                         }
-                    }
-                }
-
-                Component {
-                    id: clockComponent
-
-                    ClockPanel {
-                        strings: shell.strings
-                        language: shell.prefs.language || "en"
                     }
                 }
 

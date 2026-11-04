@@ -5,10 +5,11 @@ import "../kit"
 import "../kit/base"
 import "dashboard.js" as Dash
 
-// The dashboard popup: the month with today marked, the weather, the machine's
-// performance and now playing, in four tabs. Only the content lives here: the
-// caller owns the data (see DashboardPopout, which runs the services while the
-// popup is open), so the panel renders, and is tested, without a process.
+// The dashboard popup: the clock and date, then the month with today marked,
+// the weather, the machine's performance and now playing, in four tabs. Only
+// the content lives here: the caller owns the data (see DashboardPopout, which
+// runs the services while the popup is open), so the panel renders, and is
+// tested, without a process.
 Item {
     id: root
 
@@ -18,7 +19,9 @@ Item {
     property var weather: ({})
     property var resources: ({})
     property string currentTab: "calendar"
+    // The header's time, and the month the calendar shows (its paging).
     property date now: new Date()
+    property date shown: new Date()
     // Now playing, and the panel that draws it (the caller supplies it, so
     // this file needs no MPRIS import).
     property var mediaPlayer: null
@@ -75,8 +78,18 @@ Item {
     }
 
     function monthTitle() {
-        var text = root.now.toLocaleDateString(Qt.locale(root.language), "MMMM yyyy")
+        var text = root.shown.toLocaleDateString(Qt.locale(root.language), "MMMM yyyy")
         return text.charAt(0).toUpperCase() + text.slice(1)
+    }
+
+    function page(step) {
+        root.shown = new Date(root.shown.getFullYear(), root.shown.getMonth() + step, 1)
+    }
+
+    // Whether the calendar is already on the month of today.
+    function showingThisMonth() {
+        return root.shown.getMonth() === root.now.getMonth()
+               && root.shown.getFullYear() === root.now.getFullYear()
     }
 
     function weekday(iso) {
@@ -93,11 +106,11 @@ Item {
         return text === undefined || text === "" ? (fallback || "") : text
     }
 
-    // The date changes under the panel; the calendar follows it while shown.
+    // The header time ticks every second; the calendar follows the day.
     Timer {
-        interval: 60000
+        interval: 1000
         repeat: true
-        running: root.currentTab === "calendar"
+        running: true
         onTriggered: root.now = new Date()
     }
 
@@ -111,16 +124,32 @@ Item {
             Layout.fillWidth: true
             spacing: VitrailTokens.gap("sm")
 
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+
+                VitrailText {
+                    objectName: "dashboardClock"
+                    variant: "display"
+                    font.features: ({ "tnum": 1 })
+                    text: root.now.toLocaleTimeString(Qt.locale(root.language), "HH:mm")
+                }
+
+                VitrailText {
+                    objectName: "dashboardClockDate"
+                    Layout.fillWidth: true
+                    variant: "content"
+                    text: {
+                        var day = root.now.toLocaleDateString(Qt.locale(root.language), "dddd d MMMM yyyy")
+                        return day.charAt(0).toUpperCase() + day.slice(1)
+                    }
+                }
+            }
+
             VitrailIcon {
                 icon: "space_dashboard"
                 size: "md"
                 tone: "primary"
-            }
-
-            VitrailText {
-                Layout.fillWidth: true
-                variant: "subtitle"
-                text: root.t("dashboard.title")
             }
         }
 
@@ -151,11 +180,38 @@ Item {
                     anchors.fill: parent
                     spacing: VitrailTokens.gap("md")
 
-                    VitrailText {
+                    RowLayout {
                         Layout.fillWidth: true
-                        variant: "body"
-                        font.weight: Font.DemiBold
-                        text: root.monthTitle()
+                        spacing: VitrailTokens.gap("xs")
+
+                        VitrailText {
+                            Layout.fillWidth: true
+                            variant: "body"
+                            font.weight: Font.DemiBold
+                            text: root.monthTitle()
+                        }
+
+                        VitrailButton {
+                            visible: !root.showingThisMonth()
+                            variant: "text"
+                            size: "sm"
+                            text: root.t("clock.today")
+                            onClicked: root.shown = new Date()
+                        }
+
+                        VitrailButton {
+                            variant: "plain"
+                            tone: "secondary"
+                            icon: "chevron_left"
+                            onClicked: root.page(-1)
+                        }
+
+                        VitrailButton {
+                            variant: "plain"
+                            tone: "secondary"
+                            icon: "chevron_right"
+                            onClicked: root.page(1)
+                        }
                     }
 
                     DayOfWeekRow {
@@ -174,8 +230,8 @@ Item {
                     MonthGrid {
                         Layout.fillWidth: true
                         locale: Qt.locale(root.language)
-                        month: root.now.getMonth()
-                        year: root.now.getFullYear()
+                        month: root.shown.getMonth()
+                        year: root.shown.getFullYear()
 
                         delegate: Item {
                             id: day
@@ -183,7 +239,7 @@ Item {
                             required property var model
 
                             readonly property bool today: day.model.today
-                            readonly property bool inMonth: day.model.month === root.now.getMonth()
+                            readonly property bool inMonth: day.model.month === root.shown.getMonth()
 
                             implicitWidth: VitrailTokens.size("display") + VitrailTokens.gap("xs")
                             implicitHeight: implicitWidth

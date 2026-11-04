@@ -600,7 +600,6 @@
   "tooltip.notificationsCount": "%1 dans le centre · clic droit : silence pendant une heure",
   "tooltip.notificationsMuted": "En sourdine · clic droit pour les réactiver",
   "dashboard.title": "Tableau de bord",
-  "dashboard.tooltip": "Météo, performances et médias",
   "dashboard.tab.calendar": "Calendrier",
   "dashboard.tab.weather": "Météo",
   "dashboard.tab.performance": "Performances",

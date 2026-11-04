@@ -600,7 +600,6 @@
   "tooltip.notificationsCount": "%1 nel centro · clic destro: silenzia per un'ora",
   "tooltip.notificationsMuted": "Silenziate · clic destro per riattivarle",
   "dashboard.title": "Dashboard",
-  "dashboard.tooltip": "Meteo, prestazioni e contenuti multimediali",
   "dashboard.tab.calendar": "Calendario",
   "dashboard.tab.weather": "Meteo",
   "dashboard.tab.performance": "Prestazioni",

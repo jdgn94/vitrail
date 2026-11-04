@@ -600,7 +600,6 @@
   "tooltip.notificationsCount": "%1 no centro · clique direito: silenciar uma hora",
   "tooltip.notificationsMuted": "Silenciadas · clique direito para reativar",
   "dashboard.title": "Painel",
-  "dashboard.tooltip": "Clima, desempenho e mídia",
   "dashboard.tab.calendar": "Calendário",
   "dashboard.tab.weather": "Clima",
   "dashboard.tab.performance": "Desempenho",

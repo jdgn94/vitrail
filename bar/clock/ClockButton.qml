@@ -4,27 +4,35 @@ import "../kit"
 import "../kit/base"
 
 // The time in the centre of the bar: hours over minutes on a vertical bar,
-// one line on a horizontal one. A click opens the clock popup.
+// one line on a horizontal one. A click opens the dashboard, whose header is
+// the big clock and the date.
 Item {
     id: root
 
     property bool vertical: false
     property bool opened: false
     property string language: "en"
+    property var strings: ({})
 
     signal clicked()
 
     readonly property alias hovered: hover.hovered
     readonly property alias pressed: area.pressed
 
-    // What the pointer reads: today's full date.
+    // What the pointer reads: today's full date, and what the click opens.
     property string tooltip: {
         var day = clock.date.toLocaleDateString(Qt.locale(root.language), "dddd d MMMM yyyy")
         return day.charAt(0).toUpperCase() + day.slice(1)
     }
+    property string tooltipDetail: root.t("dashboard.title")
 
     implicitWidth: label.implicitWidth + 2 * VitrailTokens.gap("sm")
     implicitHeight: label.implicitHeight + 2 * VitrailTokens.gap("xs")
+
+    function t(key) {
+        var value = root.strings[key]
+        return value === undefined ? key : value
+    }
 
     SystemClock {
         id: clock
