@@ -112,18 +112,10 @@ ShellRoot {
     property bool micMuted: false
     property bool airplaneOn: false
 
-    // The connection panel: the link's details, the paired Bluetooth devices
-    // and the power profile.
-    property string connectionAddress: ""
-    property string connectionGateway: ""
-    property string connectionDns: ""
-    property var bluetoothDevices: []
+    // The power profile the connection chip shows.
     property string powerProfile: "balanced"
 
-    function refreshConnection() {
-        shell.refreshToggles()
-        detailsRead.run(Commands.connectionDetails(), "")
-        btDevicesRead.run(Commands.bluetoothPaired(), "")
+    function refreshPowerProfile() {
         powerRead.run(Commands.powerProfile(), "")
     }
 
@@ -473,8 +465,8 @@ ShellRoot {
             shell.popupAnchor = Qt.rect(point.x, point.y, anchor.width, anchor.height)
         }
         shell.popupScreen = target
-        if (kind === "connection" || kind === "powerprofile")
-            shell.refreshConnection()
+        if (kind === "powerprofile")
+            shell.refreshPowerProfile()
         shell.popupKind = kind
         shell.popupOpen = true
     }
@@ -756,7 +748,11 @@ ShellRoot {
         // The automatic switch at 07:00 / 19:00 reaches the other apps too.
         vitrailCli.exec(["python3", "-m", "vitrail.cli", "theme", "apply", "--mode", shell.dark ? "dark" : "light"])
     }
-    Component.onCompleted: shell.syncTokens()
+    Component.onCompleted: {
+        shell.syncTokens()
+        // The chip shows the profile from the start, not its default.
+        shell.refreshPowerProfile()
+    }
 
     function syncTokens() {
         VitrailTokens.configure(wallpaper, shell.dark, shell.prefs.surfaceStyle, shell.tokenValues)
@@ -922,37 +918,6 @@ ShellRoot {
     }
 
     AsyncRun {
-        id: btScan
-
-        onFinished: function (tag, output) { shell.refreshConnection() }
-    }
-
-    AsyncRun {
-        id: detailsRead
-
-        onFinished: function (tag, output) {
-            var details = Connection.details(output)
-            shell.connectionAddress = details.address
-            shell.connectionGateway = details.gateway
-            shell.connectionDns = details.dns
-        }
-    }
-
-    AsyncRun {
-        id: btDevicesRead
-
-        onFinished: function (tag, output) {
-            shell.bluetoothDevices = Connection.bluetoothDevices(output, "")
-        }
-    }
-
-    AsyncRun {
-        id: btConnect
-
-        onFinished: function (tag, output) { shell.refreshConnection() }
-    }
-
-    AsyncRun {
         id: powerRead
 
         onFinished: function (tag, output) { shell.powerProfile = Connection.powerProfile(output) }
@@ -961,7 +926,7 @@ ShellRoot {
     AsyncRun {
         id: powerWrite
 
-        onFinished: function (tag, output) { shell.refreshConnection() }
+        onFinished: function (tag, output) { shell.refreshPowerProfile() }
     }
 
     AsyncRun {
@@ -2164,13 +2129,6 @@ ShellRoot {
                             }
 
                             Popout {
-                                name: "connection"
-                                current: popouts.name
-                                handover: popouts.handover
-                                sourceComponent: connectionComponent
-                            }
-
-                            Popout {
                                 name: "tray"
                                 current: popouts.name
                                 handover: popouts.handover
@@ -2407,38 +2365,6 @@ ShellRoot {
                             popupIdle.restart()
                             menuCard.forceActiveFocus()
                         }
-                    }
-                }
-
-                Component {
-                    id: connectionComponent
-
-                    ConnectionPanel {
-                        strings: shell.strings
-                        wifiOn: shell.wifiOn
-                        address: shell.connectionAddress
-                        gateway: shell.connectionGateway
-                        dns: shell.connectionDns
-                        bluetoothOn: shell.bluetoothOn
-                        bluetoothPresent: shell.bluetoothPresent
-                        bluetoothDevices: shell.bluetoothDevices
-                        powerProfile: shell.powerProfile
-                        onRefreshRequested: shell.refreshConnection()
-                        onWifiRadioToggled: shell.toggleQuick("wifi")
-                        onBluetoothToggled: shell.toggleQuick("bluetooth")
-                        onBluetoothScanRequested: btScan.run(Commands.bluetoothScan(), "")
-                        onBluetoothDeviceToggled: function (mac) {
-                            var device = null
-                            for (var i = 0; i < shell.bluetoothDevices.length; i++) {
-                                if (shell.bluetoothDevices[i].mac === mac)
-                                    device = shell.bluetoothDevices[i]
-                            }
-                            if (device && device.connected)
-                                btConnect.run(Commands.bluetoothDisconnect(mac), "")
-                            else
-                                btConnect.run(Commands.bluetoothConnect(mac), "")
-                        }
-                        onPowerProfileRequested: function (profile) { powerWrite.run(Commands.powerSet(profile), "") }
                     }
                 }
 

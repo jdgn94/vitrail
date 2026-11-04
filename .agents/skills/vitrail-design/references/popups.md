@@ -105,18 +105,19 @@ timeline, ratios), `motion.smooth`.
 - center: `ClockButton` (SystemClock; "HH\nMM" on a vertical bar) → popup
   kind `clock` → `ClockPanel` (time, localized date, MonthGrid calendar with
   month paging and a "today" button).
-- end: `BarItems` (tray, the connection chip — `network`, `vpn` and the power
-  profile — and power). Clicking another bar button while a popup is open moves
-  the popup to it (`togglePopup` → `openPopup`); hovering one does the same
-  (see Hover switching).
+- end: `BarItems` (tray, the chip with `network`, `vpn` and the power profile,
+  and power). Each button has its own popup: `NetworkPanel`, `VpnPanel` and
+  `PowerProfilePanel` (the settings window's Connection page is where the link,
+  Bluetooth and power profile are configured together). Clicking another bar
+  button while a popup is open moves the popup to it (`togglePopup` →
+  `openPopup`); hovering one does the same (see Hover switching).
 
 ## Popouts (after caelestia-dots/shell)
 
 - Every element with a popout reports `(kind, item)`; `shell.openPopup` anchors
   (`shell.popupAnchor`, the item's rect) on that exact item; without one (IPC)
   on that popup's own button on the target screen (`monitor.anchorFor`).
-  Kinds: `connection` (the chip), `network` (the older panel, still opened by
-  the launcher's action and the `network` IPC), `vpn`, `powerprofile`, `media`,
+  Kinds: `network` (the chip's network panel), `vpn`, `powerprofile`, `media`,
   `clock`, `power`, `launcher`, `tray:<id>`.
 - `bar/Popout.qml`: one named `Loader` per kind. Becoming current: load at
   once (the card needs its size), wait `handover`, then fade in (`slow`);

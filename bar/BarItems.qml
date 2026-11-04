@@ -76,12 +76,12 @@ GridLayout {
                 id: network
 
                 strings: root.strings
-                opened: root.open && root.openKind === "connection"
-                onClicked: root.clicked("connection", network)
+                opened: root.open && root.openKind === "network"
+                onClicked: root.clicked("network", network)
                 onHoveredChanged: {
                     root.tipHovered(network, hovered)
                     if (hovered)
-                        root.hovered("connection", network)
+                        root.hovered("network", network)
                 }
             }
 

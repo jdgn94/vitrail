@@ -80,7 +80,7 @@ package to the manifest and a row here.
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
 | `grim`, `slurp` | `grim`, `slurp` | screenshots |
 | `pciutils` | `lspci` | GPU vendor detection in the installer and `vitrail doctor` |
-| `networkmanager`, `bluez-utils`, `wireplumber`, `power-profiles-daemon` | `nmcli`, `bluetoothctl`, `wpctl`, `powerprofilesctl` | the panel's quick toggles, the connection panel (networks, Bluetooth, power profile) and the settings window's Connection page (`vitrail.network`: Wi-Fi, Bluetooth and VPN state and requests) |
+| `networkmanager`, `bluez-utils`, `wireplumber`, `power-profiles-daemon` | `nmcli`, `bluetoothctl`, `wpctl`, `powerprofilesctl` | the panel's quick toggles, the bar's network and power-profile popups, and the settings window's Connection page (networks, Bluetooth and power profile; `vitrail.network`: Wi-Fi, Bluetooth and VPN state and requests) |
 | `awww`, `mpvpaper` | `awww`, `awww-daemon`, `mpvpaper` | still wallpapers with transitions (awww) and animated ones (mpvpaper with VA-API) |
 
 `vitrail-vpn` comes from the VPN module (`vpn/`), not from the manifest.
