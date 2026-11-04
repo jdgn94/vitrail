@@ -477,5 +477,13 @@
   "bar.notifications.urgent": "Urgent apps",
   "bar.notifications.urgent.help": "Comma-separated: their cards are marked and may bypass Do Not Disturb.",
   "bar.notifications.urgentBypass": "Urgent notifications bypass Do Not Disturb",
-  "bar.notifications.urgentBypass.help": "Off: urgent only marks the card."
+  "bar.notifications.urgentBypass.help": "Off: urgent only marks the card.",
+  "session.confirm.in": "%1 in %2 seconds",
+  "session.confirm.now": "Do it now",
+  "session.confirm.problem": "Something is still running",
+  "session.confirm.problem.help": "This action would interrupt it. Cancel the action or go ahead anyway.",
+  "session.confirm.go": "Go ahead",
+  "session.confirm.download": "Downloading %1",
+  "session.confirm.update": "Updating packages (%1)",
+  "session.confirm.job": "%1 is running"
 }

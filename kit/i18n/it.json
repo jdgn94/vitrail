@@ -477,5 +477,13 @@
   "bar.notifications.urgent": "App urgenti",
   "bar.notifications.urgent.help": "Separate da virgole: le schede sono marcate e possono ignorare Non disturbare.",
   "bar.notifications.urgentBypass": "Le urgenti ignorano Non disturbare",
-  "bar.notifications.urgentBypass.help": "Spento: l'urgenza segna solo la scheda."
+  "bar.notifications.urgentBypass.help": "Spento: l'urgenza segna solo la scheda.",
+  "session.confirm.in": "%1 tra %2 secondi",
+  "session.confirm.now": "Fallo ora",
+  "session.confirm.problem": "Qualcosa è ancora in esecuzione",
+  "session.confirm.problem.help": "Questa azione lo interromperebbe. Annulla l'azione o continua.",
+  "session.confirm.go": "Continua",
+  "session.confirm.download": "Download di %1",
+  "session.confirm.update": "Aggiornamento pacchetti (%1)",
+  "session.confirm.job": "%1 è in esecuzione"
 }

@@ -20,22 +20,70 @@ On the command line the action stops the child process.
 
 from __future__ import annotations
 
+import json
+import os
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 from .downloads import CANCEL, STATE_HINT, Notifier, t
 
 DEFAULT_APP = "Vitrail"
 DEFAULT_ICON = "sync"
 POLL = 1.0
+# Where a running job leaves its name for the session guard (the bar's power
+# menu asks `vitrail.session` before cutting work). The runtime folder goes
+# away with the session; a dead pid is pruned.
+REGISTRY = "vitrail-jobs"
+
+
+def job_dir() -> Path:
+    base = os.environ.get("XDG_RUNTIME_DIR") or "/tmp"
+    return Path(base) / REGISTRY
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def jobs_running(folder: Path | None = None) -> list[dict]:
+    """[{pid, name, app, started}] of the jobs still running; a stale file is
+    removed on the way."""
+    folder = folder or job_dir()
+    found: list[dict] = []
+    try:
+        entries = sorted(folder.glob("*.json"))
+    except OSError:
+        return found
+    for path in entries:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        pid = data.get("pid") if isinstance(data, dict) else None
+        if not isinstance(pid, int) or not _alive(pid):
+            path.unlink(missing_ok=True)
+            continue
+        found.append({"pid": pid, "name": str(data.get("name") or ""),
+                      "app": str(data.get("app") or ""), "started": data.get("started")})
+    return found
 
 
 class Job:
-    """A live notification for one task; call `update` as it progresses."""
+    """A live notification for one task; call `update` as it progresses. While
+    it runs it registers itself in the session's registry, so the power menu
+    knows it would cut a job."""
 
     def __init__(self, name: str, app: str = DEFAULT_APP, icon: str = DEFAULT_ICON, total: int | None = None,
-                 notifier=None, language: str | None = None, clock=time.monotonic):
+                 notifier=None, language: str | None = None, clock=time.monotonic,
+                 registry: Path | None = None):
         self.name = name
         self.app = app
         self.icon = icon
@@ -45,8 +93,11 @@ class Job:
         self.language = language
         self.clock = clock
         self.first = clock()
+        self.started_at = 0.0
         self.nid: int | None = None
         self.state = "idle"
+        self.registry_dir = registry
+        self.registry: Path | None = None
 
     def _say(self, key: str, *values) -> str:
         return t(key, *values, language=self.language)
@@ -66,8 +117,27 @@ class Job:
 
     def start(self) -> int:
         self.first = self.clock()
+        self.started_at = time.time()
         self.state = "live"
+        self._register()
         return self._running(self.name, self._say("jobs.body.running", _duration(self.clock() - self.first)))
+
+    def _register(self) -> None:
+        folder = self.registry_dir or job_dir()
+        try:
+            folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+            path = folder / f"{os.getpid()}-{id(self):x}.json"
+            path.write_text(json.dumps({"pid": os.getpid(), "name": self.name, "app": self.app,
+                                        "started": self.started_at}), encoding="utf-8")
+            os.chmod(path, 0o600)
+            self.registry = path
+        except OSError:
+            self.registry = None
+
+    def _unregister(self) -> None:
+        if self.registry is not None:
+            self.registry.unlink(missing_ok=True)
+            self.registry = None
 
     def update(self, done: int | None = None, total: int | None = None) -> int:
         if done is not None:
@@ -82,6 +152,7 @@ class Job:
 
     def _end(self, state: str, body: str) -> int:
         self.state = state
+        self._unregister()
         return self._send(self.name, body, [])
 
     def finish(self) -> int:

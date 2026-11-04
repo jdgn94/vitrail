@@ -13,6 +13,17 @@
   Arrows / Tab move the ring, Enter / Space run, a letter (l o s h r p) runs
   its action, Escape or a backdrop click dismisses. Opening fades and scales
   in; the window stays up while it fades out.
-- Running an action closes the menu and popout first, then
-  `Process.startDetached`. IPC: `vitrail-bar ipc call session toggle` opens it
-  on the focused monitor. Tests: `tests/qml/tst_session.qml`.
+- Running an action closes the menu and popout first. A lock runs at once;
+  every action that would cut work goes through the guard first
+  (`vitrail/session.py`: a download the watcher knows, a package manager, a
+  job registered by `vitrail/jobs.py`). With something running,
+  `SessionConfirm.qml` lists it and offers Cancel / Go ahead; after that —
+  except for log out — a 30 s countdown shows Cancel / Do it now and runs the
+  action by itself at zero. Same `SessionConfirm` draws the countdown: icon,
+  the action's label and the seconds, a bar that empties, Escape cancels (and
+  returns to the menu), Enter confirms. The check, the countdown and the
+  command live in the shell (`runSession`, `sessionChecked`, `beginSession`,
+  the timer); the menu only reports the key.
+- IPC: `vitrail-bar ipc call session toggle` opens it on the focused monitor.
+  Tests: `tests/qml/tst_session.qml`,
+  `tests/qml/tst_session_confirm.qml`, `tests/test_session.py`.

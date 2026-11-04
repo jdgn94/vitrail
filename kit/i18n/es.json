@@ -477,5 +477,13 @@
   "bar.notifications.urgent": "Aplicaciones urgentes",
   "bar.notifications.urgent.help": "Separadas por comas: sus tarjetas se marcan y pueden saltarse No molestar.",
   "bar.notifications.urgentBypass": "Las urgentes se saltan No molestar",
-  "bar.notifications.urgentBypass.help": "Desactivado: lo urgente solo marca la tarjeta."
+  "bar.notifications.urgentBypass.help": "Desactivado: lo urgente solo marca la tarjeta.",
+  "session.confirm.in": "%1 en %2 segundos",
+  "session.confirm.now": "Hacerlo ahora",
+  "session.confirm.problem": "Algo sigue en marcha",
+  "session.confirm.problem.help": "Esta acción lo interrumpiría. Cancela la acción o continúa.",
+  "session.confirm.go": "Continuar",
+  "session.confirm.download": "Descargando %1",
+  "session.confirm.update": "Actualizando paquetes (%1)",
+  "session.confirm.job": "%1 está en marcha"
 }

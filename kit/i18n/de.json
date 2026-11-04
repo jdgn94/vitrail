@@ -477,5 +477,13 @@
   "bar.notifications.urgent": "Wichtige Apps",
   "bar.notifications.urgent.help": "Durch Kommas getrennt: ihre Karten werden markiert und dürfen Nicht stören umgehen.",
   "bar.notifications.urgentBypass": "Wichtige umgehen Nicht stören",
-  "bar.notifications.urgentBypass.help": "Aus: wichtig markiert nur die Karte."
+  "bar.notifications.urgentBypass.help": "Aus: wichtig markiert nur die Karte.",
+  "session.confirm.in": "%1 in %2 Sekunden",
+  "session.confirm.now": "Jetzt ausführen",
+  "session.confirm.problem": "Etwas läuft noch",
+  "session.confirm.problem.help": "Diese Aktion würde es unterbrechen. Brich die Aktion ab oder fahre fort.",
+  "session.confirm.go": "Fortfahren",
+  "session.confirm.download": "%1 wird heruntergeladen",
+  "session.confirm.update": "Pakete werden aktualisiert (%1)",
+  "session.confirm.job": "%1 läuft"
 }

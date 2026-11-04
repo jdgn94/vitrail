@@ -477,5 +477,13 @@
   "bar.notifications.urgent": "Applications urgentes",
   "bar.notifications.urgent.help": "Séparées par des virgules : leurs cartes sont marquées et peuvent ignorer Ne pas déranger.",
   "bar.notifications.urgentBypass": "Les urgentes ignorent Ne pas déranger",
-  "bar.notifications.urgentBypass.help": "Désactivé : l'urgence ne fait que marquer la carte."
+  "bar.notifications.urgentBypass.help": "Désactivé : l'urgence ne fait que marquer la carte.",
+  "session.confirm.in": "%1 dans %2 secondes",
+  "session.confirm.now": "Le faire maintenant",
+  "session.confirm.problem": "Quelque chose tourne encore",
+  "session.confirm.problem.help": "Cette action l'interromprait. Annulez l'action ou continuez.",
+  "session.confirm.go": "Continuer",
+  "session.confirm.download": "Téléchargement de %1",
+  "session.confirm.update": "Mise à jour des paquets (%1)",
+  "session.confirm.job": "%1 est en cours"
 }

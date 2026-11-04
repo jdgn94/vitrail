@@ -3,6 +3,9 @@
 // Commands run detached, after the menu has closed.
 .pragma library
 
+// How long a confirmation waits before it runs the action.
+var SECONDS = 30
+
 var actions = [
     { key: "lock", label: "session.lock", icon: "lock", tone: "primary", shortcut: "l", command: ["hyprlock"] },
     { key: "logout", label: "session.logout", icon: "logout", tone: "primary", shortcut: "o", command: ["hyprctl", "dispatch", "exit"] },
@@ -11,6 +14,30 @@ var actions = [
     { key: "reboot", label: "session.reboot", icon: "restart_alt", tone: "primary", shortcut: "r", command: ["systemctl", "reboot"] },
     { key: "poweroff", label: "session.poweroff", icon: "power_settings_new", tone: "error", shortcut: "p", command: ["systemctl", "poweroff"] }
 ]
+
+// The actions that first ask with a countdown: everything that ends the
+// session or the machine. Lock and log out do not (a lock keeps the work; a
+// log out still goes through the guard below).
+var CONFIRM = ["suspend", "hibernate", "reboot", "poweroff"]
+// The actions the guard checks first: they cut what is still running.
+var INTERRUPT = CONFIRM.concat(["logout"])
+
+function confirmable(key) {
+    return CONFIRM.indexOf(key) >= 0
+}
+
+function interrupting(key) {
+    return INTERRUPT.indexOf(key) >= 0
+}
+
+// Seconds left, rounded up, and whether the deadline has passed.
+function remaining(deadline, now) {
+    return Math.max(0, Math.ceil((deadline - now) / 1000))
+}
+
+function finished(deadline, now) {
+    return now >= deadline
+}
 
 // The actions on offer: hibernate only where the system can do it.
 function available(canHibernate) {

@@ -477,5 +477,13 @@
   "bar.notifications.urgent": "Aplicações urgentes",
   "bar.notifications.urgent.help": "Separadas por vírgulas: os cartões são marcados e podem ignorar Não perturbar.",
   "bar.notifications.urgentBypass": "As urgentes ignoram Não perturbar",
-  "bar.notifications.urgentBypass.help": "Desligado: o urgente só marca o cartão."
+  "bar.notifications.urgentBypass.help": "Desligado: o urgente só marca o cartão.",
+  "session.confirm.in": "%1 em %2 segundos",
+  "session.confirm.now": "Fazer agora",
+  "session.confirm.problem": "Algo ainda está a correr",
+  "session.confirm.problem.help": "Esta ação iria interrompê-lo. Cancela a ação ou continua.",
+  "session.confirm.go": "Continuar",
+  "session.confirm.download": "A transferir %1",
+  "session.confirm.update": "A atualizar pacotes (%1)",
+  "session.confirm.job": "%1 está a correr"
 }

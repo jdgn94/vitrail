@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import json
+import os
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from vitrail import jobs
@@ -106,6 +110,26 @@ class RunTests(unittest.TestCase):
         code = jobs.run(["/bin/sh", "-c", "exit 3"], "A failing job", notifier=notifier, language="en", poll=0.05)
         self.assertEqual(code, 3)
         self.assertEqual(notifier.sent[-1]["hints"]["x-vitrail-state"], "failed")
+
+
+class RegistryTests(unittest.TestCase):
+    def test_a_running_job_registers_itself_and_is_removed_at_the_end(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            notifier = FakeNotifier()
+            job = jobs.Job("Copying photos", notifier=notifier, language="en", registry=Path(folder))
+            job.start()
+            self.assertEqual([one["name"] for one in jobs.jobs_running(Path(folder))], ["Copying photos"])
+            job.finish()
+            self.assertEqual(jobs.jobs_running(Path(folder)), [])
+            self.assertEqual(notifier.sent[-1]["hints"]["x-vitrail-state"], "done")
+
+    def test_a_job_whose_process_is_gone_is_forgotten(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "1-dead.json"
+            path.write_text(json.dumps({"pid": 2_000_000_000, "name": "Old", "app": "Vitrail"}),
+                            encoding="utf-8")
+            self.assertEqual(jobs.jobs_running(Path(folder)), [])
+            self.assertFalse(path.exists())
 
 
 class ArgvTests(unittest.TestCase):

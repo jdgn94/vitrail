@@ -478,6 +478,10 @@ ShellRoot {
     property bool sessionOpen: false
     property var sessionScreen: null
     property bool canHibernate: false
+    // The question an action started: { key, phase: "check"|"problem"|
+    // "countdown", jobs, deadline }, and the time its countdown reads.
+    property var sessionPending: null
+    property real sessionNow: Date.now()
 
     function toggleSession(screen) {
         shell.closePopup()
@@ -486,8 +490,76 @@ ShellRoot {
         shell.sessionOpen = !shell.sessionOpen
     }
 
+    // What the menu asks. A lock runs at once; every action that cuts work is
+    // checked first, and then asks (the countdown) or runs (log out).
     function runSession(key) {
         var action = Session.find(key)
+        if (!action)
+            return
+        shell.sessionOpen = false
+        shell.closePopup()
+        if (!Session.interrupting(key)) {
+            shell.executeSession(key)
+            return
+        }
+        shell.sessionPending = { key: key, phase: "check", jobs: [] }
+        sessionCheck.running = true
+    }
+
+    // The guard's answer: what is running turns into the alert; nothing does,
+    // and the action goes on.
+    function sessionChecked(text) {
+        var pending = shell.sessionPending
+        if (!pending || pending.phase !== "check")
+            return
+        var found = []
+        try {
+            found = JSON.parse(text).jobs || []
+        } catch (error) {
+            found = []
+        }
+        if (found.length > 0) {
+            shell.sessionPending = { key: pending.key, phase: "problem", jobs: found }
+            return
+        }
+        shell.beginSession(pending.key)
+    }
+
+    // After the guard: a countdown when the action asks, otherwise it runs.
+    function beginSession(key) {
+        if (!Session.confirmable(key)) {
+            shell.executeSession(key)
+            return
+        }
+        shell.sessionNow = Date.now()
+        shell.sessionPending = {
+            key: key, phase: "countdown", jobs: [],
+            deadline: shell.sessionNow + Session.SECONDS * 1000
+        }
+    }
+
+    // "Do it now", "Go ahead", and the end of the countdown.
+    function confirmSession() {
+        var pending = shell.sessionPending
+        if (!pending)
+            return
+        if (pending.phase === "problem")
+            shell.beginSession(pending.key)
+        else
+            shell.executeSession(pending.key)
+    }
+
+    // Cancel stops the action and returns to the menu.
+    function cancelSession() {
+        var pending = shell.sessionPending
+        shell.sessionPending = null
+        if (pending && pending.phase !== "check" && shell.sessionScreen)
+            shell.sessionOpen = true
+    }
+
+    function executeSession(key) {
+        var action = Session.find(key)
+        shell.sessionPending = null
         shell.sessionOpen = false
         shell.closePopup()
         if (action) {
@@ -1185,6 +1257,38 @@ ShellRoot {
     // Session commands run detached, once the menu is gone.
     Process {
         id: sessionRun
+    }
+
+    // What a session action would interrupt (vitrail/session.py): the alert
+    // stays until the user accepts, and no countdown starts before that.
+    Process {
+        id: sessionCheck
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        command: ["python3", "-m", "vitrail.session", "check"]
+        stdout: StdioCollector {
+            onStreamFinished: shell.sessionChecked(this.text)
+        }
+    }
+
+    // The countdown: the question reads the time and the action runs at zero.
+    Timer {
+        interval: 200
+        running: shell.sessionPending !== null && shell.sessionPending.phase === "countdown"
+        repeat: true
+        onTriggered: {
+            shell.sessionNow = Date.now()
+            if (shell.sessionPending && Session.finished(shell.sessionPending.deadline, shell.sessionNow))
+                shell.executeSession(shell.sessionPending.key)
+        }
+    }
+
+    // A check that never answers (python missing, a broken install) must not
+    // leave the full-screen layer waiting with nothing on it.
+    Timer {
+        interval: 2000
+        running: shell.sessionPending !== null && shell.sessionPending.phase === "check"
+        onTriggered: shell.sessionChecked("")
     }
 
     // Hibernation is offered only where the system can do it.
@@ -2418,10 +2522,13 @@ ShellRoot {
                 PanelWindow {
                     id: sessionLayer
 
-                    readonly property bool shown: shell.sessionOpen && shell.sessionScreen === monitor.modelData
+                    readonly property bool asked: shell.sessionPending !== null
+                    readonly property bool shown: (shell.sessionOpen || sessionLayer.asked)
+                                                  && shell.sessionScreen === monitor.modelData
 
                     screen: monitor.modelData
-                    // Stays up while it fades out.
+                    // Only while the menu or the question is up; idle, the
+                    // window is unmapped so it can never swallow a click.
                     visible: sessionLayer.shown || sessionMenu.opacity > 0
                     anchors {
                         top: true
@@ -2439,13 +2546,30 @@ ShellRoot {
                         id: sessionMenu
 
                         anchors.fill: parent
-                        open: sessionLayer.shown
+                        open: sessionLayer.shown && shell.sessionOpen
                         strings: shell.strings
                         user: Quickshell.env("USER") || ""
                         now: shell.now
                         canHibernate: shell.canHibernate
                         onChosen: function (key) { shell.runSession(key) }
                         onDismissed: shell.sessionOpen = false
+                    }
+
+                    // The guard's alert and the countdown, over the menu.
+                    SessionConfirm {
+                        id: sessionConfirm
+
+                        anchors.fill: parent
+                        allowed: sessionLayer.shown
+                        strings: shell.strings
+                        action: shell.sessionPending ? shell.sessionPending.key : ""
+                        phase: shell.sessionPending ? shell.sessionPending.phase : "countdown"
+                        jobs: shell.sessionPending && shell.sessionPending.jobs ? shell.sessionPending.jobs : []
+                        remaining: shell.sessionPending ? Session.remaining(shell.sessionPending.deadline || 0,
+                                                                            shell.sessionNow) : 0
+                        total: Session.SECONDS
+                        onCancelled: shell.cancelSession()
+                        onConfirmed: shell.confirmSession()
                     }
                 }
 

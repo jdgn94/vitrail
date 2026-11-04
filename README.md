@@ -529,6 +529,18 @@ keeps working.
 Both are also scriptable: `vitrail-bar ipc call panel toggle full|overlay`,
 `vitrail-bar ipc call panel close`. Panels are empty for now.
 
+### Session menu
+
+The power button opens a full-screen menu on its monitor (right click: the
+compact popout). Lock runs at once; the actions that cut work — suspend,
+hibernate, restart, shut down, and log out — first check what is still running
+(`vitrail/session.py`: a download, a package manager, a job started through
+`vitrail/jobs.py`) and, when there is something, say what it is with **Cancel**
+and **Go ahead**. After that (except log out) a **30 second countdown** runs,
+with **Cancel** and **Do it now**, and the action happens by itself when it
+reaches zero. Escape cancels (and returns to the menu), Enter confirms; the
+countdown, the command and the check live in the bar (`shell.runSession`).
+
 ### Notifications
 
 The bar owns `org.freedesktop.Notifications` (Quickshell's server): an app's

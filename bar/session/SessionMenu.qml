@@ -44,7 +44,7 @@ Item {
         root.current = Session.step(root.current, root.items.length, delta)
     }
 
-    focus: true
+    focus: root.open
     opacity: root.open ? 1 : 0
 
     Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
