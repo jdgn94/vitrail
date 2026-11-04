@@ -7,6 +7,7 @@ import "../../kit/frame.js" as Frame
 import "../../kit/tokens.js" as Tokens
 import "../../bar/osd/icons.js" as Icons
 import "../../bar/osd/brightness.js" as Brightness
+import "../../bar/osd/audio.js" as Audio
 
 // Where the OSD sits, how big it is, which icon it shows, and how brightness
 // is stepped and written.
@@ -261,6 +262,40 @@ TestCase {
         compare(Icons.brightness(0.5), "brightness_medium")
         compare(Icons.brightness(0.9), "brightness_high")
         compare(Icons.brightness(1), "brightness_high")
+    }
+
+    // --- apps ------------------------------------------------------------------
+
+    function test_the_app_key_prefers_the_application_name() {
+        compare(Audio.appKey({ "application.name": "Firefox",
+                               "application.process.binary": "firefox" }, "node"), "Firefox")
+        compare(Audio.appKey({ "application.process.binary": "firefox" }, "node"), "firefox")
+        compare(Audio.appKey({}, "node-7"), "node-7")
+    }
+
+    function test_streams_of_one_app_become_one_group() {
+        var groups = Audio.groups([
+            { key: "Firefox", name: "Firefox", icon: "", binary: "firefox", node: 1 },
+            { key: "Firefox", name: "Firefox", icon: "", binary: "firefox", node: 2 },
+            { key: "mpv", name: "mpv", icon: "mpv", binary: "mpv", node: 3 }
+        ])
+        compare(groups.length, 2)
+        compare(groups[0].key, "Firefox")
+        compare(groups[0].nodes.length, 2)
+        compare(groups[1].nodes.length, 1)
+    }
+
+    function test_the_icon_name_is_optional() {
+        compare(Audio.iconName({ "application.icon-name": "mpv" }), "mpv")
+        compare(Audio.iconName({}), "")
+    }
+
+    function test_a_window_class_matches_its_stream_case_insensitively() {
+        verify(Audio.classMatches("firefox", "Firefox", "firefox"))
+        verify(Audio.classMatches("firefox", "Firefox", "Firefox"))
+        verify(Audio.classMatches("", "mpv", "mpv"))
+        verify(!Audio.classMatches("firefox", "Firefox", ""))
+        verify(!Audio.classMatches("firefox", "Firefox", "kitty"))
     }
 
     // --- brightness ------------------------------------------------------------
