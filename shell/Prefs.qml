@@ -53,6 +53,8 @@ QtObject {
     property alias soundInputApps: soundFile.soundInputApps
     property alias soundFocusApps: soundFile.soundFocusApps
     property alias soundStep: soundFile.soundStep
+    property alias colorScheme: colorsFile.colorScheme
+    property alias colorContrast: colorsFile.colorContrast
     property alias fontSystem: fontsFile.fontSystem
     property alias fontConsole: fontsFile.fontConsole
     property alias uiIcons: fontsFile.uiIcons
@@ -256,6 +258,16 @@ QtObject {
         property bool soundInputApps: true
         property bool soundFocusApps: true
         property int soundStep: VitrailTokens.ranges.soundStep.value
+    }
+
+    property Settings colorsSettings: Settings {
+        id: colorsFile
+
+        fileName: root.directory + "/colors.ini"
+        category: "colors"
+
+        property string colorScheme: "tonal"
+        property real colorContrast: 0
     }
 
     property Settings fontsSettings: Settings {

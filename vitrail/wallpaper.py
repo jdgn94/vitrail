@@ -52,9 +52,16 @@ SVG_TAG = re.compile(r"<svg[\s>]")
 # Neutral colours climb from the background outwards; the steps end at these
 # distances (0 = the background, 1 = the far end of the art's tonal range).
 SURFACE_LADDER = (
-    "surface_container_lowest", "surface", "surface_container_low", "surface_container",
-    "surface_container_high", "surface_container_highest", "outline_variant", "outline",
-    "on_surface_variant", "on_surface",
+    "surface_container_lowest",
+    "surface",
+    "surface_container_low",
+    "surface_container",
+    "surface_container_high",
+    "surface_container_highest",
+    "outline_variant",
+    "outline",
+    "on_surface_variant",
+    "on_surface",
 )
 SURFACE_EDGES = (0.10, 0.18, 0.26, 0.34, 0.42, 0.50, 0.60, 0.70, 0.82)
 ACCENT_FAMILIES = ("primary", "secondary", "tertiary")
@@ -86,9 +93,7 @@ def join_selection(paths: list[str]) -> str:
     return SEPARATOR.join(paths)
 
 
-def next_wallpaper(
-    selection: list[str], current: str, order: str, rng: random.Random | None = None
-) -> str | None:
+def next_wallpaper(selection: list[str], current: str, order: str, rng: random.Random | None = None) -> str | None:
     if not selection:
         return None
     if len(selection) == 1:
@@ -109,7 +114,7 @@ def svg_seed(text: str) -> str | None:
     counts: Counter[str] = Counter()
     for match in HEX.finditer(text):
         value = match.group(1).lower()
-        channels = [int(value[i:i + 2], 16) for i in (0, 2, 4)]
+        channels = [int(value[i : i + 2], 16) for i in (0, 2, 4)]
         if max(channels) - min(channels) >= GREY_SPREAD:
             counts["#" + value] += 1
     return counts.most_common(1)[0][0] if counts else None
@@ -194,7 +199,7 @@ def adapt_svg(text: str) -> str:
         seed = max(leading, key=lambda v: counts[v] * (max(colors._rgb(v)) - min(colors._rgb(v))))
         tag = SVG_TAG.search(out)
         if tag:
-            out = f"{out[:tag.start()]}<!-- vitrail-seed: {seed} -->\n{out[tag.start():]}"
+            out = f"{out[: tag.start()]}<!-- vitrail-seed: {seed} -->\n{out[tag.start() :]}"
     return out
 
 
@@ -292,8 +297,9 @@ def _store(folder: Path, source: Path, data: bytes, suffix: str) -> Path | None:
     return target
 
 
-def import_paths(folders: dict[str, Path], paths: list[Path],
-                 optimize: Optimizer = media.optimize, say: Say = _no_say) -> list[Path]:
+def import_paths(
+    folders: dict[str, Path], paths: list[Path], optimize: Optimizer = media.optimize, say: Say = _no_say
+) -> list[Path]:
     """Adds files, and the files directly inside folders, to the library."""
     added: list[Path] = []
     for path in paths:
@@ -328,8 +334,7 @@ def sync(config: Path, optimize: Optimizer = media.optimize) -> tuple[list[Path]
     drops from the selection whatever no longer exists."""
     prefs = read_prefs(config)
     folders = ensure_folders(library(prefs, config))
-    imported = import_paths(
-        folders, [Path(path) for path in request_paths(prefs.get("wallpaperImport", ""))], optimize)
+    imported = import_paths(folders, [Path(path) for path in request_paths(prefs.get("wallpaperImport", ""))], optimize)
     removed: list[Path] = []
     root = library(prefs, config).resolve()
     for path in request_paths(prefs.get("wallpaperRemove", "")):
@@ -350,8 +355,9 @@ def advance(config: Path) -> str | None:
     """Moves the wallpaper to the next one of the selection."""
     prefs = read_prefs(config)
     current = prefs.get("wallpaper", "")
-    chosen = next_wallpaper(parse_selection(prefs.get("wallpaperSelection", "")), current,
-                            prefs.get("wallpaperOrder", "sequential"))
+    chosen = next_wallpaper(
+        parse_selection(prefs.get("wallpaperSelection", "")), current, prefs.get("wallpaperOrder", "sequential")
+    )
     if chosen and chosen != current:
         write_pref(config, "wallpaper", chosen)
         return chosen
@@ -376,7 +382,8 @@ def apply(
     if not path or kind is None or not Path(path).is_file():
         return None
     fixed = system_color(prefs)
-    key = f"{path}{SEPARATOR}{fixed}"
+    scheme, contrast = colors.scheme_settings(prefs)
+    key = f"{path}{SEPARATOR}{fixed}{SEPARATOR}{scheme}{SEPARATOR}{contrast:g}"
     stamp = cache / "wallpaper.applied"
     if not force and stamp.exists() and stamp.read_text(encoding="utf-8") == key:
         return None
@@ -388,14 +395,12 @@ def apply(
     image = Path(path)
     if kind == "video" and seed is None:
         image = cache / "wallpaper-frame.png"
-        run(["ffmpeg", "-loglevel", "error", "-y", "-ss", "1", "-i", path,
-             "-frames:v", "1", str(image)], check=True)
+        run(["ffmpeg", "-loglevel", "error", "-y", "-ss", "1", "-i", path, "-frames:v", "1", str(image)], check=True)
 
-    colors.write_theme(image, generated, seed=seed, run=run)
+    colors.write_theme(image, generated, scheme=scheme, contrast=contrast, seed=seed, run=run)
     if kind == "svg":
         for mode in ("dark", "light"):
             palette = json.loads((generated / f"theme-{mode}.json").read_text(encoding="utf-8"))
-            (generated / f"wallpaper-{mode}.svg").write_text(
-                render_svg(text, palette["colors"]), encoding="utf-8")
+            (generated / f"wallpaper-{mode}.svg").write_text(render_svg(text, palette["colors"]), encoding="utf-8")
     stamp.write_text(key, encoding="utf-8")
     return path

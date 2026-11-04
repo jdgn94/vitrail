@@ -18,6 +18,9 @@ appearance blurStrength
 appearance spacing
 appearance fontBase
 
+colors colorScheme
+colors colorContrast
+
 bar barEdge
 bar barScreens
 bar barStyle

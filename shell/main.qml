@@ -474,6 +474,7 @@ Window {
 
                                     ColorsPage {
                                         palette: app.theme
+                                        prefs: app.store
                                         strings: app.strings
                                     }
                                 }

@@ -11,6 +11,7 @@ from types import SimpleNamespace
 
 from vitrail import colors
 
+
 def role(dark: str, light: str | None = None) -> dict:
     """Forma real de matugen 4: {dark: {color}, default: {color}, light: {color}}."""
     return {
@@ -49,11 +50,13 @@ REAL_ROLES = {
 
 
 def real_theme(dark: bool) -> colors.Theme:
-    return colors.Theme(raw={
-        "is_dark_mode": dark,
-        "colors": {name: role(*pair) for name, pair in REAL_ROLES.items()},
-        "base16": {name: role(*pair) for name, pair in REAL_BASE16.items()},
-    })
+    return colors.Theme(
+        raw={
+            "is_dark_mode": dark,
+            "colors": {name: role(*pair) for name, pair in REAL_ROLES.items()},
+            "base16": {name: role(*pair) for name, pair in REAL_BASE16.items()},
+        }
+    )
 
 
 THEME_JSON = {
@@ -120,9 +123,7 @@ class FetchImageTests(unittest.TestCase):
                 requested.append(request.full_url)
                 return FakeResponse(b"PNGDATA")
 
-            path = colors.fetch_image(
-                "https://example.com/wall.png", Path(tmp), opener
-            )
+            path = colors.fetch_image("https://example.com/wall.png", Path(tmp), opener)
             self.assertEqual(path.read_bytes(), b"PNGDATA")
             self.assertEqual(path.parent.name, "wallpapers")
             self.assertEqual(requested, ["https://example.com/wall.png"])
@@ -154,9 +155,7 @@ class FetchImageTests(unittest.TestCase):
 
 class GenerateTests(unittest.TestCase):
     def test_parses_matugen_json(self) -> None:
-        result = SimpleNamespace(
-            returncode=0, stdout=json.dumps(THEME_JSON), stderr=""
-        )
+        result = SimpleNamespace(returncode=0, stdout=json.dumps(THEME_JSON), stderr="")
         theme = colors.generate(Path("/tmp/w.png"), run=lambda *_a, **_k: result)
         self.assertEqual(theme.colors["primary"], "#a8c7fa")
         self.assertTrue(theme.is_dark)
@@ -265,21 +264,40 @@ class TerminalPaletteTests(unittest.TestCase):
     def test_ansi_slots_follow_the_base16_convention(self) -> None:
         # Colors that already read well on black: nothing gets adjusted.
         picks = {
-            "base00": "#101010", "base03": "#909090", "base05": "#d0d0d0", "base07": "#f0f0f0",
-            "base08": "#ff6060", "base0b": "#60ff60", "base0a": "#ffff60",
-            "base0d": "#6060ff", "base0e": "#ff60ff", "base0c": "#60ffff",
+            "base00": "#101010",
+            "base03": "#909090",
+            "base05": "#d0d0d0",
+            "base07": "#f0f0f0",
+            "base08": "#ff6060",
+            "base0b": "#60ff60",
+            "base0a": "#ffff60",
+            "base0d": "#6060ff",
+            "base0e": "#ff60ff",
+            "base0c": "#60ffff",
         }
         base = {f"base{i:02x}": role("#808080") for i in range(16)}
         base.update({key: role(value) for key, value in picks.items()})
-        theme = colors.Theme(raw={
-            "is_dark_mode": True,
-            "colors": {"surface": role("#000000")}
-            | {n: role("#ffffff") for n in ("on_surface", "primary", "primary_container", "on_primary_container")},
-            "base16": base,
-        })
+        theme = colors.Theme(
+            raw={
+                "is_dark_mode": True,
+                "colors": {"surface": role("#000000")}
+                | {n: role("#ffffff") for n in ("on_surface", "primary", "primary_container", "on_primary_container")},
+                "base16": base,
+            }
+        )
         ansi = colors.terminal_palette(theme)["colors"]
-        expected = {0: "base00", 1: "base08", 2: "base0b", 3: "base0a", 4: "base0d",
-                    5: "base0e", 6: "base0c", 7: "base05", 8: "base03", 15: "base07"}
+        expected = {
+            0: "base00",
+            1: "base08",
+            2: "base0b",
+            3: "base0a",
+            4: "base0d",
+            5: "base0e",
+            6: "base0c",
+            7: "base05",
+            8: "base03",
+            15: "base07",
+        }
         for slot, key in expected.items():
             self.assertEqual(ansi[slot], picks[key], slot)
 
@@ -329,21 +347,35 @@ class WriteOutputsTests(unittest.TestCase):
             written = colors.write_outputs(theme, Path(tmp))
             names = {path.relative_to(tmp).as_posix() for path in written}
             self.assertEqual(names, set(colors.RENDERERS) | {"theme.json", "colors.json"})
-            self.assertEqual(
-                json.loads((Path(tmp) / "theme.json").read_text())["is_dark"], True
-            )
+            self.assertEqual(json.loads((Path(tmp) / "theme.json").read_text())["is_dark"], True)
 
 
 class ReloadTests(unittest.TestCase):
     def test_hyprland_reload_only_when_running(self) -> None:
         self.assertEqual(colors.reload_commands({}, which=lambda _: "/usr/bin/x"), [])
         self.assertEqual(
-            colors.reload_commands(
-                {"HYPRLAND_INSTANCE_SIGNATURE": "x"}, which=lambda _: "/usr/bin/x"
-            ),
+            colors.reload_commands({"HYPRLAND_INSTANCE_SIGNATURE": "x"}, which=lambda _: "/usr/bin/x"),
             [["hyprctl", "reload"]],
         )
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SchemeSettingsTests(unittest.TestCase):
+    def test_the_default_is_tonal(self) -> None:
+        self.assertEqual(colors.scheme_settings({}), ("tonal", 0.0))
+
+    def test_an_unknown_scheme_falls_back(self) -> None:
+        self.assertEqual(colors.scheme_settings({"colorScheme": "nope"})[0], "tonal")
+
+    def test_the_contrast_is_clamped(self) -> None:
+        self.assertEqual(colors.scheme_settings({"colorContrast": 4})[1], 1.0)
+        self.assertEqual(colors.scheme_settings({"colorContrast": "-4"})[1], -1.0)
+
+    def test_a_bad_contrast_is_zero(self) -> None:
+        self.assertEqual(colors.scheme_settings({"colorContrast": "x"})[1], 0.0)
+
+    def test_a_stored_scheme_is_kept(self) -> None:
+        self.assertEqual(colors.scheme_settings({"colorScheme": "vibrant", "colorContrast": "0.5"}), ("vibrant", 0.5))

@@ -5,6 +5,7 @@ Description=Watch the Vitrail settings files
 # One line per file of vitrail/prefs.map (tests/test_prefs_map.py checks it).
 # The directory is not watched: apply-settings writes its own files there.
 PathChanged=%h/.config/vitrail/appearance.ini
+PathChanged=%h/.config/vitrail/colors.ini
 PathChanged=%h/.config/vitrail/bar.ini
 PathChanged=%h/.config/vitrail/wallpaper.ini
 PathChanged=%h/.config/vitrail/windows.ini
