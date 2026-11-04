@@ -298,6 +298,32 @@ TestCase {
         verify(!Audio.classMatches("firefox", "Firefox", "kitty"))
     }
 
+    function test_an_app_row_shows_its_own_percentage() {
+        var row = createTemporaryObject(appRowComponent, testCase)
+        verify(row !== null)
+        compare(row.level, 50)
+        compare(findChild(row, "percent").text, "50%")
+    }
+
+    function test_an_app_row_is_the_mean_of_its_streams() {
+        var row = createTemporaryObject(appRowComponent, testCase)
+        row.group = ({ key: "mpv", name: "mpv", icon: "mpv", binary: "mpv",
+                       nodes: [ { audio: { volume: 0.4, muted: false } },
+                                { audio: { volume: 0.6, muted: false } } ] })
+        compare(row.level, 50)
+        compare(findChild(row, "percent").text, "50%")
+    }
+
+    function test_the_wheel_over_an_app_row_moves_its_slider() {
+        var row = createTemporaryObject(appRowComponent, testCase)
+        var slider = findChild(row, "slider")
+        moved.target = row
+        moved.clear()
+        mouseWheel(slider, slider.width / 2, slider.height / 2, 0, 120)
+        compare(moved.count, 1)
+        compare(moved.signalArguments[0][0], 55)
+    }
+
     // --- brightness ------------------------------------------------------------
 
     function test_a_step_moves_and_clamps() {
@@ -366,6 +392,17 @@ TestCase {
             value: 50
             icon: "volume_up"
             muteable: true
+        }
+    }
+
+    Component {
+        id: appRowComponent
+
+        AppRow {
+            width: 300
+            step: 5
+            group: ({ key: "mpv", name: "mpv", icon: "mpv", binary: "mpv",
+                      nodes: [ { audio: { volume: 0.5, muted: false } } ] })
         }
     }
 
