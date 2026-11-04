@@ -12,7 +12,7 @@ from vitrail import cli
 
 ROOT = Path(__file__).resolve().parent.parent
 LINK = re.compile(r"\]\(([^)\s]+)")
-COMMAND = re.compile(r"`?vitrail ([a-z-]+)")
+COMMAND = re.compile(r"`?vitrail (?!-)([a-z-]+)")
 # Documented commands whose task is still ahead; the list must end up empty.
 PLANNED: set[str] = {"welcome", "snapshot"}
 
