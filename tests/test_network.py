@@ -7,6 +7,7 @@ import io
 import json
 import os
 import stat
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -84,6 +85,10 @@ EVERYTHING = {
     "bluetoothctl info A0:1B:9E:B3:9A:65": BT_INFO["A0:1B:9E:B3:9A:65"],
     "bluetoothctl info 11:22:33:44:55:66": BT_INFO["11:22:33:44:55:66"],
 }
+
+
+def controller(present: bool):
+    return lambda: present
 
 
 class RequestTests(unittest.TestCase):
@@ -181,7 +186,7 @@ class ParsingTests(unittest.TestCase):
 
 class StateTests(unittest.TestCase):
     def test_the_state_of_a_full_system(self) -> None:
-        data = network.state(fake(EVERYTHING))
+        data = network.state(fake(EVERYTHING), bluetooth_present=controller(True))
         self.assertEqual(data["ethernet"]["devices"], [{
             "name": "eno1", "type": "ethernet", "state": "connected", "connection": "Wired profile",
             "address": "192.168.1.116/24", "gateway": "192.168.1.1"}])
@@ -200,7 +205,7 @@ class StateTests(unittest.TestCase):
         json.dumps(data)
 
     def test_the_wifi_list_is_not_asked_while_the_radio_is_off(self) -> None:
-        data = network.state(fake({**EVERYTHING, "nmcli radio wifi": "disabled\n"}))
+        data = network.state(fake({**EVERYTHING, "nmcli radio wifi": "disabled\n"}), bluetooth_present=controller(True))
         self.assertEqual((data["wifi"]["enabled"], data["wifi"]["networks"]), (False, []))
         self.assertTrue(data["wifi"]["available"])
 
@@ -215,13 +220,46 @@ class StateTests(unittest.TestCase):
 
     def test_nameless_beacons_found_by_a_scan_are_not_listed_but_paired_ones_are(self) -> None:
         listed = BT_DEVICES + "Device 00:04:EA:A4:48:90 00-04-EA-A4-48-90\n"
-        data = network.state(fake({**EVERYTHING, "bluetoothctl devices": listed}))
+        data = network.state(fake({**EVERYTHING, "bluetoothctl devices": listed}), bluetooth_present=controller(True))
         self.assertEqual([one["mac"] for one in data["bluetooth"]["devices"]], ["A0:1B:9E:B3:9A:65", "11:22:33:44:55:66"])
 
     def test_without_a_bluetooth_controller_the_devices_are_not_listed(self) -> None:
-        data = network.state(fake({**EVERYTHING, "bluetoothctl show": "No default controller available\n"}))
+        data = network.state(fake({**EVERYTHING, "bluetoothctl show": "No default controller available\n"}),
+                              bluetooth_present=controller(True))
         self.assertFalse(data["bluetooth"]["available"])
         self.assertEqual(data["bluetooth"]["devices"], [])
+
+    def test_without_an_adapter_bluetoothctl_is_never_run(self) -> None:
+        asked: list[list[str]] = []
+
+        def run(argv: list[str]) -> str | None:
+            asked.append(argv)
+            return fake(EVERYTHING)(argv)
+
+        data = network.state(run, bluetooth_present=controller(False))
+        self.assertEqual(data["bluetooth"], {"available": False, "powered": False, "devices": []})
+        self.assertFalse([argv for argv in asked if argv[0] == "bluetoothctl"])
+
+    def test_the_adapter_check_looks_for_an_entry_in_sys_class_bluetooth(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertFalse(network.has_bluetooth_controller(Path(folder)))
+            self.assertFalse(network.has_bluetooth_controller(Path(folder) / "missing"))
+            (Path(folder) / "hci0").mkdir()
+            self.assertTrue(network.has_bluetooth_controller(Path(folder)))
+
+    def test_bluetoothctl_reads_wait_less_than_other_reads(self) -> None:
+        waited: list[float] = []
+
+        def fake_run(argv, **kwargs):
+            waited.append(kwargs["timeout"])
+            raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+        with mock.patch.object(network.shutil, "which", return_value="/usr/bin/x"), \
+                mock.patch.object(network.subprocess, "run", fake_run):
+            self.assertIsNone(network.run_text(["bluetoothctl", "show"]))
+            self.assertIsNone(network.run_text(["nmcli", "radio", "wifi"]))
+        self.assertEqual(waited, [network.BLUETOOTH_READ, network.READ_TIMEOUT])
+        self.assertLess(network.BLUETOOTH_READ, network.READ_TIMEOUT)
 
 
 class ApplyTests(unittest.TestCase):
@@ -898,7 +936,8 @@ class BestApplyTests(VpnHarness):
         (self.folder / network.STATE_FILE).write_text(json.dumps(
             {"vpn": {"quality": {"us-1": {"latency": 1.0, "loss": 0}, "gone": {"latency": 2.0, "loss": 0}}}}),
             encoding="utf-8")
-        data = network.state(fake(EVERYTHING), network.load_quality(self.folder), marker=self.marker)
+        data = network.state(fake(EVERYTHING), network.load_quality(self.folder), marker=self.marker,
+                             bluetooth_present=controller(True))
         self.assertEqual(data["vpn"]["quality"], {"us-1": {"latency": 1.0, "loss": 0}})
         self.assertEqual(self.pinged, [])
 

@@ -59,6 +59,10 @@ STATE_FILE = "network-state.json"
 SCAN_SECONDS = 6
 # Longest a command may take: a Wi-Fi join waits for DHCP and the password.
 READ_TIMEOUT = 5
+# bluetoothctl waits for bluetoothd; with the service down it only hangs, and
+# the page waits for the state.
+BLUETOOTH_READ = 2
+BLUETOOTH_SYSFS = Path("/sys/class/bluetooth")
 ACT_TIMEOUT = 60
 
 MAC = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
@@ -449,13 +453,19 @@ def parse_mode(text: str) -> str:
 
 # --- reading the system ------------------------------------------------------
 
+def read_timeout(argv: list[str]) -> int:
+    if argv[:3] == ["hypraether-vpn", "domain", "list"]:
+        return LONG_READ
+    return BLUETOOTH_READ if argv[0] == "bluetoothctl" else READ_TIMEOUT
+
+
 def run_text(argv: list[str]) -> str | None:
     """Standard output of a command; None when it is missing, fails or hangs."""
     if shutil.which(argv[0]) is None:
         return None
     try:
         done = subprocess.run(argv, capture_output=True, text=True, check=False,
-                              timeout=LONG_READ if argv[:3] == ["hypraether-vpn", "domain", "list"] else READ_TIMEOUT)
+                              timeout=read_timeout(argv))
     except (OSError, subprocess.SubprocessError):
         return None
     return done.stdout if done.returncode == 0 else None
@@ -512,7 +522,17 @@ def vpn(run: Runner, quality: dict | None = None, marker: Path | None = None) ->
     }
 
 
-def bluetooth(run: Runner) -> dict:
+def has_bluetooth_controller(sysfs: Path = BLUETOOTH_SYSFS) -> bool:
+    """Whether the kernel lists an adapter: without one bluetoothctl only waits."""
+    try:
+        return any(sysfs.iterdir())
+    except OSError:
+        return False
+
+
+def bluetooth(run: Runner, present: Callable[[], bool] = has_bluetooth_controller) -> dict:
+    if not present():
+        return {"available": False, "powered": False, "devices": []}
     controller = parse_bluetooth_show(run(["bluetoothctl", "show"]) or "")
     result = {"available": controller["present"], "powered": controller["powered"], "devices": []}
     if not controller["present"]:
@@ -534,7 +554,8 @@ def bluetooth(run: Runner) -> dict:
     return result
 
 
-def state(run: Runner = run_text, quality: dict | None = None, marker: Path | None = None) -> dict:
+def state(run: Runner = run_text, quality: dict | None = None, marker: Path | None = None,
+          bluetooth_present: Callable[[], bool] = has_bluetooth_controller) -> dict:
     """Everything the page shows. `updated` (milliseconds) tells which copy of
     the state is the newer one."""
     listed = device_list(run)
@@ -544,7 +565,7 @@ def state(run: Runner = run_text, quality: dict | None = None, marker: Path | No
         "ethernet": {"available": listed is not None} | ethernet(run, devices),
         "wifi": wifi(run, devices),
         "vpn": vpn(run, quality, marker),
-        "bluetooth": bluetooth(run),
+        "bluetooth": bluetooth(run, bluetooth_present),
     }
 
 
