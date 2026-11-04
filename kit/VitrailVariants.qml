@@ -107,4 +107,15 @@ QtObject {
         frame: { fit: "frame", motion: "slow" },
         screen: { fit: "screen", motion: "slow" }
     })
+
+    // The audio visualiser (kit/composed/VitrailVisualiser). The three
+    // approved looks; circle and waves are planned, not drawn yet.
+    //   bars        bars from the bottom edge, no container
+    //   reflection  bars above a mirror that fades below the baseline
+    //   panel       the bars inside a rounded surface, inset from the edges
+    readonly property var visualiser: ({
+        bars: { reflection: false, panel: false, motion: "base" },
+        reflection: { reflection: true, panel: false, motion: "base" },
+        panel: { reflection: false, panel: true, motion: "base" }
+    })
 }

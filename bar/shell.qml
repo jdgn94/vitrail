@@ -645,6 +645,17 @@ ShellRoot {
 
     readonly property string generatedDir: (Quickshell.env("XDG_CACHE_HOME")
                                             || Quickshell.env("HOME") + "/.cache") + "/vitrail/generated"
+    // The audio visualiser's spectrum: the runtime file vitrail.visualiser
+    // writes, and whether there is anything to draw.
+    readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
+    property var visualiserValues: []
+    readonly property bool visualiserEnabled: shell.prefBool("visualiserEnabled", false)
+    readonly property bool audioPlaying: osdController.outputApps.length > 0
+    readonly property string visualiserVariant: shell.prefs.visualiserVariant || VitrailStyle.defaults.visualiser
+    readonly property bool visualiserActive: shell.visualiserEnabled && shell.audioPlaying
+                                             && shell.visualiserValues.length > 0
+    onVisualiserEnabledChanged: if (!shell.visualiserEnabled) shell.visualiserValues = []
+    onAudioPlayingChanged: if (!shell.audioPlaying) shell.visualiserValues = []
     readonly property string themeFile: shell.generatedDir + "/theme-dark.json"
     // Bumped on every new palette: a regenerated SVG of the same name reloads.
     property int paletteVersion: 0
@@ -828,6 +839,32 @@ ShellRoot {
         running: true
         command: ["python3", "-m", "vitrail.downloads", "watch"]
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
+    // The visualiser's cava runs only while the preference is on and an app
+    // is playing audio; when either stops, the Process ends and the supervisor
+    // clears its runtime file.
+    Process {
+        running: shell.visualiserEnabled && shell.audioPlaying
+        command: ["python3", "-m", "vitrail.visualiser", "start"]
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
+    // The last frame the supervisor wrote (vitrail/visualiser.py).
+    FileView {
+        path: shell.runtimeDir + "/vitrail/cava.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: this.reload()
+        onLoaded: {
+            try {
+                var document = JSON.parse(this.text())
+                shell.visualiserValues = document.values || []
+            } catch (error) {
+                shell.visualiserValues = []
+            }
+        }
+        onLoadFailed: shell.visualiserValues = []
     }
 
     // The bar reads the preference files with its own parser, so the CLI is
@@ -1635,9 +1672,10 @@ ShellRoot {
                 }
 
                 // Until a wallpaper is chosen, whatever draws it today stays.
+                // The audio visualiser shares this background layer.
                 PanelWindow {
                     screen: monitor.modelData
-                    visible: (shell.prefs.wallpaper || "") !== ""
+                    visible: (shell.prefs.wallpaper || "") !== "" || shell.visualiserActive
                     anchors {
                         top: true
                         bottom: true
@@ -1656,6 +1694,25 @@ ShellRoot {
                         revision: shell.paletteVersion
                         hole: bar.layout.hole
                         radius: bar.layout.radius
+                    }
+
+                    VitrailVisualiser {
+                        id: visualiser
+
+                        readonly property real stripWidth: shell.visualiserVariant === "panel"
+                                                          ? VitrailTokens.visualiser.panel.width
+                                                          : VitrailTokens.visualiser.width
+
+                        visible: shell.visualiserActive
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: bar.layout.hole.bottom + VitrailTokens.gap("xl")
+                        width: Math.min(parent.width * visualiser.stripWidth, VitrailTokens.visualiser.maxWidth)
+                        height: shell.prefNumber("visualiserHeight", VitrailTokens.ranges.visualiserHeight.value)
+                        variant: shell.visualiserVariant
+                        values: shell.visualiserValues
+                        tint: VitrailTokens.color("primary")
+                        opacityLevel: VitrailTokens.opacity
                     }
                 }
 

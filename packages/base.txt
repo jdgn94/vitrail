@@ -42,6 +42,8 @@ imagemagick
 pipewire
 pipewire-pulse
 wireplumber
+# The audio visualiser's spectrum (vitrail/visualiser.py).
+cava
 fontconfig
 noto-fonts
 noto-fonts-emoji

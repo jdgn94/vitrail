@@ -73,6 +73,9 @@ QtObject {
     property alias wallpaperImport: wallpaperFile.wallpaperImport
     property alias wallpaperRemove: wallpaperFile.wallpaperRemove
     property alias systemColor: wallpaperFile.systemColor
+    property alias visualiserEnabled: backgroundFile.visualiserEnabled
+    property alias visualiserVariant: backgroundFile.visualiserVariant
+    property alias visualiserHeight: backgroundFile.visualiserHeight
     property alias windowLayout: windowsFile.windowLayout
     property alias visibleColumns: windowsFile.visibleColumns
     property alias followFocus: windowsFile.followFocus
@@ -200,6 +203,18 @@ QtObject {
         // Colour of the whole system ("" = from the wallpaper): palette seed
         // for every kind of wallpaper, and the colour adaptive SVGs take.
         property string systemColor: ""
+    }
+
+    property Settings backgroundSettings: Settings {
+        id: backgroundFile
+
+        fileName: root.directory + "/background.ini"
+        category: "background"
+
+        // The audio visualiser over the wallpaper: on/off, its look and height.
+        property bool visualiserEnabled: false
+        property string visualiserVariant: "bars"
+        property int visualiserHeight: VitrailTokens.ranges.visualiserHeight.value
     }
 
     property Settings windowsSettings: Settings {

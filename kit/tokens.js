@@ -23,6 +23,8 @@ var ranges = {
     osdBrightnessStep: { min: 1, max: 20, step: 1, value: 5 },
     // The percent one wheel notch moves an app's own volume.
     soundStep: { min: 1, max: 20, step: 1, value: 5 },
+    // The audio visualiser's strip: how tall it is in the background.
+    visualiserHeight: { min: 48, max: 320, step: 8, value: 120 },
     // The pointer's size in pixels.
     cursor: { min: 16, max: 64, step: 2, value: 24 }
 }
@@ -346,6 +348,25 @@ var tray = {
     columns: 4,
     menu: 300,
     dot: 6
+}
+
+// The audio visualiser (bar/shell.qml background layer): `bars` is cava's
+// count, `coverage` the bar's share of its cell (the rest is the gap), `floor`
+// the smallest bar as a fraction of the height, `width` / `maxWidth` the strip
+// relative to the screen, and `smoothing` ms each bar takes to follow a new
+// level. Reflection stands the bars on `baseline` of the height, mirrors them
+// below it at `fade` opacity and `reach` of their height. The panel gives the
+// strip a surface with `padding` (a gap step), `radius` times the shell radius
+// and `width` of the screen.
+var visualiser = {
+    bars: 64,
+    coverage: 0.52,
+    floor: 0.04,
+    width: 0.66,
+    maxWidth: 1280,
+    smoothing: 90,
+    reflection: { baseline: 0.72, fade: 0.28, reach: 0.62, gap: 2 },
+    panel: { padding: "lg", radius: 1.5, width: 0.72 }
 }
 
 var space = {

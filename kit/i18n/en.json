@@ -630,5 +630,13 @@
   "binds.group.workspace": "Workspaces",
   "binds.group.mouse": "Mouse",
   "binds.group.media": "Media",
-  "binds.group.screenshot": "Screenshots"
+  "binds.group.screenshot": "Screenshots",
+  "bar.section.background": "Background",
+  "bar.visualiser.enabled": "Show the visualiser",
+  "bar.visualiser.enabled.help": "It runs only while an app is playing audio.",
+  "bar.visualiser.variant": "Style",
+  "bar.visualiser.variant.bars": "Bars",
+  "bar.visualiser.variant.reflection": "Reflection",
+  "bar.visualiser.variant.panel": "Panel",
+  "bar.visualiser.height": "Height"
 }

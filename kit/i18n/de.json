@@ -630,5 +630,13 @@
   "binds.group.workspace": "Arbeitsbereiche",
   "binds.group.mouse": "Maus",
   "binds.group.media": "Medien",
-  "binds.group.screenshot": "Bildschirmfotos"
+  "binds.group.screenshot": "Bildschirmfotos",
+  "bar.section.background": "Hintergrund",
+  "bar.visualiser.enabled": "Visualisierer anzeigen",
+  "bar.visualiser.enabled.help": "Er läuft nur, während eine App Audio abspielt.",
+  "bar.visualiser.variant": "Stil",
+  "bar.visualiser.variant.bars": "Balken",
+  "bar.visualiser.variant.reflection": "Spiegelung",
+  "bar.visualiser.variant.panel": "Panel",
+  "bar.visualiser.height": "Höhe"
 }

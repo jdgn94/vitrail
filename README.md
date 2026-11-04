@@ -116,6 +116,7 @@ package to the manifest and a row here.
 | `nautilus` | the file manager | "open folder" and "open file" of a download, with the desktop's own choice read from `xdg-mime` (Nautilus is the fallback installed with Vitrail) |
 | `python-dbus`, `python-gobject` | — | the downloads watcher (`vitrail/downloads.py`): a notification per download and the buttons that cancel, delete or open it |
 | `wireplumber`, `playerctl`, `brightnessctl` | `wpctl`, `playerctl`, `brightnessctl` | media keys, laptop panel brightness |
+| `cava` | `cava` | the audio visualiser's spectrum (`vitrail/visualiser.py`), written to the background layer |
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
 | `grim`, `slurp` | `grim`, `slurp` | screenshots (region, window, full screen) |
 | `wf-recorder` | `wf-recorder` | screen recording from the panel, stopped from the bar |
@@ -298,6 +299,7 @@ the window declares it in another file, or the path unit watches another set.
 | `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase` |
 | `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barMonitors`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep` |
 | `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `systemColor` (`wallpaperSeed`: legacy) |
+| `background.ini` | `visualiserEnabled`, `visualiserVariant`, `visualiserHeight` |
 | `windows.ini` | `windowLayout`, `visibleColumns`, `followFocus`, `wrapFocus`, `borderWidth`, `opacityFocused`, `opacityUnfocused` |
 | `monitors.ini` | `monitorOverrides` |
 | `input.ini` | `keyboardLayouts`, `keyboardSwitch`, `numlockOnStart`, `focusFollowsMouse` |
@@ -641,6 +643,18 @@ On glass the frame shows a blurred copy of the wallpaper; on solid it sits on
 the surface color. Choosing a wallpaper regenerates the palette (a video lends
 one frame through `ffmpeg`). Until one is chosen, any other wallpaper tool
 keeps working.
+
+### Audio visualiser
+
+**Settings → Bar → Background** turns on an audio visualiser in the background
+layer: `cava` (started by `vitrail/visualiser.py`, 64 bars at 60 fps) writes
+the mix to `$XDG_RUNTIME_DIR/vitrail/cava.json`, and the bar draws it under the
+wallpaper on every monitor. It runs only while the preference is on and an app
+is playing audio, so an idle desktop pays nothing. The three approved looks are
+`bars` (from the bottom edge), `reflection` (a mirrored, fading copy below the
+bars) and `panel` (the bars inside a rounded surface). `circle` and `waves` are
+planned variants. `visualiserHeight` follows a token range, like every other
+size.
 
 ### Panels
 

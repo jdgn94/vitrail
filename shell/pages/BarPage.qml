@@ -26,7 +26,8 @@ Item {
         style: { docked: "dock_to_bottom", floating: "bottom_navigation", islands: "splitscreen", floatingIslands: "view_agenda" },
         screens: { primary: "monitor", all: "devices" },
         frame: { full: "border_outer", corners: "rounded_corner", none: "border_clear" },
-        vertical: { top: "vertical_align_top", bottom: "vertical_align_bottom" }
+        vertical: { top: "vertical_align_top", bottom: "vertical_align_bottom" },
+        visualiser: { bars: "bar_chart", reflection: "flip", panel: "crop_free" }
     })
 
     function options(prefix, keys, icons) {
@@ -46,6 +47,7 @@ Item {
                 { key: "frame", icon: "crop_free", label: page.t("bar.tab.framePanels") },
                 { key: "notifications", icon: "notifications", label: page.t("bar.section.notifications") },
                 { key: "osd", icon: "tune", label: page.t("bar.section.osd") },
+                { key: "background", icon: "graphic_eq", label: page.t("bar.section.background") },
                 { key: "capture", icon: "screenshot_monitor", label: page.t("bar.section.capture") }
             ]
             current: page.tab
@@ -602,6 +604,60 @@ Item {
                             accent: page.palette.primary
                             onToggled: function (value) { page.prefs.captureRecordAudio = value }
                         }
+                    }
+                }
+
+                Section {
+                    Layout.fillWidth: true
+                    visible: page.tab === "background"
+                    icon: "graphic_eq"
+                    title: page.t("bar.section.background")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    VitrailSettingRow {
+                        icon: "graphic_eq"
+                        label: page.t("bar.visualiser.enabled")
+                        description: page.t("bar.visualiser.enabled.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.visualiserEnabled
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.visualiserEnabled = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "bar_chart"
+                        label: page.t("bar.visualiser.variant")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            options: page.options("bar.visualiser.variant.",
+                                                  Object.keys(VitrailVariants.visualiser),
+                                                  page.icons.visualiser)
+                            current: page.prefs.visualiserVariant || VitrailStyle.defaults.visualiser
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: page.prefs.visualiserVariant = key
+                        }
+                    }
+
+                    VitrailSlider {
+                        Layout.fillWidth: true
+                        label: page.t("bar.visualiser.height")
+                        suffix: " px"
+                        from: VitrailTokens.ranges.visualiserHeight.min
+                        to: VitrailTokens.ranges.visualiserHeight.max
+                        stepSize: VitrailTokens.ranges.visualiserHeight.step
+                        value: page.prefs.visualiserHeight
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onMoved: page.prefs.visualiserHeight = value
                     }
                 }
 

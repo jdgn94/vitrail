@@ -25,6 +25,13 @@ Window {
     // Each preview is a full screen scaled down, so tokens keep real sizes.
     readonly property size screenSize: Qt.size(1280, 720)
     readonly property real scale: Number(Args.value("--scale", "0.24"))
+    // A fixed spectrum for the visualiser previews: no audio in the gallery.
+    readonly property var sampleLevels: {
+        var out = []
+        for (var i = 0; i < VitrailTokens.visualiser.bars; i++)
+            out.push(Math.max(0, Math.round(30 + 32 * Math.sin(i / 4.5) + 18 * Math.sin(i / 1.7))))
+        return out
+    }
 
     width: content.implicitWidth + 2 * VitrailTokens.gap("xl")
     height: content.implicitHeight + 2 * VitrailTokens.gap("xl")
@@ -813,6 +820,40 @@ Window {
                             panel: panelRow.panel
                             fit: panelRow.fit
                         }
+                    }
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "VitrailVisualiser · the three approved looks · real tokens"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("xl")
+
+            Repeater {
+                model: Object.keys(VitrailVariants.visualiser)
+
+                delegate: ColumnLayout {
+                    id: visualiserColumn
+
+                    required property string modelData
+
+                    spacing: VitrailTokens.gap("sm")
+
+                    VitrailText {
+                        variant: "label"
+                        text: visualiserColumn.modelData
+                    }
+
+                    VitrailVisualiser {
+                        Layout.preferredWidth: 560
+                        Layout.preferredHeight: VitrailTokens.ranges.visualiserHeight.value * 1.4
+                        variant: visualiserColumn.modelData
+                        tint: wallpaper.primary
+                        values: app.sampleLevels
                     }
                 }
             }

@@ -64,6 +64,11 @@ wallpaper wallpaperRemove
 wallpaper wallpaperSeed
 wallpaper systemColor
 
+# Desktop background extras: the audio visualiser over the wallpaper.
+background visualiserEnabled
+background visualiserVariant
+background visualiserHeight
+
 windows windowLayout
 windows visibleColumns
 windows followFocus

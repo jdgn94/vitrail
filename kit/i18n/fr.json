@@ -630,5 +630,13 @@
   "binds.group.workspace": "Espaces de travail",
   "binds.group.mouse": "Souris",
   "binds.group.media": "Médias",
-  "binds.group.screenshot": "Captures d’écran"
+  "binds.group.screenshot": "Captures d’écran",
+  "bar.section.background": "Arrière-plan",
+  "bar.visualiser.enabled": "Afficher le visualiseur",
+  "bar.visualiser.enabled.help": "Il ne fonctionne que pendant qu'une application lit de l'audio.",
+  "bar.visualiser.variant": "Style",
+  "bar.visualiser.variant.bars": "Barres",
+  "bar.visualiser.variant.reflection": "Reflet",
+  "bar.visualiser.variant.panel": "Panneau",
+  "bar.visualiser.height": "Hauteur"
 }

@@ -630,5 +630,13 @@
   "binds.group.workspace": "Spazi di lavoro",
   "binds.group.mouse": "Mouse",
   "binds.group.media": "Media",
-  "binds.group.screenshot": "Schermate"
+  "binds.group.screenshot": "Schermate",
+  "bar.section.background": "Sfondo",
+  "bar.visualiser.enabled": "Mostra il visualizzatore",
+  "bar.visualiser.enabled.help": "Funziona solo mentre un'app riproduce audio.",
+  "bar.visualiser.variant": "Stile",
+  "bar.visualiser.variant.bars": "Barre",
+  "bar.visualiser.variant.reflection": "Riflesso",
+  "bar.visualiser.variant.panel": "Pannello",
+  "bar.visualiser.height": "Altezza"
 }

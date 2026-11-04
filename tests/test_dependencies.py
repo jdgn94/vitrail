@@ -125,6 +125,7 @@ PROVIDED_BY = {
     "xdg-mime": "xdg-utils",
     "wpctl": "wireplumber",
     "playerctl": "playerctl",
+    "cava": "cava",
     "brightnessctl": "brightnessctl",
     "ddcutil": "ddcutil",
     "grim": "grim",

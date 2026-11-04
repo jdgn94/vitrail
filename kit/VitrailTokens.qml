@@ -32,6 +32,7 @@ QtObject {
     readonly property var launcher: Tokens.launcher
     readonly property var media: Tokens.media
     readonly property var tray: Tokens.tray
+    readonly property var visualiser: Tokens.visualiser
     readonly property bool glass: root.surfaceMode === "glass"
 
     function configure(palette, dark, surfaceMode, values) {

@@ -630,5 +630,13 @@
   "binds.group.workspace": "Espacios de trabajo",
   "binds.group.mouse": "Ratón",
   "binds.group.media": "Multimedia",
-  "binds.group.screenshot": "Capturas"
+  "binds.group.screenshot": "Capturas",
+  "bar.section.background": "Fondo",
+  "bar.visualiser.enabled": "Mostrar el visualizador",
+  "bar.visualiser.enabled.help": "Solo funciona mientras una aplicación reproduce audio.",
+  "bar.visualiser.variant": "Estilo",
+  "bar.visualiser.variant.bars": "Barras",
+  "bar.visualiser.variant.reflection": "Reflejo",
+  "bar.visualiser.variant.panel": "Panel",
+  "bar.visualiser.height": "Altura"
 }
