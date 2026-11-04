@@ -68,7 +68,7 @@ tooltip is not finished** (`tests/test_tooltips.py` enforces it for
 | tray icon | `tooltipTitle` (else title, id) | `tooltipDescription` |
 | tray chevron | Show / Hide background apps (N) | none |
 | network | SSID, or `eno1 · Wired`; offline: Disconnected | IPv4 of that interface (`ip -j -4 addr show dev`, refreshed every 30 s and on link change) |
-| vpn | provider (`ProtonVPN`); none: No VPN | server and region (`us-free-26 · US`) from `hypraether-vpn list --json` |
+| vpn | provider (`ProtonVPN`); none: No VPN | server and region (`us-free-26 · US`) from `vitrail-vpn list --json` |
 | power | Power | Click: menu · Right click: quick menu |
 
 Hyprland glass blur for the pill needs the usual layer rule for the

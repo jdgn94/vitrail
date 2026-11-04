@@ -75,7 +75,10 @@ timeline, ratios), `motion.smooth`.
   next to `clicked`). It never opens from closed. `shell.popupByHover` marks a
   popup the pointer brought there: the first click on its button confirms it
   (clears the flag), the next one closes it; any other open clears it.
-  Otherwise the click would toggle the popup the hover just moved.
+  Otherwise the click would toggle the popup the hover just moved. Both signals
+  carry the same kind (`tests/test_bar_popup_kinds.py`): when they differ, the
+  enter event the compositor repeats as a popup opens moves the popup the click
+  just opened to the other kind, so the next click reopens instead of closing.
 - Launcher popout: same rules as the others (hover, glide, close on focus
   loss and idle). It takes the keyboard exclusively for 150 ms when it opens
   (the only way to be focused without a click), then `OnDemand`: an exclusive
@@ -102,16 +105,19 @@ timeline, ratios), `motion.smooth`.
 - center: `ClockButton` (SystemClock; "HH\nMM" on a vertical bar) → popup
   kind `clock` → `ClockPanel` (time, localized date, MonthGrid calendar with
   month paging and a "today" button).
-- end: `BarItems` (tray, network, vpn, power). Clicking another bar button
-  while a popup is open moves the popup to it (`togglePopup` → `openPopup`);
-  hovering one does the same (see Hover switching).
+- end: `BarItems` (tray, the connection chip — `network`, `vpn` and the power
+  profile — and power). Clicking another bar button while a popup is open moves
+  the popup to it (`togglePopup` → `openPopup`); hovering one does the same
+  (see Hover switching).
 
 ## Popouts (after caelestia-dots/shell)
 
 - Every element with a popout reports `(kind, item)`; `shell.openPopup` anchors
   (`shell.popupAnchor`, the item's rect) on that exact item; without one (IPC)
   on that popup's own button on the target screen (`monitor.anchorFor`).
-  Kinds: `network`, `vpn`, `media`, `clock`, `power`, `launcher`, `tray:<id>`.
+  Kinds: `connection` (the chip), `network` (the older panel, still opened by
+  the launcher's action and the `network` IPC), `vpn`, `powerprofile`, `media`,
+  `clock`, `power`, `launcher`, `tray:<id>`.
 - `bar/Popout.qml`: one named `Loader` per kind. Becoming current: load at
   once (the card needs its size), wait `handover`, then fade in (`slow`);
   leaving: fade out (`fast`), then unload. Closing the popup clears the

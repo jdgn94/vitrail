@@ -81,7 +81,7 @@ GridLayout {
                 onHoveredChanged: {
                     root.tipHovered(network, hovered)
                     if (hovered)
-                        root.hovered("network", network)
+                        root.hovered("connection", network)
                 }
             }
 
