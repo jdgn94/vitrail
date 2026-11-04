@@ -73,6 +73,8 @@
   "fonts.design.help": "Recolours an installed pack with the wallpaper's palette and uses it as the cursor.",
   "fonts.design.off": "Off",
   "fonts.iconsTint.help": "Recolours the folders of an installed pack with the wallpaper's palette.",
+  "fonts.spinner": "Own busy spinner",
+  "fonts.spinner.help": "The wait cursor becomes Vitrail's turning shape instead of the pack's.",
   "section.colors": "Colors",
   "windows.tabBorder": "Border",
   "windows.tabOpacity": "Opacity",

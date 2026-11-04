@@ -59,6 +59,7 @@ QtObject {
     property alias iconTheme: fontsFile.iconTheme
     property alias cursorTheme: fontsFile.cursorTheme
     property alias cursorSize: fontsFile.cursorSize
+    property alias cursorSpinner: fontsFile.cursorSpinner
     property alias wallpaper: wallpaperFile.wallpaper
     property alias wallpaperMode: wallpaperFile.wallpaperMode
     property alias wallpaperDir: wallpaperFile.wallpaperDir
@@ -265,6 +266,7 @@ QtObject {
         property string iconTheme: "Adwaita"
         property string cursorTheme: "Adwaita"
         property int cursorSize: VitrailTokens.ranges.cursor.value
+        property bool cursorSpinner: false
     }
 
     property Settings launcherSettings: Settings {

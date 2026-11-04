@@ -73,6 +73,8 @@
   "fonts.design.help": "Recolore un pack installé avec la palette du fond d'écran et l'utilise comme curseur.",
   "fonts.design.off": "Désactivé",
   "fonts.iconsTint.help": "Recolore les dossiers d'un pack installé avec la palette du fond d'écran.",
+  "fonts.spinner": "Indicateur d'attente maison",
+  "fonts.spinner.help": "Le curseur d'attente devient la forme tournante de Vitrail, pas celle du pack.",
   "section.colors": "Couleurs",
   "windows.tabBorder": "Bordure",
   "windows.tabOpacity": "Opacité",

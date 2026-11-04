@@ -21,6 +21,8 @@ import struct
 import sys
 from pathlib import Path
 
+from . import spinner as spinner_engine
+
 PREFIX = "vitrail-"
 XCURSOR_IMAGE = 0xFFFD0002
 XCURSOR_COMMENT = 0xFFFE0001
@@ -255,19 +257,27 @@ def update_xsettings(path: Path, theme: str, size: int) -> None:
 # --- building ----------------------------------------------------------------
 
 
-def _stamp_value(pack: str, inks: dict) -> str:
-    body = json.dumps({"pack": pack, "inks": inks}, sort_keys=True)
+def _stamp_value(pack: str, inks: dict, spinner: bool) -> str:
+    body = json.dumps({"pack": pack, "inks": inks, "spinner": spinner}, sort_keys=True)
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
-def build(pack: Path, target: Path, palette: dict, cache: Path, force: bool = False) -> bool:
+def build(
+    pack: Path,
+    target: Path,
+    palette: dict,
+    cache: Path,
+    force: bool = False,
+    spinner: bool = True,
+    render=spinner_engine.rasterise,
+) -> bool:
     """Writes `target` as the tinted `pack`; False when it was already current."""
     cursors = pack / "cursors"
     if not cursors.is_dir():
         return False
     inks = roles(palette)
     stamp = cache / "stamp"
-    current = _stamp_value(str(pack), inks)
+    current = _stamp_value(str(pack), inks, spinner)
     if not force and (target / "index.theme").is_file() and stamp.is_file():
         try:
             if stamp.read_text(encoding="utf-8").strip() == current:
@@ -288,6 +298,13 @@ def build(pack: Path, target: Path, palette: dict, cache: Path, force: bool = Fa
         for image in images:
             image["pixels"] = tint(image["pixels"], image["width"], image["height"], fill, inks["paper"])
         write_cursor(images, target_cursors / source.name)
+
+    # Our own busy cursor, drawn from the shell's shape and the accent.
+    if spinner:
+        frames = spinner_engine.frames(colour=inks["accent"], run=render)
+        if frames:
+            for name in spinner_engine.BUSY_NAMES:
+                write_cursor(frames, target_cursors / name)
 
     (target / "index.theme").write_text(
         "[Icon Theme]\n"

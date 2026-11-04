@@ -389,6 +389,29 @@ class ApplyTests(unittest.TestCase):
             (self.config / "gtk-3.0/settings.ini").read_text(encoding="utf-8"),
         )
 
+    def test_the_own_busy_cursor_is_off_unless_asked(self) -> None:
+        from vitrail import cursor as cursor_engine
+
+        def render(svg: str) -> bytes:
+            return bytes((0, 255, 0, 255)) * (32 * 32)
+
+        base = {"fontSystem": "Roboto", "iconTheme": "Adwaita", "cursorTheme": "vitrail-Adwaita", "cursorSize": 24}
+        target = self.root / "data" / "icons" / "vitrail-Adwaita"
+        arguments = dict(
+            run=self.recording(FACES),
+            roots=[self.icons],
+            hyprland=False,
+            x11=False,
+            data_home=self.root / "data",
+            cache=self.root / "cache",
+            render=render,
+            palette={"on_surface": "#ffffff", "surface": "#000000", "primary": "#ff0000"},
+        )
+        fonts.apply(dict(base), self.config, **arguments)
+        self.assertFalse((target / "cursors" / "wait").exists())
+        fonts.apply(dict(base, cursorSpinner="true"), self.config, **arguments)
+        self.assertEqual(len(cursor_engine.read_cursor(target / "cursors" / "wait")), 12)
+
     def test_a_theme_that_is_not_installed_falls_back(self) -> None:
         code = self.apply({"fontSystem": "Roboto", "iconTheme": "Adwaita", "cursorTheme": "Nope", "cursorSize": 24})
         self.assertEqual(code, 1)

@@ -73,6 +73,8 @@
   "fonts.design.help": "Färbt ein installiertes Paket mit der Palette des Hintergrunds und nutzt es als Zeiger.",
   "fonts.design.off": "Aus",
   "fonts.iconsTint.help": "Färbt die Ordner eines installierten Pakets mit der Palette des Hintergrunds.",
+  "fonts.spinner": "Eigener Ladezeiger",
+  "fonts.spinner.help": "Der Wartezeiger wird Vitrails drehende Form statt der des Pakets.",
   "section.colors": "Farben",
   "windows.tabBorder": "Rahmen",
   "windows.tabOpacity": "Deckkraft",

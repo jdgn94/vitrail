@@ -410,6 +410,13 @@ def console_family(name: str, run: Runner = run_text) -> str:
     return ""
 
 
+def _flag(value: object, default: bool = False) -> bool:
+    """A stored boolean, which arrives as a string from the INI files."""
+    if value is None or value == "":
+        return default
+    return str(value).strip().lower() in ("true", "1", "yes", "on")
+
+
 def active_palette() -> dict:
     """The palette the wallpaper produced for the current light/dark mode."""
     appearance = prefs.read_prefs(prefs.config_dir()).get("appearance", "auto")
@@ -458,6 +465,7 @@ def apply(
     data_home: Path | None = None,
     cache: Path | None = None,
     x11: bool | None = None,
+    render=None,
 ) -> int:
     """Applies `fonts.ini` system-wide.
 
@@ -521,7 +529,12 @@ def apply(
             else:
                 target = ((data_home / "icons") if data_home else cursor_engine.output_root()) / cursor
                 cursor_engine.build(
-                    source, target, palette if palette is not None else active_palette(), cache / "themes"
+                    source,
+                    target,
+                    palette if palette is not None else active_palette(),
+                    cache / "themes",
+                    spinner=_flag(values.get("cursorSpinner")),
+                    render=render,
                 )
     else:
         log("skipped: no cursor theme found")

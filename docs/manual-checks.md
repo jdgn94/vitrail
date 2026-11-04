@@ -143,6 +143,10 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
       `xrdb -query | grep Xcursor` debe responder con el tema y el tamaño, y
       `pgrep -a xsettingsd` debe seguir vivo (se le manda SIGHUP, no se
       reinicia).
+- [ ] **Own busy spinner**: apágalo (por defecto) y espera con una app que
+      muestre `wait` (p. ej. `sleep 3` en una terminal X11): sale el busy del
+      pack, tintado. Enciéndelo y repite: sale la forma giratoria de Vitrail en
+      el color de acento. El cambio se aplica en el siguiente `fonts apply`.
 - [ ] **Off** devuelve el cursor al pack original.
 - [ ] Un pack borrado a mano mientras está elegido: el log dice `refused` y el
       cursor cae en Adwaita, sin dejar el puntero sin tema.

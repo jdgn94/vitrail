@@ -73,6 +73,8 @@
   "fonts.design.help": "Recolore um pacote instalado com a paleta do fundo e usa-o como cursor.",
   "fonts.design.off": "Desligado",
   "fonts.iconsTint.help": "Recolore as pastas de um pacote instalado com a paleta do fundo.",
+  "fonts.spinner": "Spinner próprio",
+  "fonts.spinner.help": "O cursor de espera passa a ser a forma giratória da Vitrail, não a do pacote.",
   "section.colors": "Cores",
   "windows.tabBorder": "Borda",
   "windows.tabOpacity": "Opacidade",

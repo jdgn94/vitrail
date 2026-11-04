@@ -90,6 +90,7 @@ fonts uiIcons
 fonts iconTheme
 fonts cursorTheme
 fonts cursorSize
+fonts cursorSpinner
 
 # The apps of the volume and microphone cards, and how they behave.
 sound soundOutputApps

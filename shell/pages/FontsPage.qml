@@ -371,6 +371,21 @@ Item {
                         }
                     }
 
+                    VitrailSettingRow {
+                        icon: "autorenew"
+                        label: page.t("fonts.spinner")
+                        description: page.t("fonts.spinner.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.cursorSpinner
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.cursorSpinner = value }
+                        }
+                    }
+
                     VitrailSlider {
                         Layout.fillWidth: true
                         label: page.t("fonts.cursorSize")

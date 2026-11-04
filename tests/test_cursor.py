@@ -98,8 +98,11 @@ class BuildTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def build(self) -> bool:
-        return cursor.build(self.pack, self.target, PALETTE, self.cache)
+    def build(self, primary: str = "#ff0000", spinner: bool = False, render=None) -> bool:
+        palette = dict(PALETTE, on_surface=primary)
+        return cursor.build(
+            self.pack, self.target, palette, self.cache, spinner=spinner, render=render or (lambda svg: None)
+        )
 
     def test_the_arrow_takes_the_ink_and_an_active_shape_the_accent(self) -> None:
         self.assertTrue(self.build())
@@ -122,8 +125,17 @@ class BuildTests(unittest.TestCase):
 
     def test_a_new_palette_rebuilds_it(self) -> None:
         self.build()
-        other = dict(PALETTE, on_surface="#0000ff")
-        self.assertTrue(cursor.build(self.pack, self.target, other, self.cache))
+        self.assertTrue(self.build(primary="#0000ff"))
+
+    def test_the_busy_cursor_is_ours(self) -> None:
+        def render(svg: str) -> bytes:
+            return bytes((0, 255, 0, 255)) * (32 * 32)
+
+        self.assertTrue(self.build(spinner=True, render=render))
+        for name in ("wait", "progress", "left_ptr_watch"):
+            images = cursor.read_cursor(self.target / "cursors" / name)
+            self.assertEqual(len(images), 12)
+            self.assertEqual(images[0]["delay"], 120)
 
     def test_a_folder_without_cursors_is_nothing(self) -> None:
         bare = Path(self.tmp.name) / "icons" / "Bare"

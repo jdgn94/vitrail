@@ -147,7 +147,16 @@ own two colours, switches light/dark and gets a contrast ring).
 
 ## The busy cursor
 
-`wait` and `progress` still come from the pack, tinted. The roadmap asks for
-Vitrail's own spinner, generated from `kit/base/VitrailBusy.qml`; that needs its
-shape generator ported (or the frames rendered once with `qml6`) and is the
-next piece of P2.10.
+By default `wait`, `progress` and `left_ptr_watch` come from the pack, tinted,
+like every other pointer. **Cursor → Own busy spinner** switches to Vitrail's
+own: twelve frames of the shell's `clover4` shape turning 30° per frame in the
+palette's `primary`, 120 ms each.
+
+The frames come from `vitrail/spinner.py`, a Python mirror of
+`kit/shapes.js` (the geometry is pinned by `tests/test_spinner.py` against the
+JavaScript output) rasterised with ImageMagick. The flag is opt-in because a
+turning shape in the pointer is a taste, not a default; the pack's own busy
+cursor is perfectly good and follows the same two inks.
+
+The toggle writes `cursorSpinner` to `fonts.ini`; `fonts apply` rebuilds the
+active design when it changes (the build stamp includes the flag).
