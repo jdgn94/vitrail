@@ -72,3 +72,7 @@ desktop.ini
 assets/wallpapers/
 assets/adaptive-wallpapers/
 assets/animation-wallpapers/
+
+# --- Review screenshots ---
+# Captures taken for review; never committed (they may show the wallpaper).
+screenshots/
