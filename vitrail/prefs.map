@@ -41,6 +41,12 @@ bar clipboardMax
 bar clipboardPaste
 bar mediaStyle
 bar trayStyle
+bar osdKeys
+bar osdKeyTime
+bar osdHotZone
+bar osdSize
+bar osdStep
+bar osdBrightnessStep
 
 wallpaper wallpaper
 wallpaper wallpaperMode
@@ -73,6 +79,12 @@ terminal fontSize
 terminal tabStyle
 terminal tabIcons
 terminal tabNumbers
+
+# The apps of the volume and microphone cards, and how they behave.
+sound soundOutputApps
+sound soundInputApps
+sound soundFocusApps
+sound soundStep
 
 launcher launcherEngine
 launcher launcherBangs

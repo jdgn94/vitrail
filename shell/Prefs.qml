@@ -43,6 +43,16 @@ QtObject {
     property alias clipboardPaste: barFile.clipboardPaste
     property alias mediaStyle: barFile.mediaStyle
     property alias trayStyle: barFile.trayStyle
+    property alias osdKeys: barFile.osdKeys
+    property alias osdKeyTime: barFile.osdKeyTime
+    property alias osdHotZone: barFile.osdHotZone
+    property alias osdSize: barFile.osdSize
+    property alias osdStep: barFile.osdStep
+    property alias osdBrightnessStep: barFile.osdBrightnessStep
+    property alias soundOutputApps: soundFile.soundOutputApps
+    property alias soundInputApps: soundFile.soundInputApps
+    property alias soundFocusApps: soundFile.soundFocusApps
+    property alias soundStep: soundFile.soundStep
     property alias wallpaper: wallpaperFile.wallpaper
     property alias wallpaperMode: wallpaperFile.wallpaperMode
     property alias wallpaperDir: wallpaperFile.wallpaperDir
@@ -138,6 +148,14 @@ QtObject {
         property string mediaStyle: "disc"
         // The tray's look: "inline" folds the icons out, "popup" lists them.
         property string trayStyle: "inline"
+        // The OSD: whether keys show it, how long a key's slider stays, how far
+        // past the frame the hot zone reaches, its slider size and the steps.
+        property bool osdKeys: true
+        property int osdKeyTime: VitrailTokens.ranges.osdKey.value
+        property int osdHotZone: VitrailTokens.ranges.osdHot.value
+        property string osdSize: VitrailTokens.osd.size
+        property int osdStep: VitrailTokens.ranges.osdStep.value
+        property int osdBrightnessStep: VitrailTokens.ranges.osdBrightnessStep.value
     }
 
     property Settings wallpaperSettings: Settings {
@@ -201,6 +219,19 @@ QtObject {
         property string tabStyle: "capsule"
         property bool tabIcons: true
         property bool tabNumbers: false
+    }
+
+    property Settings soundSettings: Settings {
+        id: soundFile
+
+        fileName: root.directory + "/sound.ini"
+        category: "sound"
+
+        // The apps of the volume and microphone cards.
+        property bool soundOutputApps: true
+        property bool soundInputApps: true
+        property bool soundFocusApps: true
+        property int soundStep: VitrailTokens.ranges.soundStep.value
     }
 
     property Settings launcherSettings: Settings {

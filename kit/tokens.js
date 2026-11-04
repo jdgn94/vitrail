@@ -14,7 +14,15 @@ var ranges = {
     bar: { min: 24, max: 64, step: 1, value: 36 },
     panel: { min: 240, max: 720, step: 8, value: 384 },
     // Notifications on screen at once; the rest wait their turn.
-    notifications: { min: 1, max: 10, step: 1, value: 5 }
+    notifications: { min: 1, max: 10, step: 1, value: 5 },
+    // The OSD: how long a media key keeps its slider up, how far past the
+    // frame its hot zone reaches, and the percent a key or wheel notch moves.
+    osdKey: { min: 500, max: 5000, step: 250, value: 2000 },
+    osdHot: { min: 0, max: 24, step: 1, value: 5 },
+    osdStep: { min: 1, max: 20, step: 1, value: 5 },
+    osdBrightnessStep: { min: 1, max: 20, step: 1, value: 5 },
+    // The percent one wheel notch moves an app's own volume.
+    soundStep: { min: 1, max: 20, step: 1, value: 5 }
 }
 
 // Typography is a scale over the base size the user picks.
