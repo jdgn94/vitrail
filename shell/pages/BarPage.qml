@@ -44,7 +44,8 @@ Item {
             tabs: [
                 { key: "layout", icon: "toolbar", label: page.t("bar.section.layout") },
                 { key: "frame", icon: "crop_free", label: page.t("bar.tab.framePanels") },
-                { key: "notifications", icon: "notifications", label: page.t("bar.section.notifications") }
+                { key: "notifications", icon: "notifications", label: page.t("bar.section.notifications") },
+                { key: "osd", icon: "tune", label: page.t("bar.section.osd") }
             ]
             current: page.tab
             foreground: page.palette.foreground
@@ -368,6 +369,111 @@ Item {
                             accent: page.palette.primary
                             onToggled: function (value) { page.prefs.notificationUrgentBypass = value }
                         }
+                    }
+                }
+
+                Section {
+                    Layout.fillWidth: true
+                    visible: page.tab === "osd"
+                    icon: "tune"
+                    title: page.t("bar.section.osd")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    VitrailSettingRow {
+                        icon: "keyboard"
+                        label: page.t("bar.osd.keys")
+                        description: page.t("bar.osd.keys.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.osdKeys === undefined || page.prefs.osdKeys === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.osdKeys = value }
+                        }
+                    }
+
+                    VitrailSlider {
+                        Layout.fillWidth: true
+                        label: page.t("bar.osd.keyTime")
+                        suffix: " ms"
+                        from: VitrailTokens.ranges.osdKey.min
+                        to: VitrailTokens.ranges.osdKey.max
+                        stepSize: VitrailTokens.ranges.osdKey.step
+                        value: page.prefs.osdKeyTime
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onMoved: page.prefs.osdKeyTime = value
+                    }
+
+                    VitrailSlider {
+                        Layout.fillWidth: true
+                        label: page.t("bar.osd.hotZone")
+                        suffix: " px"
+                        from: VitrailTokens.ranges.osdHot.min
+                        to: VitrailTokens.ranges.osdHot.max
+                        stepSize: VitrailTokens.ranges.osdHot.step
+                        value: page.prefs.osdHotZone
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onMoved: page.prefs.osdHotZone = value
+                    }
+
+                    VitrailSettingRow {
+                        icon: "aspect_ratio"
+                        label: page.t("bar.osd.size")
+                        description: page.t("bar.osd.size.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            options: [
+                                { key: "sm", label: page.t("bar.osd.size.sm") },
+                                { key: "md", label: page.t("bar.osd.size.md") },
+                                { key: "lg", label: page.t("bar.osd.size.lg") }
+                            ]
+                            current: page.prefs.osdSize || VitrailTokens.osd.size
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: page.prefs.osdSize = key
+                        }
+                    }
+                }
+
+                Section {
+                    Layout.fillWidth: true
+                    visible: page.tab === "osd"
+                    icon: "speed"
+                    title: page.t("bar.osd.steps")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    VitrailSlider {
+                        Layout.fillWidth: true
+                        label: page.t("bar.osd.step")
+                        suffix: "%"
+                        from: VitrailTokens.ranges.osdStep.min
+                        to: VitrailTokens.ranges.osdStep.max
+                        stepSize: VitrailTokens.ranges.osdStep.step
+                        value: page.prefs.osdStep
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onMoved: page.prefs.osdStep = value
+                    }
+
+                    VitrailSlider {
+                        Layout.fillWidth: true
+                        label: page.t("bar.osd.brightnessStep")
+                        suffix: "%"
+                        from: VitrailTokens.ranges.osdBrightnessStep.min
+                        to: VitrailTokens.ranges.osdBrightnessStep.max
+                        stepSize: VitrailTokens.ranges.osdBrightnessStep.step
+                        value: page.prefs.osdBrightnessStep
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onMoved: page.prefs.osdBrightnessStep = value
                     }
                 }
             }

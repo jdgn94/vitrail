@@ -107,6 +107,7 @@ Window {
         { key: "terminal", group: "desktop", glyph: "terminal", label: app.t("section.terminal"), badge: app.t("badge.live") },
         { key: "launcher", group: "desktop", glyph: "apps", label: app.t("section.launcher"), badge: app.t("badge.live") },
         { key: "input", group: "system", glyph: "keyboard", label: app.t("section.input"), badge: app.t("badge.live") },
+        { key: "sound", group: "system", glyph: "graphic_eq", label: app.t("section.sound"), badge: app.t("badge.live") },
         { key: "language", group: "system", glyph: "translate", label: app.t("section.language"), badge: app.t("badge.saved") },
         { key: "datetime", group: "system", glyph: "schedule", label: app.t("section.datetime"), badge: "" },
         { key: "connection", group: "system", glyph: "settings_ethernet", label: app.t("section.connection"), badge: "" },
@@ -352,6 +353,18 @@ Window {
                                         palette: app.theme
                                         prefs: app.store
                                         strings: app.strings
+                                        tab: Args.value("--tab", "layout")
+                                    }
+                                }
+
+                                LazyPage {
+                                    shown: app.category === "sound"
+
+                                    SoundPage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                        tab: Args.value("--tab", "output")
                                     }
                                 }
 
