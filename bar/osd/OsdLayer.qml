@@ -44,6 +44,11 @@ Scope {
     property bool focused: false
     property var strings: ({})
     property real opacityLevel: VitrailTokens.opacity
+    // Behavior, set from the preferences by the shell.
+    property bool keysEnabled: true
+    property real keyTime: VitrailTokens.osd.key
+    property real hotZone: VitrailTokens.osd.hot
+    property string sliderSize: VitrailTokens.osd.size
     // Previews pin a state: "key", "full" or "hidden" without timers or hover.
     property bool animated: true
 
@@ -57,17 +62,21 @@ Scope {
     property string shownExt: ""
     property string hoverKind: ""
     property string pressedKind: ""
+    // The kind whose gear is hovered: its settings tooltip shows instead of
+    // opening the card.
+    property string settingsKind: ""
 
     readonly property var all: ["volume", "mic", "brightness"]
     readonly property bool side: Osd.vertical(root.edge)
     readonly property var bounds: Osd.alignBounds(root.edge, root.docked ? root.layout.dock : root.layout.reserve,
                                                   root.reference)
     readonly property real gap: root.docked ? 0 : VitrailTokens.gap("md")
-    readonly property real thickness: VitrailTokens.slider[VitrailTokens.osd.size] + 4 * VitrailTokens.slider.gap
+    readonly property real thickness: VitrailTokens.slider[root.sliderSize] + 4 * VitrailTokens.slider.gap
     readonly property var metrics: ({
         thickness: root.thickness,
         length: VitrailTokens.osd.length,
         icon: root.thickness,
+        gear: root.thickness,
         textWide: Math.round(VitrailTokens.size("label") * 3.2),
         textTall: VitrailTokens.size("label") + VitrailTokens.gap("xs"),
         pad: VitrailTokens.gap("sm"),
@@ -129,7 +138,7 @@ Scope {
         root.keyKind = kind
         root.kinds = [kind]
         root.mode = "key"
-        hideTimer.interval = VitrailTokens.osd.key
+        hideTimer.interval = root.keyTime
         hideTimer.restart()
     }
 
@@ -150,6 +159,8 @@ Scope {
     }
 
     onHoverKindChanged: {
+        if (root.settingsKind !== "")
+            return
         if (root.hoverKind !== "" && root.mode === "full" && root.extAvailable(root.hoverKind)) {
             root.extKind = root.hoverKind
             root.shownExt = root.hoverKind
@@ -159,11 +170,23 @@ Scope {
         }
     }
 
+    // The gear's tooltip replaces the card: hovering it never opens one.
+    onSettingsKindChanged: {
+        if (root.settingsKind !== "") {
+            root.extKind = ""
+            extTimer.stop()
+        } else if (root.hoverKind !== "" && root.mode === "full" && root.extAvailable(root.hoverKind)) {
+            root.extKind = root.hoverKind
+            root.shownExt = root.hoverKind
+            extTimer.stop()
+        }
+    }
+
     Connections {
         target: root.controller
 
         function onKeyed(kind) {
-            if (root.focused && root.animated)
+            if (root.keysEnabled && root.focused && root.animated)
                 root.key(kind)
         }
     }
@@ -176,6 +199,7 @@ Scope {
             root.mode = "hidden"
             root.extKind = ""
             root.hoverKind = ""
+            root.settingsKind = ""
         }
     }
 
@@ -235,7 +259,7 @@ Scope {
             id: strip
 
             readonly property var zone: Osd.hotZone(root.edge, window.width, window.height, root.fullRect,
-                                                    root.layout.hole[root.edge], VitrailTokens.osd.hot)
+                                                    root.layout.hole[root.edge], root.hotZone)
 
             x: strip.zone.x
             y: strip.zone.y
@@ -308,6 +332,9 @@ Scope {
                         kind: cell.modelData
                         vertical: root.side
                         metrics: root.metrics
+                        sliderSize: root.sliderSize
+                        step: cell.modelData === "brightness" ? root.controller.brightnessStep
+                                                              : root.controller.step
                         value: cell.spec.value
                         icon: cell.spec.icon
                         muteable: cell.spec.muteable
@@ -321,6 +348,12 @@ Scope {
                             else if (root.hoverKind === cell.modelData)
                                 root.hoverKind = ""
                         }
+                        onSettingsHoveredChanged: {
+                            if (cell.settingsHovered)
+                                root.settingsKind = cell.modelData
+                            else if (root.settingsKind === cell.modelData)
+                                root.settingsKind = ""
+                        }
                         onPressedChanged: {
                             if (cell.pressed)
                                 root.pressedKind = cell.modelData
@@ -328,6 +361,7 @@ Scope {
                                 root.pressedKind = ""
                         }
                         onMoved: function (value) { root.move(cell.modelData, value) }
+                        onSettingsRequested: root.openSettings(cell.modelData)
                         onMuteRequested: {
                             if (cell.modelData === "volume")
                                 root.controller.toggleMute()
@@ -403,14 +437,15 @@ Scope {
                                                       ? (root.edge === "left" ? root.panel.x + root.panel.width : window.width - root.panel.x)
                                                       : (root.edge === "top" ? root.panel.y + root.panel.height : window.height - root.panel.y),
                                                       VitrailTokens.gap("sm"), window.width, window.height)
-            property string label: ""
-            property string extra: ""
 
             x: tip.at.x
             y: tip.at.y
-            text: tip.label
-            detail: tip.extra
-            active: root.hoverKind !== "" && root.extKind === "" && root.mode !== "hidden"
+            text: root.settingsKind !== "" ? root.t("osd.settings")
+                                           : (root.hoverKind !== "" ? root.specOf(root.hoverKind).tooltip : "")
+            detail: root.settingsKind !== "" ? root.t("osd.settings." + root.settingsKind)
+                                             : (root.hoverKind !== "" ? root.specOf(root.hoverKind).detail : "")
+            active: (root.settingsKind !== "" || root.hoverKind !== "") && root.extKind === ""
+                    && root.mode !== "hidden"
             edge: root.edge
             opacityLevel: root.opacityLevel
         }
@@ -435,21 +470,12 @@ Scope {
         }
     }
 
-    // The slider's own tooltip text follows the hovered one.
-    Binding {
-        target: tip
-        property: "label"
-        value: root.specOf(root.hoverKind).tooltip
-        when: root.hoverKind !== ""
-        restoreMode: Binding.RestoreNone
-    }
-
-    Binding {
-        target: tip
-        property: "extra"
-        value: root.specOf(root.hoverKind).detail
-        when: root.hoverKind !== ""
-        restoreMode: Binding.RestoreNone
+    // The gear opens the settings window at the section of that slider.
+    function openSettings(kind) {
+        var category = kind === "brightness" ? "bar" : "sound"
+        var tab = kind === "brightness" ? "osd" : (kind === "volume" ? "output" : "input")
+        Quickshell.execDetached([Quickshell.env("HOME") + "/.local/bin/vitrail-settings",
+                                 "--category", category, "--tab", tab])
     }
 
     // A slider moved by the pointer.

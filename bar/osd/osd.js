@@ -38,9 +38,11 @@ function alignBounds(edge, own, reference) {
 
 // One slider with its icon and its percentage.
 function cell(isVertical, m) {
+    var gear = m.gear || 0
+    var tail = gear > 0 ? m.inner + gear : 0
     var along = m.icon + m.inner + m.length + m.inner
-    return isVertical ? { width: m.thickness, height: along + m.textTall }
-                      : { width: along + m.textWide, height: m.thickness }
+    return isVertical ? { width: m.thickness, height: along + m.textTall + tail }
+                      : { width: along + m.textWide + tail, height: m.thickness }
 }
 
 function panelSize(edge, count, m) {

@@ -28,12 +28,18 @@ Item {
     // icon names what a click does.
     property string tooltip: ""
     property string tooltipDetail: ""
+    // The slider's thickness (sm / md / lg) and the percent one wheel notch
+    // moves.
+    property string sliderSize: VitrailTokens.osd.size
+    property real step: VitrailTokens.osd.step
 
     signal moved(real value)
     signal muteRequested()
+    signal settingsRequested()
 
     readonly property bool hovered: hover.hovered
     readonly property bool pressed: slider.pressed || mute.pressed
+    readonly property bool settingsHovered: gear.hovered
     readonly property var size: Osd.cell(root.vertical, root.metrics)
 
     implicitWidth: root.size.width
@@ -86,12 +92,12 @@ Item {
             Layout.preferredWidth: root.vertical ? root.metrics.thickness : root.metrics.length
             Layout.preferredHeight: root.vertical ? root.metrics.length : root.metrics.thickness
             orientation: root.vertical ? Qt.Vertical : Qt.Horizontal
-            size: VitrailTokens.osd.size
+            size: root.sliderSize
             length: root.metrics.length
             from: 0
             to: 100
             stepSize: 1
-            wheelStep: VitrailTokens.osd.step
+            wheelStep: root.step
             value: root.value
             enabled: root.available
             accent: root.muted ? VitrailTokens.color("muted") : VitrailTokens.color("primary")
@@ -105,6 +111,25 @@ Item {
             verticalAlignment: root.vertical ? Text.AlignBottom : Text.AlignVCenter
             variant: "label"
             text: root.available ? Math.round(root.value) + "%" : "–"
+        }
+
+        // The gear: the settings of this slider (the layer picks the page).
+        Item {
+            Layout.preferredWidth: root.metrics.gear || root.metrics.icon
+            Layout.preferredHeight: root.metrics.gear || root.metrics.icon
+            Layout.alignment: Qt.AlignCenter
+
+            VitrailButton {
+                id: gear
+
+                objectName: "osdSettings"
+                anchors.fill: parent
+                variant: "plain"
+                tone: "secondary"
+                size: "md"
+                icon: "settings"
+                onClicked: root.settingsRequested()
+            }
         }
     }
 }

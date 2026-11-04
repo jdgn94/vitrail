@@ -20,7 +20,7 @@ TestCase {
     height: 400
 
     readonly property var metrics: ({ thickness: 32, length: 100, icon: 32, textWide: 40, textTall: 16,
-                                      pad: 8, spacing: 8, inner: 4 })
+                                      gear: 32, pad: 8, spacing: 8, inner: 4 })
     // A frame 6 px thick on every side, 1000 x 800 screen.
     readonly property var bounds: ({ left: 6, top: 6, right: 6, bottom: 6 })
 
@@ -55,14 +55,20 @@ TestCase {
     function test_a_cell_is_vertical_on_the_side_edges() {
         var cell = Osd.cell(true, metrics)
         compare(cell.width, 32)
-        // icon, slider, text, with an inner gap between each
-        compare(cell.height, 32 + 4 + 100 + 4 + 16)
+        // icon, slider, text, gear, with an inner gap between each
+        compare(cell.height, 32 + 4 + 100 + 4 + 16 + 4 + 32)
     }
 
     function test_a_cell_is_horizontal_on_the_top_and_bottom_edges() {
         var cell = Osd.cell(false, metrics)
         compare(cell.height, 32)
-        compare(cell.width, 32 + 4 + 100 + 4 + 40)
+        compare(cell.width, 32 + 4 + 100 + 4 + 40 + 4 + 32)
+    }
+
+    function test_every_cell_has_a_settings_button() {
+        var cell = createTemporaryObject(cellComponent, testCase)
+        verify(cell !== null)
+        verify(findChild(cell, "osdSettings") !== null)
     }
 
     function test_a_side_panel_stacks_its_cells() {
