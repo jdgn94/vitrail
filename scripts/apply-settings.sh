@@ -38,6 +38,10 @@ tab_icons="$(read_ini tabIcons true)"
 tab_numbers="$(read_ini tabNumbers false)"
 term_scheme="$(read_ini terminalScheme system)"
 font_size="$(read_ini fontSize 13)"
+# The family comes back already validated against what is installed; kitty
+# never reads a raw preference line.
+font_console="$(PYTHONPATH="$(dirname -- "${SELF}")/.." python3 -m vitrail.fonts console-family 2>/dev/null || true)"
+[[ -n "$font_console" ]] || font_console="JetBrainsMono Nerd Font"
 term_padding="$(read_ini terminalPadding 6)"
 window_layout="$(read_ini windowLayout dwindle)"
 visible_columns="$(read_ini visibleColumns 2)"
@@ -196,6 +200,7 @@ tabNumbers=$(flag "$tab_numbers")
 colorScheme=$term_scheme
 EOF
 cat >"$CONFIG_DIR/kitty-user.conf" <<EOF
+font_family $font_console
 font_size $font_size
 window_padding_width $term_padding
 EOF
@@ -216,6 +221,10 @@ printf 'Language: %s (%s, next session)\n' "$language" "$locale"
 vitrail_cli wallpaper sync || true
 vitrail_cli wallpaper apply || true
 vitrail_cli theme apply --mode "$system_mode" || true
+
+# Fonts, icon packs and cursor (fonts.ini). A value that is not installed is
+# refused inside the module, so nothing unvalidated reaches fontconfig.
+PYTHONPATH="$(dirname -- "${SELF}")/.." python3 -m vitrail.fonts apply || true
 
 # --- connection --------------------------------------------------------------
 # The Connection page's request, run once per counter value (see
