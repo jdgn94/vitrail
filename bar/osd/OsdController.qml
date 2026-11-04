@@ -1,8 +1,10 @@
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.Pipewire
 import QtQuick
 import "../kit"
+import "audio.js" as Audio
 import "brightness.js" as Light
 
 // What the OSD shows and drives, once per shell: the default output and input
@@ -22,7 +24,18 @@ Scope {
     readonly property PwNode source: Pipewire.defaultAudioSource
     readonly property var sinks: root.devicesOf(true)
     readonly property var sources: root.devicesOf(false)
+    // One group per app with an open playback (or capture) stream.
+    readonly property var outputApps: root.appsOf(true)
+    readonly property var inputApps: root.appsOf(false)
     readonly property alias light: light
+
+    // The steps the panel and the keys move by, and what the cards show.
+    property real step: VitrailTokens.osd.step
+    property real brightnessStep: VitrailTokens.osd.step
+    property real appStep: VitrailTokens.osd.step
+    property bool showOutputApps: true
+    property bool showInputApps: true
+    property bool focusApps: true
 
     // 0..1; zero while there is no device.
     readonly property real volume: root.sink && root.sink.audio ? root.sink.audio.volume : 0
@@ -43,6 +56,78 @@ Scope {
 
     function name(node) {
         return node ? (node.nickname || node.description || node.name) : ""
+    }
+
+    // The playback (or capture) streams: applications, not devices.
+    function streamsOf(output) {
+        return Pipewire.nodes.values.filter(function (node) {
+            return node.audio && node.isStream && node.isSink === output
+        })
+    }
+
+    function entryOf(node) {
+        var props = node.properties || ({})
+        return { node: node, key: Audio.appKey(props, node.name),
+                 name: Audio.appName(props, node.name), icon: Audio.iconName(props),
+                 binary: String(props["application.process.binary"] || "").toLowerCase() }
+    }
+
+    function appsOf(output) {
+        var streams = root.streamsOf(output)
+        var entries = []
+        for (var i = 0; i < streams.length; i++)
+            entries.push(root.entryOf(streams[i]))
+        return Audio.groups(entries)
+    }
+
+    function iconSource(group) {
+        if (!group)
+            return ""
+        var name = group.icon !== "" ? group.icon : group.binary
+        return name === "" ? "" : Quickshell.iconPath(name, true)
+    }
+
+    // Every stream of the app moves together; the sink (general) volume is
+    // never touched, so the app's percentage stays the same when it changes.
+    function setAppVolume(group, fraction) {
+        if (!group || !group.nodes || group.nodes.length === 0)
+            return
+        root.mine()
+        var value = root.limit(fraction)
+        for (var i = 0; i < group.nodes.length; i++) {
+            if (group.nodes[i].audio)
+                group.nodes[i].audio.volume = value
+        }
+    }
+
+    // Any stream still audible: mute them all. All muted: bring them back.
+    function toggleAppMute(group) {
+        if (!group || !group.nodes || group.nodes.length === 0)
+            return
+        root.mine()
+        var anyUnmuted = false
+        for (var i = 0; i < group.nodes.length; i++) {
+            if (group.nodes[i].audio && !group.nodes[i].audio.muted)
+                anyUnmuted = true
+        }
+        for (var j = 0; j < group.nodes.length; j++) {
+            if (group.nodes[j].audio)
+                group.nodes[j].audio.muted = anyUnmuted
+        }
+    }
+
+    // The app's window: its class against the stream's binary and name.
+    function focusApp(group) {
+        if (!root.focusApps || !group)
+            return
+        var clients = Hyprland.toplevels.values
+        for (var i = 0; i < clients.length; i++) {
+            var ipc = clients[i].lastIpcObject || ({})
+            if (Audio.classMatches(group.binary, group.name, ipc["class"] || "")) {
+                Hyprland.dispatch("focuswindow address:0x" + String(clients[i].address).replace(/^0x/, ""))
+                return
+            }
+        }
     }
 
     function limit(fraction) {
@@ -98,7 +183,7 @@ Scope {
 
     // A key press: change the value, then show that slider.
     function press(kind, action) {
-        var amount = VitrailTokens.osd.step / 100
+        var amount = root.step / 100
         var direction = action === "up" ? 1 : -1
         if (kind === "volume") {
             if (action === "mute")
@@ -108,7 +193,7 @@ Scope {
         } else if (kind === "mic") {
             root.toggleMicMute()
         } else if (kind === "brightness") {
-            root.setBrightness(Light.step(light.level, direction, VitrailTokens.osd.step))
+            root.setBrightness(Light.step(light.level, direction, root.brightnessStep))
         }
         root.keyed(kind)
     }
