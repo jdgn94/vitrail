@@ -1,127 +1,109 @@
-"""The palette-adaptive icon layer: folder hues follow the wallpaper."""
+"""Every Material Symbol named in the QML renders as one glyph.
+
+Icons are written as ligature names ("wifi"); a typo silently renders the
+word itself. Qt measures each name in the icon font: a real icon is about
+one em wide, a misspelt one is a whole word.
+"""
 
 from __future__ import annotations
 
+import os
+import re
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
-from vitrail import icons
+ROOT = Path(__file__).resolve().parent.parent
+QML_DIRS = ("bar", "kit", "shell", "gallery")
+RUNNER = Path("/usr/lib/qt6/bin/qmltestrunner")
+# The value of an icon / glyph property, up to the next comma or brace, and
+# the ternary branches that continue it on the following lines.
+ICON_VALUE = re.compile(r"\b(?:icon|glyph|endIcon)\s*:\s*([^,}]*)")
+GLYPH_LIST = re.compile(r"\bglyphs\s*=\s*\[(.*)\]")
+# A table of icons: `icons: ({ left: "arrow", ... })`, possibly over several lines.
+ICON_MAP = re.compile(r"\b\w*[iI]cons\s*:\s*\(\{(.*)")
+CONTINUATION = re.compile(r"^\s*:\s*(.*)")
+NAME = re.compile(r'"([a-z][a-z0-9_]*)"')
+# Size tables reuse the `icon` key for a text variant.
+NOT_ICONS = {"body", "subtitle", "title", "label", "content", "display"}
 
-SVG = """<svg xmlns="http://www.w3.org/2000/svg">
- <path style="fill:#5294e2" d="M0 0"/>
- <path style="fill:#4877b1" d="M0 0"/>
- <rect style="opacity:0.2;fill:#e4e4e4" width="1" height="1"/>
-</svg>"""
 
-PRIMARY = "#ff0000"
-
-
-class TintTests(unittest.TestCase):
-    def test_the_body_is_the_most_frequent_saturated_colour(self) -> None:
-        self.assertEqual(icons.body(SVG), "#5294e2")
-
-    def test_a_symbolic_icon_has_no_body(self) -> None:
-        self.assertIsNone(icons.body('<path style="fill:currentColor"/>'))
-
-    def test_the_folder_hue_moves_to_the_palette_while_the_shading_stays(self) -> None:
-        out = icons.tint_svg(SVG, {"primary": PRIMARY})
-        self.assertNotIn("#5294e2", out)
-        self.assertNotIn("#4877b1", out)
-        self.assertIn("#e4e4e4", out)  # the paper stays grey
-        for value in icons.colours(out):
-            if value in ("#e4e4e4",):
+def icon_names() -> set[str]:
+    names: set[str] = set()
+    for folder in QML_DIRS:
+        sources = list((ROOT / folder).rglob("*.qml"))
+        if folder == "bar":
+            sources += (ROOT / "bar" / "session").glob("*.js")
+        for path in sources:
+            if path.is_relative_to(ROOT / "bar" / "kit"):
                 continue
-            hue, _lightness, _saturation = icons._hsl(value)
-            self.assertLess(hue, 0.04)  # red
+            open_value = False
+            in_map = False
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if in_map or ICON_MAP.search(line):
+                    names |= set(NAME.findall(line.split("({", 1)[-1]))
+                    in_map = "})" not in line
+                    continue
+                match = ICON_VALUE.search(line) or GLYPH_LIST.search(line)
+                if match:
+                    names |= set(NAME.findall(match.group(1)))
+                    open_value = line.rstrip().endswith(("?", ":")) or "?" in match.group(1)
+                elif open_value and (match := CONTINUATION.match(line)):
+                    names |= set(NAME.findall(match.group(1)))
+                else:
+                    open_value = False
+    # The OSD's icon table returns its names.
+    for line in (ROOT / "bar" / "osd" / "icons.js").read_text(encoding="utf-8").splitlines():
+        if "return" in line:
+            names |= set(NAME.findall(line))
+    return names - NOT_ICONS
 
-    def test_a_colour_far_from_the_body_is_left_alone(self) -> None:
-        text = '<path style="fill:#5294e2"/><path style="fill:#2ec27e"/>'
-        out = icons.tint_svg(text, {"primary": PRIMARY})
-        self.assertIn("#2ec27e", out)
 
-    def test_without_a_primary_colour_nothing_changes(self) -> None:
-        self.assertEqual(icons.tint_svg(SVG, {}), SVG)
+class IconTests(unittest.TestCase):
+    def test_icon_tables_and_segmented_options_are_collected(self) -> None:
+        names = icon_names()
+        self.assertIn("left_panel_open", names)  # BarPage icons table
+        self.assertIn("filter_frames", names)  # one-line table
+        self.assertIn("light_mode", names)  # { key, icon, label } option
+        self.assertIn("volume_off", names)  # bar/osd/icons.js
 
-
-class BuildTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self.tmp.name)
-        self.icons = self.root / "icons"
-        self.pack = self.icons / "Papirus"
-        (self.pack / "48x48" / "places").mkdir(parents=True)
-        (self.pack / "48x48" / "places" / "folder.svg").write_text(SVG, encoding="utf-8")
-        (self.pack / "48x48" / "places" / "folder-symbolic.svg").write_text(SVG, encoding="utf-8")
-        (self.pack / "48x48" / "places" / "text-x-generic.svg").write_text(SVG, encoding="utf-8")
-        (self.pack / "index.theme").write_text(
-            "[Icon Theme]\nDirectories=48x48/places\nInherits=hicolor\n\n[48x48/places]\nSize=48\n", encoding="utf-8"
-        )
-        self.base = self.icons / "hicolor"
-        (self.base / "48x48" / "places").mkdir(parents=True)
-        (self.base / "48x48" / "places" / "folder-open.svg").write_text(SVG, encoding="utf-8")
-        (self.base / "index.theme").write_text(
-            "[Icon Theme]\nDirectories=48x48/places\n\n[48x48/places]\nSize=48\n", encoding="utf-8"
-        )
-        self.target = self.icons / "vitrail-icons-Papirus"
-        self.cache = self.root / "cache"
-
-    def tearDown(self) -> None:
-        self.tmp.cleanup()
-
-    def build(self, primary: str = PRIMARY) -> bool:
-        return icons.build(self.pack, self.target, {"primary": primary}, self.cache, [self.icons])
-
-    def test_only_the_folder_svgs_are_written(self) -> None:
-        self.assertTrue(self.build())
-        self.assertTrue((self.target / "48x48" / "places" / "folder.svg").is_file())
-        self.assertTrue((self.target / "48x48" / "places" / "folder-open.svg").is_file())
-        self.assertFalse((self.target / "48x48" / "places" / "folder-symbolic.svg").exists())
-        self.assertFalse((self.target / "48x48" / "places" / "text-x-generic.svg").exists())
-
-    def test_the_theme_inherits_the_pack(self) -> None:
-        self.build()
-        theme = (self.target / "index.theme").read_text(encoding="utf-8")
-        self.assertIn("Inherits=Papirus", theme)
-        self.assertIn("Directories=48x48/places", theme)
-
-    def test_a_current_theme_is_not_rebuilt(self) -> None:
-        self.build()
-        stamp = (self.target / "index.theme").stat().st_mtime_ns
-        self.assertFalse(self.build())
-        self.assertEqual((self.target / "index.theme").stat().st_mtime_ns, stamp)
-
-    def test_a_new_primary_rebuilds_it(self) -> None:
-        self.build()
-        self.assertTrue(self.build(primary="#00ff00"))
-
-    def test_a_pack_without_folders_is_not_built(self) -> None:
-        bare = self.icons / "Bare"
-        bare.mkdir()
-        (bare / "index.theme").write_text("[Icon Theme]\n", encoding="utf-8")
-        self.assertFalse(
-            icons.build(bare, bare.with_name("vitrail-icons-Bare"), {"primary": PRIMARY}, self.cache, [self.icons])
-        )
-
-    def test_the_cli_builds_an_installed_pack(self) -> None:
-        code = icons.main(
-            ["build", "Papirus"], roots=[self.icons], palette={"primary": PRIMARY}, output=self.icons, cache=self.cache
-        )
-        self.assertEqual(code, 0)
-        self.assertTrue((self.icons / "vitrail-icons-Papirus" / "index.theme").is_file())
-
-    def test_the_cli_refuses_a_missing_pack(self) -> None:
-        self.assertEqual(
-            icons.main(
-                ["build", "Nope"], roots=[self.icons], palette={"primary": PRIMARY}, output=self.icons, cache=self.cache
-            ),
-            2,
-        )
-
-    def test_the_name_round_trips(self) -> None:
-        self.assertEqual(icons.design_name("Papirus"), "vitrail-icons-Papirus")
-        self.assertEqual(icons.source_of("vitrail-icons-Papirus"), "Papirus")
-        self.assertEqual(icons.source_of("Adwaita"), "")
+    def test_every_icon_name_is_a_material_symbol(self) -> None:
+        if not RUNNER.exists() or not shutil.which("fc-list"):
+            self.skipTest("qmltestrunner or fontconfig missing")
+        names = sorted(icon_names())
+        self.assertTrue(names)
+        family = re.search(r'icons:\s*"([^"]+)"', (ROOT / "kit" / "tokens.js").read_text()).group(1)
+        test = f"""
+import QtQuick
+import QtTest
+TestCase {{
+    name: "Icons"
+    TextMetrics {{ id: metrics; font.family: "{family}"; font.pixelSize: 24 }}
+    function test_names() {{
+        var bad = []
+        var names = {names!r}
+        for (var i = 0; i < names.length; i++) {{
+            metrics.text = names[i]
+            if (metrics.advanceWidth > 30)
+                bad.push(names[i])
+        }}
+        compare(bad, [])
+    }}
+}}
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "tst_icons.qml"
+            target.write_text(test, encoding="utf-8")
+            result = subprocess.run(
+                [str(RUNNER), "-input", str(target)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
+            )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":
