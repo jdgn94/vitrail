@@ -83,7 +83,7 @@ Scope {
     function iconSource(group) {
         if (!group)
             return ""
-        var name = group.icon !== "" ? group.icon : group.binary
+        var name = group.icon || group.binary || ""
         return name === "" ? "" : Quickshell.iconPath(name, true)
     }
 

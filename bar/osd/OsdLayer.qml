@@ -71,7 +71,8 @@ Scope {
     readonly property var bounds: Osd.alignBounds(root.edge, root.docked ? root.layout.dock : root.layout.reserve,
                                                   root.reference)
     readonly property real gap: root.docked ? 0 : VitrailTokens.gap("md")
-    readonly property real thickness: VitrailTokens.slider[root.sliderSize] + 4 * VitrailTokens.slider.gap
+    readonly property real thickness: (VitrailTokens.slider[root.sliderSize] || VitrailTokens.slider.md)
+                                       + 4 * VitrailTokens.slider.gap
     readonly property var metrics: ({
         thickness: root.thickness,
         length: VitrailTokens.osd.length,

@@ -612,6 +612,14 @@ ShellRoot {
             return fallback
         return String(raw) !== "false" && String(raw) !== "0"
     }
+    // A numeric preference; zero is a value, not a missing one.
+    function prefNumber(key, fallback) {
+        var raw = shell.prefs[key]
+        if (raw === undefined || raw === "")
+            return fallback
+        var value = Number(raw)
+        return isNaN(value) ? fallback : value
+    }
     property var palettes: ({})
     property date now: new Date()
     // Last panel variant opened; it is kept while the panel closes so the
@@ -1162,9 +1170,9 @@ ShellRoot {
     OsdController {
         id: osdController
 
-        step: Number(shell.prefs.osdStep) || VitrailTokens.ranges.osdStep.value
-        brightnessStep: Number(shell.prefs.osdBrightnessStep) || VitrailTokens.ranges.osdBrightnessStep.value
-        appStep: Number(shell.prefs.soundStep) || VitrailTokens.ranges.soundStep.value
+        step: shell.prefNumber("osdStep", VitrailTokens.ranges.osdStep.value)
+        brightnessStep: shell.prefNumber("osdBrightnessStep", VitrailTokens.ranges.osdBrightnessStep.value)
+        appStep: shell.prefNumber("soundStep", VitrailTokens.ranges.soundStep.value)
         showOutputApps: shell.prefBool("soundOutputApps", true)
         showInputApps: shell.prefBool("soundInputApps", true)
         focusApps: shell.prefBool("soundFocusApps", true)
@@ -1802,8 +1810,8 @@ ShellRoot {
                     strings: shell.strings
                     opacityLevel: shell.barOpacity
                     keysEnabled: shell.prefBool("osdKeys", true)
-                    keyTime: Number(shell.prefs.osdKeyTime) || VitrailTokens.ranges.osdKey.value
-                    hotZone: Number(shell.prefs.osdHotZone) || VitrailTokens.ranges.osdHot.value
+                    keyTime: shell.prefNumber("osdKeyTime", VitrailTokens.ranges.osdKey.value)
+                    hotZone: shell.prefNumber("osdHotZone", VitrailTokens.ranges.osdHot.value)
                     sliderSize: shell.prefs.osdSize || VitrailTokens.osd.size
                 }
 
