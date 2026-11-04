@@ -1,0 +1,26 @@
+# Vitrail: the shell, the settings window and the installer.
+# Licence: the repository has no licence file yet; the owner must choose one
+# (and replace "custom") before publishing this to the AUR.
+pkgdesc="Dotfiles and a desktop layer for Arch Linux, built around Hyprland"
+arch=('any')
+url="https://github.com/jdgn94/vitrail"
+license=('custom')
+depends=('awww' 'bat' 'bluez-utils' 'brightnessctl' 'cliphist' 'ddcutil' 'eza' 'fd' 'ffmpeg' 'flatpak' 'fontconfig' 'fzf' 'git' 'glib2' 'gnome-keyring' 'grim' 'hypridle' 'hyprland' 'hyprlock' 'hyprpicker' 'hyprpolkitagent' 'imagemagick' 'kitty' 'libqalculate' 'libsecret' 'matugen' 'mpvpaper' 'nautilus' 'networkmanager' 'noto-fonts' 'noto-fonts-emoji' 'pciutils' 'pipewire' 'pipewire-pulse' 'playerctl' 'plocate' 'polkit-gnome' 'power-profiles-daemon' 'python' 'python-dbus' 'python-gobject' 'qt5-wayland' 'qt6-base' 'qt6-declarative' 'qt6-wayland' 'quickshell' 'ripgrep' 'slurp' 'starship' 'swappy' 'ttf-jetbrains-mono-nerd' 'ttf-material-symbols-variable-git' 'ttf-roboto' 'wf-recorder' 'wireplumber' 'wl-clipboard' 'wtype' 'xdg-desktop-portal-gtk' 'xdg-desktop-portal-hyprland' 'xdg-utils' 'xorg-xrdb' 'zoxide' 'zsh')
+optdepends=('flatpak: reads the theme from the sandbox'
+            'libnotify: desktop notifications from the helpers')
+install=vitrail.install
+noextract=()
+pkgname=vitrail
+pkgver=1.0.0
+pkgrel=1
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+    install -d "$pkgdir/usr/share/vitrail"
+    cp -a "$srcdir/$pkgname-$pkgver/." "$pkgdir/usr/share/vitrail/"
+    # The commands the documentation uses, without a checkout or a wheel.
+    install -Dm755 "$pkgdir/usr/share/vitrail/bin/vitrail" "$pkgdir/usr/bin/vitrail"
+    install -Dm755 "$pkgdir/usr/share/vitrail/bin/vitrail-install" \
+        "$pkgdir/usr/bin/vitrail-install"
+}

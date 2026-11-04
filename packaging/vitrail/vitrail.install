@@ -1,0 +1,14 @@
+post_install() {
+    printf '%s\n' "Vitrail is installed in /usr/share/vitrail." \
+        "Run 'vitrail-install' to link it into your home (dotfiles, bar, units)."
+}
+
+post_upgrade() {
+    printf '%s\n' "Vitrail was updated. Run 'vitrail update' to refresh the links," \
+        "packages and palette; your settings in ~/.config/vitrail are untouched."
+}
+
+pre_remove() {
+    printf '%s\n' "Run 'vitrail-uninstall' before removing the package if you" \
+        "want the dotfiles and units gone from your home."
+}

@@ -1,0 +1,33 @@
+# Vitrail: the shell, the settings window and the installer.
+# Licence: the repository has no licence file yet; the owner must choose one
+# (and replace "custom") before publishing this to the AUR.
+pkgdesc="Dotfiles and a desktop layer for Arch Linux, built around Hyprland"
+arch=('any')
+url="https://github.com/jdgn94/vitrail"
+license=('custom')
+depends=('awww' 'bat' 'bluez-utils' 'brightnessctl' 'cliphist' 'ddcutil' 'eza' 'fd' 'ffmpeg' 'flatpak' 'fontconfig' 'fzf' 'git' 'glib2' 'gnome-keyring' 'grim' 'hypridle' 'hyprland' 'hyprlock' 'hyprpicker' 'hyprpolkitagent' 'imagemagick' 'kitty' 'libqalculate' 'libsecret' 'matugen' 'mpvpaper' 'nautilus' 'networkmanager' 'noto-fonts' 'noto-fonts-emoji' 'pciutils' 'pipewire' 'pipewire-pulse' 'playerctl' 'plocate' 'polkit-gnome' 'power-profiles-daemon' 'python' 'python-dbus' 'python-gobject' 'qt5-wayland' 'qt6-base' 'qt6-declarative' 'qt6-wayland' 'quickshell' 'ripgrep' 'slurp' 'starship' 'swappy' 'ttf-jetbrains-mono-nerd' 'ttf-material-symbols-variable-git' 'ttf-roboto' 'wf-recorder' 'wireplumber' 'wl-clipboard' 'wtype' 'xdg-desktop-portal-gtk' 'xdg-desktop-portal-hyprland' 'xdg-utils' 'xorg-xrdb' 'zoxide' 'zsh')
+optdepends=('flatpak: reads the theme from the sandbox'
+            'libnotify: desktop notifications from the helpers')
+install=vitrail.install
+noextract=()
+pkgname=vitrail-git
+pkgver=1.0.0
+pkgrel=1
+provides=('vitrail')
+conflicts=('vitrail')
+source=("$pkgname::git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "$srcdir/$pkgname"
+    git describe --long --tags --abbrev=7 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' \
+        || printf 'r%s.%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+package() {
+    install -d "$pkgdir/usr/share/vitrail"
+    cp -a "$srcdir/$pkgname/." "$pkgdir/usr/share/vitrail/"
+    install -Dm755 "$pkgdir/usr/share/vitrail/bin/vitrail" "$pkgdir/usr/bin/vitrail"
+    install -Dm755 "$pkgdir/usr/share/vitrail/bin/vitrail-install" \
+        "$pkgdir/usr/bin/vitrail-install"
+}

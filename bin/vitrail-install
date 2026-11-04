@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Links Vitrail into the current user's home from a checkout or a package.
+set -euo pipefail
+
+HERE="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
+
+for candidate in "${HERE}/.." /usr/share/vitrail; do
+    if [[ -x "${candidate}/install.sh" ]]; then
+        if [[ -d "${HOME}/.local/share/vitrail/.git" && "${candidate}" != "${HOME}/.local/share/vitrail" ]]; then
+            printf 'vitrail: %s already holds a git install; updating it instead\n' \
+                "${HOME}/.local/share/vitrail" >&2
+            exec bash "${HOME}/.local/share/vitrail/install.sh" --root "${HOME}/.local/share/vitrail" "$@"
+        fi
+        exec bash "${candidate}/install.sh" --root "${candidate}" "$@"
+    fi
+done
+
+printf 'vitrail: install.sh was not found next to %s\n' "${BASH_SOURCE[0]}" >&2
+exit 1

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# The Vitrail CLI, from a checkout or from the package.
+set -euo pipefail
+
+HERE="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
+
+for candidate in "${HERE}/.." /usr/share/vitrail; do
+    if [[ -f "${candidate}/vitrail/cli.py" ]]; then
+        export PYTHONPATH="${candidate}${PYTHONPATH:+:${PYTHONPATH}}"
+        exec python3 -m vitrail.cli "$@"
+    fi
+done
+
+printf 'vitrail: the Python package was not found next to %s\n' "${BASH_SOURCE[0]}" >&2
+exit 1
