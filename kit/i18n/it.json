@@ -216,6 +216,8 @@
   "nav.group.look": "Aspetto",
   "nav.group.desktop": "Desktop",
   "nav.group.system": "Sistema",
+  "search.placeholder": "Cerca",
+  "search.empty": "Nessun risultato",
   "bar.section.panels": "Pannelli laterali",
   "bar.section.notifications": "Notifiche",
   "bar.section.osd": "Avvisi a schermo",

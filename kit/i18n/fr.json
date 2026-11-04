@@ -216,6 +216,8 @@
   "nav.group.look": "Apparence",
   "nav.group.desktop": "Bureau",
   "nav.group.system": "Système",
+  "search.placeholder": "Rechercher",
+  "search.empty": "Aucun résultat",
   "bar.section.panels": "Panneaux latéraux",
   "bar.section.notifications": "Notifications",
   "bar.section.osd": "Affichage à l'écran",

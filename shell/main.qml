@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import "../kit"
 import "../kit/base"
 import "../kit/args.js" as Args
+import "search.js" as Search
 import "pages"
 
 // Vitrail settings window: category rail on the left, category screens on the
@@ -74,6 +75,14 @@ Window {
 
     property string category: Args.value("--category", "appearance")
     property bool sidebarCollapsed: false
+    // The search box: its text, the entries it reaches and the one the arrows
+    // have highlighted. A jump leaves its target tab here until the sidebar
+    // takes the user elsewhere.
+    property string searchText: ""
+    readonly property var searchResults: app.searchText.trim() === ""
+                                          ? [] : Search.matches(app.searchText)
+    property int searchChoice: -1
+    property string jumpTab: ""
 
     Prefs {
         id: prefs
@@ -151,6 +160,46 @@ Window {
         return value === undefined ? key : value
     }
 
+    function categoryOf(key) {
+        return app.categories.find(function (category) {
+            return category.key === key
+        }) || app.categories[0]
+    }
+
+    // The arrows move the highlight and wrap at both ends.
+    function moveSearch(delta) {
+        var count = app.searchResults.length
+        if (count === 0) {
+            app.searchChoice = -1
+            return
+        }
+        app.searchChoice = app.searchChoice < 0
+                           ? (delta > 0 ? 0 : count - 1)
+                           : (app.searchChoice + delta + count) % count
+        searchPopup.open()
+    }
+
+    // Enter, or a click on a result: the category changes and, when the
+    // result names one, so does the page's tab (through LazyPage.jumpTab).
+    function jumpTo(hit) {
+        if (!hit)
+            return
+        // Clearing first makes a repeated jump to the same tab a change the
+        // page still hears, and keeps the old tab off the new category.
+        app.jumpTab = ""
+        app.category = hit.category
+        var tab = hit.tab
+        if (tab !== "")
+            Qt.callLater(function () { app.jumpTab = tab })
+        app.clearSearch()
+    }
+
+    function clearSearch() {
+        app.searchText = ""
+        app.searchChoice = -1
+        searchField.text = ""
+    }
+
     Component.onCompleted: {
         app.syncTokens()
         if (Qt.application.arguments.indexOf("--selftest") !== -1) {
@@ -185,8 +234,11 @@ Window {
             anchors.margins: VitrailTokens.gap("md")
             spacing: VitrailTokens.gap("sm")
 
-            // Title bar: drag to move, title centred, close on the right.
+            // Title bar: drag to move, title centred, search and close on the
+            // right.
             Item {
+                id: header
+
                 Layout.fillWidth: true
                 Layout.preferredHeight: 40
 
@@ -214,7 +266,159 @@ Window {
                     font.family: VitrailTokens.fontFamily
                 }
 
+                VitrailField {
+                    id: searchField
+
+                    objectName: "search"
+                    anchors.right: closeButton.left
+                    anchors.rightMargin: VitrailTokens.gap("sm")
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.min(260, Math.max(180, parent.width * 0.28))
+                    size: "sm"
+                    placeholder: app.t("search.placeholder")
+                    leadingIcon: "search"
+
+                    onTextChanged: {
+                        app.searchText = searchField.text
+                        app.searchChoice = Search.matches(searchField.text).length > 0 ? 0 : -1
+                        if (app.searchText.trim() === "")
+                            searchPopup.close()
+                        else
+                            searchPopup.open()
+                    }
+
+                    onKeyPressed: function (event) {
+                        if (event.key === Qt.Key_Down) {
+                            app.moveSearch(1)
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_Up) {
+                            app.moveSearch(-1)
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            if (app.searchResults.length > 0)
+                                app.jumpTo(app.searchResults[app.searchChoice < 0 ? 0 : app.searchChoice])
+                            event.accepted = true
+                        }
+                    }
+
+                    // VitrailField maps Escape to this signal (Keys.onEscapePressed
+                    // runs instead of keyPressed), so the query clears here.
+                    onEscaped: app.clearSearch()
+                }
+
+                // The results hang under the field: icon, translated label,
+                // and the category they live in on the right.
+                Popup {
+                    id: searchPopup
+
+                    objectName: "searchResults"
+                    parent: header
+                    x: Math.min(searchField.x, header.width - width)
+                    y: header.height + VitrailTokens.gap("xs")
+                    width: Math.max(searchField.width, VitrailTokens.size("display") * 6)
+                    padding: VitrailTokens.gap("xs")
+                    focus: false
+                    // Escape belongs to the field, which clears the query.
+                    closePolicy: Popup.CloseOnPressOutside
+
+                    onClosed: app.searchChoice = -1
+
+                    background: Rectangle {
+                        radius: VitrailTokens.radius
+                        color: app.theme.surfaceHigh
+                        border.width: 1
+                        border.color: Qt.rgba(app.theme.foreground.r, app.theme.foreground.g,
+                                              app.theme.foreground.b, 0.16)
+                    }
+
+                    contentItem: Column {
+                        spacing: 0
+
+                        Repeater {
+                            model: app.searchResults
+
+                            delegate: Item {
+                                id: result
+
+                                required property var modelData
+                                required property int index
+
+                                readonly property bool highlighted: result.index === app.searchChoice
+
+                                width: searchPopup.width - 2 * VitrailTokens.gap("xs")
+                                height: 46
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    radius: height / 2
+                                    color: Qt.rgba(app.theme.primary.r, app.theme.primary.g,
+                                                   app.theme.primary.b,
+                                                   result.highlighted ? 0.18 : resultHover.hovered ? 0.08 : 0)
+                                }
+
+                                HoverHandler {
+                                    id: resultHover
+
+                                    onHoveredChanged: if (hovered) app.searchChoice = result.index
+                                }
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: VitrailTokens.gap("md")
+                                    anchors.rightMargin: VitrailTokens.gap("md")
+                                    spacing: VitrailTokens.gap("sm")
+
+                                    VitrailText {
+                                        variant: "icon"
+                                        font.pixelSize: VitrailTokens.size("subtitle")
+                                        text: app.categoryOf(result.modelData.category).glyph
+                                        color: result.highlighted ? app.theme.primary : app.theme.muted
+                                    }
+
+                                    VitrailText {
+                                        Layout.fillWidth: true
+                                        text: app.t(result.modelData.key)
+                                        color: result.highlighted ? app.theme.primary : app.theme.foreground
+                                        font.weight: result.highlighted ? Font.DemiBold : Font.Normal
+                                        elide: Text.ElideRight
+                                    }
+
+                                    VitrailText {
+                                        visible: result.modelData.tab !== ""
+                                        variant: "label"
+                                        text: app.categoryOf(result.modelData.category).label
+                                        color: app.theme.muted
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: app.jumpTo(result.modelData)
+                                }
+                            }
+                        }
+
+                        Item {
+                            visible: app.searchResults.length === 0
+                            width: searchPopup.width - 2 * VitrailTokens.gap("xs")
+                            height: 46
+
+                            VitrailText {
+                                anchors.fill: parent
+                                anchors.leftMargin: VitrailTokens.gap("md")
+                                verticalAlignment: Text.AlignVCenter
+                                text: app.t("search.empty")
+                                color: app.theme.muted
+                            }
+                        }
+                    }
+                }
+
                 VitrailButton {
+                    id: closeButton
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     variant: "plain"
@@ -237,7 +441,10 @@ Window {
                     collapsed: app.sidebarCollapsed
                     foreground: palette.foreground
                     accent: palette.primary
-                    onSelected: app.category = key
+                    onSelected: {
+                        app.jumpTab = ""
+                        app.category = key
+                    }
                     onCollapsedChanged: app.sidebarCollapsed = collapsed
                 }
 
@@ -299,6 +506,7 @@ Window {
 
                                 LazyPage {
                                     shown: app.category === "appearance"
+                                    jumpTab: app.category === "appearance" ? app.jumpTab : ""
 
                                     AppearancePage {
                                         palette: app.theme
@@ -309,6 +517,7 @@ Window {
 
                                 LazyPage {
                                     shown: app.category === "fonts"
+                                    jumpTab: app.category === "fonts" ? app.jumpTab : ""
 
                                     FontsPage {
                                         palette: app.theme
@@ -321,6 +530,7 @@ Window {
 
                                 LazyPage {
                                     shown: app.category === "windows"
+                                    jumpTab: app.category === "windows" ? app.jumpTab : ""
 
                                     WindowsPage {
                                         palette: app.theme
@@ -345,6 +555,7 @@ Window {
 
                                 LazyPage {
                                     shown: app.category === "input"
+                                    jumpTab: app.category === "input" ? app.jumpTab : ""
 
                                     InputPage {
                                         palette: app.theme
@@ -355,6 +566,7 @@ Window {
 
                                 LazyPage {
                                     shown: app.category === "design"
+                                    jumpTab: app.category === "design" ? app.jumpTab : ""
 
                                     DesignPage {
                                         palette: app.theme
@@ -376,6 +588,7 @@ Window {
 
                                 LazyPage {
                                     shown: app.category === "bar"
+                                    jumpTab: app.category === "bar" ? app.jumpTab : ""
 
                                     BarPage {
                                         palette: app.theme
@@ -387,6 +600,7 @@ Window {
 
                                 LazyPage {
                                     shown: app.category === "sound"
+                                    jumpTab: app.category === "sound" ? app.jumpTab : ""
 
                                     SoundPage {
                                         palette: app.theme
@@ -410,6 +624,7 @@ Window {
 
                                 LazyPage {
                                     shown: app.category === "datetime"
+                                    jumpTab: app.category === "datetime" ? app.jumpTab : ""
 
                                     DateTimePage {
                                         palette: app.theme
@@ -423,6 +638,7 @@ Window {
 
                                 LazyPage {
                                     shown: app.category === "terminal"
+                                    jumpTab: app.category === "terminal" ? app.jumpTab : ""
 
                                     TerminalPage {
                                         palette: app.theme
@@ -433,6 +649,7 @@ Window {
 
                                 LazyPage {
                                     shown: app.category === "launcher"
+                                    jumpTab: app.category === "launcher" ? app.jumpTab : ""
 
                                     LauncherPage {
                                         tab: Args.value("--tab", "general")
@@ -444,6 +661,7 @@ Window {
 
                                 LazyPage {
                                     shown: app.category === "connection"
+                                    jumpTab: app.category === "connection" ? app.jumpTab : ""
 
                                     ConnectionPage {
                                         palette: app.theme
@@ -460,6 +678,7 @@ Window {
 
                                 LazyPage {
                                     shown: app.category === "plugins"
+                                    jumpTab: app.category === "plugins" ? app.jumpTab : ""
 
                                     PluginsPage {
                                         palette: app.theme
