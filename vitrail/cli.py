@@ -26,6 +26,7 @@ from vitrail import (
     vpndoc,
     wallpaper,
     wallpaperd,
+    weather,
 )
 
 
@@ -122,6 +123,10 @@ def _parser() -> argparse.ArgumentParser:
 
     plugin_parser = sub.add_parser("plugins", help="list or lock plugins")
     plugin_parser.add_argument("action", nargs="?", choices=("index", "lock"), default="index")
+
+    weather_parser = sub.add_parser("weather", help="the weather of the configured place")
+    weather_parser.add_argument("action", choices=("state", "set-location"))
+    weather_parser.add_argument("city", nargs="?", default="", help="set-location: the city")
     return parser
 
 
@@ -324,6 +329,23 @@ def _brightness(args: argparse.Namespace) -> int:
     return 0
 
 
+def _weather(args: argparse.Namespace) -> int:
+    if args.action == "set-location":
+        if not args.city:
+            _say("Weather: set-location needs a city")
+            return 2
+        try:
+            city = weather.set_location(args.city)
+        except ValueError as error:
+            _say(f"Weather: {error}")
+            return 2
+        _say(f"Weather location: {city}")
+        return 0
+    data = weather.state()
+    _say(json.dumps(data))
+    return 0 if "current" in data else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
@@ -362,6 +384,8 @@ def main(argv: list[str] | None = None) -> int:
         return _brightness(args)
     if args.command == "plugins":
         return plugins.main([args.action])
+    if args.command == "weather":
+        return _weather(args)
     parser.print_help()
     return 0
 

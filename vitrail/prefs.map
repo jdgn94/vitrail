@@ -131,3 +131,5 @@ connection connectionSeq
 misc selftest
 misc quickNotes
 misc clipboardColors
+misc weatherLocation
+misc weatherUnits

@@ -111,6 +111,8 @@ QtObject {
     property alias selftest: miscFile.selftest
     property alias quickNotes: miscFile.quickNotes
     property alias clipboardColors: miscFile.clipboardColors
+    property alias weatherLocation: miscFile.weatherLocation
+    property alias weatherUnits: miscFile.weatherUnits
 
     property Settings appearanceSettings: Settings {
         id: appearanceFile
@@ -367,5 +369,9 @@ QtObject {
         property string clipboardColors: ""
         // Written by the smoke test, never by the UI.
         property string selftest: ""
+        // The city the weather is asked for; "" follows the IP's guess.
+        property string weatherLocation: ""
+        // "metric" (°C, km/h) or "imperial" (°F, mph).
+        property string weatherUnits: "metric"
     }
 }

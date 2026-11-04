@@ -310,7 +310,7 @@ the window declares it in another file, or the path unit watches another set.
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
 | `connection.ini` | `connectionRequest`, `connectionSeq` (the Connection page's request, run once per counter value) |
-| `misc.ini` | `selftest` (written by the smoke test), `quickNotes`, `clipboardColors` and any key the map does not list |
+| `misc.ini` | `selftest` (written by the smoke test), `quickNotes`, `clipboardColors`, `weatherLocation`, `weatherUnits` and any key the map does not list |
 
 The VPN keeps its own document outside these files, in a folder of its own:
 `~/.config/vitrail-vpn/settings.ini` (`vpnSettings`: which connections the

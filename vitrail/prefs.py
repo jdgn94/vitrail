@@ -27,6 +27,7 @@ SCHEMA_FILE = "schema"
 CHOICES = {
     "appearance": {"light", "dark", "auto"},
     "surfaceStyle": {"glass", "solid"},
+    "weatherUnits": {"metric", "imperial"},
 }
 
 # Keys that take a number inside a range. `clipboardMax` is what the clipboard
@@ -88,9 +89,7 @@ def validate(config: Path) -> list[str]:
     issues: list[str] = []
     version = schema_version(config)
     if version > SCHEMA:
-        issues.append(
-            f"settings were written by a newer Vitrail (schema {version} > {SCHEMA})"
-        )
+        issues.append(f"settings were written by a newer Vitrail (schema {version} > {SCHEMA})")
     for path in sorted(config.glob("*.ini")):
         name = path.stem
         for key, _value in _items(_read_text(path)):
