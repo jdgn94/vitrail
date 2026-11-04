@@ -8,7 +8,7 @@ var SECONDS = 30
 
 var actions = [
     { key: "lock", label: "session.lock", icon: "lock", tone: "primary", shortcut: "l", command: ["hyprlock"] },
-    { key: "logout", label: "session.logout", icon: "logout", tone: "primary", shortcut: "o", command: ["hyprctl", "dispatch", "exit"] },
+    { key: "logout", label: "session.logout", icon: "logout", tone: "primary", shortcut: "o", command: ["hyprctl", "eval", "hl.dispatch(hl.dsp.exit())"] },
     { key: "suspend", label: "session.suspend", icon: "bedtime", tone: "primary", shortcut: "s", command: ["systemctl", "suspend"] },
     { key: "hibernate", label: "session.hibernate", icon: "downloading", tone: "primary", shortcut: "h", command: ["systemctl", "hibernate"] },
     { key: "reboot", label: "session.reboot", icon: "restart_alt", tone: "primary", shortcut: "r", command: ["systemctl", "reboot"] },

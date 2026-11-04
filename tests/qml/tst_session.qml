@@ -63,7 +63,7 @@ TestCase {
 
     function test_each_action_runs_its_command() {
         compare(Session.find("lock").command, ["hyprlock"])
-        compare(Session.find("logout").command, ["hyprctl", "dispatch", "exit"])
+        compare(Session.find("logout").command, ["hyprctl", "eval", "hl.dispatch(hl.dsp.exit())"])
         compare(Session.find("reboot").command, ["systemctl", "reboot"])
         compare(Session.find("poweroff").command, ["systemctl", "poweroff"])
         compare(Session.find("poweroff").tone, "error")
