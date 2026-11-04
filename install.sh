@@ -17,6 +17,7 @@ DRY_RUN=0
 ASSUME_YES=0
 SKIP_PACKAGES=0
 REPAIR=0
+GPU_VENDOR="auto"
 HOME_DIR="${HOME}"
 SELECTED_COMPOSITORS=()
 SELECTED_HELPERS=()
@@ -50,7 +51,9 @@ Options:
   --dry-run, -n       show the plan without changing anything
   --skip-packages     only link dotfiles
   --repair            re-link and re-enable a broken install (no packages)
+  --gpu VENDOR        graphics stack: auto, amd, nvidia or intel (default: auto)
   --repair            re-link and re-enable a broken install (no packages)
+  --gpu VENDOR        graphics stack: auto, amd, nvidia or intel (default: auto)
   --vpn MODE          vpn traffic mode: split, full or none (default: ask)
   --root DIR          repository root (default: this script's directory)
   --home DIR          target HOME (default: $HOME)
@@ -96,6 +99,39 @@ read_package_list() {
     done <"$file"
 }
 
+# Which graphics stack the packages should carry: the card's vendor, or the
+# one the user asked for.
+gpu_vendor() {
+    command -v lspci >/dev/null 2>&1 || return 0
+    local line
+    line="$(lspci 2>/dev/null | grep -Ei 'vga|3d|display' | head -1)"
+    case "$line" in
+        *NVIDIA* | *nvidia*) printf 'nvidia' ;;
+        *AMD* | *Advanced*Micro* | *Radeon*) printf 'amd' ;;
+        *Intel*) printf 'intel' ;;
+        *) printf '' ;;
+    esac
+}
+
+gpu_packages() {
+    case "$1" in
+        nvidia) printf '%s\n' nvidia-open nvidia-utils libva-nvidia-driver ;;
+        amd) printf '%s\n' mesa vulkan-radeon libva-mesa-driver ;;
+        intel) printf '%s\n' mesa vulkan-intel intel-media-driver ;;
+        *) printf '%s\n' mesa ;;
+    esac
+}
+
+resolve_gpu() {
+    if [[ "$GPU_VENDOR" == "auto" ]]; then
+        local detected
+        detected="$(gpu_vendor)"
+        printf '%s' "${detected:-none}"
+    else
+        printf '%s' "$GPU_VENDOR"
+    fi
+}
+
 collect_packages() {
     local root="$1"
     shift
@@ -105,6 +141,7 @@ collect_packages() {
         for compositor in "$@"; do
             read_package_list "$root/packages/$compositor.txt"
         done
+        gpu_packages "$(resolve_gpu)"
     } | awk '!seen[$0]++'
 }
 
@@ -708,6 +745,14 @@ main() {
                 ASSUME_YES=1
                 SKIP_PACKAGES=1
                 shift
+                ;;
+            --gpu)
+                GPU_VENDOR="${2:?--gpu needs a value}"
+                case "$GPU_VENDOR" in
+                    auto | amd | nvidia | intel) ;;
+                    *) die "invalid --gpu: $GPU_VENDOR (auto, amd, nvidia, intel)" ;;
+                esac
+                shift 2
                 ;;
             --vpn)
                 VPN_MODE="${2:?--vpn needs a value}"

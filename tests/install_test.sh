@@ -51,7 +51,7 @@ mkdir -p "$tmp/repo/packages"
 printf 'git\nqt6-wayland\n' >"$tmp/repo/packages/base.txt"
 printf 'hyprland\nqt6-wayland\n' >"$tmp/repo/packages/hyprland.txt"
 printf 'niri\n' >"$tmp/repo/packages/niri.txt"
-mapfile -t got < <(collect_packages "$tmp/repo" hyprland niri)
+mapfile -t got < <(GPU_VENDOR=none collect_packages "$tmp/repo" hyprland niri)
 expect_eq "collect_packages merges and dedupes" "git qt6-wayland hyprland niri" "${got[*]}"
 
 fakebin="$tmp/fakebin"
@@ -343,3 +343,18 @@ rm -rf "$tmp"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [[ $fail -eq 0 ]]
+
+# ------------------------------------------------------------ graphics stack
+
+tmp="$(sandbox)"
+mkdir -p "$tmp/bin"
+printf '#!/bin/sh\nprintf "01:00.0 VGA compatible controller: NVIDIA Corporation GA104\n"\n' \
+    >"$tmp/bin/lspci"
+chmod +x "$tmp/bin/lspci"
+expect_eq "gpu_vendor detects NVIDIA" "nvidia" "$(PATH="$tmp/bin:$PATH" gpu_vendor)"
+printf '#!/bin/sh\nprintf "00:02.0 VGA compatible controller: Intel Corporation UHD\n"\n' \
+    >"$tmp/bin/lspci"
+expect_eq "gpu_vendor detects Intel" "intel" "$(PATH="$tmp/bin:$PATH" gpu_vendor)"
+expect_eq "gpu_packages for amd" "mesa vulkan-radeon libva-mesa-driver" \
+    "$(gpu_packages amd | tr '\n' ' ' | sed 's/ $//')"
+expect_eq "an unknown vendor falls back to mesa" "mesa" "$(gpu_packages none)"
