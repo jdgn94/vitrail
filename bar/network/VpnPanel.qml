@@ -6,12 +6,26 @@ import "../kit/base"
 import "vpn.js" as Vpn
 
 // VPN popup: the tunnel at a glance, then every imported connection with its
-// connect / disconnect button. Sized to its content; the caller places it in
-// the bar popup.
+// connect / disconnect button and its quality (ping and level, measured by
+// `vitrail.network probe`, which the settings window also runs). Sized to its
+// content; the caller places it in the bar popup.
+//
+// The quality is read from network-state.json in `configDir`. When nothing
+// measured the connections within the `probe` interval, the panel asks for a
+// probe (`probeRequested`; the bar writes the request the way the settings
+// window does), at most once per interval.
 Item {
     id: root
 
     property var strings: ({})
+    // The Vitrail preference folder, where network-state.json lives.
+    property string configDir: ""
+    signal probeRequested()
+
+    // { "<id>": { latency, loss } } and when the file was written (ms).
+    property var quality: ({})
+    property real measured: 0
+    property real asked: 0
 
     property var connections: []
     // VPN id being connected or disconnected, until the list catches up.
@@ -24,6 +38,16 @@ Item {
     function t(key) {
         var value = root.strings[key]
         return value === undefined ? key : value
+    }
+
+    // Asks for a new measurement when the last one is older than the probe
+    // interval; called whenever the list refreshes.
+    function measure() {
+        var now = Date.now()
+        if (!Vpn.needsProbe(now, root.measured, root.asked, VitrailTokens.duration("probe"), root.connections.length))
+            return
+        root.asked = now
+        root.probeRequested()
     }
 
     function runCommand(argv) {
@@ -120,6 +144,8 @@ Item {
                         busy: root.pending === connection.modelData.id
                         title: Vpn.title(connection.modelData.name)
                         subtitle: Vpn.detail(connection.modelData)
+                        quality: Vpn.level(root.quality[connection.modelData.id])
+                        qualityText: Vpn.latency(root.quality[connection.modelData.id])
                         action: connection.modelData.active ? root.t("network.disconnect") : root.t("network.connect")
                         onTriggered: {
                             root.pending = connection.modelData.id
@@ -163,8 +189,26 @@ Item {
                     root.connections = []
                 }
                 root.pending = ""
+                root.measure()
             }
         }
+    }
+
+    FileView {
+        path: root.configDir !== "" ? root.configDir + "/network-state.json" : ""
+        watchChanges: true
+        printErrors: false
+        onFileChanged: this.reload()
+        onLoaded: {
+            try {
+                var state = JSON.parse(this.text())
+                root.quality = (state.vpn && state.vpn.quality) || ({})
+                root.measured = state.updated || 0
+            } catch (error) {
+                root.quality = ({})
+            }
+        }
+        onLoadFailed: root.quality = ({})
     }
 
     Timer {

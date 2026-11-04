@@ -37,14 +37,6 @@ TestCase {
         compare(View.groupDomains([]), [])
     }
 
-    function test_the_ping_of_a_connection() {
-        var quality = { a: { latency: 41.6, loss: 0 }, b: { latency: null, loss: 100 } }
-        compare(View.pingLabel(quality, "a"), "42 ms")
-        compare(View.pingLabel(quality, "b"), "—")
-        compare(View.pingLabel(quality, "c"), "—")
-        compare(View.pingLabel(undefined, "a"), "—")
-    }
-
     function test_a_dialog_url_becomes_a_path() {
         compare(View.filePath("file:///home/juan/My%20VPN/x.ovpn"), "/home/juan/My VPN/x.ovpn")
         compare(View.filePath("file://localhost/tmp/a.ovpn"), "/tmp/a.ovpn")

@@ -3,11 +3,11 @@ import QtQuick.Layouts
 import "../../kit"
 import "../../kit/base"
 import "../../bar/network/vpn.js" as Vpn
-import "../vpnview.js" as View
 
 // The VPN tab's first view: hypraether's connections, each with its settings
-// button at the left, the ping of the one that is up and Connect / Disconnect;
-// the button to the global settings closes the section.
+// button at the left, its ping and quality (every connection, as the last probe
+// measured it) and Connect / Disconnect; the buttons to add a connection and
+// to the global settings close the section.
 Section {
     id: root
 
@@ -47,6 +47,8 @@ Section {
 
             readonly property bool active: tunnel.modelData.active
             readonly property string request: (tunnel.active ? "vpn-down:" : "vpn-up:") + tunnel.modelData.id
+            readonly property var measure: root.page.quality[tunnel.modelData.id]
+            readonly property string level: Vpn.level(tunnel.measure)
 
             Layout.fillWidth: true
             spacing: VitrailTokens.gap("sm")
@@ -70,10 +72,10 @@ Section {
                 foreground: root.page.palette.foreground
                 muted: root.page.palette.muted
 
-                VitrailText {
-                    visible: tunnel.active
-                    variant: "content"
-                    text: View.pingLabel(root.page.quality, tunnel.modelData.id)
+                VitrailQuality {
+                    level: tunnel.level
+                    text: tunnel.level === "unknown" ? Vpn.latency(tunnel.measure)
+                                                     : Vpn.latency(tunnel.measure) + " · " + root.t("connection.vpn.quality." + tunnel.level)
                 }
 
                 VitrailButton {
@@ -88,10 +90,22 @@ Section {
         }
     }
 
-    VitrailButton {
-        variant: "tonal"
-        icon: "settings"
-        text: root.t("connection.vpn.global")
-        onClicked: root.page.openGlobal()
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: VitrailTokens.gap("sm")
+
+        VitrailButton {
+            variant: "tonal"
+            icon: "add"
+            text: root.t("connection.vpn.add")
+            onClicked: root.page.openImport()
+        }
+
+        VitrailButton {
+            variant: "tonal"
+            icon: "settings"
+            text: root.t("connection.vpn.global")
+            onClicked: root.page.openGlobal()
+        }
     }
 }

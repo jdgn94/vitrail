@@ -19,8 +19,9 @@ import "../vpnview.js" as VpnView
 //
 // The VPN tab shows hypraether-vpn's own model: its connections, credentials,
 // traffic mode, domain list and `enabled` marker (the state's `vpn`). It has
-// three views: the connections (`VpnList`), the global settings (`VpnGlobal`)
-// and one connection's settings (`VpnConnection`); `--view global|<id>` opens
+// four views: the connections (`VpnList`), the global settings (`VpnGlobal`),
+// one connection's settings (`VpnConnection`) and the import form
+// (`VpnImport`, also inside the global settings); `--view global|<id>` opens
 // one. Vitrail keeps one thing of its own, in its private folder
 // (`~/.config/vitrail-vpn`, edited by shell/vpnsettings.js): which connections
 // the automatic choice may use. The folder belongs to the system user, so no
@@ -79,7 +80,7 @@ Item {
                                      && String(page.live.result.verb).indexOf("vpn") === 0 ? page.live.result.verb : ""
 
     // The VPN document (Vitrail's own part), and the view that is open:
-    // "list", "global" or "connection" (of `vpnId`).
+    // "list", "global", "import" or "connection" (of `vpnId`).
     readonly property var doc: VpnDoc.parse(vpnFile.vpnSettings)
     property string vpnView: "list"
     property string vpnId: ""
@@ -169,6 +170,11 @@ Item {
 
     function openGlobal() {
         page.vpnView = "global"
+        scroller.contentY = 0
+    }
+
+    function openImport() {
+        page.vpnView = "import"
         scroller.contentY = 0
     }
 
@@ -468,6 +474,38 @@ Item {
                     Layout.fillWidth: true
                     visible: page.tab === "vpn" && page.vpnView === "global"
                     page: page
+                }
+
+                // Add a VPN: the import form on its own; a sent import returns to the list.
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    visible: page.tab === "vpn" && page.vpnView === "import"
+                    spacing: VitrailTokens.gap("xl")
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: VitrailTokens.gap("sm")
+
+                        VitrailButton {
+                            variant: "plain"
+                            tone: "secondary"
+                            icon: "arrow_back"
+                            onClicked: page.back()
+                        }
+
+                        VitrailText {
+                            Layout.fillWidth: true
+                            variant: "title"
+                            text: page.t("connection.vpn.add")
+                        }
+                    }
+
+                    VpnImport {
+                        Layout.fillWidth: true
+                        page: page
+                        onEscaped: page.back()
+                        onImported: page.back()
+                    }
                 }
 
                 VpnConnection {

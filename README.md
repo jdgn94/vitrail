@@ -312,10 +312,13 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   config_path, active), `credentials` (name, username, usedBy; no password),
   `mode` (`split`/`full`), `domains` (domain, address count), `enabled` (the
   tool's `~/.config/hypraether/vpn/enabled` marker), `quality` (`{id: {latency,
-  loss}}` from the last probe; `state` never pings). Three views: the
+  loss}}` from the last probe; `state` never pings). Four views: the
   connections (a `tune` button at the left of each row opens its settings, the
-  ping of the one that is up sits left of Connect / Disconnect, and a "VPN
-  settings" button closes the section), the global settings (traffic mode,
+  ping and quality level (good < 100 ms and no loss, fair < 250 ms and at most
+  10 % loss, poor, or "—" when unmeasured) of every connection sits left of
+  Connect / Disconnect, and an "Add VPN" and a "VPN settings" button close the
+  section), the import form ("Add VPN", also the last block of the global
+  settings), the global settings (traffic mode,
   connect at startup, the URL list grouped by registrable domain, credentials,
   import) and one connection's settings (name, provider, region and config path
   read-only; credential; "Use for the automatic choice"; remove).
@@ -333,7 +336,11 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   background request (`shell/vpnqueue.js`): the page stays operable while it
   runs, a tick is skipped while a real request is busy or pending, and a
   request made during a probe waits as the one pending request and goes out
-  when the probe's answer (or its 20 s timeout) lands.
+  when the probe's answer (or its 20 s timeout) lands. The bar's VPN popup
+  shows the same ping and level beside each connection, read from
+  `network-state.json`; when nothing measured them within a minute it asks for
+  a `vpn-probe` the same way (`connectionRequest` then `connectionSeq`, at most
+  once a minute).
   `vpn-domain-add:<url>` adds the host and the live subdomains that
   certificate transparency (crt.sh) lists for its registrable domain (at most
   50) with `domain add` each. The marker is the "Connect at startup" switch:

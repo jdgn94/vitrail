@@ -13,6 +13,10 @@ Item {
     property string title: ""
     property string subtitle: ""
     property string action: ""
+    // Optional connection quality (good / fair / poor / unknown) and its
+    // measurement; "" leaves the slot out.
+    property string quality: ""
+    property string qualityText: ""
     property bool active: false
     property bool busy: false
 
@@ -94,6 +98,12 @@ Item {
                 elide: Text.ElideRight
                 text: entry.subtitle
             }
+        }
+
+        VitrailQuality {
+            visible: entry.quality !== ""
+            level: entry.quality
+            text: entry.qualityText
         }
 
         VitrailButton {

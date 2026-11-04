@@ -815,6 +815,13 @@ ShellRoot {
             shell.writeNextPref()
     }
 
+    // The VPN popup asks for a measurement the way the settings window does:
+    // the request first, its counter second (scripts/apply-settings.sh runs it).
+    function requestVpnProbe() {
+        shell.setPref("connectionRequest", "vpn-probe")
+        shell.setPref("connectionSeq", String((Number(shell.prefs.connectionSeq) || 0) + 1))
+    }
+
     function writeNextPref() {
         var next = prefWriter.queue.shift()
         if (!next)
@@ -2433,6 +2440,8 @@ ShellRoot {
 
                     VpnPanel {
                         strings: shell.strings
+                        configDir: shell.configDir
+                        onProbeRequested: shell.requestVpnProbe()
                     }
                 }
 

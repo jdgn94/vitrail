@@ -618,6 +618,31 @@ Window {
 
         VitrailText {
             variant: "title"
+            text: "VitrailQuality · good, fair, poor, unknown"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("xl")
+
+            Repeater {
+                model: [
+                    { level: "good", text: "74 ms" },
+                    { level: "fair", text: "180 ms" },
+                    { level: "poor", text: "420 ms" },
+                    { level: "unknown", text: "—" }
+                ]
+
+                delegate: VitrailQuality {
+                    required property var modelData
+
+                    level: modelData.level
+                    text: modelData.text
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
             text: "VitrailBar · frame × bar × edge"
         }
 

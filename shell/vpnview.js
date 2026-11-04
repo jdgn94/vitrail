@@ -55,12 +55,6 @@ function groupDomains(list) {
     })
 }
 
-// "42 ms" for a connection that was measured, "—" for one that was not.
-function pingLabel(quality, id) {
-    var one = quality && quality[id]
-    return one && typeof one.latency === "number" ? Math.round(one.latency) + " ms" : "—"
-}
-
 // The path of a `file://` URL (what a file dialog returns), percent-decoded;
 // a plain path is returned as it is, anything else is "".
 function filePath(url) {

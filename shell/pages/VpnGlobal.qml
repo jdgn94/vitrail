@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../../kit"
 import "../../kit/base"
@@ -7,7 +6,8 @@ import "../vpnview.js" as View
 
 // The VPN settings that belong to hypraether-vpn as a whole: the traffic mode,
 // connecting at startup (its `enabled` marker), the URL list (its domain list),
-// the credentials (name, user name, password) and importing a connection.
+// the credentials (name, user name, password) and, below, the import form
+// (`VpnImport`).
 // Passwords go through `page.sendSecret` and never stay in this view.
 Item {
     id: root
@@ -19,12 +19,6 @@ Item {
     property string editing: ""
     property string removing: ""
     property string openGroup: ""
-    // The credential an import takes: null until picked (the first one then),
-    // "" for none. `moveFile` deletes the picked file once its copy is stored.
-    property var chosen: null
-    property bool moveFile: false
-    readonly property string importCredential: root.chosen !== null ? root.chosen
-                                              : root.page.credentials.length > 0 ? root.page.credentials[0].name : ""
     readonly property bool secretsOk: root.page.runtime !== ""
 
     function t(key) {
@@ -79,17 +73,6 @@ Item {
         credPassword.revealed = false
     }
 
-    function importFile() {
-        var path = View.filePath(importPath.text)
-        if (path === "" || !View.hasExtension(path)) {
-            root.fail(importPath, "connection.vpn.import.invalid")
-            return
-        }
-        root.page.ask(View.importRequest(path, importName.text, root.importCredential, root.moveFile))
-        importPath.text = ""
-        importName.text = ""
-    }
-
     implicitHeight: body.implicitHeight
     Keys.onEscapePressed: root.dismiss()
     onVisibleChanged: {
@@ -97,17 +80,6 @@ Item {
         root.removing = ""
         if (root.visible)
             root.forceActiveFocus()
-    }
-
-    FileDialog {
-        id: chooser
-
-        title: root.t("connection.vpn.import.dialog")
-        nameFilters: [root.t("connection.vpn.import.filter") + " (*.ovpn *.conf)", root.t("connection.vpn.import.all") + " (*)"]
-        onAccepted: {
-            importPath.text = View.filePath(chooser.selectedFile)
-            importPath.error = false
-        }
     }
 
     ColumnLayout {
@@ -538,89 +510,10 @@ Item {
         }
 
         // --- import ----------------------------------------------------------
-        Section {
+        VpnImport {
             Layout.fillWidth: true
-            icon: "upload_file"
-            title: root.t("connection.vpn.import")
-            foreground: root.page.palette.foreground
-            accent: root.page.palette.primary
-
-            VitrailText {
-                Layout.fillWidth: true
-                variant: "content"
-                wrapMode: Text.WordWrap
-                text: root.t("connection.vpn.import.help")
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: VitrailTokens.gap("sm")
-
-                VitrailField {
-                    id: importPath
-
-                    Layout.fillWidth: true
-                    size: "sm"
-                    label: root.t("connection.vpn.import.file")
-                    placeholder: "/home/me/server.ovpn"
-                    onAccepted: if (root.page.idle) root.importFile()
-                    onEscaped: root.dismiss()
-                    onTextChanged: importPath.error = false
-                }
-
-                VitrailButton {
-                    variant: "tonal"
-                    icon: "folder_open"
-                    text: root.t("connection.vpn.import.browse")
-                    onClicked: chooser.open()
-                }
-            }
-
-            VitrailField {
-                id: importName
-
-                Layout.fillWidth: true
-                size: "sm"
-                label: root.t("connection.vpn.import.name")
-                onAccepted: if (root.page.idle) root.importFile()
-                onEscaped: root.dismiss()
-            }
-
-            VitrailSelect {
-                Layout.fillWidth: true
-                enabled: root.page.idle
-                label: root.t("connection.vpn.credential")
-                options: [{ key: "", label: root.t("connection.vpn.import.noCredential") }].concat(
-                             root.page.credentials.map(function (one) { return { key: one.name, label: one.name } }))
-                current: root.importCredential
-                foreground: root.page.palette.foreground
-                accent: root.page.palette.primary
-                onSelected: function (key) { root.chosen = key }
-            }
-
-            VitrailSettingRow {
-                icon: "drive_file_move"
-                label: root.t("connection.vpn.import.move")
-                description: root.t("connection.vpn.import.move.help")
-                foreground: root.page.palette.foreground
-                muted: root.page.palette.muted
-
-                VitrailSwitch {
-                    checked: root.moveFile
-                    foreground: root.page.palette.foreground
-                    accent: root.page.palette.primary
-                    onToggled: function (value) { root.moveFile = value }
-                }
-            }
-
-            VitrailButton {
-                variant: "flat"
-                icon: "upload_file"
-                text: root.t("connection.vpn.import.run")
-                busy: root.page.busy.indexOf("vpn-import:") === 0
-                enabled: root.page.idle && importPath.text.trim() !== ""
-                onClicked: root.importFile()
-            }
+            page: root.page
+            onEscaped: root.dismiss()
         }
     }
 }

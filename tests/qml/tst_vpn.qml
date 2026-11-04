@@ -36,4 +36,31 @@ TestCase {
         compare(Vpn.active([idle]), null)
         compare(Vpn.active([]), null)
     }
+
+    function test_quality_levels() {
+        compare(Vpn.level({ latency: 74, loss: 0 }), "good")
+        compare(Vpn.level({ latency: 99.9, loss: null }), "good")
+        compare(Vpn.level({ latency: 100, loss: 0 }), "fair")
+        compare(Vpn.level({ latency: 40, loss: 5 }), "fair")
+        compare(Vpn.level({ latency: 249, loss: 10 }), "fair")
+        compare(Vpn.level({ latency: 250, loss: 0 }), "poor")
+        compare(Vpn.level({ latency: 40, loss: 11 }), "poor")
+        compare(Vpn.level({ latency: null, loss: 100 }), "unknown")
+        compare(Vpn.level({}), "unknown")
+        compare(Vpn.level(undefined), "unknown")
+    }
+
+    function test_latency_label() {
+        compare(Vpn.latency({ latency: 73.6, loss: 0 }), "74 ms")
+        compare(Vpn.latency({ latency: null, loss: 100 }), "—")
+        compare(Vpn.latency(undefined), "—")
+    }
+
+    function test_probe_is_asked_only_for_stale_measurements() {
+        compare(Vpn.needsProbe(100000, 0, 0, 60000, 3), true)
+        compare(Vpn.needsProbe(100000, 90000, 0, 60000, 3), false)
+        compare(Vpn.needsProbe(100000, 0, 95000, 60000, 3), false)
+        compare(Vpn.needsProbe(160000, 90000, 0, 60000, 3), true)
+        compare(Vpn.needsProbe(100000, 0, 0, 60000, 0), false)
+    }
 }

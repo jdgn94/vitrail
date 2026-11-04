@@ -179,9 +179,10 @@ through files:
 ### Drill-in views inside a tab (ConnectionPage, VPN tab)
 
 - A tab that needs more than a list swaps its content for a **view** instead of
-  opening a dialog: `page.vpnView` is `list`, `global` or `connection`
+  opening a dialog: `page.vpnView` is `list`, `global`, `import` or `connection`
   (`page.vpnId`), each view its own file (`VpnList`, `VpnGlobal`,
-  `VpnConnection`) that takes the page as `property var page` and calls
+  `VpnConnection`; `import` is the reusable `VpnImport` form, also the last
+  block of `VpnGlobal`, with `escaped` / `imported` signals) that takes the page as `property var page` and calls
   `page.ask`, `page.t`, `page.back()`. Deep link: `--view`.
 - The row that opens a view carries a `plain` `tune` button at its LEFT; the
   button to the section's global view is a `tonal` `settings` button at the END
@@ -237,6 +238,12 @@ pure helpers (tested in `tst_network.qml`, `tst_vpn.qml`).
   detail, a `VitrailButton` (`tonal` to connect, `glass` on the active row).
   Active row tinted primary 0.14; others foreground 0.06 on hover (opaque
   `VitrailTokens.solid` fills, shown only while active or hovered).
+- Connection quality: `kit/base/VitrailQuality` (signal glyph + measurement
+  in one colour: good `primary`, fair `info`, poor `error`, unknown `muted`),
+  levels from `Vpn.level` in `bar/network/vpn.js` (good < 100 ms and no loss,
+  fair < 250 ms and at most 10 % loss, poor; no latency is unknown, shown
+  "—"). `Entry` takes optional `quality` / `qualityText`; the settings VPN
+  list shows it for every connection with the level word added.
 - Long lists go in a `Scroller` capped at about 8 rows.
 - State icons: Wi-Fi `signal_wifi_0_bar` → `network_wifi_{1,2,3}_bar` →
   `signal_wifi_4_bar`, offline `signal_wifi_off`, ethernet `lan`, VPN
