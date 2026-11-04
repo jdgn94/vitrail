@@ -87,8 +87,7 @@ TestCase {
         verify(findChild(box, "dashboardMediaEmpty").visible)
     }
 
-    function test_the_weather_shows_the_place_current_conditions_and_four_days() {
-        var box = make({
+    function test_the_weather_shows_the_place_current_conditions_and_four_days() {        var box = make({
             weather: ({
                 location: { name: "Madrid" },
                 units: { temperature: "°C", humidity: "%", wind: "km/h" },
@@ -113,6 +112,38 @@ TestCase {
         compare(findChild(box, "dashboardWeatherHumidity").text, "62 %")
         compare(findChild(box, "dashboardWeatherWind").text, "11.2 km/h")
         compare(box.forecast.length, 4)
+    }
+
+    function test_the_conditions_follow_the_language() {
+        var box = make({
+            strings: ({ "weather.code.2": "Parcialmente nublado", "weather.code.3": "Cubierto" }),
+            weather: ({
+                location: { name: "Madrid" },
+                units: { temperature: "°C", humidity: "%", wind: "km/h" },
+                current: { temperature: 18.4, humidity: 62, wind: 11.2, code: 2, condition: "Partly cloudy" },
+                daily: [
+                    { date: "2026-11-04", high: 21, low: 10, code: 3, condition: "Overcast" },
+                    { date: "2026-11-05", high: 20, low: 9, code: 2, condition: "Partly cloudy" }
+                ]
+            })
+        })
+        box.showTab("weather")
+        compare(findChild(box, "dashboardWeatherCondition").text, "Parcialmente nublado")
+        compare(findChild(box, "dashboardWeatherDayCondition0").text, "Cubierto")
+        compare(findChild(box, "dashboardWeatherDayCondition1").text, "Parcialmente nublado")
+    }
+
+    function test_an_unknown_code_keeps_the_service_text() {
+        var box = make({
+            weather: ({
+                location: { name: "Madrid" },
+                units: { temperature: "°C", humidity: "%", wind: "km/h" },
+                current: { temperature: 18.4, humidity: 62, wind: 11.2, code: 1234, condition: "Unknown" },
+                daily: []
+            })
+        })
+        box.showTab("weather")
+        compare(findChild(box, "dashboardWeatherCondition").text, "Unknown")
     }
 
     function test_the_performance_values_are_formatted() {

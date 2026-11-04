@@ -108,6 +108,8 @@ var index = [
       terms: ["timezone", "clock", "zone"] },
     { category: "datetime", tab: "clock", key: "datetime.clock", label: "Clock",
       terms: ["clock", "time", "24h", "format"] },
+    { category: "datetime", tab: "weather", key: "weather.title", label: "Weather",
+      terms: ["weather", "city", "units", "temperature", "forecast"] },
 
     { category: "connection", tab: "", key: "section.connection", label: "Connection",
       terms: ["network", "wifi", "vpn", "bluetooth"] },

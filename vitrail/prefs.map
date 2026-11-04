@@ -139,5 +139,7 @@ connection connectionSeq
 misc selftest
 misc quickNotes
 misc clipboardColors
-misc weatherLocation
-misc weatherUnits
+
+# The place and units of the bar's weather (`vitrail/weather.py`).
+weather weatherLocation
+weather weatherUnits

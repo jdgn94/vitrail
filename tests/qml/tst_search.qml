@@ -55,7 +55,7 @@ TestCase {
             ["input", ""], ["input", "keyboard"], ["input", "mouse"],
             ["sound", ""], ["sound", "output"], ["sound", "input"],
             ["language", ""],
-            ["datetime", ""], ["datetime", "zone"], ["datetime", "clock"],
+            ["datetime", ""], ["datetime", "zone"], ["datetime", "clock"], ["datetime", "weather"],
             ["connection", ""], ["connection", "internet"], ["connection", "vpn"],
             ["connection", "bluetooth"],
             ["plugins", ""], ["plugins", "media"], ["plugins", "installed"]

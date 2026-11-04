@@ -86,6 +86,13 @@ Item {
         return date.toLocaleDateString(Qt.locale(root.language), "ddd")
     }
 
+    // The words for a WMO code in the user's language (weather.code.<n>); the
+    // service's English falls back for a code the table does not name.
+    function condition(code, fallback) {
+        var text = root.strings["weather.code." + Number(code)]
+        return text === undefined || text === "" ? (fallback || "") : text
+    }
+
     // The date changes under the panel; the calendar follows it while shown.
     Timer {
         interval: 60000
@@ -277,7 +284,8 @@ Item {
                                     objectName: "dashboardWeatherCondition"
                                     Layout.alignment: Qt.AlignBottom
                                     variant: "content"
-                                    text: weatherColumn.current.condition || ""
+                                    text: root.condition(weatherColumn.current.code,
+                                                         weatherColumn.current.condition)
                                 }
                             }
                         }
@@ -343,9 +351,10 @@ Item {
                             }
 
                             VitrailText {
+                                objectName: "dashboardWeatherDayCondition" + forecastDay.index
                                 Layout.fillWidth: true
                                 variant: "content"
-                                text: forecastDay.modelData.condition || ""
+                                text: root.condition(forecastDay.modelData.code, forecastDay.modelData.condition)
                             }
 
                             VitrailText {

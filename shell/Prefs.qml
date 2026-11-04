@@ -113,11 +113,11 @@ QtObject {
     property alias ntp: datetimeFile.ntp
     property alias connectionRequest: connectionFile.connectionRequest
     property alias connectionSeq: connectionFile.connectionSeq
+    property alias weatherLocation: weatherFile.weatherLocation
+    property alias weatherUnits: weatherFile.weatherUnits
     property alias selftest: miscFile.selftest
     property alias quickNotes: miscFile.quickNotes
     property alias clipboardColors: miscFile.clipboardColors
-    property alias weatherLocation: miscFile.weatherLocation
-    property alias weatherUnits: miscFile.weatherUnits
 
     property Settings appearanceSettings: Settings {
         id: appearanceFile
@@ -380,6 +380,18 @@ QtObject {
         property int connectionSeq: 0
     }
 
+    property Settings weatherSettings: Settings {
+        id: weatherFile
+
+        fileName: root.directory + "/weather.ini"
+        category: "weather"
+
+        // The city the weather is asked for; "" follows the IP's guess.
+        property string weatherLocation: ""
+        // "metric" (°C, km/h) or "imperial" (°F, mph).
+        property string weatherUnits: "metric"
+    }
+
     property Settings miscSettings: Settings {
         id: miscFile
 
@@ -392,9 +404,5 @@ QtObject {
         property string clipboardColors: ""
         // Written by the smoke test, never by the UI.
         property string selftest: ""
-        // The city the weather is asked for; "" follows the IP's guess.
-        property string weatherLocation: ""
-        // "metric" (°C, km/h) or "imperial" (°F, mph).
-        property string weatherUnits: "metric"
     }
 }

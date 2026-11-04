@@ -57,7 +57,8 @@ Item {
         anchors.right: parent.right
         tabs: [
             { key: "zone", icon: "public", label: page.t("datetime.zone") },
-            { key: "clock", icon: "schedule", label: page.t("datetime.clock") }
+            { key: "clock", icon: "schedule", label: page.t("datetime.clock") },
+            { key: "weather", icon: "partly_cloudy_day", label: page.t("weather.title") }
         ]
         current: page.tab
         foreground: page.palette.foreground
@@ -255,6 +256,57 @@ Item {
                         foreground: page.palette.foreground
                         accent: page.palette.primary
                         onToggled: function (value) { page.prefs.ntp = value ? "true" : "false" }
+                    }
+                }
+            }
+
+            // The bar's weather: the place it asks about and the units it shows.
+            Section {
+                Layout.fillWidth: true
+                visible: page.tab === "weather"
+                icon: "partly_cloudy_day"
+                title: page.t("weather.title")
+                foreground: page.palette.foreground
+                accent: page.palette.primary
+
+                Text {
+                    Layout.fillWidth: true
+                    text: page.t("weather.help")
+                    color: page.palette.muted
+                    font.pixelSize: 12
+                    font.family: VitrailTokens.fontFamily
+                    wrapMode: Text.WordWrap
+                }
+
+                VitrailField {
+                    id: city
+
+                    Layout.fillWidth: true
+                    label: page.t("weather.city")
+                    leadingIcon: "place"
+                    supportingText: page.t("weather.city.help")
+                    text: page.prefs.weatherLocation || ""
+                    onTextChanged: if (city.text !== (page.prefs.weatherLocation || ""))
+                                       page.prefs.weatherLocation = city.text
+                    onAccepted: page.prefs.weatherLocation = city.text.trim()
+                }
+
+                VitrailSettingRow {
+                    icon: "thermostat"
+                    label: page.t("weather.units")
+                    description: page.t("weather.units.help")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSegmented {
+                        options: [
+                            { key: "metric", label: page.t("weather.units.metric") },
+                            { key: "imperial", label: page.t("weather.units.imperial") }
+                        ]
+                        current: page.prefs.weatherUnits || "metric"
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onSelected: function (key) { page.prefs.weatherUnits = key }
                     }
                 }
             }

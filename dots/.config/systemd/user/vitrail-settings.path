@@ -20,6 +20,7 @@ PathChanged=%h/.config/vitrail/launcher.ini
 PathChanged=%h/.config/vitrail/language.ini
 PathChanged=%h/.config/vitrail/datetime.ini
 PathChanged=%h/.config/vitrail/connection.ini
+PathChanged=%h/.config/vitrail/weather.ini
 PathChanged=%h/.config/vitrail/misc.ini
 Unit=vitrail-settings.service
 TriggerLimitIntervalSec=1
