@@ -133,6 +133,8 @@ Window {
         blur: prefs.blurStrength,
         opacity: prefs.surfaceOpacity,
         fontBase: prefs.fontBase,
+        fontFamily: prefs.fontSystem || VitrailTokens.font.family,
+        iconFamily: VitrailTokens.font.iconFamilyOf(prefs.uiIcons),
         frame: prefs.frameSize,
         bar: prefs.barSize,
         panel: prefs.panelSize

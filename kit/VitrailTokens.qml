@@ -17,6 +17,8 @@ QtObject {
     property real blur: Tokens.ranges.blur.value
     property real opacity: Tokens.ranges.opacity.value
     property real fontBase: Tokens.font.base
+    property string fontFamily: Tokens.font.family
+    property string iconFamily: Tokens.font.icons
     property real frame: Tokens.ranges.frame.value
     property real bar: Tokens.ranges.bar.value
     property real panel: Tokens.ranges.panel.value
@@ -30,9 +32,6 @@ QtObject {
     readonly property var launcher: Tokens.launcher
     readonly property var media: Tokens.media
     readonly property var tray: Tokens.tray
-    readonly property string fontFamily: Tokens.font.family
-    readonly property string iconFamily: Tokens.font.icons
-
     readonly property bool glass: root.surfaceMode === "glass"
 
     function configure(palette, dark, surfaceMode, values) {
@@ -50,6 +49,10 @@ QtObject {
             root.opacity = source.opacity
         if (source.fontBase !== undefined)
             root.fontBase = source.fontBase
+        if (source.fontFamily !== undefined)
+            root.fontFamily = source.fontFamily
+        if (source.iconFamily !== undefined)
+            root.iconFamily = source.iconFamily
         if (source.frame !== undefined)
             root.frame = source.frame
         if (source.bar !== undefined)

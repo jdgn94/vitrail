@@ -739,6 +739,9 @@ ShellRoot {
             if (raw !== undefined && raw !== "")
                 values[token] = Number(raw)
         }
+        if (shell.prefs.fontSystem)
+            values.fontFamily = shell.prefs.fontSystem
+        values.iconFamily = VitrailTokens.font.iconFamilyOf(shell.prefs.uiIcons)
         return values
     }
 

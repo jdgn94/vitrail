@@ -22,7 +22,9 @@ var ranges = {
     osdStep: { min: 1, max: 20, step: 1, value: 5 },
     osdBrightnessStep: { min: 1, max: 20, step: 1, value: 5 },
     // The percent one wheel notch moves an app's own volume.
-    soundStep: { min: 1, max: 20, step: 1, value: 5 }
+    soundStep: { min: 1, max: 20, step: 1, value: 5 },
+    // The pointer's size in pixels.
+    cursor: { min: 16, max: 64, step: 2, value: 24 }
 }
 
 // Typography is a scale over the base size the user picks.
@@ -31,6 +33,13 @@ var font = {
     // name, e.g. "wifi").
     family: "Roboto",
     icons: "Material Symbols Rounded",
+    // The three families the shell may draw its ligatures from; any other
+    // value falls back to `icons`.
+    iconVariants: {
+        rounded: "Material Symbols Rounded",
+        sharp: "Material Symbols Sharp",
+        outlined: "Material Symbols Outlined"
+    },
     min: 10,
     max: 22,
     step: 1,
@@ -43,6 +52,12 @@ var font = {
         content: 0.95,
         label: 0.85
     }
+}
+
+// The family for a stored variant key; an unknown key keeps the default so a
+// stale preference never asks for a font that would draw plain text.
+font.iconFamilyOf = function (key) {
+    return font.iconVariants[key] || font.icons
 }
 
 // Motion travels with the variant, not with the component.
