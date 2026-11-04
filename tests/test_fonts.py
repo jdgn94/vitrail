@@ -132,6 +132,7 @@ class PreviewTests(unittest.TestCase):
         (adwaita / "scalable" / "apps").mkdir(parents=True)
         (adwaita / "scalable" / "apps" / "image-x-generic.svg").write_text("<svg/>", encoding="utf-8")
         xcursor(adwaita / "cursors" / "default")
+        xcursor(adwaita / "cursors" / "hand2")
         hicolor = self.icons / "hicolor"
         (hicolor / "16x16" / "apps").mkdir(parents=True)
         (hicolor / "index.theme").write_text(
@@ -159,26 +160,28 @@ class PreviewTests(unittest.TestCase):
         found = fonts.icon_previews(self.icons / "Adwaita", ["nope"], [self.icons])
         self.assertEqual(found, {})
 
-    def test_the_cursor_preview_is_a_png_of_the_real_cursor(self) -> None:
-        path = fonts.cursor_preview(self.icons / "Adwaita", self.cache)
-        self.assertEqual(Path(path).read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+    def test_the_cursor_previews_are_a_png_per_shape(self) -> None:
+        paths = fonts.cursor_previews(self.icons / "Adwaita", self.cache)
+        self.assertEqual(len(paths), 2)
+        for path in paths:
+            self.assertEqual(Path(path).read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
 
     def test_a_cursor_without_a_readable_file_has_no_preview(self) -> None:
         empty = self.icons / "Bare"
         (empty / "cursors").mkdir(parents=True)
         (empty / "index.theme").write_text("[Icon Theme]\n", encoding="utf-8")
-        self.assertEqual(fonts.cursor_preview(empty, self.cache), "")
+        self.assertEqual(fonts.cursor_previews(empty, self.cache), [])
 
-    def test_the_cursor_preview_is_cached(self) -> None:
-        first = fonts.cursor_preview(self.icons / "Adwaita", self.cache)
-        stamp = Path(first).stat().st_mtime_ns
-        self.assertEqual(fonts.cursor_preview(self.icons / "Adwaita", self.cache), first)
-        self.assertEqual(Path(first).stat().st_mtime_ns, stamp)
+    def test_the_cursor_previews_are_cached(self) -> None:
+        first = fonts.cursor_previews(self.icons / "Adwaita", self.cache)
+        stamps = [Path(path).stat().st_mtime_ns for path in first]
+        self.assertEqual(fonts.cursor_previews(self.icons / "Adwaita", self.cache), first)
+        self.assertEqual([Path(path).stat().st_mtime_ns for path in first], stamps)
 
     def test_state_carries_the_previews(self) -> None:
         state = fonts.state(run=lambda argv: "Roboto\t80\n", roots=[self.icons], cache=self.cache)
         self.assertTrue(state["iconPreviews"]["Adwaita"][0].endswith("folder.png"))
-        self.assertTrue(state["cursorPreviews"]["Adwaita"].endswith(".png"))
+        self.assertTrue(state["cursorPreviews"]["Adwaita"][0].endswith(".png"))
 
 
 class ApplyTests(unittest.TestCase):

@@ -109,8 +109,12 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] **Icons → App icon pack**: el campo muestra cuatro iconos del pack y su
       nombre; el mosaico enseña ocho iconos por pack con el nombre debajo
       (Adwaita, Papirus, breeze…).
-- [ ] **Cursor → Cursor theme**: cada celda enseña la flecha real de ese pack
-      (Bibata naranja/blanca, Adwaita…), no un icono genérico.
+- [ ] **Cursor → Cursor theme**: cada celda enseña seis cursores reales de ese
+      pack (flecha, mano, texto, redimensionar y mover; Bibata naranja/blanca,
+      Adwaita…), no un icono genérico.
+- [ ] El diálogo tiene el tamaño justo de su contenido (sin franja vacía
+      abajo) y no se puede redimensionar; con más filas de las que caben, la
+      rejilla hace scroll.
 - [ ] **Shell icons** sigue siendo el selector horizontal; el icono que tiene a
       su izquierda cambia de forma al pasar de Rounded a Sharp a Outlined.
 - [ ] Elegir en un mosaico aplica igual que antes (journal, `fc-match`, o

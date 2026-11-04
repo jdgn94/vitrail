@@ -63,6 +63,16 @@ PREVIEW_SIZE = 48
 # An Xcursor's image chunks are named by nominal size; a 32 px arrow reads best.
 CURSOR_PREVIEW_SIZE = 32
 XCURSOR_IMAGE = 0xFFFD0002
+# The shapes a mosaic cell shows per cursor theme, in this order. Themes name
+# them differently; the first file that exists wins.
+CURSOR_SHAPES = [
+    ("arrow", ("default", "left_ptr")),
+    ("hand", ("hand2", "hand1", "pointer", "pointing_hand")),
+    ("text", ("xterm", "text", "ibeam")),
+    ("resize-h", ("sb_h_double_arrow", "ew-resize", "size_hor")),
+    ("resize-v", ("sb_v_double_arrow", "ns-resize", "size_ver")),
+    ("move", ("fleur", "move", "all-scroll")),
+]
 
 Runner = Callable[[list[str]], str | None]
 
@@ -298,28 +308,33 @@ def xcursor_png(data: bytes) -> bytes | None:
     return _png(width, height, data[position + 36 : position + 36 + width * height * 4])
 
 
-def cursor_preview(theme: Path, cache: Path) -> str:
-    """A cached PNG of the theme's arrow, or "" when it has no readable one."""
-    source = theme / "cursors" / "default"
-    if not source.is_file():
-        source = theme / "cursors" / "left_ptr"
-    if not source.is_file():
-        return ""
-    target = cache / f"{theme.name}.png"
-    try:
-        if target.is_file() and target.stat().st_mtime >= source.stat().st_mtime:
-            return str(target)
-        image = xcursor_png(source.read_bytes())
-    except OSError:
-        return ""
-    if image is None:
-        return ""
-    try:
-        cache.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(image)
-    except OSError:
-        return ""
-    return str(target)
+def cursor_previews(theme: Path, cache: Path) -> list[str]:
+    """A cached PNG per shape the theme has, for the mosaic cell."""
+    files = theme / "cursors"
+    if not files.is_dir():
+        return []
+    found: list[str] = []
+    for shape, names in CURSOR_SHAPES:
+        source = next((files / name for name in names if (files / name).is_file()), None)
+        if source is None:
+            continue
+        target = cache / f"{theme.name}-{shape}.png"
+        try:
+            if target.is_file() and target.stat().st_mtime >= source.stat().st_mtime:
+                found.append(str(target))
+                continue
+            image = xcursor_png(source.read_bytes())
+        except OSError:
+            continue
+        if image is None:
+            continue
+        try:
+            cache.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(image)
+        except OSError:
+            continue
+        found.append(str(target))
+    return found
 
 
 def state(run: Runner = run_text, roots: list[Path] | None = None, cache: Path | None = None) -> dict:
@@ -334,13 +349,13 @@ def state(run: Runner = run_text, roots: list[Path] | None = None, cache: Path |
         if directory is not None:
             found = icon_previews(directory, ICON_PREVIEWS, roots)
             icon_files[name] = [found[icon] for icon in ICON_PREVIEWS if icon in found]
-    cursor_files: dict[str, str] = {}
+    cursor_files: dict[str, list[str]] = {}
     for name in cursors:
         directory = theme_dir(name, roots)
         if directory is not None:
-            path = cursor_preview(directory, cache)
-            if path:
-                cursor_files[name] = path
+            paths = cursor_previews(directory, cache)
+            if paths:
+                cursor_files[name] = paths
     return {
         "fonts": families(text),
         "monospace": monospace(text),

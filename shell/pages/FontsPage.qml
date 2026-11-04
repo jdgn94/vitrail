@@ -46,7 +46,7 @@ Item {
             else if (kind === "icons")
                 row.icons = (page.fonts.iconPreviews || {})[row.key] || []
             else if (kind === "cursor")
-                row.image = (page.fonts.cursorPreviews || {})[row.key] || ""
+                row.icons = (page.fonts.cursorPreviews || {})[row.key] || []
         }
         return rows
     }
@@ -225,6 +225,8 @@ Item {
                             Layout.preferredWidth: 320
                             label: page.t("fonts.cursor")
                             searchHint: page.t("fonts.search")
+                            triggerShown: 1
+                            triggerColumns: 1
                             current: page.prefs.cursorTheme
                             options: page.options(page.fonts.cursorThemes, page.prefs.cursorTheme,
                                                   "cursor")

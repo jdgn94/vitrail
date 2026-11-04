@@ -6,19 +6,23 @@ import "base"
 // A field that shows what is chosen and opens a mosaic of everything else.
 //
 // It is the three pickers of the Fonts page in one component: an option may
-// carry a picture (`image`), a set of pictures (`icons`, up to four, for an
-// icon pack) or a font family (`family`, drawn as "Aa" in that family).
-// The trigger shows the same preview at 24 px; the dialog shows it at 56 px
-// with the name underneath, like KDE's theme pickers.
+// carry a set of pictures (`icons`, an icon pack's or a cursor's) or a font
+// family (`family`, drawn as "Aa" in that family). The trigger shows four at
+// 24 px; the dialog shows them all at 84 px with the name underneath, like
+// KDE's theme pickers. The dialog is sized by its content and cannot be
+// resized.
 FocusScope {
     id: root
 
     property string label: ""
-    // { key, label, image?, icons?, family? }
+    // { key, label, icons?, family? }
     property var options: []
     property string current: ""
     // A search box appears in the dialog when this has text.
     property string searchHint: ""
+    // What the trigger draws; a cursor reads better alone at 24 px.
+    property int triggerShown: 4
+    property int triggerColumns: 2
     property string variant: ""
     property color foreground: VitrailTokens.color("foreground")
     property color accent: VitrailTokens.color("primary")
@@ -32,6 +36,28 @@ FocusScope {
     readonly property int duration: VitrailTokens.duration(root.style.motion)
     readonly property real boxHeight: VitrailTokens.field.height.md
     readonly property real radius: Math.min(VitrailTokens.radius, root.boxHeight / 2)
+
+    // The dialog: a cell holds 84 px of pictures over the name, and the size
+    // comes from the full list so searching does not resize it.
+    readonly property int cellWidth: 148
+    readonly property int cellHeight: 148
+    readonly property int maxColumns: 5
+    readonly property real availableWidth: root.Window.window ? root.Window.window.width : 1000
+    readonly property real availableHeight: root.Window.window ? root.Window.window.height : 680
+    // The header, the search box and the margins around the grid.
+    readonly property real chrome: 2 * VitrailTokens.field.height.md
+                                   + 4 * VitrailTokens.gap("md") + 2 * VitrailTokens.gap("sm")
+    readonly property int columns: {
+        var fit = Math.floor((root.availableWidth - 2 * VitrailTokens.gap("xl")) / root.cellWidth)
+        return Math.max(1, Math.min(root.maxColumns,
+                                    Math.min(fit, Math.max(1, root.options.length))))
+    }
+    readonly property int rows: Math.ceil(Math.max(1, root.options.length) / root.columns)
+    // Rows that fit the window; the rest scrolls.
+    readonly property int maxRows: Math.max(1, Math.floor(
+        (root.availableHeight - 2 * VitrailTokens.gap("xl") - root.chrome) / root.cellHeight))
+    readonly property real gridWidth: root.columns * root.cellWidth
+    readonly property real gridHeight: Math.min(root.rows, root.maxRows) * root.cellHeight
     readonly property int currentIndex: root.indexOfKey(root.current)
     readonly property var currentOption: root.currentIndex >= 0 ? root.options[root.currentIndex] : null
     readonly property string currentLabel: root.currentOption ? root.currentOption.label : root.current
@@ -103,39 +129,40 @@ FocusScope {
 
         property var option: null
         property real size: 24
+        property int columns: 2
+        // 0 draws every picture the option has.
+        property int maxShown: 4
 
-        readonly property bool hasPicture: !!(preview.option && preview.option.image)
         readonly property var icons: preview.option && preview.option.icons ? preview.option.icons : []
+        readonly property int count: preview.icons.length === 0 ? 0
+                                     : (preview.maxShown > 0 ? Math.min(preview.maxShown,
+                                                                        preview.icons.length)
+                                                             : preview.icons.length)
+        readonly property int rows: preview.count === 0 ? 1
+                                   : Math.ceil(preview.count / Math.max(1, preview.columns))
+        readonly property real gap: 2
+        // A square slot that fits every row and column inside `size`.
+        readonly property real slot: Math.max(1, Math.min(
+            (preview.size - (preview.columns - 1) * preview.gap) / Math.max(1, preview.columns),
+            (preview.size - (preview.rows - 1) * preview.gap) / Math.max(1, preview.rows)))
 
         implicitWidth: size
         implicitHeight: size
 
-        Image {
-            id: picture
-
-            anchors.fill: parent
-            visible: preview.hasPicture
-            source: visible ? "file://" + preview.option.image : ""
-            fillMode: Image.PreserveAspectFit
-            sourceSize: Qt.size(preview.size, preview.size)
-            asynchronous: true
-
-        }
-
         Grid {
             id: pack
 
-            anchors.fill: parent
-            visible: !preview.hasPicture && preview.icons.length > 0
-            columns: 2
-            spacing: 2
+            anchors.centerIn: parent
+            visible: preview.count > 0
+            columns: preview.columns
+            spacing: preview.gap
 
             Repeater {
-                model: pack.visible ? Math.min(4, preview.icons.length) : 0
+                model: pack.visible ? preview.count : 0
 
                 Image {
-                    width: (preview.size - 2) / 2
-                    height: width
+                    width: preview.slot
+                    height: preview.slot
                     source: "file://" + preview.icons[index]
                     fillMode: Image.PreserveAspectFit
                     sourceSize: Qt.size(width, height)
@@ -146,7 +173,7 @@ FocusScope {
 
         VitrailText {
             anchors.fill: parent
-            visible: !preview.hasPicture && !pack.visible
+            visible: preview.count === 0
             variant: preview.size >= 40 ? "title" : "label"
             family: preview.option && preview.option.family ? preview.option.family : ""
             text: preview.option && preview.option.family ? "Aa" : (preview.option ? preview.option.label : "")
@@ -177,6 +204,8 @@ FocusScope {
                 Layout.preferredHeight: 24
                 option: root.currentOption
                 size: 24
+                columns: root.triggerColumns
+                maxShown: root.triggerShown
             }
 
             VitrailText {
@@ -218,8 +247,10 @@ FocusScope {
         padding: 0
         focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        width: Math.min(760, (parent ? parent.width : 760) - 2 * VitrailTokens.gap("xl"))
-        height: Math.min(560, (parent ? parent.height : 560) - 2 * VitrailTokens.gap("xl"))
+        // Sized by the content (the full list, not the filtered rows) and not
+        // resizable: a Popup has no frame.
+        width: contentItem.implicitWidth
+        height: contentItem.implicitHeight
 
         onOpened: {
             grid.forceActiveFocus()
@@ -283,15 +314,16 @@ FocusScope {
                 id: grid
 
                 Layout.fillWidth: true
-                Layout.fillHeight: true
                 Layout.leftMargin: VitrailTokens.gap("md")
                 Layout.rightMargin: VitrailTokens.gap("md")
                 Layout.bottomMargin: VitrailTokens.gap("md")
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: root.matched
-                cellWidth: 132
-                cellHeight: 148
+                cellWidth: root.cellWidth
+                cellHeight: root.cellHeight
+                Layout.preferredWidth: root.gridWidth
+                Layout.preferredHeight: root.gridHeight
                 keyNavigationEnabled: true
                 focus: true
 
@@ -332,10 +364,12 @@ FocusScope {
 
                         Preview {
                             Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: 56
-                            Layout.preferredHeight: 56
+                            Layout.preferredWidth: 84
+                            Layout.preferredHeight: 84
                             option: cell.modelData
-                            size: 56
+                            size: 84
+                            columns: 3
+                            maxShown: 0
                         }
 
                         VitrailText {

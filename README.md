@@ -311,8 +311,9 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   and the shell, the console font, the shell's Material Symbols family, the
   GTK/Qt icon pack, and the cursor pack with its size. Each choice opens a
   mosaic of everything installed — "Aa" in each family, eight icons per pack,
-  the real arrow of each cursor — with a search box and the name under every
-  cell (`kit/VitrailPicker.qml`); the trigger shows the chosen one. The window cannot run
+  six real cursors per theme — with a search box and the name under every
+  cell (`kit/VitrailPicker.qml`); the dialog is sized by its content and the
+  trigger shows the chosen one. The window cannot run
   commands, so `bin/vitrail-settings` injects `python3 -m vitrail.fonts state`
   as `--fonts`; `scripts/apply-settings.sh` runs `fonts apply` when
   `fonts.ini` changes, and a value that is not installed falls back to its
