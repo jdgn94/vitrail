@@ -339,6 +339,133 @@ else
     not_ok "validate_selection accepts known helpers"
 fi
 
+# --------------------------------------------------------- install record
+
+# `vitrail update` replays this file; it is written before the optional system
+# steps, so a late failure must never leave the install without a record.
+tmp="$(sandbox)"
+mkdir -p "$tmp/home"
+ROOT_DIR="$REPO"
+HOME_DIR="$tmp/home"
+SELECTED_COMPOSITORS=(hyprland)
+SELECTED_HELPERS=(yay)
+VPN_MODE=split
+XDG_DATA_HOME="$tmp/data" HOME="$tmp/home" write_install_state
+record="$tmp/data/vitrail/install.json"
+[[ -f "$record" ]] && ok "write_install_state writes install.json in XDG_DATA_HOME" \
+    || not_ok "write_install_state writes install.json in XDG_DATA_HOME"
+
+if python3 - "$record" "$REPO" <<'PY'
+import json
+import os
+import subprocess
+import sys
+
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+want = {"root", "version", "method", "commit", "branch", "vpn", "compositors"}
+if not want <= data.keys():
+    sys.exit("missing keys: %s" % (want - data.keys()))
+if data["root"] != sys.argv[2]:
+    sys.exit("root: %r" % data["root"])
+if not data["version"]:
+    sys.exit("empty version")
+if data["method"] not in ("git", "copy", "package"):
+    sys.exit("method: %r" % data["method"])
+if os.path.isdir(os.path.join(sys.argv[2], ".git")):
+    head = subprocess.run(
+        ["git", "-C", sys.argv[2], "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True).stdout.strip()
+    if data["commit"] != head:
+        sys.exit("commit: %r != %r" % (data["commit"], head))
+if data["vpn"] != "split" or data["compositors"] != "hyprland":
+    sys.exit("choices not recorded")
+PY
+then
+    ok "write_install_state records root, version, method, commit and the choices"
+else
+    not_ok "write_install_state records root, version, method, commit and the choices"
+fi
+
+version="$(awk -F'"' '/^version[[:space:]]*=/{print $2; exit}' "$REPO/pyproject.toml")"
+expect_eq "the record carries the project version" "$version" \
+    "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$record")"
+
+XDG_DATA_HOME="$tmp/data" HOME="$tmp/home" write_install_state
+expect_eq "writing the record twice is idempotent" "1" \
+    "$(find "$tmp/data/vitrail" -name install.json | wc -l)"
+
+# ------------------------------------------- optional steps must not abort
+
+# A failing optional step warns and returns 0: `set -e` in the installer must
+# not turn it into a lost installation.
+tmp="$(sandbox)"
+mkdir -p "$tmp/bin" "$tmp/home"
+cat >"$tmp/bin/sudo" <<'STUB'
+#!/usr/bin/env bash
+exit 1
+STUB
+chmod +x "$tmp/bin/sudo"
+ROOT_DIR="$REPO"
+HOME_DIR="$tmp/home"
+
+if (
+    set -euo pipefail
+    PATH="$tmp/bin:$PATH" VPN_MODE=split setup_vpn
+) \
+    2>"$tmp/vpn.err" >/dev/null; then
+    ok "a failing vpn/install.sh does not abort the installer"
+else
+    not_ok "a failing vpn/install.sh does not abort the installer"
+fi
+grep -q "the VPN infrastructure did not finish" "$tmp/vpn.err" \
+    && ok "setup_vpn warns when the VPN step fails" \
+    || not_ok "setup_vpn warns when the VPN step fails" "output: $(cat "$tmp/vpn.err")"
+
+# plocate-updatedb.timer is a static unit: `systemctl enable` refuses it.
+if (
+    set -euo pipefail
+    PATH="$tmp/bin:$PATH" enable_file_index
+) \
+    2>"$tmp/plocate.err" >/dev/null; then
+    ok "a static unit that refuses to enable does not abort the installer"
+else
+    not_ok "a static unit that refuses to enable does not abort the installer"
+fi
+grep -q "file search falls back to fd" "$tmp/plocate.err" \
+    && ok "enable_file_index warns on a static unit" \
+    || not_ok "enable_file_index warns on a static unit" "output: $(cat "$tmp/plocate.err")"
+
+printf '#!/usr/bin/env bash\nexit 1\n' >"$tmp/bin/systemctl"
+chmod +x "$tmp/bin/systemctl"
+if (
+    set -euo pipefail
+    PATH="$tmp/bin:$PATH" VPN_MODE=split enable_vpn_autostart
+) \
+    2>"$tmp/autostart.err" >/dev/null; then
+    ok "a failing VPN autostart unit does not abort the installer"
+else
+    not_ok "a failing VPN autostart unit does not abort the installer"
+fi
+grep -q "connect from the bar after login" "$tmp/autostart.err" \
+    && ok "enable_vpn_autostart warns when the unit fails" \
+    || not_ok "enable_vpn_autostart warns when the unit fails" "output: $(cat "$tmp/autostart.err")"
+
+# A VPN folder that cannot be created is reported, not fatal.
+printf 'not a directory\n' >"$tmp/blocked"
+if (
+    set -euo pipefail
+    HOME_DIR="$tmp/blocked" prepare_vpn_storage
+) \
+    2>"$tmp/storage.err" >/dev/null; then
+    ok "an unwritable VPN folder does not abort the installer"
+else
+    not_ok "an unwritable VPN folder does not abort the installer"
+fi
+grep -q "could not create the VPN folders" "$tmp/storage.err" \
+    && ok "prepare_vpn_storage warns when the folders fail" \
+    || not_ok "prepare_vpn_storage warns when the folders fail" "output: $(cat "$tmp/storage.err")"
+
+ROOT_DIR="$REPO"
 rm -rf "$tmp"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"

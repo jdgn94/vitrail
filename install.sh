@@ -294,7 +294,8 @@ setup_vpn() {
         warn "vpn/install.sh not found; skipping"
         return 0
     }
-    run sudo "$ROOT_DIR/vpn/install.sh" --mode "$VPN_MODE"
+    run sudo "$ROOT_DIR/vpn/install.sh" --mode "$VPN_MODE" \
+        || warn "the VPN infrastructure did not finish; re-run: sudo $ROOT_DIR/vpn/install.sh --mode $VPN_MODE"
 }
 
 # The VPN's own folders belong to the user: ~/.config/vitrail-vpn holds the
@@ -307,7 +308,10 @@ prepare_vpn_storage() {
         printf '  %s$ install -d -m 0700 %s %s%s\n' "$DIM" "$config" "$data" "$RESET"
         return 0
     fi
-    install -d -m 0700 "$config" "$data"
+    if ! install -d -m 0700 "$config" "$data"; then
+        warn "could not create the VPN folders; create them from the settings window"
+        return 0
+    fi
     PYTHONPATH="$ROOT_DIR" HOME="$HOME_DIR" XDG_CONFIG_HOME="${HOME_DIR}/.config" \
         env -u XDG_DATA_HOME python3 -m vitrail.cli migrate >/dev/null 2>&1 \
         || warn "could not migrate the VPN settings; the settings window will"
@@ -816,6 +820,9 @@ main() {
         die "some dotfiles could not be linked"
     fi
     link_binaries
+    # Record the install before the optional system steps: a late failure must
+    # never leave `vitrail update` without a record to replay.
+    write_install_state
     install_locale_helper
     import_wallpapers
     enable_file_index
@@ -824,6 +831,7 @@ main() {
     prepare_vpn_storage
     setup_vpn
     enable_vpn_autostart
+    # Restate it once the optional steps are done (same values, new timestamp).
     write_install_state
 
     info ""
