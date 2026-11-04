@@ -237,6 +237,28 @@ def request_paths(value: str) -> list[str]:
     return parse_selection(value)[1:]
 
 
+def parse_monitors(value: str) -> dict[str, dict[str, str]]:
+    """The per-output document of `wallpaperMonitors`: an output's picture and
+    effect, both optional. Anything malformed reads as no overrides."""
+    try:
+        data = json.loads(value)
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    out: dict[str, dict[str, str]] = {}
+    for name, entry in data.items():
+        if not isinstance(entry, dict):
+            continue
+        wallpaper = entry.get("wallpaper")
+        effect = entry.get("effect")
+        out[str(name)] = {
+            "wallpaper": wallpaper if isinstance(wallpaper, str) else "",
+            "effect": effect if isinstance(effect, str) else "",
+        }
+    return out
+
+
 def _free_name(target: Path) -> Path:
     counter = 2
     candidate = target
@@ -401,6 +423,15 @@ def apply(
     if image != Path(path):
         # The bar cannot hash: it draws the stable copy of the derived picture.
         shutil.copyfile(image, effects.shown(cache))
+    # Per-monitor effects get their own stable copy for the bar's layer.
+    for output, entry in parse_monitors(prefs.get("wallpaperMonitors", "")).items():
+        chosen = Path(entry["wallpaper"] or path)
+        name = entry["effect"] or effect
+        if name in ("", "none") or not chosen.is_file():
+            continue
+        one = effects.derive(chosen, name, cache, run=run, say=say)
+        if one != chosen:
+            shutil.copyfile(one, effects.shown(cache, output))
     if kind == "video" and seed is None:
         image = cache / "wallpaper-frame.png"
         run(["ffmpeg", "-loglevel", "error", "-y", "-ss", "1", "-i", path, "-frames:v", "1", str(image)], check=True)

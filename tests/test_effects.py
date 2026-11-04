@@ -71,6 +71,11 @@ class RecipeTests(unittest.TestCase):
         for name in ("a.svg", "a.mp4", "a.webm", "notes.txt"):
             self.assertFalse(effects.is_image(name), name)
 
+    def test_the_bar_draws_a_stable_copy_per_screen(self) -> None:
+        self.assertEqual(effects.shown(Path("/cache")).name, "wallpaper-effect.png")
+        self.assertEqual(effects.shown(Path("/cache"), "DP-1").name, "wallpaper-effect-DP-1.png")
+        self.assertEqual(effects.shown(Path("/cache"), "A/B").name, "wallpaper-effect-A_B.png")
+
 
 class ApplyTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -208,6 +213,21 @@ class WallpaperApplyTests(unittest.TestCase):
     def test_nothing_is_said_when_no_effect_was_asked_for(self) -> None:
         self.assertIsNotNone(self.apply())
         self.assertEqual(self.said, [])
+
+    def test_a_per_monitor_effect_gets_its_own_shown_copy(self) -> None:
+        other = self.root / "other.png"
+        other.write_bytes(b"other pixels")
+        monitors = json.dumps(
+            {
+                "DP-1": {"wallpaper": str(other), "effect": "sepia"},
+                "HDMI-A-1": {"effect": "negate"},
+                "eDP-1": {"wallpaper": str(other)},
+            }
+        )
+        self.apply(f"wallpaperMonitors={monitors}\n")
+        self.assertTrue((self.cache / "wallpaper-effect-DP-1.png").exists())
+        self.assertTrue((self.cache / "wallpaper-effect-HDMI-A-1.png").exists())
+        self.assertFalse((self.cache / "wallpaper-effect-eDP-1.png").exists())
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@ import "kit/frame.js" as Frame
 import "../kit/effects.js" as Effects
 import "prefs.js" as Prefs
 import "../shell/barview.js" as BarView
+import "../shell/wallpapermonitors.js" as WallpaperMonitors
 import "clock"
 import "dialogs"
 import "launcher"
@@ -663,15 +664,26 @@ ShellRoot {
     property int paletteVersion: 0
     // An adaptive SVG is shown recoloured for the current mode.
     readonly property string wallpaperEffect: Effects.of(shell.prefs.wallpaperEffect)
-    readonly property string wallpaperSource: {
-        var path = shell.prefs.wallpaper || ""
+    // The picture one output draws: its own override (and effect) when it has
+    // one, otherwise the global wallpaper.
+    function wallpaperFor(name) {
+        var global = shell.prefs.wallpaper || ""
+        var path = global
+        var effect = shell.wallpaperEffect
+        var entry = WallpaperMonitors.of(shell.prefs.wallpaperMonitors || "", name)
+        // An adaptive SVG is drawn from the generated copy of the global one.
+        if (entry.wallpaper !== "" && !/\.svg$/i.test(entry.wallpaper))
+            path = entry.wallpaper
+        if (entry.effect !== "")
+            effect = Effects.of(entry.effect)
         // The effect is baked into a stable file apply-settings writes.
-        if (shell.wallpaperEffect !== "none" && Effects.isImage(path))
-            return shell.cacheDir + "/wallpaper-effect.png"
+        if (effect !== "none" && Effects.isImage(path))
+            return shell.cacheDir + "/" + Effects.shown(name)
         if (!/\.svg$/i.test(path))
             return path
         return shell.generatedDir + "/wallpaper-" + (shell.dark ? "dark" : "light") + ".svg"
     }
+    readonly property string wallpaperSource: shell.wallpaperFor("")
     readonly property int rotationCount: (shell.prefs.wallpaperSelection || "").split("|").filter(function (path) {
         return path !== ""
     }).length
@@ -1696,7 +1708,7 @@ ShellRoot {
                     VitrailWallpaper {
                         anchors.fill: parent
                         variant: shell.prefs.wallpaperMode || ""
-                        source: shell.wallpaperSource
+                        source: shell.wallpaperFor(monitor.modelData.name)
                         revision: shell.paletteVersion
                         hole: bar.layout.hole
                         radius: bar.layout.radius

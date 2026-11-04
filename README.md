@@ -298,7 +298,7 @@ the window declares it in another file, or the path unit watches another set.
 |------|------|
 | `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase` |
 | `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barMonitors`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep` |
-| `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `wallpaperEffect`, `systemColor` (`wallpaperSeed`: legacy) |
+| `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `wallpaperEffect`, `wallpaperMonitors`, `systemColor` (`wallpaperSeed`: legacy) |
 | `background.ini` | `visualiserEnabled`, `visualiserVariant`, `visualiserHeight` |
 | `windows.ini` | `windowLayout`, `visibleColumns`, `followFocus`, `wrapFocus`, `borderWidth`, `opacityFocused`, `opacityUnfocused` |
 | `monitors.ini` | `monitorOverrides` |
@@ -653,6 +653,14 @@ it is drawn and before its palette is taken: `none`, `b&w`, `blur`, `charcoal`,
 derived file is cached in `~/.cache/vitrail/effects/<hash>-<effect>.png`, so
 returning to the same picture and effect costs nothing. Only images take an
 effect: an SVG and a video are shown as they are, with a notice.
+
+**Settings → Monitors** may give one output its own picture and effect
+(`wallpaperMonitors`: `{"DP-1": {"wallpaper": "/path", "effect": "blur"}}`).
+The whole screen gets the global picture first and each override follows, so an
+output without one — or whose file is gone — keeps the global wallpaper. The
+bar draws the per-output picture on that monitor; `vitrail wallpaper show`
+sends each output its own image with `awww img -o` (a video override stays on
+the global player).
 
 ### Audio visualiser
 

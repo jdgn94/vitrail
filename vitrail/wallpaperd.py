@@ -14,9 +14,26 @@ import time
 from pathlib import Path
 from typing import Callable
 
-from vitrail.wallpaper import kind_of
+from vitrail import effects
+from vitrail.wallpaper import kind_of, parse_monitors
+
+# `parse_monitors` is re-exported: the per-output document is what this module
+# puts on screen.
+__all__ = [
+    "STILL_KINDS",
+    "engine_for",
+    "parse_monitors",
+    "read_state",
+    "show",
+    "spawn_detached",
+    "state_path",
+    "stop",
+    "write_state",
+]
 
 ENGINES = {"image": "awww", "svg": "awww", "video": "mpvpaper"}
+# The kinds awww can put on one output; a video override stays on the global one.
+STILL_KINDS = ("image", "svg")
 STATE = "wallpaper.state"
 AWWW_OPTIONS = ("--transition-type", "center", "--transition-duration", "1")
 MPV_OPTIONS = "no-audio loop hwdec=vaapi"
@@ -39,8 +56,10 @@ def read_state(cache: Path) -> dict:
         return {}
 
 
-def write_state(cache: Path, engine: str, path: str, kind: str) -> dict:
+def write_state(cache: Path, engine: str, path: str, kind: str, outputs: dict[str, str] | None = None) -> dict:
     state = {"engine": engine, "path": path, "kind": kind}
+    if outputs:
+        state["outputs"] = outputs
     cache.mkdir(parents=True, exist_ok=True)
     state_path(cache).write_text(json.dumps(state) + "\n", encoding="utf-8")
     return state
@@ -84,14 +103,25 @@ def show(
     sleep: Callable[[float], None] = time.sleep,
     spawn: Callable[[list[str]], None] = spawn_detached,
     attempts: int = 20,
+    monitors: dict[str, dict[str, str]] | None = None,
+    effect: str = "none",
+    derive: Callable[..., Path] | None = None,
 ) -> dict:
-    """Displays `path` with the engine its kind needs, and records the state."""
+    """Displays `path` with the engine its kind needs, and records the state.
+
+    `monitors` holds the per-output overrides: each one, still the global
+    picture; the global one covers every output first, so an output without an
+    override (or whose picture is gone) keeps it. The effect is baked into the
+    derived file before it is shown.
+    """
     kind = kind_of(path)
     engine = engine_for(kind or "")
     if engine is None:
         raise ValueError(f"not a wallpaper: {path}")
 
+    derive = derive or effects.derive
     stop(cache, run)
+    shown = str(derive(path, effect, cache, run=run))
     if engine == "awww":
         if not awww_running(run):
             spawn(["awww-daemon"])
@@ -99,7 +129,15 @@ def show(
                 if awww_running(run):
                     break
                 sleep(0.05)
-        _call(run, ["awww", "img", path, *AWWW_OPTIONS], check=True)
-    else:
-        _call(run, ["mpvpaper", "-f", "-o", MPV_OPTIONS, OUTPUT, path], check=True)
-    return write_state(cache, engine, path, kind)
+        _call(run, ["awww", "img", shown, *AWWW_OPTIONS], check=True)
+        outputs: dict[str, str] = {}
+        for output, entry in sorted((monitors or {}).items()):
+            chosen = entry.get("wallpaper") or path
+            if kind_of(chosen) not in STILL_KINDS or not Path(chosen).is_file():
+                continue
+            one = str(derive(chosen, entry.get("effect") or effect, cache, run=run))
+            _call(run, ["awww", "img", "-o", output, one, *AWWW_OPTIONS], check=True)
+            outputs[output] = one
+        return write_state(cache, engine, shown, kind, outputs)
+    _call(run, ["mpvpaper", "-f", "-o", MPV_OPTIONS, OUTPUT, shown], check=True)
+    return write_state(cache, engine, shown, kind)

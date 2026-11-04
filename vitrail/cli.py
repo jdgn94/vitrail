@@ -25,7 +25,6 @@ from vitrail import (
     update,
     welcome,
     apps,
-    effects,
     vpndoc,
     wallpaper,
     wallpaperd,
@@ -223,8 +222,12 @@ def _wallpaper(args: argparse.Namespace) -> int:
             _say("Wallpaper: none selected")
             return 1
         try:
-            shown = effects.derive(Path(path), chosen.get("wallpaperEffect", "none"), cache, say=_say)
-            state = wallpaperd.show(str(shown), cache)
+            state = wallpaperd.show(
+                path,
+                cache,
+                monitors=wallpaperd.parse_monitors(chosen.get("wallpaperMonitors", "")),
+                effect=chosen.get("wallpaperEffect", "none"),
+            )
         except (ValueError, OSError, subprocess.CalledProcessError) as error:
             _say(f"Could not display the wallpaper: {error}")
             return 1

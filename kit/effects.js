@@ -25,3 +25,13 @@ function known(name) {
 function of(raw) {
     return known(raw) && raw !== undefined ? raw : "none"
 }
+
+// The stable copy apply-settings writes for the bar: one for the whole screen,
+// or one per output (vitrail/effects.py:shown names them the same way).
+var SHOWN = "wallpaper-effect.png"
+
+function shown(output) {
+    if (!output)
+        return SHOWN
+    return "wallpaper-effect-" + String(output).replace(/[^A-Za-z0-9._-]/g, "_") + ".png"
+}

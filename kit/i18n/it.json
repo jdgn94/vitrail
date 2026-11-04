@@ -659,5 +659,11 @@
   "wallpaper.effect.sharpen": "Nitidezza",
   "wallpaper.effect.vignette": "Vignetta",
   "wallpaper.effect.vignette-black": "Vignetta nera",
-  "wallpaper.effect.zoomed": "Zoom"
+  "wallpaper.effect.zoomed": "Zoom",
+  "wallpaper.monitors.wallpaper": "Immagine",
+  "wallpaper.monitors.wallpaper.help": "Solo questa uscita può mostrare un'altra immagine; le altre mantengono quella globale.",
+  "wallpaper.monitors.global": "Come tutto lo schermo",
+  "wallpaper.monitors.effect": "Effetto",
+  "wallpaper.monitors.effect.global": "Segui tutto lo schermo",
+  "wallpaper.monitors.effect.imageOnly": "Gli effetti si applicano solo alle immagini."
 }

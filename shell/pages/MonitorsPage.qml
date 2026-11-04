@@ -1,9 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
+import Qt.labs.folderlistmodel
 import "../../kit"
 import "../../kit/base"
+import "../../kit/effects.js" as Effects
 import "../barview.js" as BarView
 import "../monitorsview.js" as View
+import "../wallpapermonitors.js" as Wallpaper
 
 // Monitors category: one card per Hyprland output, with the mode, scale,
 // rotation, position, mirror and enabled state the user wants it to keep.
@@ -33,6 +36,93 @@ Item {
     function t(key) {
         var value = page.strings[key]
         return value === undefined ? key : value
+    }
+
+    // --- the wallpaper of one output -----------------------------------------
+    readonly property string library: page.prefs.wallpaperDir || page.configDir + "/wallpapers"
+    readonly property var imageFilters: ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp"]
+    readonly property var videoFilters: ["*.mp4", "*.webm", "*.mkv", "*.mov", "*.m4v", "*.avi"]
+
+    // The pictures of the library, images first: a per-monitor effect only
+    // makes sense over a picture, but a video may fill one output. A folder
+    // may report its first count while the page is still being built.
+    property bool ready: false
+
+    function syncPictures() {
+        if (!page.ready)
+            return
+        pictures.clear()
+        var models = [imageFiles, videoFiles]
+        models.forEach(function (model) {
+            for (var i = 0; i < model.count; i++)
+                pictures.append({ path: model.get(i, "filePath") })
+        })
+    }
+
+    function entryOf(name) {
+        return Wallpaper.of(page.prefs.wallpaperMonitors || "", name)
+    }
+
+    // The picture this output shows: its own, or the global one.
+    function pictureOf(name) {
+        return page.entryOf(name).wallpaper || page.prefs.wallpaper || ""
+    }
+
+    function canEffect(name) {
+        return Effects.isImage(page.pictureOf(name))
+    }
+
+    function pictureOptions(name) {
+        var out = [{ key: "", label: page.t("wallpaper.monitors.global") }]
+        var seen = {}
+        var chosen = page.entryOf(name).wallpaper
+        for (var i = 0; i < pictures.count; i++) {
+            var path = pictures.get(i).path
+            seen[path] = true
+            out.push({ key: path, label: path.split("/").pop() })
+        }
+        if (chosen !== "" && !seen[chosen])
+            out.push({ key: chosen, label: chosen.split("/").pop() })
+        return out
+    }
+
+    function effectOptions() {
+        var out = [{ key: "", label: page.t("wallpaper.monitors.effect.global") }]
+        Effects.NAMES.forEach(function (name) {
+            out.push({ key: name, label: page.t("wallpaper.effect." + name) })
+        })
+        return out
+    }
+
+    function setWallpaper(monitor, patch) {
+        var text = Wallpaper.update(page.prefs.wallpaperMonitors || "", monitor.name, patch)
+        if (text === null)
+            return
+        page.prefs.wallpaperMonitors = text
+    }
+
+    FolderListModel {
+        id: imageFiles
+
+        folder: "file://" + page.library + "/images"
+        nameFilters: page.imageFilters
+        showDirs: false
+        sortField: FolderListModel.Name
+        onCountChanged: page.syncPictures()
+    }
+
+    FolderListModel {
+        id: videoFiles
+
+        folder: "file://" + page.library + "/videos"
+        nameFilters: page.videoFilters
+        showDirs: false
+        sortField: FolderListModel.Name
+        onCountChanged: page.syncPictures()
+    }
+
+    ListModel {
+        id: pictures
     }
 
     function document() {
@@ -143,7 +233,11 @@ Item {
         onTriggered: page.pending = false
     }
 
-    Component.onCompleted: page.poll()
+    Component.onCompleted: {
+        page.ready = true
+        page.syncPictures()
+        page.poll()
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -357,6 +451,51 @@ Item {
                                 card.others.map(function (name) { return { key: name, label: name } }))
                             onSelected: function (key) {
                                 page.set(card.modelData.name, { mirror: key }, card.modelData)
+                            }
+                        }
+
+                        VitrailSettingRow {
+                            icon: "wallpaper"
+                            label: page.t("wallpaper.monitors.wallpaper")
+                            description: page.t("wallpaper.monitors.wallpaper.help")
+                            enabled: !card.shown.disabled
+                            opacity: card.shown.disabled ? 0.35 : 1
+                            foreground: page.palette.foreground
+                            muted: page.palette.muted
+
+                            VitrailSelect {
+                                Layout.preferredWidth: 220
+                                current: page.entryOf(card.modelData.name).wallpaper
+                                options: page.pictureOptions(card.modelData.name)
+                                foreground: page.palette.foreground
+                                accent: page.palette.primary
+                                panel: page.palette.surfaceHigh
+                                onSelected: function (key) {
+                                    page.setWallpaper(card.modelData, { wallpaper: key })
+                                }
+                            }
+                        }
+
+                        VitrailSettingRow {
+                            icon: "auto_awesome"
+                            label: page.t("wallpaper.monitors.effect")
+                            description: page.canEffect(card.modelData.name) ? ""
+                                         : page.t("wallpaper.monitors.effect.imageOnly")
+                            enabled: !card.shown.disabled && page.canEffect(card.modelData.name)
+                            opacity: card.shown.disabled || !page.canEffect(card.modelData.name) ? 0.35 : 1
+                            foreground: page.palette.foreground
+                            muted: page.palette.muted
+
+                            VitrailSelect {
+                                Layout.preferredWidth: 220
+                                current: page.entryOf(card.modelData.name).effect
+                                options: page.effectOptions()
+                                foreground: page.palette.foreground
+                                accent: page.palette.primary
+                                panel: page.palette.surfaceHigh
+                                onSelected: function (key) {
+                                    page.setWallpaper(card.modelData, { effect: key })
+                                }
                             }
                         }
 

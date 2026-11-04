@@ -73,6 +73,7 @@ QtObject {
     property alias wallpaperImport: wallpaperFile.wallpaperImport
     property alias wallpaperRemove: wallpaperFile.wallpaperRemove
     property alias wallpaperEffect: wallpaperFile.wallpaperEffect
+    property alias wallpaperMonitors: wallpaperFile.wallpaperMonitors
     property alias systemColor: wallpaperFile.systemColor
     property alias visualiserEnabled: backgroundFile.visualiserEnabled
     property alias visualiserVariant: backgroundFile.visualiserVariant
@@ -204,6 +205,9 @@ QtObject {
         // An ImageMagick effect over the picture ("none" = as it is); the
         // derived file drives both the palette and what the bar draws.
         property string wallpaperEffect: "none"
+        // Per-output overrides: {"DP-1": {"wallpaper": "/path", "effect": "blur"}}.
+        // An empty field follows the global wallpaper and effect.
+        property string wallpaperMonitors: "{}"
         // Colour of the whole system ("" = from the wallpaper): palette seed
         // for every kind of wallpaper, and the colour adaptive SVGs take.
         property string systemColor: ""

@@ -63,6 +63,8 @@ wallpaper wallpaperImport
 wallpaper wallpaperRemove
 wallpaper wallpaperSeed
 wallpaper wallpaperEffect
+# Per-output wallpapers, one JSON object keyed by Hyprland output name.
+wallpaper wallpaperMonitors
 wallpaper systemColor
 
 # Desktop background extras: the audio visualiser over the wallpaper.
