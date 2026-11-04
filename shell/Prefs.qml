@@ -23,6 +23,7 @@ QtObject {
     property alias barEdge: barFile.barEdge
     property alias barScreens: barFile.barScreens
     property alias barStyle: barFile.barStyle
+    property alias barMonitors: barFile.barMonitors
     property alias barSize: barFile.barSize
     property alias barOpacity: barFile.barOpacity
     property alias barOpacityFollow: barFile.barOpacityFollow
@@ -135,6 +136,9 @@ QtObject {
         property string barEdge: "left"
         property string barScreens: "primary"
         property string barStyle: ""
+        // One JSON object keyed by output name ("DP-1"): {"edge","style"}.
+        // An output without an entry follows the global edge and style.
+        property string barMonitors: "{}"
         property int barSize: VitrailTokens.ranges.bar.value
         property real barOpacity: VitrailTokens.ranges.opacity.value
         property bool barOpacityFollow: true

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../../kit"
 import "../../kit/base"
+import "../barview.js" as BarView
 import "../monitorsview.js" as View
 
 // Monitors category: one card per Hyprland output, with the mode, scale,
@@ -57,6 +58,30 @@ Item {
             return
         page.prefs.monitorOverrides = text
         page.wait()
+    }
+
+    // The bar's own overrides: one JSON object keyed by output name. Only the
+    // edge and the style may differ from the global bar.
+    function barOf(monitor) {
+        return BarView.override(BarView.document(page.prefs.barMonitors || ""), monitor.name)
+    }
+
+    function barEdgeOf(monitor) {
+        var entry = page.barOf(monitor)
+        return entry && typeof entry.edge === "string" && entry.edge !== ""
+               ? entry.edge : (page.prefs.barEdge || "left")
+    }
+
+    function barStyleOf(monitor) {
+        var entry = page.barOf(monitor)
+        return entry && typeof entry.style === "string" ? entry.style : ""
+    }
+
+    function setBar(monitor, patch) {
+        var text = BarView.update(page.prefs.barMonitors || "", monitor.name, patch)
+        if (text === null)
+            return
+        page.prefs.barMonitors = text
     }
 
     // A typed position, committed when the field is accepted or loses focus.
@@ -332,6 +357,54 @@ Item {
                                 card.others.map(function (name) { return { key: name, label: name } }))
                             onSelected: function (key) {
                                 page.set(card.modelData.name, { mirror: key }, card.modelData)
+                            }
+                        }
+
+                        VitrailSettingRow {
+                            icon: "dock_to_left"
+                            label: page.t("bar.monitors.edge")
+                            description: page.t("bar.monitors.help")
+                            enabled: !card.shown.disabled
+                            opacity: card.shown.disabled ? 0.35 : 1
+                            foreground: page.palette.foreground
+                            muted: page.palette.muted
+
+                            VitrailSegmented {
+                                options: [
+                                    { key: "left", label: page.t("bar.edge.left"), icon: "left_panel_open" },
+                                    { key: "top", label: page.t("bar.edge.top"), icon: "top_panel_open" },
+                                    { key: "right", label: page.t("bar.edge.right"), icon: "right_panel_open" },
+                                    { key: "bottom", label: page.t("bar.edge.bottom"), icon: "bottom_panel_open" }
+                                ]
+                                current: page.barEdgeOf(card.modelData)
+                                foreground: page.palette.foreground
+                                accent: page.palette.primary
+                                onSelected: function (key) {
+                                    page.setBar(card.modelData, { edge: key })
+                                }
+                            }
+                        }
+
+                        VitrailSettingRow {
+                            icon: "style"
+                            label: page.t("bar.monitors.style")
+                            enabled: !card.shown.disabled
+                            opacity: card.shown.disabled ? 0.35 : 1
+                            foreground: page.palette.foreground
+                            muted: page.palette.muted
+
+                            VitrailSelect {
+                                Layout.preferredWidth: 180
+                                current: page.barStyleOf(card.modelData)
+                                foreground: page.palette.foreground
+                                accent: page.palette.primary
+                                options: [{ key: "", label: page.t("bar.monitors.style.global") }].concat(
+                                    Object.keys(VitrailVariants.bar).map(function (key) {
+                                        return { key: key, label: page.t("bar.style." + key) }
+                                    }))
+                                onSelected: function (key) {
+                                    page.setBar(card.modelData, { style: key })
+                                }
                             }
                         }
 

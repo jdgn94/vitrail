@@ -24,6 +24,7 @@ colors colorContrast
 bar barEdge
 bar barScreens
 bar barStyle
+bar barMonitors
 bar barSize
 bar barOpacity
 bar barOpacityFollow

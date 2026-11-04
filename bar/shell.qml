@@ -12,6 +12,7 @@ import "kit/base"
 import "kit/composed"
 import "kit/frame.js" as Frame
 import "prefs.js" as Prefs
+import "../shell/barview.js" as BarView
 import "clock"
 import "dialogs"
 import "launcher"
@@ -1666,9 +1667,15 @@ ShellRoot {
                     VitrailBar {
                         id: bar
 
+                        // The global bar, with this output's edge and style
+                        // (bar.ini `barMonitors`); the thickness stays global.
+                        readonly property var barLayout: BarView.forMonitor(
+                            shell.prefs.barMonitors, monitor.modelData.name,
+                            { edge: shell.prefs.barEdge || "left", style: shell.prefs.barStyle || "" })
+
                         anchors.fill: parent
-                        edge: shell.prefs.barEdge || "left"
-                        variant: shell.prefs.barStyle || ""
+                        edge: bar.barLayout.edge
+                        variant: bar.barLayout.style
                         frameVariant: shell.prefs.frameStyle || ""
                         showBar: shell.prefs.barScreens === "all"
                                  || monitor.modelData === shell.primaryScreen
