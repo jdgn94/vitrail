@@ -121,8 +121,10 @@ PanelWindow {
         onHeightChanged: root.place()
         onShownChanged: if (tip.shown) root.place()
 
-        // Moving to the next element glides; the first appearance does not.
-        Behavior on x { enabled: tip.shown; NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
-        Behavior on y { enabled: tip.shown; NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+        // Moving to the next element glides; the first appearance does not:
+        // while the pill is still fading in its opacity is below 1, so the
+        // placement lands at once instead of travelling from the old position.
+        Behavior on x { enabled: tip.shown && tip.opacity > 0.9; NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+        Behavior on y { enabled: tip.shown && tip.opacity > 0.9; NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
     }
 }
