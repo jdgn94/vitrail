@@ -52,8 +52,6 @@ Options:
   --skip-packages     only link dotfiles
   --repair            re-link and re-enable a broken install (no packages)
   --gpu VENDOR        graphics stack: auto, amd, nvidia or intel (default: auto)
-  --repair            re-link and re-enable a broken install (no packages)
-  --gpu VENDOR        graphics stack: auto, amd, nvidia or intel (default: auto)
   --vpn MODE          vpn traffic mode: split, full or none (default: ask)
   --root DIR          repository root (default: this script's directory)
   --home DIR          target HOME (default: $HOME)
