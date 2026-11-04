@@ -52,7 +52,7 @@ printf 'git\nqt6-wayland\n' >"$tmp/repo/packages/base.txt"
 printf 'hyprland\nqt6-wayland\n' >"$tmp/repo/packages/hyprland.txt"
 printf 'niri\n' >"$tmp/repo/packages/niri.txt"
 mapfile -t got < <(GPU_VENDOR=none collect_packages "$tmp/repo" hyprland niri)
-expect_eq "collect_packages merges and dedupes" "git qt6-wayland hyprland niri" "${got[*]}"
+expect_eq "collect_packages merges and dedupes" "git qt6-wayland hyprland niri mesa" "${got[*]}"
 
 fakebin="$tmp/fakebin"
 mkdir -p "$fakebin"
