@@ -29,6 +29,7 @@ libsecret
 kitty
 glib2
 xdg-utils
+flatpak
 xorg-xrdb
 networkmanager
 bluez-utils

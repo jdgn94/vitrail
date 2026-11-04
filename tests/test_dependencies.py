@@ -98,6 +98,7 @@ PROVIDED_BY = {
     "awww-daemon": "awww",
     "mpvpaper": "mpvpaper",
     "fc-list": "fontconfig",
+    "flatpak": "flatpak",
     "ffmpeg": "ffmpeg",
     "ffprobe": "ffmpeg",
     "magick": "imagemagick",

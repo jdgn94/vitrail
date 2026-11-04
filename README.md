@@ -76,6 +76,7 @@ package to the manifest and a row here.
 | `cliphist`, `wl-clipboard`, `wtype`, `hyprpicker` | `cliphist`, `wl-copy`, `wl-paste`, `wtype`, `hyprpicker` | launcher clipboard history (`;`), the clipboard panel (`Mod+.`) with emojis and the colour picker, and pasting a pick into the focused window |
 | `xdg-utils` | `xdg-open`, `xdg-mime` | opening files, folders and links; finding the desktop's file manager |
 | `xorg-xrdb` | `xrdb` | the cursor theme for X11/XWayland apps |
+| `flatpak` | `flatpak` | the sandbox overrides that let Flatpak apps read the theme |
 | `nautilus` | the file manager | "open folder" and "open file" of a download, with the desktop's own choice read from `xdg-mime` (Nautilus is the fallback installed with Vitrail) |
 | `python-dbus`, `python-gobject` | — | the downloads watcher (`vitrail/downloads.py`): a notification per download and the buttons that cancel, delete or open it |
 | `wireplumber`, `playerctl`, `brightnessctl` | `wpctl`, `playerctl`, `brightnessctl` | media keys, laptop panel brightness |
@@ -322,7 +323,10 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   session picks up live (X11 included) — is `docs/cursors.md`.
   The same **Palette tint** on the Icons tab recolours only the folders of an
   installed pack, keeping its shading and inheriting every other icon
-  (`vitrail/icons.py`); `docs/icons.md` is the authoring guide. The window cannot run
+  (`vitrail/icons.py`); `docs/icons.md` is the authoring guide.
+  **Flatpak and Firefox** get the same palette: `vitrail/apps.py` grants the
+  sandbox read access to the theme folders and writes Firefox's `user.js` and
+  `chrome/userChrome.css`; see `docs/apps.md`. The window cannot run
   commands, so `bin/vitrail-settings` injects `python3 -m vitrail.fonts state`
   as `--fonts`; `scripts/apply-settings.sh` runs `fonts apply` when
   `fonts.ini` changes, and a value that is not installed falls back to its

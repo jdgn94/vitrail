@@ -166,6 +166,21 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] El tema generado aparece en **App icon pack** y se puede volver a él.
 - [ ] **Off** devuelve el pack original.
 
+## P2.8 — Flatpak y Firefox siguen la paleta (2026-11-04)
+
+- [ ] `flatpak override --user --show` lista `xdg-config/gtk-3.0:ro`,
+      `gtk-4.0:ro`, `fontconfig:ro`, `qt5ct/6ct:ro` y `xdg-data/icons:ro`.
+- [ ] Abre la app Flatpak instalada después de un cambio de fondo: usa los
+      colores y los iconos de la paleta.
+- [ ] Arranca Firefox una vez si nunca lo has hecho; vuelve a cambiar el fondo
+      y comprueba que aparece `~/.mozilla/firefox/*/user.js` con
+      `toolkit.legacyUserProfileCustomizations.stylesheets` y
+      `chrome/userChrome.css` con `--vitrail-surface`.
+- [ ] Reinicia Firefox: la barra de pestañas, la de navegación y la URL siguen
+      la paleta.
+- [ ] Un flatpak o un Firefox ya abiertos mantienen los colores viejos hasta
+      reiniciarse (documentado, no es un fallo).
+
 ### Diferidos (decide si los quieres)
 
 - Selector vacío si una clave guardada está vacía **y** la lista en vivo

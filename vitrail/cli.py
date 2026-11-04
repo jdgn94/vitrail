@@ -19,6 +19,7 @@ from vitrail import (
     safe_mode,
     style,
     system_theme,
+    apps,
     vpndoc,
     wallpaper,
     wallpaperd,
@@ -53,9 +54,7 @@ def _parser() -> argparse.ArgumentParser:
     theme.add_argument("--contrast", type=float, default=0.0)
     theme.add_argument("--prefer", choices=colors.PREFERS, default="saturation")
     theme.add_argument("--out", default=None, help="output directory")
-    theme.add_argument(
-        "--reload", action="store_true", help="reload Hyprland when done"
-    )
+    theme.add_argument("--reload", action="store_true", help="reload Hyprland when done")
 
     style_parser = sub.add_parser("style", help="export or import a style file")
     style_actions = style_parser.add_subparsers(dest="style_action")
@@ -66,9 +65,7 @@ def _parser() -> argparse.ArgumentParser:
     style_actions.add_parser("show", help="print the current style")
 
     paper = sub.add_parser("wallpaper", help="theme the wallpaper or rotate to the next one")
-    paper.add_argument(
-        "action", choices=("apply", "next", "sync", "import", "show", "stop", "status")
-    )
+    paper.add_argument("action", choices=("apply", "next", "sync", "import", "show", "stop", "status"))
     paper.add_argument("paths", nargs="*", help="import: files or folders to add")
     paper.add_argument("--force", action="store_true", help="apply: extract even if unchanged")
 
@@ -84,18 +81,12 @@ def _parser() -> argparse.ArgumentParser:
 
     sub.add_parser("doctor", help="check the system, the services and the preference files")
 
-    safe = sub.add_parser(
-        "safe-mode", help="start a minimal session when the config is broken"
-    )
-    safe.add_argument(
-        "action", nargs="?", choices=("status", "enter", "exit", "session"), default="status"
-    )
+    safe = sub.add_parser("safe-mode", help="start a minimal session when the config is broken")
+    safe.add_argument("action", nargs="?", choices=("status", "enter", "exit", "session"), default="status")
 
     config = sub.add_parser("config", help="check the preference files")
     config_actions = config.add_subparsers(dest="config_action")
-    config_actions.add_parser(
-        "validate", help="report unknown, misplaced or future keys"
-    )
+    config_actions.add_parser("validate", help="report unknown, misplaced or future keys")
     config_actions.add_parser("path", help="print the preference folder")
     config_set = config_actions.add_parser("set", help="write one preference key")
     config_set.add_argument("key")
@@ -109,16 +100,12 @@ def _parser() -> argparse.ArgumentParser:
     light.add_argument("action", choices=("list",))
 
     plugin_parser = sub.add_parser("plugins", help="list or lock plugins")
-    plugin_parser.add_argument(
-        "action", nargs="?", choices=("index", "lock"), default="index"
-    )
+    plugin_parser.add_argument("action", nargs="?", choices=("index", "lock"), default="index")
     return parser
 
 
 def _colors(args: argparse.Namespace) -> int:
-    out_dir = (
-        Path(args.out).expanduser() if args.out else colors.cache_dir() / "generated"
-    )
+    out_dir = Path(args.out).expanduser() if args.out else colors.cache_dir() / "generated"
     try:
         image = colors.fetch_image(args.image)
     except (OSError, ValueError) as error:
@@ -127,9 +114,7 @@ def _colors(args: argparse.Namespace) -> int:
 
     _say(f"Image: {image}")
     try:
-        theme, written = colors.write_theme(
-            image, out_dir, args.scheme, args.mode, args.contrast, args.prefer
-        )
+        theme, written = colors.write_theme(image, out_dir, args.scheme, args.mode, args.contrast, args.prefer)
     except colors.ColorExtractionError as error:
         _say(f"Could not extract colors: {error}")
         return 1
@@ -186,8 +171,7 @@ def _wallpaper(args: argparse.Namespace) -> int:
         return 0
     if args.action == "import":
         folders = wallpaper.ensure_folders(wallpaper.library(prefs.read_prefs(settings), settings))
-        added = wallpaper.import_paths(
-            folders, [Path(path).expanduser() for path in args.paths], say=_say)
+        added = wallpaper.import_paths(folders, [Path(path).expanduser() for path in args.paths], say=_say)
         for path in added:
             _say(f"  {path}")
         _say(f"Wallpapers: {len(added)} imported")
@@ -233,6 +217,7 @@ def _theme(args: argparse.Namespace) -> int:
         _say("No palette yet: pick a wallpaper first.")
         return 1
     system_theme.apply(args.mode, generated, _config_home())
+    apps.apply(args.mode, generated, cache=colors.cache_dir())
     _say(f"System theme: {args.mode}")
     return 0
 
