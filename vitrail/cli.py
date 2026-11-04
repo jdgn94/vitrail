@@ -25,6 +25,7 @@ from vitrail import (
     update,
     welcome,
     apps,
+    effects,
     vpndoc,
     wallpaper,
     wallpaperd,
@@ -216,16 +217,18 @@ def _wallpaper(args: argparse.Namespace) -> int:
         return 0
     cache = colors.cache_dir()
     if args.action == "show":
-        path = prefs.read_prefs(settings).get("wallpaper", "")
+        chosen = prefs.read_prefs(settings)
+        path = chosen.get("wallpaper", "")
         if not path:
             _say("Wallpaper: none selected")
             return 1
         try:
-            state = wallpaperd.show(path, cache)
+            shown = effects.derive(Path(path), chosen.get("wallpaperEffect", "none"), cache, say=_say)
+            state = wallpaperd.show(str(shown), cache)
         except (ValueError, OSError, subprocess.CalledProcessError) as error:
             _say(f"Could not display the wallpaper: {error}")
             return 1
-        wallpaper.apply(settings, cache, force=True)
+        wallpaper.apply(settings, cache, force=True, say=_say)
         _say(f"Wallpaper: {path} ({state['engine']})")
         return 0
     if args.action == "stop":
@@ -237,7 +240,7 @@ def _wallpaper(args: argparse.Namespace) -> int:
         _say(json.dumps(state) if state else "Wallpaper: nothing displayed")
         return 0
     try:
-        themed = wallpaper.apply(settings, colors.cache_dir(), force=args.force)
+        themed = wallpaper.apply(settings, colors.cache_dir(), force=args.force, say=_say)
     except (colors.ColorExtractionError, OSError, subprocess.CalledProcessError) as error:
         _say(f"Could not theme the wallpaper: {error}")
         return 1

@@ -19,13 +19,14 @@ import hashlib
 import json
 import random
 import re
+import shutil
 import subprocess
 import tempfile
 from collections import Counter
 from pathlib import Path
 from typing import Callable
 
-from vitrail import colors, media
+from vitrail import colors, effects, media
 from vitrail.prefs import read_prefs, remove_pref, write_pref
 
 KINDS = {
@@ -369,9 +370,12 @@ def apply(
     cache: Path,
     run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
     force: bool = False,
+    say: Say = _no_say,
 ) -> str | None:
-    """Regenerates the palette when the wallpaper or the system colour changed
-    (always, with `force`).
+    """Regenerates the palette when the wallpaper, its effect or the system
+    colour changed (always, with `force`). The effect is applied to the picture
+    first: the derived file is what the palette is taken from and what the bar
+    draws.
 
     Returns the wallpaper it themed, or None when nothing had to change.
     """
@@ -381,9 +385,10 @@ def apply(
     kind = kind_of(path)
     if not path or kind is None or not Path(path).is_file():
         return None
+    effect = prefs.get("wallpaperEffect", "none")
     fixed = system_color(prefs)
     scheme, contrast = colors.scheme_settings(prefs)
-    key = f"{path}{SEPARATOR}{fixed}{SEPARATOR}{scheme}{SEPARATOR}{contrast:g}"
+    key = f"{path}{SEPARATOR}{fixed}{SEPARATOR}{scheme}{SEPARATOR}{contrast:g}{SEPARATOR}{effect}"
     stamp = cache / "wallpaper.applied"
     if not force and stamp.exists() and stamp.read_text(encoding="utf-8") == key:
         return None
@@ -392,7 +397,10 @@ def apply(
     generated = cache / "generated"
     text = Path(path).read_text(encoding="utf-8") if kind == "svg" else ""
     seed = palette_seed(kind, fixed, text)
-    image = Path(path)
+    image = effects.derive(Path(path), effect, cache, run=run, say=say)
+    if image != Path(path):
+        # The bar cannot hash: it draws the stable copy of the derived picture.
+        shutil.copyfile(image, effects.shown(cache))
     if kind == "video" and seed is None:
         image = cache / "wallpaper-frame.png"
         run(["ffmpeg", "-loglevel", "error", "-y", "-ss", "1", "-i", path, "-frames:v", "1", str(image)], check=True)

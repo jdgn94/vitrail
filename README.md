@@ -298,7 +298,7 @@ the window declares it in another file, or the path unit watches another set.
 |------|------|
 | `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase` |
 | `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barMonitors`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep` |
-| `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `systemColor` (`wallpaperSeed`: legacy) |
+| `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `wallpaperEffect`, `systemColor` (`wallpaperSeed`: legacy) |
 | `background.ini` | `visualiserEnabled`, `visualiserVariant`, `visualiserHeight` |
 | `windows.ini` | `windowLayout`, `visibleColumns`, `followFocus`, `wrapFocus`, `borderWidth`, `opacityFocused`, `opacityUnfocused` |
 | `monitors.ini` | `monitorOverrides` |
@@ -584,8 +584,10 @@ Vitrail is free software under the **GNU General Public License v3.0**
 (`LICENSE`). Its interface takes ideas from two GPL-3.0 Quickshell projects —
 [caelestia-shell](https://github.com/caelestia-dots/shell) and
 [illogical-impulse](https://github.com/end-4/dots-hyprland) — and any code
-adapted from them keeps its authors' credit. The plan that lists what is taken
-lives in `.opencode_plans/inspired-v1.1.md`.
+adapted from them keeps its authors' credit. The wallpaper effects follow the
+set in [JaKooLit/Hyprland-Dots](https://github.com/JaKooLit/Hyprland-Dots)
+(GPL-3.0), reimplemented as `magick` argument lists. The plan that lists what is
+taken lives in `.opencode_plans/inspired-v1.1.md`.
 
 ## Status
 
@@ -643,6 +645,14 @@ On glass the frame shows a blurred copy of the wallpaper; on solid it sits on
 the surface color. Choosing a wallpaper regenerates the palette (a video lends
 one frame through `ffmpeg`). Until one is chosen, any other wallpaper tool
 keeps working.
+
+**Effect** applies one of eighteen ImageMagick treatments to the picture before
+it is drawn and before its palette is taken: `none`, `b&w`, `blur`, `charcoal`,
+`edge`, `emboss`, `raise`, `sunken`, `negate`, `paint`, `posterize`, `polaroid`,
+`sepia`, `solarize`, `sharpen`, `vignette`, `vignette-black`, `zoomed`. The
+derived file is cached in `~/.cache/vitrail/effects/<hash>-<effect>.png`, so
+returning to the same picture and effect costs nothing. Only images take an
+effect: an SVG and a video are shown as they are, with a notice.
 
 ### Audio visualiser
 

@@ -5,6 +5,7 @@ import QtQuick.Effects
 import Qt.labs.folderlistmodel
 import "../../kit"
 import "../../kit/base"
+import "../../kit/effects.js" as Effects
 import "../reorder.js" as Reorder
 
 // Wallpaper category: the settings shared by every kind (fit, rotation, the
@@ -251,6 +252,28 @@ Item {
                             foreground: page.palette.foreground
                             accent: page.palette.primary
                             onSelected: page.prefs.wallpaperMode = key
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "auto_awesome"
+                        label: page.t("wallpaper.effect")
+                        description: page.activeKind === "image" ? page.t("wallpaper.effect.help")
+                                                                 : page.t("wallpaper.effect.imageOnly")
+                        enabled: page.activeKind === "image"
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSelect {
+                            Layout.preferredWidth: 220
+                            current: Effects.of(page.prefs.wallpaperEffect)
+                            options: Effects.NAMES.map(function (name) {
+                                return { key: name, label: page.t("wallpaper.effect." + name) }
+                            })
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            panel: page.palette.surfaceHigh
+                            onSelected: page.prefs.wallpaperEffect = key
                         }
                     }
 

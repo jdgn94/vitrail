@@ -11,6 +11,7 @@ import "kit"
 import "kit/base"
 import "kit/composed"
 import "kit/frame.js" as Frame
+import "../kit/effects.js" as Effects
 import "prefs.js" as Prefs
 import "../shell/barview.js" as BarView
 import "clock"
@@ -643,8 +644,9 @@ ShellRoot {
     property string panelKind: ""
     property bool panelOpen: false
 
-    readonly property string generatedDir: (Quickshell.env("XDG_CACHE_HOME")
-                                            || Quickshell.env("HOME") + "/.cache") + "/vitrail/generated"
+    readonly property string cacheDir: (Quickshell.env("XDG_CACHE_HOME")
+                                        || Quickshell.env("HOME") + "/.cache") + "/vitrail"
+    readonly property string generatedDir: shell.cacheDir + "/generated"
     // The audio visualiser's spectrum: the runtime file vitrail.visualiser
     // writes, and whether there is anything to draw.
     readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
@@ -660,8 +662,12 @@ ShellRoot {
     // Bumped on every new palette: a regenerated SVG of the same name reloads.
     property int paletteVersion: 0
     // An adaptive SVG is shown recoloured for the current mode.
+    readonly property string wallpaperEffect: Effects.of(shell.prefs.wallpaperEffect)
     readonly property string wallpaperSource: {
         var path = shell.prefs.wallpaper || ""
+        // The effect is baked into a stable file apply-settings writes.
+        if (shell.wallpaperEffect !== "none" && Effects.isImage(path))
+            return shell.cacheDir + "/wallpaper-effect.png"
         if (!/\.svg$/i.test(path))
             return path
         return shell.generatedDir + "/wallpaper-" + (shell.dark ? "dark" : "light") + ".svg"

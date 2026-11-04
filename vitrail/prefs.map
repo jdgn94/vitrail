@@ -62,6 +62,7 @@ wallpaper wallpaperOrder
 wallpaper wallpaperImport
 wallpaper wallpaperRemove
 wallpaper wallpaperSeed
+wallpaper wallpaperEffect
 wallpaper systemColor
 
 # Desktop background extras: the audio visualiser over the wallpaper.
