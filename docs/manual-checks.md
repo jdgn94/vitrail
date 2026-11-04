@@ -204,10 +204,8 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 ### Diferidos (decide si los quieres)
 
 - Selector vacío si una clave guardada está vacía **y** la lista en vivo
-  también (raro: requiere que `fc-list` falle).
-- `fonts state` viaja como un único argumento (~24 KB en esta máquina; se
-  rompería con ~4 000 familias instaladas). Se arregla con un fichero de caché
-  como el del bundle de i18n.
-- No hay tests de `main()` ni de la línea de kitty que genera
-  `scripts/apply-settings.sh`.
-- «Nettes» como traducción de `Sharp` en francés.
+  también (requiere que `fc-list` falle; arreglarlo duplicaría en Python los
+  defaults que viven en QML).
+- No hay un test de comportamiento de la línea de kitty de
+  `scripts/apply-settings.sh`; la familia ya está cubierta por
+  `fonts.console_family` y el script la escribe solo si no está vacía.
