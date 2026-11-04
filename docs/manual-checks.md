@@ -201,7 +201,20 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
       el rectángulo y el vídeo sale solo de esa zona (Escape cancela sin
       grabar).
 
-### Diferidos (decide si los quieres)
+## P6.3 — Instalación sin clonar y `vitrail update` (2026-11-04)
+
+- [ ] En una máquina nueva (o un HOME de prueba), `curl .../bootstrap.sh | bash`
+      clona en `~/.local/share/vitrail` y lanza el instalador.
+- [ ] `vitrail update --check` imprime el commit instalado, el remoto y
+      `behind`; con la rama al día, `behind` es `false`.
+- [ ] Con un commit nuevo en `master`: `vitrail update` mueve el checkout y
+      vuelve a lanzar el instalador con las opciones guardadas.
+- [ ] Con cambios locales sin commitear, el update se niega; con `--force` los
+      descarta (comprobado en una copia, no en la instalación buena).
+- [ ] `vitrail update --dry-run` muestra el plan del instalador sin cambiar
+      nada.
+
+### Diferidos (decide si lo quieres)
 
 - Selector vacío si una clave guardada está vacía **y** la lista en vivo
   también (requiere que `fc-list` falle; arreglarlo duplicaría en Python los

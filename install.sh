@@ -55,6 +55,23 @@ Options:
 EOF
 }
 
+# What this install is: where it came from, which commit, and the choices the
+# updater must replay. `vitrail update` reads it.
+write_install_state() {
+    local folder="${XDG_DATA_HOME:-${HOME}/.local/share}/vitrail"
+    local commit="" branch="main"
+    if git -C "$ROOT_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+        commit="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
+        branch="$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+        [[ -n "$branch" ]] || branch="main"
+    fi
+    mkdir -p -- "$folder"
+    printf '{"root":"%s","commit":"%s","branch":"%s","remote":"origin","compositors":"%s","aur":"%s","vpn":"%s","installed":"%s"}\n' \
+        "$ROOT_DIR" "$commit" "$branch" "${SELECTED_COMPOSITORS[*]}" \
+        "${SELECTED_HELPERS[*]}" "$VPN_MODE" "$(date +%Y-%m-%dT%H-%M-%S)" \
+        >"$folder/install.json"
+}
+
 # ---------------------------------------------------------------- detection
 
 read_package_list() {
@@ -748,6 +765,7 @@ main() {
     prepare_vpn_storage
     setup_vpn
     enable_vpn_autostart
+    write_install_state
 
     info ""
     info "Done."

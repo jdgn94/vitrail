@@ -19,11 +19,27 @@ visual identity, one material, many compositors.
 The installer is plain bash: a fresh Arch system has no Python, so nothing
 else can be required.
 
+### Without cloning by hand
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/jdgn94/vitrail/master/bootstrap.sh | bash
+```
+
+`bootstrap.sh` shallow-clones (or updates) the repository in
+`~/.local/share/vitrail` and runs the installer there. `VITRAIL_REPO` overrides
+the remote (an SSH URL, a fork) and `VITRAIL_HOME` the checkout's place.
+Nothing is installed outside `$HOME`, `~/.local/bin` and the package manager.
+
+### From a checkout
+
 ```sh
 ./install.sh          # interactive
 ./install.sh --dry-run
 ./install.sh --yes --compositor hyprland --aur yay
 ```
+
+The installer records where it installed from, the commit and the choices in
+`~/.local/share/vitrail/install.json`; `vitrail update` replays them.
 
 The interactive flow uses the keyboard only:
 
@@ -52,6 +68,25 @@ What it does:
 5. Moves anything it is about to overwrite into `.backup/<timestamp>/`.
 
 It never deletes: if a directory is in the way, it stops and says so.
+
+## Update
+
+```sh
+vitrail update --check   # installed commit, remote commit, behind or not
+vitrail update           # fetch the branch, move the checkout, reinstall
+```
+
+`vitrail update` reads the install record, compares the installed commit with
+`origin/<branch>` (`git ls-remote`), and when they differ it fetches that branch,
+moves the checkout to it and re-runs `install.sh --yes` with the recorded
+compositor, AUR helper and VPN choices. The installer is idempotent, so this
+also picks up packages, units and new symlinks.
+
+Safety: the update refuses when the checkout has local changes (commit them, or
+`--force` to discard them), never touches `~/.config` (preferences, wallpapers
+and the palette live there), and `--dry-run` shows the installer's plan without
+changing anything. A checkout that is not a git clone (a tarball or a manual
+copy) has no remote: `vitrail update` reports it and does nothing.
 
 ## Runtime dependencies
 

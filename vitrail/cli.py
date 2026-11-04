@@ -19,6 +19,7 @@ from vitrail import (
     safe_mode,
     style,
     system_theme,
+    update,
     apps,
     vpndoc,
     wallpaper,
@@ -72,6 +73,11 @@ def _parser() -> argparse.ArgumentParser:
     mode = sub.add_parser("theme", help="apply light or dark to GTK, Qt and Hyprland")
     mode.add_argument("action", choices=("apply",))
     mode.add_argument("--mode", choices=("dark", "light"), required=True)
+
+    updater = sub.add_parser("update", help="update the installed checkout from its branch")
+    updater.add_argument("--check", action="store_true", help="only report the commits")
+    updater.add_argument("--force", action="store_true", help="discard local changes")
+    updater.add_argument("--dry-run", action="store_true", help="show the installer's plan")
 
     setter = sub.add_parser("set", help="change one setting (appearance, surfaceStyle)")
     setter.add_argument("key", choices=tuple(prefs.CHOICES))
@@ -317,6 +323,8 @@ def main(argv: list[str] | None = None) -> int:
         return _style(args)
     if args.command == "wallpaper":
         return _wallpaper(args)
+    if args.command == "update":
+        return update.command(args)
     if args.command == "theme":
         return _theme(args)
     if args.command == "set":
