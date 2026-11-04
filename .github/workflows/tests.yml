@@ -26,6 +26,7 @@ jobs:
             [[ -f "$script" ]] && bash -n "$script"
           done
       - run: bash tests/install_test.sh
+      - run: bash tests/uninstall_test.sh
 
   qml:
     runs-on: ubuntu-latest
