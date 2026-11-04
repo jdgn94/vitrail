@@ -337,6 +337,30 @@ class ApplyTests(unittest.TestCase):
         env = (self.config / "environment.d" / "20-vitrail-cursor.conf").read_text(encoding="utf-8")
         self.assertIn("XCURSOR_THEME=Adwaita", env)
 
+    def test_a_cursor_change_reaches_x11_too(self) -> None:
+        calls: list[list[str]] = []
+        code = fonts.apply(
+            {"fontSystem": "Roboto", "iconTheme": "Adwaita", "cursorTheme": "Adwaita", "cursorSize": 24},
+            self.config,
+            run=self.recording(FACES, calls),
+            roots=[self.icons],
+            hyprland=False,
+            x11=True,
+            cache=self.root / "cache",
+        )
+        self.assertEqual(code, 0)
+        resources = self.config / "X11" / "vitrail-cursor.Xresources"
+        self.assertIn(["xrdb", "-merge", str(resources)], calls)
+        self.assertIn(["pkill", "-HUP", "-x", "xsettingsd"], calls)
+        self.assertIn("Xcursor.theme: Adwaita", resources.read_text(encoding="utf-8"))
+        self.assertIn("Xcursor.size: 24", resources.read_text(encoding="utf-8"))
+        self.assertIn(
+            "gtk-cursor-theme-name=Adwaita", (self.config / "gtk-3.0/settings.ini").read_text(encoding="utf-8")
+        )
+        self.assertIn(
+            'Gtk/CursorThemeName "Adwaita"', (self.config / "xsettingsd/xsettingsd.conf").read_text(encoding="utf-8")
+        )
+
     def test_a_theme_that_is_not_installed_falls_back(self) -> None:
         code = self.apply({"fontSystem": "Roboto", "iconTheme": "Adwaita", "cursorTheme": "Nope", "cursorSize": 24})
         self.assertEqual(code, 1)

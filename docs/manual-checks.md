@@ -137,6 +137,12 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
       (unos segundos) el cursor se retinta solo; los demás diseños no se tocan.
 - [ ] El tema generado aparece en **Cursor theme** como una entrada más
       (`Vitrail · …`) y se puede volver a él sin repetir el tinte.
+- [ ] **X11 incluido**: con una app GTK en X11 abierta (o una ventana de
+      `xterm`/`xeyes`), cambia el diseño y comprueba que el puntero sobre ella
+      cambia sin reiniciarla. En la terminal:
+      `xrdb -query | grep Xcursor` debe responder con el tema y el tamaño, y
+      `pgrep -a xsettingsd` debe seguir vivo (se le manda SIGHUP, no se
+      reinicia).
 - [ ] **Off** devuelve el cursor al pack original.
 - [ ] Un pack borrado a mano mientras está elegido: el log dice `refused` y el
       cursor cae en Adwaita, sin dejar el puntero sin tema.

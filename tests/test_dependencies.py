@@ -115,6 +115,7 @@ PROVIDED_BY = {
     "wl-copy": "wl-clipboard",
     "wl-paste": "wl-clipboard",
     "xdg-open": "xdg-utils",
+    "xrdb": "xorg-xrdb",
     "xdg-mime": "xdg-utils",
     "wpctl": "wireplumber",
     "playerctl": "playerctl",

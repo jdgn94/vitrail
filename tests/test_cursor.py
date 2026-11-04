@@ -69,6 +69,20 @@ class TintTests(unittest.TestCase):
         self.assertEqual(cursor.tint(pixels, 1, 1, "#ff0000", "#000000"), pixels)
 
 
+class XsettingsTests(unittest.TestCase):
+    def test_the_two_keys_are_updated_and_the_rest_kept(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "xsettingsd.conf"
+            path.write_text('Xft/DPI 96\nGtk/CursorThemeName "Old"\n', encoding="utf-8")
+            cursor.update_xsettings(path, "Vitrail · Bibata", 32)
+            text = path.read_text(encoding="utf-8")
+            self.assertIn("Xft/DPI 96", text)
+            self.assertIn('Gtk/CursorThemeName "Vitrail · Bibata"', text)
+            self.assertIn("Gtk/CursorThemeSize 32", text)
+            self.assertNotIn('"Old"', text)
+            self.assertTrue(path.with_name("xsettingsd.conf.before-vitrail").exists())
+
+
 class BuildTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -116,6 +130,25 @@ class BuildTests(unittest.TestCase):
         bare.mkdir(parents=True)
         (bare / "index.theme").write_text("[Icon Theme]\n", encoding="utf-8")
         self.assertFalse(cursor.build(bare, bare.with_name("vitrail-Bare"), PALETTE, self.cache))
+
+    def test_the_cli_builds_an_installed_pack(self) -> None:
+        icons = self.pack.parent
+        self.assertEqual(
+            cursor.main(["build", "Bibata"], roots=[icons], palette=PALETTE, output=icons, cache=self.cache), 0
+        )
+        self.assertTrue((icons / "vitrail-Bibata" / "index.theme").is_file())
+
+    def test_the_cli_refuses_a_missing_pack(self) -> None:
+        self.assertEqual(
+            cursor.main(
+                ["build", "Nope"],
+                roots=[self.pack.parent],
+                palette=PALETTE,
+                output=self.target.parent,
+                cache=self.cache,
+            ),
+            2,
+        )
 
     def test_the_design_name_round_trips(self) -> None:
         self.assertEqual(cursor.design_name("Bibata"), "vitrail-Bibata")

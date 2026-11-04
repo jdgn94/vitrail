@@ -29,6 +29,7 @@ libsecret
 kitty
 glib2
 xdg-utils
+xorg-xrdb
 networkmanager
 bluez-utils
 power-profiles-daemon

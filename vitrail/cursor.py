@@ -226,6 +226,32 @@ def tint(pixels: bytes, width: int, height: int, fill: str, outline: str) -> byt
     return bytes(out)
 
 
+def update_xsettings(path: Path, theme: str, size: int) -> None:
+    """Sets the two cursor keys in an xsettingsd config, keeping the rest.
+
+    GTK apps on X11 read the cursor from XSETTINGS; merging instead of
+    replacing matters because the same file carries the user's DPI and fonts.
+    """
+    keys = {"Gtk/CursorThemeName": f'"{theme}"', "Gtk/CursorThemeSize": str(size)}
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    backup = path.with_name(path.name + ".before-vitrail")
+    if path.exists() and not backup.exists():
+        backup.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    out, done = [], set()
+    for line in lines:
+        name = line.split(None, 1)[0] if line.strip() else ""
+        if name in keys:
+            out.append(f"{name} {keys[name]}")
+            done.add(name)
+        else:
+            out.append(line)
+    for name, value in keys.items():
+        if name not in done:
+            out.append(f"{name} {value}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
 # --- building ----------------------------------------------------------------
 
 
@@ -276,3 +302,39 @@ def build(pack: Path, target: Path, palette: dict, cache: Path, force: bool = Fa
     except OSError:
         pass
     return True
+
+
+def main(
+    argv: list[str] | None = None,
+    roots: list[Path] | None = None,
+    palette: dict | None = None,
+    output: Path | None = None,
+    cache: Path | None = None,
+) -> int:
+    """`cursor build <pack> [--force]`: the pipeline without the window."""
+    from . import fonts  # local: fonts imports this module
+
+    args = list(sys.argv[1:] if argv is None else argv)
+    if len(args) >= 2 and args[0] == "build":
+        roots = roots or fonts.DEFAULT_ROOTS
+        pack = fonts.theme_dir(args[1], roots)
+        if pack is None:
+            log(f"not an installed theme: {args[1]}")
+            return 2
+        design = design_name(pack.name)
+        target = (output / design) if output else (output_root() / design)
+        rebuilt = build(
+            pack,
+            target,
+            palette if palette is not None else fonts.active_palette(),
+            cache or (fonts.preview_cache() / "themes"),
+            force="--force" in args,
+        )
+        print(f"{design}: {'rebuilt' if rebuilt else 'up to date'} at {target}")
+        return 0
+    print("usage: cursor build <pack> [--force]", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

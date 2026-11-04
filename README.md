@@ -75,6 +75,7 @@ package to the manifest and a row here.
 | `plocate`, `fd` | `plocate`, `fd` | launcher file search (`/`); `plocate-updatedb.timer` is enabled by the installer |
 | `cliphist`, `wl-clipboard`, `wtype`, `hyprpicker` | `cliphist`, `wl-copy`, `wl-paste`, `wtype`, `hyprpicker` | launcher clipboard history (`;`), the clipboard panel (`Mod+.`) with emojis and the colour picker, and pasting a pick into the focused window |
 | `xdg-utils` | `xdg-open`, `xdg-mime` | opening files, folders and links; finding the desktop's file manager |
+| `xorg-xrdb` | `xrdb` | the cursor theme for X11/XWayland apps |
 | `nautilus` | the file manager | "open folder" and "open file" of a download, with the desktop's own choice read from `xdg-mime` (Nautilus is the fallback installed with Vitrail) |
 | `python-dbus`, `python-gobject` | — | the downloads watcher (`vitrail/downloads.py`): a notification per download and the buttons that cancel, delete or open it |
 | `wireplumber`, `playerctl`, `brightnessctl` | `wpctl`, `playerctl`, `brightnessctl` | media keys, laptop panel brightness |
@@ -316,7 +317,9 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   trigger shows the chosen one. **Palette tint** rebuilds an installed pack in
   `~/.local/share/icons/vitrail-<pack>` with the wallpaper's `on_surface` and
   `primary` (`vitrail/cursor.py`); the generated theme is then a normal entry
-  in the cursor list and follows every palette change. The window cannot run
+  in the cursor list and follows every palette change. The authoring guide —
+  what makes a pack tint well, the Xcursor layout, and what each part of the
+  session picks up live (X11 included) — is `docs/cursors.md`. The window cannot run
   commands, so `bin/vitrail-settings` injects `python3 -m vitrail.fonts state`
   as `--fonts`; `scripts/apply-settings.sh` runs `fonts apply` when
   `fonts.ini` changes, and a value that is not installed falls back to its
