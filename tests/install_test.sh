@@ -304,15 +304,36 @@ ETC_DIR="$tmp/etc" SKIP_PACKAGES=1 PATH="$tmp/bin:$PATH" setup_display_control >
 SKIP_PACKAGES=0
 rm -rf "$tmp"
 
+# ------------------------------------------------------- VPN login rule unit
+
+tmp="$(sandbox)"
+mkdir -p "$tmp/bin"
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"%s/calls"\n' "$tmp" >"$tmp/bin/systemctl"
+chmod +x "$tmp/bin/systemctl"
+VPN_MODE=split PATH="$tmp/bin:$PATH" enable_vpn_autostart >/dev/null
+expect_eq "enable_vpn_autostart enables the user unit" "1" \
+    "$(grep -c '^--user enable vitrail-vpn-autostart.service$' "$tmp/calls" 2>/dev/null)"
+rm -f "$tmp/calls"
+VPN_MODE=none PATH="$tmp/bin:$PATH" enable_vpn_autostart >/dev/null
+[[ ! -e "$tmp/calls" ]] && ok "enable_vpn_autostart is off with --vpn none" \
+    || not_ok "enable_vpn_autostart is off with --vpn none"
+rm -rf "$tmp"
+
 # ------------------------------------------------------------- validation
 
-if (SELECTED_COMPOSITORS=(sway); validate_selection) >/dev/null 2>&1; then
+if (
+    SELECTED_COMPOSITORS=(sway)
+    validate_selection
+) >/dev/null 2>&1; then
     not_ok "validate_selection rejects unknown compositors"
 else
     ok "validate_selection rejects unknown compositors"
 fi
 
-if (SELECTED_HELPERS=(yay); validate_selection) >/dev/null 2>&1; then
+if (
+    SELECTED_HELPERS=(yay)
+    validate_selection
+) >/dev/null 2>&1; then
     ok "validate_selection accepts known helpers"
 else
     not_ok "validate_selection accepts known helpers"

@@ -11,7 +11,8 @@ The window cannot run commands, so this module does both halves:
 `bin/vitrail-settings` injects `state` at launch; `scripts/apply-settings.sh`
 runs `apply` when the window asks for something (see prefs.map, area
 `connection`), and the page re-reads network-state.json once it is written.
-The bar runs `autostart` once when it starts.
+The `vitrail-vpn-autostart.service` user unit runs `autostart` at every login,
+so the tunnel comes up even when the bar was never started.
 
 A request is `<verb>`, `<verb>:<argument>` or `<verb>:<json>`. Only the verbs
 below exist, every argument is validated and travels as one argv item:
@@ -116,10 +117,31 @@ LOSS = re.compile(r"(\d+)% packet loss")
 NETWORK_WAIT = 30
 NETWORK_POLL = 2
 
-NO_ARGUMENT = {"wifi-on", "wifi-off", "wifi-disconnect", "bt-on", "bt-off", "bt-scan", "refresh",
-               "vpn-best", "vpn-probe", "vpn-off", "vpn-domain-refresh"}
-WITH_ARGUMENT = {"wifi-connect", "vpn-up", "vpn-down", "vpn-mode", "vpn-domain-add", "vpn-domain-remove",
-                 "vpn-remove", "vpn-cred-remove", "bt-connect", "bt-disconnect"} | set(SHAPES)
+NO_ARGUMENT = {
+    "wifi-on",
+    "wifi-off",
+    "wifi-disconnect",
+    "bt-on",
+    "bt-off",
+    "bt-scan",
+    "refresh",
+    "vpn-best",
+    "vpn-probe",
+    "vpn-off",
+    "vpn-domain-refresh",
+}
+WITH_ARGUMENT = {
+    "wifi-connect",
+    "vpn-up",
+    "vpn-down",
+    "vpn-mode",
+    "vpn-domain-add",
+    "vpn-domain-remove",
+    "vpn-remove",
+    "vpn-cred-remove",
+    "bt-connect",
+    "bt-disconnect",
+} | set(SHAPES)
 
 Runner = Callable[[list[str]], "str | None"]
 # The network, injected so tests run offline: a host to its addresses, and a
@@ -129,6 +151,7 @@ Directory = Callable[[str], "list[str]"]
 
 
 # --- requests ----------------------------------------------------------------
+
 
 def valid_ssid(text: str) -> bool:
     """1 to 32 bytes, no control characters, and not an option for nmcli."""
@@ -203,13 +226,21 @@ def valid_file(text: object) -> bool:
 
 
 def valid_ids(value: object) -> bool:
-    return isinstance(value, list) and 0 < len(value) <= MAX_IDS \
+    return (
+        isinstance(value, list)
+        and 0 < len(value) <= MAX_IDS
         and all(isinstance(one, str) and VPN_ID.match(one) for one in value)
+    )
 
 
 FIELDS: dict[str, Callable[[object], bool]] = {
-    "file": valid_file, "name": valid_label, "credential": valid_label, "rename": valid_label,
-    "user": valid_user, "ids": valid_ids, "nonce": lambda text: isinstance(text, str) and NONCE.match(text) is not None,
+    "file": valid_file,
+    "name": valid_label,
+    "credential": valid_label,
+    "rename": valid_label,
+    "user": valid_user,
+    "ids": valid_ids,
+    "nonce": lambda text: isinstance(text, str) and NONCE.match(text) is not None,
     "move": lambda value: isinstance(value, bool),
 }
 
@@ -299,18 +330,27 @@ def command(verb: str, argument: str = "", wifi_device: str = "", secret: str = 
             return [*tool, "credential", "remove", argument]
         case "vpn-import":
             data = payload(verb, argument)
-            return [*tool, "import", data["file"],
-                    *(["--name", data["name"]] if "name" in data else []),
-                    *(["--credential", data["credential"]] if "credential" in data else [])]
+            return [
+                *tool,
+                "import",
+                data["file"],
+                *(["--name", data["name"]] if "name" in data else []),
+                *(["--credential", data["credential"]] if "credential" in data else []),
+            ]
         case "vpn-cred-add":
             data = payload(verb, argument)
             return [*tool, "credential", "add", data["name"], "--user", data["user"], "--pass-file", secret]
         case "vpn-cred-update":
             data = payload(verb, argument)
-            return [*tool, "credential", "update", data["name"],
-                    *(["--rename", data["rename"]] if "rename" in data else []),
-                    *(["--user", data["user"]] if "user" in data else []),
-                    *(["--pass-file", secret] if "nonce" in data else [])]
+            return [
+                *tool,
+                "credential",
+                "update",
+                data["name"],
+                *(["--rename", data["rename"]] if "rename" in data else []),
+                *(["--user", data["user"]] if "user" in data else []),
+                *(["--pass-file", secret] if "nonce" in data else []),
+            ]
         case "vpn-cred-assign":
             data = payload(verb, argument)
             return [*tool, "credential", "assign", data["name"], *data["ids"]]
@@ -324,6 +364,7 @@ def command(verb: str, argument: str = "", wifi_device: str = "", secret: str = 
 
 
 # --- parsing what the tools print --------------------------------------------
+
 
 def split_terse(line: str) -> list[str]:
     """A line of `nmcli -t`: fields split on `:`, where `\\:` and `\\\\` are literal."""
@@ -424,7 +465,8 @@ def parse_vpn(text: str) -> list[dict]:
     return [
         {key: one.get(key) or "" for key in ("id", "name", "provider", "region", "credential", "config_path")}
         | {"active": bool(one.get("active"))}
-        for one in json_list(text) if isinstance(one, dict) and one.get("id")
+        for one in json_list(text)
+        if isinstance(one, dict) and one.get("id")
     ]
 
 
@@ -432,9 +474,13 @@ def parse_credentials(text: str) -> list[dict]:
     """`hypraether-vpn credential list --json`: name, user name and how many
     connections use it. The tool never prints a password; none is kept."""
     return [
-        {"name": one["name"], "username": str(one.get("username") or ""),
-         "usedBy": one["used_by"] if isinstance(one.get("used_by"), int) else 0}
-        for one in json_list(text) if isinstance(one, dict) and isinstance(one.get("name"), str) and one["name"]
+        {
+            "name": one["name"],
+            "username": str(one.get("username") or ""),
+            "usedBy": one["used_by"] if isinstance(one.get("used_by"), int) else 0,
+        }
+        for one in json_list(text)
+        if isinstance(one, dict) and isinstance(one.get("name"), str) and one["name"]
     ]
 
 
@@ -442,7 +488,8 @@ def parse_domains(text: str) -> list[dict]:
     """`hypraether-vpn domain list --json`: each domain with how many addresses it has now."""
     return [
         {"domain": one["domain"], "ips": len(one["ips"]) if isinstance(one.get("ips"), list) else 0}
-        for one in json_list(text) if isinstance(one, dict) and isinstance(one.get("domain"), str) and one["domain"]
+        for one in json_list(text)
+        if isinstance(one, dict) and isinstance(one.get("domain"), str) and one["domain"]
     ]
 
 
@@ -452,6 +499,7 @@ def parse_mode(text: str) -> str:
 
 
 # --- reading the system ------------------------------------------------------
+
 
 def read_timeout(argv: list[str]) -> int:
     if argv[:3] == ["hypraether-vpn", "domain", "list"]:
@@ -464,8 +512,7 @@ def run_text(argv: list[str]) -> str | None:
     if shutil.which(argv[0]) is None:
         return None
     try:
-        done = subprocess.run(argv, capture_output=True, text=True, check=False,
-                              timeout=read_timeout(argv))
+        done = subprocess.run(argv, capture_output=True, text=True, check=False, timeout=read_timeout(argv))
     except (OSError, subprocess.SubprocessError):
         return None
     return done.stdout if done.returncode == 0 else None
@@ -484,7 +531,9 @@ def ethernet(run: Runner, devices: list[dict]) -> dict:
             continue
         entry = {**device, "address": "", "gateway": ""}
         if device["state"] == "connected":
-            entry |= parse_ip4(run(["nmcli", "-t", "-f", "IP4.ADDRESS,IP4.GATEWAY", "device", "show", device["name"]]) or "")
+            entry |= parse_ip4(
+                run(["nmcli", "-t", "-f", "IP4.ADDRESS,IP4.GATEWAY", "device", "show", device["name"]]) or ""
+            )
         wired.append(entry)
     return {"devices": wired}
 
@@ -494,7 +543,9 @@ def wifi(run: Runner, devices: list[dict]) -> dict:
     enabled = (run(["nmcli", "radio", "wifi"]) or "").strip() == "enabled"
     networks = []
     if card and enabled:
-        networks = parse_wifi(run(["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "no"]) or "")
+        networks = parse_wifi(
+            run(["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "no"]) or ""
+        )
     return {"available": card != "", "enabled": enabled and card != "", "device": card, "networks": networks}
 
 
@@ -543,19 +594,25 @@ def bluetooth(run: Runner, present: Callable[[], bool] = has_bluetooth_controlle
         # A scan also finds nameless beacons, listed under their address.
         if not info["paired"] and name.replace("-", ":").upper() == mac:
             continue
-        result["devices"].append({
-            "mac": mac,
-            "name": name,
-            "paired": info["paired"],
-            "connected": info["connected"],
-            "battery": info["battery"],
-        })
+        result["devices"].append(
+            {
+                "mac": mac,
+                "name": name,
+                "paired": info["paired"],
+                "connected": info["connected"],
+                "battery": info["battery"],
+            }
+        )
     result["devices"].sort(key=lambda one: (not one["connected"], not one["paired"], one["name"].lower()))
     return result
 
 
-def state(run: Runner = run_text, quality: dict | None = None, marker: Path | None = None,
-          bluetooth_present: Callable[[], bool] = has_bluetooth_controller) -> dict:
+def state(
+    run: Runner = run_text,
+    quality: dict | None = None,
+    marker: Path | None = None,
+    bluetooth_present: Callable[[], bool] = has_bluetooth_controller,
+) -> dict:
     """Everything the page shows. `updated` (milliseconds) tells which copy of
     the state is the newer one."""
     listed = device_list(run)
@@ -586,6 +643,7 @@ def write_state(data: dict, folder: Path | None = None) -> Path:
 
 # --- the VPN rules: resolving a URL, the quality of a connection, the best one
 
+
 def lookup(host: str) -> list[str]:
     """The IPv4 and IPv6 addresses of a host, unique and sorted; [] when it
     does not resolve (or the network is down)."""
@@ -603,8 +661,11 @@ def parse_transparency(body: str) -> list[str]:
         listed = json.loads(body)
     except ValueError:
         return []
-    return [one["name_value"] for one in listed if isinstance(one, dict) and isinstance(one.get("name_value"), str)] \
-        if isinstance(listed, list) else []
+    return (
+        [one["name_value"] for one in listed if isinstance(one, dict) and isinstance(one.get("name_value"), str)]
+        if isinstance(listed, list)
+        else []
+    )
 
 
 def transparency(domain: str) -> list[str]:
@@ -652,12 +713,14 @@ def resolve_url(url: str, resolver: Resolver = lookup, directory: Directory = tr
         listed = directory(root)
     except (OSError, ValueError):
         listed, retry = [], True
-    names = sorted({
-        name
-        for text in listed
-        for name in (line.strip().lower() for line in text.split("\n"))
-        if name != host and (name == root or name.endswith("." + root)) and HOST.match(name)
-    })[:MAX_DOMAINS]
+    names = sorted(
+        {
+            name
+            for text in listed
+            for name in (line.strip().lower() for line in text.split("\n"))
+            if name != host and (name == root or name.endswith("." + root)) and HOST.match(name)
+        }
+    )[:MAX_DOMAINS]
     addresses |= resolve_all(names, resolver)
     live = sorted(name for name, found in addresses.items() if found)
     found = {"ips": sorted({address for ips in addresses.values() for address in ips}), "domains": live}
@@ -699,8 +762,13 @@ def parse_ping(output: str) -> tuple[float | None, int | None]:
 def ping_host(host: str) -> tuple[float | None, int | None]:
     """Three pings with a second to answer each; LANG=C keeps the output in English."""
     try:
-        done = subprocess.run(["env", "LANG=C", "ping", "-c", "3", "-W", "1", host], capture_output=True,
-                              text=True, timeout=PING_TIMEOUT, check=False)
+        done = subprocess.run(
+            ["env", "LANG=C", "ping", "-c", "3", "-W", "1", host],
+            capture_output=True,
+            text=True,
+            timeout=PING_TIMEOUT,
+            check=False,
+        )
     except (OSError, subprocess.SubprocessError):
         return None, 100
     return parse_ping(done.stdout)
@@ -721,8 +789,10 @@ def probe(tunnels: list[dict], pinger: Pinger = ping_host, read: Callable[[str],
     for key, listed in hosts.items():
         latencies = [results[host][0] for host in listed if results[host][0] is not None]
         losses = [results[host][1] for host in listed if results[host][1] is not None]
-        found[key] = {"latency": sum(latencies) / len(latencies) if latencies else None,
-                      "loss": max(losses) if losses else None}
+        found[key] = {
+            "latency": sum(latencies) / len(latencies) if latencies else None,
+            "loss": max(losses) if losses else None,
+        }
     return found
 
 
@@ -741,10 +811,13 @@ def best(tunnels: list[dict], quality: dict, left_out: set[str]) -> str | None:
         return (quality.get(one["id"]) or {}).get("latency")
 
     candidates = [one for one in pool if measured(one) is not None] or pool
-    return min(candidates, key=lambda one: (
-        measured(one) if measured(one) is not None else float("inf"),
-        (quality.get(one["id"]) or {}).get("loss") or 0,
-    ))["id"]
+    return min(
+        candidates,
+        key=lambda one: (
+            measured(one) if measured(one) is not None else float("inf"),
+            (quality.get(one["id"]) or {}).get("loss") or 0,
+        ),
+    )["id"]
 
 
 def load_quality(folder: Path) -> dict:
@@ -753,8 +826,15 @@ def load_quality(folder: Path) -> dict:
         found = json.loads((folder / STATE_FILE).read_text(encoding="utf-8"))["vpn"]["quality"]
     except (OSError, ValueError, KeyError, TypeError):
         return {}
-    return {key: {"latency": one.get("latency"), "loss": one.get("loss")}
-            for key, one in found.items() if isinstance(one, dict)} if isinstance(found, dict) else {}
+    return (
+        {
+            key: {"latency": one.get("latency"), "loss": one.get("loss")}
+            for key, one in found.items()
+            if isinstance(one, dict)
+        }
+        if isinstance(found, dict)
+        else {}
+    )
 
 
 def startup_action(enabled: bool, tunnels: list[dict]) -> str:
@@ -844,6 +924,7 @@ def runtime_dir() -> Path | None:
 
 # --- acting --------------------------------------------------------------------
 
+
 def run_action(argv: list[str], timeout: int = ACT_TIMEOUT) -> tuple[int, str]:
     """Runs a request's command: (exit code, last line it printed)."""
     if shutil.which(argv[0]) is None:
@@ -916,7 +997,10 @@ def add_domains(url: str, act: Act, run: Runner, resolver: Resolver, directory: 
         if done != 0:
             log(f"domain add failed ({done}): {last}")
             code = 1
-    log(f"vpn-domain-add done ({added} added" + (", incomplete: offline or no directory)" if found.get("retry") else ")"))
+    log(
+        f"vpn-domain-add done ({added} added"
+        + (", incomplete: offline or no directory)" if found.get("retry") else ")")
+    )
     return code
 
 
@@ -932,9 +1016,13 @@ def import_file(argument: str, act: Act, store: Store) -> int:
         log(f"vpn-import failed: {error}")
         return 1
     log(label("vpn-import", argument))
-    argv = ["hypraether-vpn", "import", str(stored),
-            *(["--name", data["name"]] if "name" in data else []),
-            *(["--credential", data["credential"]] if "credential" in data else [])]
+    argv = [
+        "hypraether-vpn",
+        "import",
+        str(stored),
+        *(["--name", data["name"]] if "name" in data else []),
+        *(["--credential", data["credential"]] if "credential" in data else []),
+    ]
     return run_logged("vpn-import", argv, act)
 
 
@@ -947,11 +1035,22 @@ def connect_best(verb: str, tunnels: list[dict], quality: dict, document: dict, 
     return run_logged(verb, ["hypraether-vpn", "connect", chosen], act)
 
 
-def apply(request: str, folder: Path | None = None, act: Act = run_action, run: Runner = run_text, *,
-          resolver: Resolver = lookup, directory: Directory = transparency, pinger: Pinger = ping_host,
-          read: Callable[[str], str] = read_config, runtime: Path | None = None, marker: Path | None = None,
-          secret_wait: float = SECRET_WAIT, doc_folder: Path | None = None,
-          store: Store = vpndoc.store_file) -> int:
+def apply(
+    request: str,
+    folder: Path | None = None,
+    act: Act = run_action,
+    run: Runner = run_text,
+    *,
+    resolver: Resolver = lookup,
+    directory: Directory = transparency,
+    pinger: Pinger = ping_host,
+    read: Callable[[str], str] = read_config,
+    runtime: Path | None = None,
+    marker: Path | None = None,
+    secret_wait: float = SECRET_WAIT,
+    doc_folder: Path | None = None,
+    store: Store = vpndoc.store_file,
+) -> int:
     """Runs one request, logs it, and rewrites the state file. 0 when it ran
     (or was only a refresh, a probe or a skipped request), 2 when refused, 1
     when the command failed."""
@@ -983,8 +1082,11 @@ def apply(request: str, folder: Path | None = None, act: Act = run_action, run: 
         code = add_domains(argument, act, run, resolver, directory)
     elif verb in LABELLED:
         log(label(verb, argument))
-        code = run_with_password(verb, argument, act, runtime, secret_wait) if verb in SHAPES \
+        code = (
+            run_with_password(verb, argument, act, runtime, secret_wait)
+            if verb in SHAPES
             else run_logged(verb, command(verb, argument) or [], act)
+        )
     else:
         card = wifi(run, device_list(run) or [])["device"] if verb == "wifi-disconnect" else ""
         argv = command(verb, argument, card)
@@ -1016,10 +1118,19 @@ def network_up(run: Runner) -> bool:
     return answer is None or answer.strip() == "full"
 
 
-def autostart(folder: Path | None = None, act: Act = run_action, run: Runner = run_text, *,
-              pinger: Pinger = ping_host, read: Callable[[str], str] = read_config, runtime: Path | None = None,
-              marker: Path | None = None, session: str | None = None, doc_folder: Path | None = None,
-              sleep: Callable[[float], None] = time.sleep) -> int:
+def autostart(
+    folder: Path | None = None,
+    act: Act = run_action,
+    run: Runner = run_text,
+    *,
+    pinger: Pinger = ping_host,
+    read: Callable[[str], str] = read_config,
+    runtime: Path | None = None,
+    marker: Path | None = None,
+    session: str | None = None,
+    doc_folder: Path | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+) -> int:
     """hypraether's login rule for the VPN, once per session (see
     `startup_action`). When it connects and nothing could be measured, it waits
     up to NETWORK_WAIT seconds for NetworkManager to report full connectivity,

@@ -106,6 +106,18 @@ Credentials live in a private sqlite vault (`~/.config/hypraether/vpn/vault.db`,
 mode 600) and never in the repository; `vpn/.gitignore` blocks `*.ovpn` and
 `vault.db`.
 
+The tunnel is hypraether-vpn's own **system unit**
+(`hypraether-vpn@<id>.service`, started by `hypraether-vpn connect`, with
+`Restart=on-failure`), never a child of Vitrail: stopping or restarting the bar
+leaves the connection exactly where it was. The **login rule** is the
+`vitrail-vpn-autostart.service` user unit (installed with the dotfiles and
+enabled by `install.sh` when the VPN is installed): it runs
+`vitrail-network autostart`, which connects the best connection while
+`~/.config/hypraether/vpn/enabled` asks for it. As a unit, it does not depend on
+the bar — the tunnel comes up after a login even if Quickshell never starts.
+Logs: `journalctl --user -u vitrail-vpn-autostart` for the rule and
+`journalctl -u "hypraether-vpn@*"` for the tunnel.
+
 ## Network
 
 ```sh

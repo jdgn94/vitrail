@@ -776,16 +776,10 @@ ShellRoot {
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
     }
 
-    // The VPN's login rule (hypraether's): once per graphical session the
-    // helper reads the `enabled` marker of hypraether-vpn and brings the best
-    // connection up, or records a tunnel that is already up. A stamp under
-    // $XDG_RUNTIME_DIR makes a restart of the bar do nothing, so it never
-    // undoes a disconnect. It may wait for the network (bounded).
-    Process {
-        running: true
-        command: ["python3", "-m", "vitrail.network", "autostart"]
-        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
-    }
+    // The VPN's login rule is a systemd user unit (`vitrail-vpn-autostart.service`,
+    // installed with the dotfiles), not a process of the bar: the tunnel must
+    // come up after a login even when Quickshell was never started, and a bar
+    // restart must not repeat what the login did.
 
     // Downloads: the watcher turns the files a downloader is still writing
     // (.part, .crdownload…) into notifications on this same server, replaced

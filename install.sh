@@ -162,7 +162,7 @@ multiselect() {
     fi
 
     VPN_MODE=""
-SELECTED=()
+    SELECTED=()
     for index in "${!items[@]}"; do
         if [[ ${state[index]} -eq 1 ]]; then
             SELECTED+=("${items[index]}")
@@ -441,7 +441,7 @@ link_binaries() {
     local bin_dir="${HOME_DIR}/.local/bin"
     local name source target
     mkdir -p -- "$bin_dir"
-    for name in vitrail-settings vitrail-preview vitrail-bar vitrail-apply-settings hyprland-dialog; do
+    for name in vitrail-settings vitrail-preview vitrail-bar vitrail-network vitrail-apply-settings hyprland-dialog; do
         case "$name" in
             vitrail-apply-settings) source="$ROOT_DIR/scripts/apply-settings.sh" ;;
             # Ahead of /usr/bin in PATH: Hyprland's dialogs open in the bar.
@@ -480,7 +480,10 @@ setup_display_control() {
     for pair in "${files[@]}"; do
         if ! cmp -s "$system/${pair%%:*}" "${pair#*:}"; then
             run sudo install -D -m 0644 "$system/${pair%%:*}" "${pair#*:}" \
-                || { warn "could not install ${pair#*:}; brightness of external monitors may not work"; return 0; }
+                || {
+                    warn "could not install ${pair#*:}; brightness of external monitors may not work"
+                    return 0
+                }
             changed=1
         fi
     done
@@ -539,6 +542,26 @@ enable_settings_watch() {
     fi
     # A running watcher keeps the files it was started with.
     systemctl --user try-restart vitrail-settings.path >/dev/null 2>&1 || true
+}
+
+# The VPN's login rule is a user unit, not the bar: after a login the tunnel
+# comes up even if Quickshell never starts, and a shell restart never repeats
+# it. The tunnel itself is hypraether-vpn's system unit; this only enables the
+# rule. `--vpn none` leaves it off.
+enable_vpn_autostart() {
+    [[ "$VPN_MODE" == "none" || -z "$VPN_MODE" ]] && return 0
+    if [[ $EUID -eq 0 ]]; then
+        warn "run the installer as your user to enable the VPN login rule"
+        return 0
+    fi
+    if [[ $DRY_RUN -eq 1 ]]; then
+        printf '  %s$ systemctl --user enable vitrail-vpn-autostart.service%s\n' "$DIM" "$RESET"
+        return 0
+    fi
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+    if ! systemctl --user enable vitrail-vpn-autostart.service >/dev/null 2>&1; then
+        warn "could not enable vitrail-vpn-autostart.service; connect from the bar after login"
+    fi
 }
 
 # --------------------------------------------------------------------- flow
@@ -641,9 +664,18 @@ main() {
                 SELECTED_HELPERS+=("${parts[@]}")
                 shift 2
                 ;;
-            --yes | -y) ASSUME_YES=1; shift ;;
-            --dry-run | -n) DRY_RUN=1; shift ;;
-            --skip-packages) SKIP_PACKAGES=1; shift ;;
+            --yes | -y)
+                ASSUME_YES=1
+                shift
+                ;;
+            --dry-run | -n)
+                DRY_RUN=1
+                shift
+                ;;
+            --skip-packages)
+                SKIP_PACKAGES=1
+                shift
+                ;;
             --vpn)
                 VPN_MODE="${2:?--vpn needs a value}"
                 case "$VPN_MODE" in
@@ -652,10 +684,22 @@ main() {
                 esac
                 shift 2
                 ;;
-            --root) ROOT_DIR="${2:?--root needs a value}"; shift 2 ;;
-            --home) HOME_DIR="${2:?--home needs a value}"; shift 2 ;;
-            -h | --help) usage; exit 0 ;;
-            *) usage >&2; die "unknown option: $1" ;;
+            --root)
+                ROOT_DIR="${2:?--root needs a value}"
+                shift 2
+                ;;
+            --home)
+                HOME_DIR="${2:?--home needs a value}"
+                shift 2
+                ;;
+            -h | --help)
+                usage
+                exit 0
+                ;;
+            *)
+                usage >&2
+                die "unknown option: $1"
+                ;;
         esac
     done
 
@@ -703,6 +747,7 @@ main() {
     enable_settings_watch
     prepare_vpn_storage
     setup_vpn
+    enable_vpn_autostart
 
     info ""
     info "Done."
