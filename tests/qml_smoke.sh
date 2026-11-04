@@ -24,11 +24,22 @@ not_ok() {
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+# Qt 6's qmllint lives with qt6-declarative; a Qt5 one in PATH would not do.
+if [[ -x /usr/lib/qt6/bin/qmllint ]]; then
+    QMLLINT=/usr/lib/qt6/bin/qmllint
+else
+    QMLLINT="$(command -v qmllint || true)"
+fi
+[[ -n "$QMLLINT" ]] || {
+    printf 'qmllint is missing\n' >&2
+    exit 1
+}
+
 for file in "$REPO"/kit/*.qml "$REPO"/kit/base/*.qml "$REPO"/kit/composed/*.qml \
     "$REPO"/shell/*.qml "$REPO"/shell/pages/*.qml "$REPO"/login/*.qml "$REPO"/lock/*.qml \
     "$REPO"/gallery/*.qml; do
     name="qmllint $(basename "$file")"
-    if output="$(qmllint "$file" 2>&1)"; then
+    if output="$("$QMLLINT" "$file" 2>&1)"; then
         ok "$name"
     else
         not_ok "$name" "$output"

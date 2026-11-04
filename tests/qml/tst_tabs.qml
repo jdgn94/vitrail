@@ -104,9 +104,12 @@ TestCase {
 
     function test_click_selects() {
         var box = make()
-        mouseClick(box, box.width / 2, box.height / 2)
+        // The empty space after the tabs selects nothing.
+        mouseClick(box, box.width - 2, box.height / 2)
         compare(spy.count, 0)
-        mouseClick(box, 4, box.height / 2)
+        var first = findChild(box, "tab0")
+        verify(first !== null)
+        mouseClick(first, first.width / 2, first.height / 2)
         compare(spy.signalArguments[0][0], "a")
     }
 }

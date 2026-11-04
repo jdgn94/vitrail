@@ -54,9 +54,11 @@ Item {
             model: root.tabs
 
             delegate: Item {
+                objectName: "tab" + index
                 id: tab
 
                 required property var modelData
+                required property int index
 
                 readonly property bool chosen: root.current === tab.modelData.key
 
