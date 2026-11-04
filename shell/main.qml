@@ -52,6 +52,8 @@ Window {
     readonly property var network: Args.json("--network", ({}))
     // The Monitors page: Hyprland's outputs as they were at launch.
     readonly property var monitors: Args.json("--monitors", ({ available: false, monitors: [] }))
+    // The Fonts page: the families, icon packs and cursors found at launch.
+    readonly property var fonts: Args.json("--fonts", ({ fonts: [], monospace: [], iconThemes: [], cursorThemes: [] }))
     // $XDG_RUNTIME_DIR: a private folder where a password may be left for the helper.
     readonly property string runtimeDir: Args.value("--runtime", "")
     // The VPN's private folder (~/.config/vitrail-vpn): its document lives there.
@@ -101,6 +103,7 @@ Window {
     // Grouped from what the user sees most to how the system behaves.
     readonly property var categories: [
         { key: "appearance", group: "look", glyph: "contrast", label: app.t("nav.appearance"), badge: app.t("badge.live") },
+        { key: "fonts", group: "look", glyph: "font_download", label: app.t("section.fonts"), badge: app.t("badge.live") },
         { key: "wallpaper", group: "look", glyph: "wallpaper", label: app.t("section.wallpaper"), badge: app.t("badge.live") },
         { key: "colors", group: "look", glyph: "palette", label: app.t("section.colors"), badge: "" },
         { key: "design", group: "look", glyph: "design_services", label: app.t("section.design"), badge: app.t("badge.live") },
@@ -305,6 +308,18 @@ Window {
                                         palette: app.theme
                                         prefs: app.store
                                         strings: app.strings
+                                    }
+                                }
+
+                                LazyPage {
+                                    shown: app.category === "fonts"
+
+                                    FontsPage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                        fonts: app.fonts
+                                        tab: Args.value("--tab", "text")
                                     }
                                 }
 

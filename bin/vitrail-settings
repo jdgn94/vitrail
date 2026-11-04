@@ -72,6 +72,11 @@ if command -v python3 >/dev/null 2>&1; then
         PYTHONPATH="${HERE}/.." python3 -m vitrail.monitors state >"${work}/monitors" 2>/dev/null \
             || printf '{"available":false,"monitors":[]}' >"${work}/monitors"
     } &
+    # The Fonts page: the fonts, icon packs and cursors this machine has.
+    {
+        PYTHONPATH="${HERE}/.." python3 -m vitrail.fonts state >"${work}/fonts" 2>/dev/null \
+            || printf '{"fonts":[],"monospace":[],"iconThemes":[],"cursorThemes":[]}' >"${work}/fonts"
+    } &
     wait
 else
     printf '{"languages":[],"strings":{}}' >"${i18n_file}"
@@ -88,6 +93,7 @@ palette="$(answer palette '{}')"
 zones="$(answer zones '[]')"
 network="$(answer network '{}')"
 monitors="$(answer monitors '{"available":false,"monitors":[]}')"
+fonts="$(answer fonts '{"fonts":[],"monospace":[],"iconThemes":[],"cursorThemes":[]}')"
 # `exec` below skips the EXIT trap.
 rm -rf -- "${work}"
 
@@ -111,6 +117,7 @@ exec qml6 -I "${HERE}/.." "${SHELL_DIR}/main.qml" -- \
     --ntp "${ntp}" \
     --network "${network}" \
     --monitors "${monitors}" \
+    --fonts "${fonts}" \
     --home "${HOME}" \
     --runtime "${XDG_RUNTIME_DIR:-}" \
     --vpn "${VPN_DIR}" \
