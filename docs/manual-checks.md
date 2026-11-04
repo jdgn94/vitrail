@@ -195,6 +195,11 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
       reproduce.
 - [ ] Cambia las carpetas en **Bar → Captura** y repite: guarda donde dijiste.
 - [ ] El audio solo se graba con el interruptor de audio encendido.
+- [ ] **Anotar**: enciende *Anotar las capturas*; al capturar se abre swappy y
+      lo que guardes es lo que queda en el fichero y en el portapapeles.
+- [ ] **Grabar región**: enciende *Grabar una región*; al grabar, slurp pide
+      el rectángulo y el vídeo sale solo de esa zona (Escape cancela sin
+      grabar).
 
 ### Diferidos (decide si los quieres)
 

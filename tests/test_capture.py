@@ -6,6 +6,7 @@ import json
 import signal
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from vitrail import capture
@@ -92,6 +93,45 @@ class ShotTests(unittest.TestCase):
     def test_a_failing_grim_is_reported(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(capture.shot("full", tmp, run=lambda argv: None), {"error": "grim failed"})
+
+
+class AnnotateTests(unittest.TestCase):
+    def grim(self, calls: list[list[str]]):
+        def run(argv: list[str]) -> str:
+            calls.append(argv)
+            Path(argv[-1]).write_bytes(b"png")
+            return ""
+
+        return run
+
+    def test_swappy_opens_the_saved_file_when_asked(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            calls: list[list[str]] = []
+            with mock.patch.object(capture.shutil, "which", return_value="/usr/bin/swappy"):
+                result = capture.shot(
+                    "full",
+                    tmp,
+                    copy=False,
+                    annotate=True,
+                    run=self.grim(calls),
+                    annotate_run=lambda argv: calls.append(argv) or "",
+                )
+            self.assertEqual(calls[-1], ["swappy", "-f", result["path"]])
+
+    def test_without_swappy_nothing_opens(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            calls: list[list[str]] = []
+            with mock.patch.object(capture.shutil, "which", return_value=None):
+                result = capture.shot(
+                    "full",
+                    tmp,
+                    copy=False,
+                    annotate=True,
+                    run=self.grim(calls),
+                    annotate_run=lambda argv: calls.append(argv) or "",
+                )
+            self.assertTrue(Path(result["path"]).is_file())
+            self.assertFalse(any(argv[0] == "swappy" for argv in calls))
 
 
 class RecordTests(unittest.TestCase):

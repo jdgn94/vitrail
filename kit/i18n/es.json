@@ -244,6 +244,8 @@
   "bar.capture.copy": "Copiar al portapapeles",
   "bar.capture.audio": "Grabar audio",
   "bar.capture.dirHelp": "~/Pictures/Screenshots",
+  "bar.capture.annotate": "Anotar las capturas",
+  "bar.capture.recordRegion": "Grabar una región en vez de la pantalla",
   "bar.tab.framePanels": "Marco y paneles",
   "wallpaper.add": "Añadir",
   "wallpaper.delete": "Eliminar",

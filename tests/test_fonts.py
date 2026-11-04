@@ -190,6 +190,19 @@ class PreviewTests(unittest.TestCase):
         self.assertTrue(state["cursorPreviews"]["Adwaita"][0].endswith(".png"))
 
 
+class EntryTests(unittest.TestCase):
+    def test_state_prints_the_lists(self) -> None:
+        import contextlib
+        import io
+        import tempfile as temp
+
+        with temp.TemporaryDirectory() as tmp:
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                self.assertEqual(fonts.main(["state"], run=lambda argv: FACES, cache=Path(tmp)), 0)
+            self.assertIn("Adwaita Sans", buffer.getvalue())
+
+
 class ApplyTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.mkdtemp()

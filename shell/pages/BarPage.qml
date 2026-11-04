@@ -412,6 +412,34 @@ Item {
                     }
 
                     VitrailSettingRow {
+                        icon: "edit"
+                        label: page.t("bar.capture.annotate")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.captureAnnotate
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.captureAnnotate = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "crop_free"
+                        label: page.t("bar.capture.recordRegion")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.captureRecordRegion
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.captureRecordRegion = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
                         icon: "mic"
                         label: page.t("bar.capture.audio")
                         foreground: page.palette.foreground
@@ -532,6 +560,34 @@ Item {
                         placeholder: page.t("bar.capture.dirHelp")
                         text: page.prefs.captureRecordDir
                         onTextChanged: page.prefs.captureRecordDir = text
+                    }
+
+                    VitrailSettingRow {
+                        icon: "edit"
+                        label: page.t("bar.capture.annotate")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.captureAnnotate
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.captureAnnotate = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "crop_free"
+                        label: page.t("bar.capture.recordRegion")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.captureRecordRegion
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.captureRecordRegion = value }
+                        }
                     }
 
                     VitrailSettingRow {

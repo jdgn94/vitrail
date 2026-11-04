@@ -244,6 +244,8 @@
   "bar.capture.copy": "In die Zwischenablage kopieren",
   "bar.capture.audio": "Ton aufnehmen",
   "bar.capture.dirHelp": "~/Pictures/Screenshots",
+  "bar.capture.annotate": "Bildschirmfotos bearbeiten",
+  "bar.capture.recordRegion": "Einen Bereich statt des Bildschirms aufnehmen",
   "bar.tab.framePanels": "Rahmen und Seitenleisten",
   "wallpaper.add": "Hinzufügen",
   "wallpaper.delete": "Löschen",

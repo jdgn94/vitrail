@@ -584,10 +584,10 @@ def apply(
     return 1 if replaced else 0
 
 
-def main(argv: list[str] | None = None, run: Runner = run_text) -> int:
+def main(argv: list[str] | None = None, run: Runner = run_text, cache: Path | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args == ["state"]:
-        print(json.dumps(state(run=run), separators=(",", ":")))
+        print(json.dumps(state(run=run, cache=cache), separators=(",", ":")))
         return 0
     if args == ["apply"]:
         return apply(prefs.read_prefs(prefs.config_dir()), config_home(), run=run, palette=active_palette())

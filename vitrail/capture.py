@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -109,8 +110,10 @@ def shot(
     mode: str,
     directory: str | None = None,
     copy: bool = True,
+    annotate: bool = False,
     run: Runner = run_text,
     copy_run=run_bytes,
+    annotate_run: Runner = run_text,
     now: float | None = None,
 ) -> dict:
     """Saves one screenshot; {"path"} or {"error"}."""
@@ -128,6 +131,11 @@ def shot(
             copied = False
         if not copied:
             log("the screenshot was saved but not copied")
+    if annotate:
+        if shutil.which("swappy"):
+            annotate_run(["swappy", "-f", str(path)])
+        else:
+            log("swappy is not installed; the screenshot is unannotated")
     return {"path": str(path)}
 
 

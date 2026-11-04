@@ -90,8 +90,10 @@ QtObject {
     property alias tabNumbers: terminalFile.tabNumbers
     property alias captureDir: captureFile.captureDir
     property alias captureCopy: captureFile.captureCopy
+    property alias captureAnnotate: captureFile.captureAnnotate
     property alias captureRecordDir: captureFile.captureRecordDir
     property alias captureRecordAudio: captureFile.captureRecordAudio
+    property alias captureRecordRegion: captureFile.captureRecordRegion
     property alias launcherEngine: launcherFile.launcherEngine
     property alias launcherBangs: launcherFile.launcherBangs
     property alias launcherModes: launcherFile.launcherModes
@@ -281,8 +283,10 @@ QtObject {
 
         property string captureDir: ""
         property bool captureCopy: true
+        property bool captureAnnotate: false
         property string captureRecordDir: ""
         property bool captureRecordAudio: false
+        property bool captureRecordRegion: false
     }
 
     property Settings launcherSettings: Settings {

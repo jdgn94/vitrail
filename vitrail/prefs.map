@@ -101,8 +101,10 @@ sound soundStep
 # Screenshots and screen recording.
 capture captureDir
 capture captureCopy
+capture captureAnnotate
 capture captureRecordDir
 capture captureRecordAudio
+capture captureRecordRegion
 
 launcher launcherEngine
 launcher launcherBangs

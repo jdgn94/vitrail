@@ -124,6 +124,7 @@ PROVIDED_BY = {
     "ddcutil": "ddcutil",
     "grim": "grim",
     "wf-recorder": "wf-recorder",
+    "swappy": "swappy",
     "slurp": "slurp",
 }
 

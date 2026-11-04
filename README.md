@@ -83,6 +83,7 @@ package to the manifest and a row here.
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
 | `grim`, `slurp` | `grim`, `slurp` | screenshots (region, window, full screen) |
 | `wf-recorder` | `wf-recorder` | screen recording from the panel, stopped from the bar |
+| `swappy` | `swappy` | annotating a screenshot before it is copied (optional flow) |
 | `pciutils` | `lspci` | GPU vendor detection in the installer and `vitrail doctor` |
 | `networkmanager`, `bluez-utils`, `wireplumber`, `power-profiles-daemon` | `nmcli`, `bluetoothctl`, `wpctl`, `powerprofilesctl` | the panel's quick toggles, the bar's network and power-profile popups, and the settings window's Connection page (networks, Bluetooth and power profile; `vitrail.network`: Wi-Fi, Bluetooth and VPN state and requests) |
 | `awww`, `mpvpaper` | `awww`, `awww-daemon`, `mpvpaper` | still wallpapers with transitions (awww) and animated ones (mpvpaper with VA-API) |
@@ -267,7 +268,7 @@ the window declares it in another file, or the path unit watches another set.
 | `terminal.ini` | `terminalScheme`, `terminalPadding`, `fontSize`, `tabStyle`, `tabIcons`, `tabNumbers` |
 | `sound.ini` | `soundOutputApps`, `soundInputApps`, `soundFocusApps`, `soundStep` |
 | `fonts.ini` | `fontSystem`, `fontConsole`, `uiIcons`, `iconTheme`, `cursorTheme`, `cursorSize`, `cursorSpinner` |
-| `capture.ini` | `captureDir`, `captureCopy`, `captureRecordDir`, `captureRecordAudio` |
+| `capture.ini` | `captureDir`, `captureCopy`, `captureAnnotate`, `captureRecordDir`, `captureRecordAudio`, `captureRecordRegion` |
 | `launcher.ini` | `launcherEngine`, `launcherBangs`, `launcherModes`, `launcherView`, `launcherClear` |
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
