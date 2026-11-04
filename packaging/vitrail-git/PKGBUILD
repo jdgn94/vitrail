@@ -1,10 +1,8 @@
 # Vitrail: the shell, the settings window and the installer.
-# Licence: the repository has no licence file yet; the owner must choose one
-# (and replace "custom") before publishing this to the AUR.
 pkgdesc="Dotfiles and a desktop layer for Arch Linux, built around Hyprland"
 arch=('any')
 url="https://github.com/jdgn94/vitrail"
-license=('custom')
+license=('GPL-3.0-only')
 depends=('awww' 'bat' 'bluez-utils' 'brightnessctl' 'btrfs-progs' 'cliphist' 'ddcutil' 'eza' 'fd' 'ffmpeg' 'flatpak' 'fontconfig' 'fzf' 'git' 'glib2' 'gnome-keyring' 'grim' 'hypridle' 'hyprland' 'hyprlock' 'hyprpicker' 'hyprpolkitagent' 'imagemagick' 'kitty' 'libqalculate' 'libsecret' 'matugen' 'mpvpaper' 'nautilus' 'networkmanager' 'noto-fonts' 'noto-fonts-emoji' 'pciutils' 'pipewire' 'pipewire-pulse' 'playerctl' 'plocate' 'polkit-gnome' 'power-profiles-daemon' 'python' 'python-dbus' 'python-gobject' 'qt5-wayland' 'qt6-base' 'qt6-declarative' 'qt6-wayland' 'quickshell' 'ripgrep' 'slurp' 'starship' 'swappy' 'ttf-jetbrains-mono-nerd' 'ttf-material-symbols-variable-git' 'ttf-roboto' 'wf-recorder' 'wireplumber' 'wl-clipboard' 'wtype' 'xdg-desktop-portal-gtk' 'xdg-desktop-portal-hyprland' 'xdg-utils' 'xorg-xrdb' 'zoxide' 'zsh')
 optdepends=('flatpak: reads the theme from the sandbox'
             'libnotify: desktop notifications from the helpers')

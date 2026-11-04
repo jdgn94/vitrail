@@ -45,6 +45,13 @@ class PkgbuildTests(unittest.TestCase):
         declared = set(re.findall(r"'([^']+)'", match.group(1)))
         self.assertEqual(manifest_packages() - declared, set())
 
+    def test_the_licence_is_gpl3_everywhere(self) -> None:
+        self.assertTrue((ROOT / "LICENSE").is_file())
+        self.assertIn("GNU GENERAL PUBLIC LICENSE", (ROOT / "LICENSE").read_text(encoding="utf-8"))
+        for name in ("vitrail", "vitrail-git"):
+            self.assertIn("license=('GPL-3.0-only')", self.pkgbuild(name))
+        self.assertIn("GPL-3.0-only", (ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
     def test_the_install_script_mentions_the_update(self) -> None:
         text = (PACKAGES / "vitrail" / "vitrail.install").read_text(encoding="utf-8")
         self.assertIn("vitrail-install", text)

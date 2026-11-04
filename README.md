@@ -575,6 +575,15 @@ vitrail/     colors.py (theme engine) and cli.py (commands)
 tests/       installer, QML smoke test, colors and translation tests
 ```
 
+## License and attribution
+
+Vitrail is free software under the **GNU General Public License v3.0**
+(`LICENSE`). Its interface takes ideas from two GPL-3.0 Quickshell projects —
+[caelestia-shell](https://github.com/caelestia-dots/shell) and
+[illogical-impulse](https://github.com/end-4/dots-hyprland) — and any code
+adapted from them keeps its authors' credit. The plan that lists what is taken
+lives in `.opencode_plans/inspired-v1.1.md`.
+
 ## Status
 
 Interactive installer, theme engine and the first settings window are working.
