@@ -306,6 +306,14 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
 - **Navigation:** a collapsible category rail on the left; each category opens
   its own screens as subcategory tabs on the right.
 - **Appearance:** theme and surface material.
+- **Fonts & icons:** three tabs (Text, Icons, Cursor) over the lists this
+  machine has (`fc-list`, `/usr/share/icons`): one system font for the apps
+  and the shell, the console font, the shell's Material Symbols family, the
+  GTK/Qt icon pack, and the cursor pack with its size. The window cannot run
+  commands, so `bin/vitrail-settings` injects `python3 -m vitrail.fonts state`
+  as `--fonts`; `scripts/apply-settings.sh` runs `fonts apply` when
+  `fonts.ini` changes, and a value that is not installed falls back to its
+  default instead of reaching fontconfig. Palette-tinted cursors are P2.10.
 - **Windows:** border geometry and window opacity (focused and unfocused).
   Blur is a single global value and only exists in glass mode.
 - **Monitors:** each output's mode, scale, rotation, position, mirror and

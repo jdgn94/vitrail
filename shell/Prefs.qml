@@ -264,7 +264,7 @@ QtObject {
         property string uiIcons: "rounded"
         property string iconTheme: "Adwaita"
         property string cursorTheme: "Adwaita"
-        property int cursorSize: 24
+        property int cursorSize: VitrailTokens.ranges.cursor.value
     }
 
     property Settings launcherSettings: Settings {

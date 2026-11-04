@@ -6,7 +6,8 @@
 .pragma library
 
 function options(names, current) {
-    var seen = {}
+    // No prototype: a family literally named "constructor" is still a family.
+    var seen = Object.create(null)
     var rows = []
     var list = names || []
     for (var i = 0; i < list.length; i++) {

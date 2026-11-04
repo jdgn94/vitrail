@@ -67,7 +67,6 @@
   "fonts.cursor": "Cursor theme",
   "fonts.cursor.help": "A pack already installed; palette-tinted cursors come with P2.10.",
   "fonts.cursorSize": "Cursor size",
-  "fonts.cursorSize.help": "In pixels.",
   "section.colors": "Colors",
   "windows.tabBorder": "Border",
   "windows.tabOpacity": "Opacity",

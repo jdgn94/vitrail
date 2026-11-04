@@ -57,7 +57,11 @@ var font = {
 // The family for a stored variant key; an unknown key keeps the default so a
 // stale preference never asks for a font that would draw plain text.
 font.iconFamilyOf = function (key) {
-    return font.iconVariants[key] || font.icons
+    // Own keys only: "constructor" and "__proto__" exist on every object and
+    // are not variants.
+    if (Object.prototype.hasOwnProperty.call(font.iconVariants, key))
+        return font.iconVariants[key]
+    return font.icons
 }
 
 // Motion travels with the variant, not with the component.

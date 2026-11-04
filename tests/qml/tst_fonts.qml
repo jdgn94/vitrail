@@ -26,4 +26,9 @@ TestCase {
         compare(FontsView.options(["Inter", "Inter", ""], "Inter"),
                 [{ key: "Inter", label: "Inter" }])
     }
+
+    function test_a_family_named_like_an_object_member_is_still_listed() {
+        compare(FontsView.options(["constructor"], ""),
+                [{ key: "constructor", label: "constructor" }])
+    }
 }

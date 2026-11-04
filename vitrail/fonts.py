@@ -118,6 +118,10 @@ def themes(roots: list[Path]) -> tuple[list[str], list[str]]:
                 folders = [child.name for child in path.iterdir() if child.is_dir()]
             except OSError:
                 continue
+            # A name with a control character would split the line it is
+            # written to (environment.d, gtk settings.ini).
+            if any(ord(char) < 32 for char in path.name):
+                continue
             if "cursors" in folders:
                 cursors.setdefault(path.name.casefold(), path.name)
             if any(name != "cursors" for name in folders):
@@ -145,8 +149,12 @@ def config_home() -> Path:
 
 
 def font_name(text: str, family: str) -> str:
-    """The gsettings font-name for `family`, keeping the size already set."""
-    parts = text.strip().rsplit(" ", 1)
+    """The gsettings font-name for `family`, keeping the size already set.
+
+    `gsettings get` prints the value quoted ("Sans 11"), so the quotes come off
+    before the size is read: font size is the user's, not Vitrail's.
+    """
+    parts = text.strip().strip("'").rsplit(" ", 1)
     if len(parts) == 2 and parts[1].replace(".", "", 1).isdigit():
         return f"{family} {parts[1]}"
     return f"{family} 11"
@@ -156,7 +164,11 @@ def console_family(name: str, run: Runner = run_text) -> str:
     """`name` when it is installed, else empty (and a line saying why)."""
     if not name:
         return ""
-    if name in families(run(font_query()) or ""):
+    text = run(font_query())
+    if text is None:
+        log("refused: could not list the installed fonts")
+        return ""
+    if name in families(text):
         return name
     log(f"refused: console font {name!r} is not installed")
     return ""
@@ -193,12 +205,12 @@ def apply(
     """Applies `fonts.ini` system-wide.
 
     0 when every value was used, 1 when a field fell back to its default, 2
-    when the live lists are empty and nothing could be validated (nothing is
+    when fontconfig listed nothing and nothing could be validated (nothing is
     written then: defaults would overwrite a working configuration).
     """
     live = state(run=run, roots=roots)
-    if not live["fonts"] or not live["iconThemes"] or not live["cursorThemes"]:
-        log("refused: the installed lists are empty; nothing was applied")
+    if not live["fonts"]:
+        log("refused: fc-list listed no families; nothing was applied")
         return 2
 
     replaced = False
@@ -213,36 +225,47 @@ def apply(
         return default
 
     family = pick(values.get("fontSystem"), live["fonts"], DEFAULT_FONT, "font")
-    icons = pick(values.get("iconTheme"), live["iconThemes"], DEFAULT_ICON_THEME, "icon theme")
-    cursor = pick(values.get("cursorTheme"), live["cursorThemes"], DEFAULT_CURSOR, "cursor theme")
+    # A group whose own list is empty cannot be validated: it is skipped and
+    # the other groups still apply.
+    icons = ""
+    if live["iconThemes"]:
+        icons = pick(values.get("iconTheme"), live["iconThemes"], DEFAULT_ICON_THEME, "icon theme")
+    else:
+        log("skipped: no icon theme found")
+    cursor = ""
+    if live["cursorThemes"]:
+        cursor = pick(values.get("cursorTheme"), live["cursorThemes"], DEFAULT_CURSOR, "cursor theme")
+    else:
+        log("skipped: no cursor theme found")
     size, replaced_size = _cursor_size(values.get("cursorSize", DEFAULT_CURSOR_SIZE))
     replaced = replaced or replaced_size
     variant = values.get("uiIcons")
     if variant not in (None, "", *ICON_VARIANTS):
         log(f"refused: UI icons {variant!r} is not one of {', '.join(ICON_VARIANTS)}")
+        replaced = True
 
     take_file(config / "fontconfig" / "conf.d" / "50-vitrail-font.conf", _fontconf(family))
-    set_ini_key(config / "gtk-3.0" / "settings.ini", "Settings", "gtk-icon-theme-name", icons)
-    qt = config / "qt6ct" / "qt6ct.conf"
-    if qt.parent.is_dir():
-        set_ini_key(qt, "Appearance", "icon_theme", icons)
-    env = config / "environment.d" / "20-vitrail-cursor.conf"
-    env.parent.mkdir(parents=True, exist_ok=True)
-    env.write_text(f"XCURSOR_THEME={cursor}\nXCURSOR_SIZE={size}\n", encoding="utf-8")
+    if icons:
+        set_ini_key(config / "gtk-3.0" / "settings.ini", "Settings", "gtk-icon-theme-name", icons)
+        qt = config / "qt6ct" / "qt6ct.conf"
+        if qt.parent.is_dir():
+            set_ini_key(qt, "Appearance", "icon_theme", icons)
+    if cursor:
+        env = config / "environment.d" / "20-vitrail-cursor.conf"
+        env.parent.mkdir(parents=True, exist_ok=True)
+        env.write_text(f"XCURSOR_THEME={cursor}\nXCURSOR_SIZE={size}\n", encoding="utf-8")
 
     current = run(["gsettings", "get", "org.gnome.desktop.interface", "font-name"]) or ""
-    for key, value in (
-        ("font-name", font_name(current, family)),
-        ("icon-theme", icons),
-        ("cursor-theme", cursor),
-        ("cursor-size", str(size)),
-    ):
-        run(["gsettings", "set", "org.gnome.desktop.interface", key, value])
-
-    if hyprland is None:
-        hyprland = bool(os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")) and bool(shutil.which("hyprctl"))
-    if hyprland:
-        run(["hyprctl", "setcursor", cursor, str(size)])
+    run(["gsettings", "set", "org.gnome.desktop.interface", "font-name", font_name(current, family)])
+    if icons:
+        run(["gsettings", "set", "org.gnome.desktop.interface", "icon-theme", icons])
+    if cursor:
+        run(["gsettings", "set", "org.gnome.desktop.interface", "cursor-theme", cursor])
+        run(["gsettings", "set", "org.gnome.desktop.interface", "cursor-size", str(size)])
+        if hyprland is None:
+            hyprland = bool(os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")) and bool(shutil.which("hyprctl"))
+        if hyprland:
+            run(["hyprctl", "setcursor", cursor, str(size)])
     return 1 if replaced else 0
 
 

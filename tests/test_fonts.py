@@ -66,6 +66,13 @@ class ThemeTests(unittest.TestCase):
         self.assertNotIn("Junk", fonts.themes([self.root])[0])
         self.assertNotIn("Junk", fonts.themes([self.root])[1])
 
+    def test_a_theme_name_with_a_control_character_is_skipped(self) -> None:
+        (self.root / "Bad\nName" / "48x48").mkdir(parents=True)
+        (self.root / "Bad\nName" / "index.theme").write_text("[Icon Theme]\n", encoding="utf-8")
+        icons, cursors = fonts.themes([self.root])
+        self.assertNotIn("Bad\nName", icons)
+        self.assertNotIn("Bad\nName", cursors)
+
 
 class StateTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -127,12 +134,44 @@ class ApplyTests(unittest.TestCase):
         return fonts.apply(values, self.config, run=run or self.recording(FACES), roots=[self.icons], hyprland=True)
 
     def test_the_font_name_keeps_the_size_already_set(self) -> None:
-        self.assertEqual(fonts.font_name("Sans 11", "Roboto"), "Roboto 11")
+        # gsettings prints the value quoted.
+        self.assertEqual(fonts.font_name("'Sans 11'", "Roboto"), "Roboto 11")
+        self.assertEqual(fonts.font_name("'Sans 13.5'", "Roboto"), "Roboto 13.5")
         self.assertEqual(fonts.font_name("", "Roboto"), "Roboto 11")
 
     def test_the_console_family_is_empty_when_it_is_not_installed(self) -> None:
         self.assertEqual(fonts.console_family("No Such Font", run=lambda argv: FACES), "")
         self.assertEqual(fonts.console_family("Roboto", run=lambda argv: FACES), "Roboto")
+
+    def test_the_console_family_is_empty_when_the_list_could_not_be_read(self) -> None:
+        self.assertEqual(fonts.console_family("Roboto", run=lambda argv: None), "")
+
+    def test_an_unknown_ui_icon_variant_leaves_the_apply_partial(self) -> None:
+        code = self.apply(
+            {
+                "fontSystem": "Roboto",
+                "uiIcons": "bogus",
+                "iconTheme": "Adwaita",
+                "cursorTheme": "Adwaita",
+                "cursorSize": 24,
+            }
+        )
+        self.assertEqual(code, 1)
+
+    def test_an_empty_icon_list_skips_only_the_icons(self) -> None:
+        empty = self.root / "no-themes"
+        empty.mkdir()
+        code = fonts.apply(
+            {"fontSystem": "Roboto", "iconTheme": "Adwaita", "cursorTheme": "Adwaita", "cursorSize": 24},
+            self.config,
+            run=self.recording(FACES),
+            roots=[empty],
+            hyprland=True,
+        )
+        self.assertEqual(code, 0)
+        self.assertTrue((self.config / "fontconfig/conf.d/50-vitrail-font.conf").exists())
+        self.assertFalse((self.config / "gtk-3.0/settings.ini").exists())
+        self.assertFalse((self.config / "environment.d/20-vitrail-cursor.conf").exists())
 
     def test_an_unknown_font_falls_back_to_the_default_and_is_not_written(self) -> None:
         code = self.apply({"fontSystem": "No Such Font"})

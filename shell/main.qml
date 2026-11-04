@@ -69,6 +69,9 @@ Window {
                                         : 0.5
     readonly property bool dark: prefs.appearance === "dark"
                                   || (prefs.appearance === "auto" && !app.daytime)
+    // A font the machine no longer has (a copied config) is shown on the
+    // Fonts page but never handed to the tokens: the shell keeps its own.
+    readonly property bool fontSystemInstalled: (app.fonts.fonts || []).indexOf(prefs.fontSystem) >= 0
 
     // What the pages bind to. A page declares properties named `prefs`,
     // `palette` and `draft`, so `prefs: prefs` would read the page's own.
@@ -136,7 +139,7 @@ Window {
         blur: prefs.blurStrength,
         opacity: prefs.surfaceOpacity,
         fontBase: prefs.fontBase,
-        fontFamily: prefs.fontSystem || VitrailTokens.font.family,
+        fontFamily: app.fontSystemInstalled ? prefs.fontSystem : VitrailTokens.font.family,
         iconFamily: VitrailTokens.font.iconFamilyOf(prefs.uiIcons),
         frame: prefs.frameSize,
         bar: prefs.barSize,
