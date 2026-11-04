@@ -19,7 +19,9 @@ from vitrail import (
     safe_mode,
     style,
     system_theme,
+    snapshot,
     update,
+    welcome,
     apps,
     vpndoc,
     wallpaper,
@@ -76,10 +78,21 @@ def _parser() -> argparse.ArgumentParser:
 
     sub.add_parser("version", help="print the version and how it was installed")
 
+    welcome_parser = sub.add_parser("welcome", help="first run: wallpaper, palette, window")
+    welcome_parser.add_argument("--no-open", action="store_true", help="do not open the window")
+
+    snapshots = sub.add_parser("snapshot", help="filesystem snapshots before an update")
+    snapshots.add_argument("action", choices=("create", "list"))
+    snapshots.add_argument("label", nargs="?", default="")
+
     updater = sub.add_parser("update", help="update the installed checkout from its branch")
     updater.add_argument("--check", action="store_true", help="only report the commits")
     updater.add_argument("--force", action="store_true", help="discard local changes")
     updater.add_argument("--dry-run", action="store_true", help="show the installer's plan")
+    updater.add_argument("--no-snapshot", action="store_true", help="do not snapshot first")
+    updater.add_argument(
+        "--require-snapshot", action="store_true", help="refuse to update when no snapshot can be taken"
+    )
 
     setter = sub.add_parser("set", help="change one setting (appearance, surfaceStyle)")
     setter.add_argument("key", choices=tuple(prefs.CHOICES))
@@ -325,6 +338,10 @@ def main(argv: list[str] | None = None) -> int:
         return _style(args)
     if args.command == "wallpaper":
         return _wallpaper(args)
+    if args.command == "welcome":
+        return welcome.main(["--no-open"] if args.no_open else [])
+    if args.command == "snapshot":
+        return snapshot.main([args.action] + ([args.label] if args.label else []))
     if args.command == "version":
         return update.version_command()
     if args.command == "update":

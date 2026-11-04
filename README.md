@@ -112,6 +112,7 @@ package to the manifest and a row here.
 | `xdg-utils` | `xdg-open`, `xdg-mime` | opening files, folders and links; finding the desktop's file manager |
 | `xorg-xrdb` | `xrdb` | the cursor theme for X11/XWayland apps |
 | `flatpak` | `flatpak` | the sandbox overrides that let Flatpak apps read the theme |
+| `btrfs-progs` | `btrfs` | the snapshot `vitrail update` takes on a btrfs root |
 | `nautilus` | the file manager | "open folder" and "open file" of a download, with the desktop's own choice read from `xdg-mime` (Nautilus is the fallback installed with Vitrail) |
 | `python-dbus`, `python-gobject` | — | the downloads watcher (`vitrail/downloads.py`): a notification per download and the buttons that cancel, delete or open it |
 | `wireplumber`, `playerctl`, `brightnessctl` | `wpctl`, `playerctl`, `brightnessctl` | media keys, laptop panel brightness |

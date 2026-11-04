@@ -15,8 +15,11 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Callable
+
+from . import snapshot
 
 Runner = Callable[[list[str]], str | None]
 
@@ -168,6 +171,17 @@ def command(args) -> int:
         result = check(document)
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
+    if not getattr(args, "no_snapshot", False):
+        label = "vitrail-update-" + time.strftime("%Y%m%d-%H%M%S")
+        taken = snapshot.create(label)
+        if "error" in taken:
+            if getattr(args, "require_snapshot", False):
+                print(f"update refused: {taken['error']}")
+                return 1
+            print(f"no snapshot: {taken['error']}")
+        else:
+            print(f"snapshot: {taken['path']}")
+
     result = apply(document, force=args.force)
     if "error" in result:
         print(f"update refused: {result['error']}")

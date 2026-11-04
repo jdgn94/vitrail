@@ -35,6 +35,7 @@ flatpak
 xorg-xrdb
 networkmanager
 bluez-utils
+btrfs-progs
 power-profiles-daemon
 ffmpeg
 imagemagick

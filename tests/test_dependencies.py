@@ -59,6 +59,8 @@ SYSTEM = {
     "sudo",
     "git",
     "uname",
+    "findmnt",
+    "sha256sum",
     "id",
     "true",
     "false",
@@ -84,6 +86,9 @@ EXTERNAL = {
     # (graphifyy, from uv) and uv itself (scripts/graphify-refresh.sh).
     "graphify",
     "uv",
+    # Optional snapshot backend: the user installs it if they want one on a
+    # non-btrfs system. btrfs-progs is in the manifest for the btrfs case.
+    "timeshift",
 }
 
 # Program -> the package that provides it. A program missing here is unknown.
@@ -125,6 +130,7 @@ PROVIDED_BY = {
     "grim": "grim",
     "wf-recorder": "wf-recorder",
     "swappy": "swappy",
+    "btrfs": "btrfs-progs",
     "slurp": "slurp",
 }
 
