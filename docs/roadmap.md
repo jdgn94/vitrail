@@ -146,7 +146,7 @@ clipboard, music, wallpapers, quick toggles, no config file editing.
 
 | Task | Depends on | Done when |
 |---|---|---|
-| P2.1 Monitors: layout, resolution, refresh, scale, rotation, per-monitor overrides | P0.2 | Two monitors with different scales persist and restore after logout |
+| ✅ P2.1 Monitors: layout, resolution, refresh, scale, rotation, per-monitor overrides | P0.2 | Two monitors with different scales persist and restore after logout |
 | P2.2 Fonts, icons, cursor: system font, console font, UI icons, app icon pack, cursor | P0.1 | One change updates GTK, Qt, kitty, the shell and the cursor in the same session |
 | P2.3 Power: profiles, battery state, low-battery warnings | P0.2 | Profile switch reflects in `powerprofilesctl` and survives reboot |
 | P2.4 Modes engine: apps, time window, automatic | P0.2, P1.6 | A mode applies ≥ 2 effects (profile, DND, bar density); automatic wins over time, manual wins over both |

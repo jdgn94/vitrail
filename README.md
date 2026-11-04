@@ -258,6 +258,7 @@ the window declares it in another file, or the path unit watches another set.
 | `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep` |
 | `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `systemColor` (`wallpaperSeed`: legacy) |
 | `windows.ini` | `windowLayout`, `visibleColumns`, `followFocus`, `wrapFocus`, `borderWidth`, `opacityFocused`, `opacityUnfocused` |
+| `monitors.ini` | `monitorOverrides` |
 | `input.ini` | `keyboardLayouts`, `keyboardSwitch`, `numlockOnStart`, `focusFollowsMouse` |
 | `terminal.ini` | `terminalScheme`, `terminalPadding`, `fontSize`, `tabStyle`, `tabIcons`, `tabNumbers` |
 | `sound.ini` | `soundOutputApps`, `soundInputApps`, `soundFocusApps`, `soundStep` |
@@ -305,6 +306,11 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
 - **Appearance:** theme and surface material.
 - **Windows:** border geometry and window opacity (focused and unfocused).
   Blur is a single global value and only exists in glass mode.
+- **Monitors:** each output's mode, scale, rotation, position, mirror and
+  enabled state, saved as one JSON document in `monitors.ini` (`monitorOverrides`)
+  and applied when it changes and at login: the Hyprland start hook runs
+  `vitrail-monitors apply --force`, so a two-monitor layout with different
+  scales comes back after a logout without the bar being involved.
 - **Input:** keyboard layouts with variants and the switch shortcut; pointer
   focus behaviour.
 - **Connection:** Internet (Ethernet and Wi-Fi), VPN and Bluetooth on tabs. The

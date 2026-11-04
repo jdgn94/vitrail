@@ -70,6 +70,7 @@ QtObject {
     property alias borderWidth: windowsFile.borderWidth
     property alias opacityFocused: windowsFile.opacityFocused
     property alias opacityUnfocused: windowsFile.opacityUnfocused
+    property alias monitorOverrides: monitorsFile.monitorOverrides
     property alias keyboardLayouts: inputFile.keyboardLayouts
     property alias keyboardSwitch: inputFile.keyboardSwitch
     property alias numlockOnStart: inputFile.numlockOnStart
@@ -195,9 +196,19 @@ QtObject {
         property real opacityUnfocused: 0.88
     }
 
+    property Settings monitorsSettings: Settings {
+        id: monitorsFile
+
+        fileName: root.directory + "/monitors.ini"
+        category: "monitors"
+
+        // One JSON object keyed by Hyprland output name ("DP-1"); an output
+        // without an entry follows the compositor's defaults.
+        property string monitorOverrides: "{}"
+    }
+
     property Settings inputSettings: Settings {
         id: inputFile
-
         fileName: root.directory + "/input.ini"
         category: "input"
 

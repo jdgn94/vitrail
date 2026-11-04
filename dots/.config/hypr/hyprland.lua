@@ -158,4 +158,8 @@ hl.on("hyprland.start", function()
     hl.exec_cmd(home .. "/.local/bin/vitrail-bar")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
     hl.exec_cmd("wl-paste --type image --watch cliphist store")
+    -- The saved monitor layout, so it survives a logout. --force: the stamp
+    -- that keeps other preference writes from re-applying it does not know
+    -- this is a new session.
+    hl.exec_cmd(home .. "/.local/bin/vitrail-monitors apply --force")
 end)

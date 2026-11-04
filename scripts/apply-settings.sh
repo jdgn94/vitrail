@@ -151,6 +151,10 @@ if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}
 
     printf 'Keyboard: layout=%s variant=%s options=%s numlock=%s\n' \
         "$kb_layout" "$kb_variant" "$kb_switch" "$numlock"
+
+    # Per-monitor layout (monitors.ini). Skipped when the document did not
+    # change, so any other preference write does not re-apply the layout.
+    PYTHONPATH="$(dirname -- "${SELF}")/.." python3 -m vitrail.monitors apply || true
 else
     printf 'Hyprland is not running; settings were only saved.\n'
 fi
@@ -163,7 +167,7 @@ appearance="$(read_ini appearance auto)"
 system_mode="$appearance"
 if [[ "$appearance" == "auto" ]]; then
     hour="$(date +%H)"
-    if (( 10#$hour >= 7 && 10#$hour < 19 )); then
+    if ((10#$hour >= 7 && 10#$hour < 19)); then
         system_mode="light"
     else
         system_mode="dark"

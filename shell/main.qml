@@ -50,6 +50,8 @@ Window {
     readonly property bool systemNtp: Args.value("--ntp", "yes") === "yes"
     // The Connection page: Ethernet, Wi-Fi, VPN and Bluetooth as they were at launch.
     readonly property var network: Args.json("--network", ({}))
+    // The Monitors page: Hyprland's outputs as they were at launch.
+    readonly property var monitors: Args.json("--monitors", ({ available: false, monitors: [] }))
     // $XDG_RUNTIME_DIR: a private folder where a password may be left for the helper.
     readonly property string runtimeDir: Args.value("--runtime", "")
     // The VPN's private folder (~/.config/vitrail-vpn): its document lives there.
@@ -104,6 +106,7 @@ Window {
         { key: "design", group: "look", glyph: "design_services", label: app.t("section.design"), badge: app.t("badge.live") },
         { key: "bar", group: "desktop", glyph: "toolbar", label: app.t("section.bar"), badge: app.t("badge.live") },
         { key: "windows", group: "desktop", glyph: "view_quilt", label: app.t("section.windows"), badge: app.t("badge.live") },
+        { key: "monitors", group: "desktop", glyph: "monitor", label: app.t("section.monitors"), badge: app.t("badge.live") },
         { key: "terminal", group: "desktop", glyph: "terminal", label: app.t("section.terminal"), badge: app.t("badge.live") },
         { key: "launcher", group: "desktop", glyph: "apps", label: app.t("section.launcher"), badge: app.t("badge.live") },
         { key: "input", group: "system", glyph: "keyboard", label: app.t("section.input"), badge: app.t("badge.live") },
@@ -312,6 +315,18 @@ Window {
                                         strings: app.strings
                                         screenWidth: app.screenWidth
                                         tab: Args.value("--tab", "border")
+                                    }
+                                }
+
+                                LazyPage {
+                                    shown: app.category === "monitors"
+
+                                    MonitorsPage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
+                                        configDir: app.configDir
+                                        monitors: app.monitors
                                     }
                                 }
 

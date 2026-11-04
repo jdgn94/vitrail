@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Runs a helper of `vitrail.monitors` (state or apply) with the repo on
+# PYTHONPATH. The Hyprland start hook calls `vitrail-monitors apply --force`,
+# so the layout survives a logout without the bar being involved.
+set -euo pipefail
+
+HERE="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
+
+export PYTHONPATH="${HERE}/..${PYTHONPATH:+:${PYTHONPATH}}"
+exec python3 -m vitrail.monitors "$@"

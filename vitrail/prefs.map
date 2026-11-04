@@ -68,6 +68,9 @@ windows borderWidth
 windows opacityFocused
 windows opacityUnfocused
 
+# The per-monitor overrides, one JSON object keyed by Hyprland output name.
+monitors monitorOverrides
+
 input keyboardLayouts
 input keyboardSwitch
 input numlockOnStart

@@ -67,6 +67,11 @@ if command -v python3 >/dev/null 2>&1; then
     {
         PYTHONPATH="${HERE}/.." python3 -m vitrail.network state >"${work}/network" 2>/dev/null || printf '{}' >"${work}/network"
     } &
+    # The Monitors page: Hyprland's outputs (none when it is not running).
+    {
+        PYTHONPATH="${HERE}/.." python3 -m vitrail.monitors state >"${work}/monitors" 2>/dev/null \
+            || printf '{"available":false,"monitors":[]}' >"${work}/monitors"
+    } &
     wait
 else
     printf '{"languages":[],"strings":{}}' >"${i18n_file}"
@@ -82,6 +87,7 @@ plugins="$(answer plugins '[]')"
 palette="$(answer palette '{}')"
 zones="$(answer zones '[]')"
 network="$(answer network '{}')"
+monitors="$(answer monitors '{"available":false,"monitors":[]}')"
 # `exec` below skips the EXIT trap.
 rm -rf -- "${work}"
 
@@ -104,6 +110,7 @@ exec qml6 -I "${HERE}/.." "${SHELL_DIR}/main.qml" -- \
     --timezone "${zone}" \
     --ntp "${ntp}" \
     --network "${network}" \
+    --monitors "${monitors}" \
     --home "${HOME}" \
     --runtime "${XDG_RUNTIME_DIR:-}" \
     --vpn "${VPN_DIR}" \
