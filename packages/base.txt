@@ -18,6 +18,7 @@ libqalculate
 xdg-desktop-portal-gtk
 polkit-gnome
 grim
+wf-recorder
 slurp
 awww
 pciutils

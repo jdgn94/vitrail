@@ -45,7 +45,8 @@ Item {
                 { key: "layout", icon: "toolbar", label: page.t("bar.section.layout") },
                 { key: "frame", icon: "crop_free", label: page.t("bar.tab.framePanels") },
                 { key: "notifications", icon: "notifications", label: page.t("bar.section.notifications") },
-                { key: "osd", icon: "tune", label: page.t("bar.section.osd") }
+                { key: "osd", icon: "tune", label: page.t("bar.section.osd") },
+                { key: "capture", icon: "screenshot_monitor", label: page.t("bar.section.capture") }
             ]
             current: page.tab
             foreground: page.palette.foreground
@@ -374,6 +375,59 @@ Item {
 
                 Section {
                     Layout.fillWidth: true
+                    visible: page.tab === "capture"
+                    icon: "screenshot_monitor"
+                    title: page.t("bar.section.capture")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    VitrailField {
+                        Layout.fillWidth: true
+                        label: page.t("bar.capture.dir")
+                        placeholder: page.t("bar.capture.dirHelp")
+                        text: page.prefs.captureDir
+                        onTextChanged: page.prefs.captureDir = text
+                    }
+
+                    VitrailSettingRow {
+                        icon: "content_copy"
+                        label: page.t("bar.capture.copy")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.captureCopy
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.captureCopy = value }
+                        }
+                    }
+
+                    VitrailField {
+                        Layout.fillWidth: true
+                        label: page.t("bar.capture.recordDir")
+                        placeholder: page.t("bar.capture.dirHelp")
+                        text: page.prefs.captureRecordDir
+                        onTextChanged: page.prefs.captureRecordDir = text
+                    }
+
+                    VitrailSettingRow {
+                        icon: "mic"
+                        label: page.t("bar.capture.audio")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.captureRecordAudio
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.captureRecordAudio = value }
+                        }
+                    }
+                }
+
+                Section {
+                    Layout.fillWidth: true
                     visible: page.tab === "osd"
                     icon: "tune"
                     title: page.t("bar.section.osd")
@@ -438,6 +492,59 @@ Item {
                             foreground: page.palette.foreground
                             accent: page.palette.primary
                             onSelected: page.prefs.osdSize = key
+                        }
+                    }
+                }
+
+                Section {
+                    Layout.fillWidth: true
+                    visible: page.tab === "capture"
+                    icon: "screenshot_monitor"
+                    title: page.t("bar.section.capture")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    VitrailField {
+                        Layout.fillWidth: true
+                        label: page.t("bar.capture.dir")
+                        placeholder: page.t("bar.capture.dirHelp")
+                        text: page.prefs.captureDir
+                        onTextChanged: page.prefs.captureDir = text
+                    }
+
+                    VitrailSettingRow {
+                        icon: "content_copy"
+                        label: page.t("bar.capture.copy")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.captureCopy
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.captureCopy = value }
+                        }
+                    }
+
+                    VitrailField {
+                        Layout.fillWidth: true
+                        label: page.t("bar.capture.recordDir")
+                        placeholder: page.t("bar.capture.dirHelp")
+                        text: page.prefs.captureRecordDir
+                        onTextChanged: page.prefs.captureRecordDir = text
+                    }
+
+                    VitrailSettingRow {
+                        icon: "mic"
+                        label: page.t("bar.capture.audio")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.captureRecordAudio
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.captureRecordAudio = value }
                         }
                     }
                 }

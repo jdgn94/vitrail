@@ -123,6 +123,7 @@ PROVIDED_BY = {
     "brightnessctl": "brightnessctl",
     "ddcutil": "ddcutil",
     "grim": "grim",
+    "wf-recorder": "wf-recorder",
     "slurp": "slurp",
 }
 

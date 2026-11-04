@@ -181,6 +181,21 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] Un flatpak o un Firefox ya abiertos mantienen los colores viejos hasta
       reiniciarse (documentado, no es un fallo).
 
+## P3.1 + P3.2 — Capturas y grabación (2026-11-04)
+
+- [ ] Abre el panel de notificaciones: la fila de captura tiene tres botones
+      (región, ventana, pantalla completa) y el de grabar.
+- [ ] **Región**: arrastra un rectángulo con slurp; aparece
+      `~/Pictures/Screenshots/Screenshot_*.png` y está en el portapapeles
+      (`wl-paste --type image/png | file -`). Escape cancela sin crear fichero.
+- [ ] **Ventana**: captura solo la ventana activa.
+- [ ] **Pantalla completa**: guarda y copia.
+- [ ] **Grabar**: el botón se pone rojo y en el bar aparece el chip de stop;
+      para desde el chip y comprueba que el `.mp4` de `~/Videos/Recordings` se
+      reproduce.
+- [ ] Cambia las carpetas en **Bar → Captura** y repite: guarda donde dijiste.
+- [ ] El audio solo se graba con el interruptor de audio encendido.
+
 ### Diferidos (decide si los quieres)
 
 - Selector vacío si una clave guardada está vacía **y** la lista en vivo

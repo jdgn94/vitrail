@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Screenshots and recording for the bar, with the repository on PYTHONPATH.
+set -euo pipefail
+
+HERE="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
+
+export PYTHONPATH="${HERE}/..${PYTHONPATH:+:${PYTHONPATH}}"
+exec python3 -m vitrail.capture "$@"

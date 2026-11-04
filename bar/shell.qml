@@ -604,6 +604,27 @@ ShellRoot {
             return fallback
         return String(raw) !== "false" && String(raw) !== "0"
     }
+    // Screenshots and recording: the module reads the folders and flags from
+    // capture.ini, so the call carries only the mode.
+    function captureShot(mode) {
+        vitrailCli.exec(["python3", "-m", "vitrail.capture", "shot", mode])
+    }
+
+    function toggleRecording() {
+        vitrailCli.exec(["python3", "-m", "vitrail.capture", "record", "toggle"])
+    }
+
+    function readRecordStatus(text) {
+        try {
+            var document = JSON.parse(text)
+            shell.recording = document.pid !== undefined
+            shell.recordPath = document.path || ""
+        } catch (error) {
+            shell.recording = false
+            shell.recordPath = ""
+        }
+    }
+
     // A numeric preference; zero is a value, not a missing one.
     function prefNumber(key, fallback) {
         var raw = shell.prefs[key]
@@ -1063,6 +1084,15 @@ ShellRoot {
     }
 
     FileView {
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/vitrail/record.json"
+        watchChanges: true
+        printErrors: false
+        onLoaded: shell.readRecordStatus(this.text())
+        onFileChanged: this.reload()
+        onLoadFailed: shell.readRecordStatus("{}")
+    }
+
+    FileView {
         path: Quickshell.shellDir + "/../vitrail/prefs.map"
         printErrors: false
         onLoaded: shell.prefFiles = Prefs.files(this.text())
@@ -1252,6 +1282,9 @@ ShellRoot {
     property var hyprDialogs: []
     readonly property var hyprDialog: shell.hyprDialogs.length > 0 ? shell.hyprDialogs[0] : null
     readonly property string dialogDir: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/vitrail-dialog"
+    // A recording is running: its state file is written by vitrail-capture.
+    property bool recording: false
+    property string recordPath: ""
 
     IpcHandler {
         target: "dialog"
@@ -1744,10 +1777,12 @@ ShellRoot {
                             strings: shell.strings
                             trayStyle: shell.prefs.trayStyle || "inline"
                             powerProfile: shell.powerProfile
+                            recording: shell.recording
                             onClicked: function (kind, item) { shell.togglePopup(kind, item, monitor.modelData) }
                             onHovered: function (kind, item) { shell.hoverPopup(kind, item, monitor.modelData) }
                             onTipHovered: function (item, on) { tooltips.hover(item, on) }
                             onSessionRequested: shell.toggleSession(monitor.modelData)
+                            onRecordStopped: shell.toggleRecording()
                         }
                     }
                 }
@@ -1821,6 +1856,9 @@ ShellRoot {
                     micMuted: shell.micMuted
                     airplaneOn: shell.airplaneOn
                     onQuickToggled: function (key) { shell.toggleQuick(key) }
+                    recording: shell.recording
+                    onShotRequested: function (mode) { shell.captureShot(mode) }
+                    onRecordRequested: shell.toggleRecording()
                     mediaStyle: shell.prefs.mediaStyle || "disc"
                     mediaPlayers: shell.mprisPlayers
                     mediaIndex: shell.mprisIndex

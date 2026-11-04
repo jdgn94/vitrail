@@ -48,6 +48,7 @@ Scope {
     // What a notification's buttons ask the shell to do, and the settings they
     // follow (snooze offered, muted apps, per-app counts today).
     property var act: null
+    property bool recording: false
     property bool snoozeEnabled: true
     property string mutedApps: ""
     property var stats: ({})
@@ -82,6 +83,8 @@ Scope {
     signal noteAdded(string note)
     signal noteRemoved(int index)
     signal quickToggled(string key)
+    signal shotRequested(string mode)
+    signal recordRequested()
 
     readonly property var bounds: root.docked ? root.layout.dock : root.layout.reserve
     readonly property bool touching: stripHover.hovered || panelHover.hovered
@@ -261,6 +264,13 @@ Scope {
                     airplaneOn: root.airplaneOn
                     dnd: root.dnd
                     onToggled: function (key) { root.quickToggled(key) }
+                }
+
+                CaptureRow {
+                    Layout.fillWidth: true
+                    recording: root.recording
+                    onShotRequested: function (mode) { root.shotRequested(mode) }
+                    onRecordRequested: root.recordRequested()
                 }
 
                 QuickNotes {

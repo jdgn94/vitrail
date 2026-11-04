@@ -22,6 +22,9 @@ GridLayout {
     property string trayStyle: "inline"
     // The mode the power chip shows (power-profiles-daemon).
     property string powerProfile: "balanced"
+    // A session is being recorded: the chip stops it.
+    property bool recording: false
+    signal recordStopped()
     // The buttons of the popouts that open without a click (IPC).
     readonly property Item networkButton: network
     readonly property Item vpnButton: vpn
@@ -40,6 +43,15 @@ GridLayout {
     flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
     rowSpacing: VitrailTokens.gap("xs")
     columnSpacing: VitrailTokens.gap("xs")
+
+    VitrailButton {
+        visible: root.recording
+        Layout.alignment: Qt.AlignHCenter
+        variant: "plain"
+        tone: "error"
+        icon: "stop_circle"
+        onClicked: root.recordStopped()
+    }
 
     TrayItems {
         Layout.alignment: Qt.AlignHCenter

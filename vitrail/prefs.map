@@ -98,6 +98,12 @@ sound soundInputApps
 sound soundFocusApps
 sound soundStep
 
+# Screenshots and screen recording.
+capture captureDir
+capture captureCopy
+capture captureRecordDir
+capture captureRecordAudio
+
 launcher launcherEngine
 launcher launcherBangs
 launcher launcherModes

@@ -81,7 +81,8 @@ package to the manifest and a row here.
 | `python-dbus`, `python-gobject` | — | the downloads watcher (`vitrail/downloads.py`): a notification per download and the buttons that cancel, delete or open it |
 | `wireplumber`, `playerctl`, `brightnessctl` | `wpctl`, `playerctl`, `brightnessctl` | media keys, laptop panel brightness |
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
-| `grim`, `slurp` | `grim`, `slurp` | screenshots |
+| `grim`, `slurp` | `grim`, `slurp` | screenshots (region, window, full screen) |
+| `wf-recorder` | `wf-recorder` | screen recording from the panel, stopped from the bar |
 | `pciutils` | `lspci` | GPU vendor detection in the installer and `vitrail doctor` |
 | `networkmanager`, `bluez-utils`, `wireplumber`, `power-profiles-daemon` | `nmcli`, `bluetoothctl`, `wpctl`, `powerprofilesctl` | the panel's quick toggles, the bar's network and power-profile popups, and the settings window's Connection page (networks, Bluetooth and power profile; `vitrail.network`: Wi-Fi, Bluetooth and VPN state and requests) |
 | `awww`, `mpvpaper` | `awww`, `awww-daemon`, `mpvpaper` | still wallpapers with transitions (awww) and animated ones (mpvpaper with VA-API) |
@@ -266,6 +267,7 @@ the window declares it in another file, or the path unit watches another set.
 | `terminal.ini` | `terminalScheme`, `terminalPadding`, `fontSize`, `tabStyle`, `tabIcons`, `tabNumbers` |
 | `sound.ini` | `soundOutputApps`, `soundInputApps`, `soundFocusApps`, `soundStep` |
 | `fonts.ini` | `fontSystem`, `fontConsole`, `uiIcons`, `iconTheme`, `cursorTheme`, `cursorSize`, `cursorSpinner` |
+| `capture.ini` | `captureDir`, `captureCopy`, `captureRecordDir`, `captureRecordAudio` |
 | `launcher.ini` | `launcherEngine`, `launcherBangs`, `launcherModes`, `launcherView`, `launcherClear` |
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
@@ -326,7 +328,12 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   (`vitrail/icons.py`); `docs/icons.md` is the authoring guide.
   **Flatpak and Firefox** get the same palette: `vitrail/apps.py` grants the
   sandbox read access to the theme folders and writes Firefox's `user.js` and
-  `chrome/userChrome.css`; see `docs/apps.md`. The window cannot run
+  `chrome/userChrome.css`; see `docs/apps.md`.
+- **Capture:** the panel's widgets slot has three screenshot buttons (region,
+  window, full) and a recording toggle, and the bar shows a red chip while a
+  recording runs (`vitrail/capture.py`, `vitrail-capture`): `grim` with a
+  `slurp` region or the active window, `wf-recorder` to `~/Videos/Recordings`,
+  the folder and the clipboard/audio flags in `capture.ini`. The window cannot run
   commands, so `bin/vitrail-settings` injects `python3 -m vitrail.fonts state`
   as `--fonts`; `scripts/apply-settings.sh` runs `fonts apply` when
   `fonts.ini` changes, and a value that is not installed falls back to its

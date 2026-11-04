@@ -13,6 +13,7 @@ PathChanged=%h/.config/vitrail/input.ini
 PathChanged=%h/.config/vitrail/terminal.ini
 PathChanged=%h/.config/vitrail/sound.ini
 PathChanged=%h/.config/vitrail/fonts.ini
+PathChanged=%h/.config/vitrail/capture.ini
 PathChanged=%h/.config/vitrail/launcher.ini
 PathChanged=%h/.config/vitrail/language.ini
 PathChanged=%h/.config/vitrail/datetime.ini

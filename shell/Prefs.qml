@@ -88,6 +88,10 @@ QtObject {
     property alias tabStyle: terminalFile.tabStyle
     property alias tabIcons: terminalFile.tabIcons
     property alias tabNumbers: terminalFile.tabNumbers
+    property alias captureDir: captureFile.captureDir
+    property alias captureCopy: captureFile.captureCopy
+    property alias captureRecordDir: captureFile.captureRecordDir
+    property alias captureRecordAudio: captureFile.captureRecordAudio
     property alias launcherEngine: launcherFile.launcherEngine
     property alias launcherBangs: launcherFile.launcherBangs
     property alias launcherModes: launcherFile.launcherModes
@@ -267,6 +271,18 @@ QtObject {
         property string cursorTheme: "Adwaita"
         property int cursorSize: VitrailTokens.ranges.cursor.value
         property bool cursorSpinner: false
+    }
+
+    property Settings captureSettings: Settings {
+        id: captureFile
+
+        fileName: root.directory + "/capture.ini"
+        category: "capture"
+
+        property string captureDir: ""
+        property bool captureCopy: true
+        property string captureRecordDir: ""
+        property bool captureRecordAudio: false
     }
 
     property Settings launcherSettings: Settings {
