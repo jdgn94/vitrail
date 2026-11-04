@@ -16,6 +16,7 @@ ARCH_LIKE=(arch manjaro endeavouros cachyos garuda artix)
 DRY_RUN=0
 ASSUME_YES=0
 SKIP_PACKAGES=0
+REPAIR=0
 HOME_DIR="${HOME}"
 SELECTED_COMPOSITORS=()
 SELECTED_HELPERS=()
@@ -48,6 +49,8 @@ Options:
   --yes, -y           do not prompt; use the flags above
   --dry-run, -n       show the plan without changing anything
   --skip-packages     only link dotfiles
+  --repair            re-link and re-enable a broken install (no packages)
+  --repair            re-link and re-enable a broken install (no packages)
   --vpn MODE          vpn traffic mode: split, full or none (default: ask)
   --root DIR          repository root (default: this script's directory)
   --home DIR          target HOME (default: $HOME)
@@ -497,7 +500,7 @@ install_locale_helper() {
 # lets the user open /dev/i2c-*, and membership of the i2c group. A new
 # session picks the group up, so the user must log out and back in.
 setup_display_control() {
-    [[ $SKIP_PACKAGES -eq 1 ]] && return 0
+    [[ $SKIP_PACKAGES -eq 1 && $REPAIR -eq 0 ]] && return 0
     local system="$ROOT_DIR/scripts/system" user="${SUDO_USER:-${USER:-$(id -un)}}" etc="${ETC_DIR:-/etc}" changed=0
     local -a files=("i2c-dev.conf:$etc/modules-load.d/i2c-dev.conf" "60-ddcutil-i2c.rules:$etc/udev/rules.d/60-ddcutil-i2c.rules")
     local pair
@@ -697,6 +700,12 @@ main() {
                 shift
                 ;;
             --skip-packages)
+                SKIP_PACKAGES=1
+                shift
+                ;;
+            --repair)
+                REPAIR=1
+                ASSUME_YES=1
                 SKIP_PACKAGES=1
                 shift
                 ;;

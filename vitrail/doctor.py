@@ -42,7 +42,8 @@ def _gpu_vendor(run: Callable[..., Any]) -> str:
         return "unknown"
 
     gpu_lines = [
-        line for line in out.splitlines()
+        line
+        for line in out.splitlines()
         if any(kw in line.lower() for kw in ("vga compatible controller", "3d controller", "display controller"))
     ]
     target_text = "\n".join(gpu_lines).lower() if gpu_lines else out.lower()
@@ -103,9 +104,7 @@ def collect(
 
     # vitrail-settings.path should be active
     if services_info.get("vitrail-settings.path") != "active":
-        problems.append(
-            f"service: vitrail-settings.path is {services_info.get('vitrail-settings.path')}"
-        )
+        problems.append(f"service: vitrail-settings.path is {services_info.get('vitrail-settings.path')}")
 
     # 4. Display
     hl_sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
@@ -226,9 +225,19 @@ def render(report: dict[str, Any]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
     report = collect()
     output = render(report)
-    print(output)
+    if "--report" in args:
+        index = args.index("--report")
+        target = Path(args[index + 1]) if index + 1 < len(args) else Path("vitrail-report.txt")
+        # The report travels: no user paths in it.
+        output = output.replace(str(Path.home()), "~")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(output + "\n", encoding="utf-8")
+        print(f"report: {target}")
+    else:
+        print(output)
     return 1 if report["problems"] else 0
 
 
