@@ -172,11 +172,24 @@ FocusScope {
         }
 
         VitrailText {
+            id: glyph
+
             anchors.fill: parent
-            visible: preview.count === 0
+            visible: preview.count === 0 && !!preview.option && !!preview.option.glyph
+            variant: "icon"
+            font.pixelSize: Math.min(preview.size, VitrailTokens.size("title"))
+            text: visible ? preview.option.glyph : ""
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+
+        VitrailText {
+            anchors.fill: parent
+            visible: preview.count === 0 && !glyph.visible && !!preview.option
+                     && !!preview.option.family
             variant: preview.size >= 40 ? "title" : "label"
             family: preview.option && preview.option.family ? preview.option.family : ""
-            text: preview.option && preview.option.family ? "Aa" : (preview.option ? preview.option.label : "")
+            text: "Aa"
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight

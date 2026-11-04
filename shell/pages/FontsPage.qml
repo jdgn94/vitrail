@@ -16,7 +16,7 @@ Item {
     property var prefs
     property var strings
     property var fonts: ({ fonts: [], monospace: [], iconThemes: [], cursorThemes: [],
-                           iconPreviews: {}, cursorPreviews: {} })
+                           cursorDesigns: [], iconPreviews: {}, cursorPreviews: {} })
     property string tab: "text"
 
     onTabChanged: scroller.contentY = 0
@@ -37,16 +37,73 @@ Item {
         return page.options(withPreview, current, "icons")
     }
 
+    // A generated cursor is "Vitrail · <pack>"; an installed one keeps its
+    // own name.
+    function cursorLabel(name) {
+        var pack = name.indexOf("vitrail-") === 0 ? name.substring(8) : ""
+        if (pack === "")
+            return name
+        return page.t("fonts.vitrail") + " · " + pack.replace(/-/g, " ")
+    }
+
+    // The Vitrail design active now ("" when a plain theme is chosen).
+    function cursorDesign() {
+        var name = page.prefs.cursorTheme || ""
+        return name.indexOf("vitrail-") === 0 ? name.substring(8) : ""
+    }
+
+    // "Off" plus one Vitrail design per installed pack.
+    function designOptions(names, current) {
+        var rows = [{
+            key: "",
+            label: page.t("fonts.design.off"),
+            icons: [],
+            glyph: "block"
+        }]
+        var packs = FontsView.options(names || [], "", page.cursorOrder)
+        for (var i = 0; i < packs.length; i++) {
+            var pack = packs[i].key
+            rows.push({
+                key: pack,
+                label: page.t("fonts.vitrail") + " · " + pack.replace(/-/g, " "),
+                icons: (page.fonts.cursorPreviews || {})[pack] || []
+            })
+        }
+        if (current && (names || []).indexOf(current) < 0)
+            rows.splice(1, 0, { key: current, label: page.t("fonts.vitrail") + " · " + current,
+                                icons: (page.fonts.cursorPreviews || {})[current] || [] })
+        return rows
+    }
+
+    // The design picker writes the theme name: offline it is the pack itself.
+    function chooseDesign(design) {
+        var name = page.prefs.cursorTheme || ""
+        var pack = name.indexOf("vitrail-") === 0 ? name.substring(8) : name
+        page.prefs.cursorTheme = design === "" ? (pack || "Adwaita") : "vitrail-" + design
+    }
+
+    // A design sorts right after its pack: "Adwaita", "Vitrail · Adwaita".
+    function cursorOrder(a, b) {
+        return page.cursorSortKey(a.key).localeCompare(page.cursorSortKey(b.key))
+    }
+
+    function cursorSortKey(key) {
+        return key.indexOf("vitrail-") === 0 ? key.substring(8) + " ·" : key
+    }
+
     function options(names, current, kind) {
-        var rows = FontsView.options(names || [], current || "")
+        var rows = FontsView.options(names || [], current || "",
+                                     kind === "cursor" ? page.cursorOrder : undefined)
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i]
             if (kind === "font")
                 row.family = row.key
             else if (kind === "icons")
                 row.icons = (page.fonts.iconPreviews || {})[row.key] || []
-            else if (kind === "cursor")
+            else if (kind === "cursor") {
                 row.icons = (page.fonts.cursorPreviews || {})[row.key] || []
+                row.label = page.cursorLabel(row.key)
+            }
         }
         return rows
     }
@@ -234,6 +291,30 @@ Item {
                             accent: page.palette.primary
                             panel: page.palette.surfaceHigh
                             onSelected: page.prefs.cursorTheme = key
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "palette"
+                        label: page.t("fonts.design")
+                        description: page.t("fonts.design.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailPicker {
+                            objectName: "cursorDesignPicker"
+                            Layout.preferredWidth: 320
+                            label: page.t("fonts.design")
+                            searchHint: page.t("fonts.search")
+                            triggerShown: 1
+                            triggerColumns: 1
+                            current: page.cursorDesign()
+                            options: page.designOptions(page.fonts.cursorDesigns,
+                                                        page.cursorDesign())
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            panel: page.palette.surfaceHigh
+                            onSelected: page.chooseDesign(key)
                         }
                     }
 

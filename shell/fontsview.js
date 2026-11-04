@@ -5,7 +5,7 @@
 // silently replaces the user's choice.
 .pragma library
 
-function options(names, current) {
+function options(names, current, compare) {
     // No prototype: a family literally named "constructor" is still a family.
     var seen = Object.create(null)
     var rows = []
@@ -17,7 +17,7 @@ function options(names, current) {
         seen[name] = true
         rows.push({ key: name, label: name })
     }
-    rows.sort(function (a, b) {
+    rows.sort(compare || function (a, b) {
         return a.key.localeCompare(b.key)
     })
     if (current && !seen[current])

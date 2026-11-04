@@ -126,6 +126,21 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] Marca P2.2 como hecha en `docs/roadmap.md`
       (`| P2.2 Fonts, icons, cursor …` → `| ✅ P2.2 …`) y borra esta sección.
 
+## P2.10 — Cursor tintado con la paleta (2026-11-04)
+
+- [ ] **Cursor → Palette tint**: elige `Vitrail · Bibata Modern Classic`.
+      Aparece en la carpeta `~/.local/share/icons/vitrail-Bibata-Modern-Classic`
+      y el puntero cambia: cuerpo claro (`on_surface`) con borde oscuro en tema
+      oscuro; cuerpo oscuro con borde claro en tema claro.
+- [ ] Mano, redimensionar y mover salen en el color de acento (`primary`).
+- [ ] Cambia el fondo desde Wallpaper: en la siguiente aplicación de ajustes
+      (unos segundos) el cursor se retinta solo; los demás diseños no se tocan.
+- [ ] El tema generado aparece en **Cursor theme** como una entrada más
+      (`Vitrail · …`) y se puede volver a él sin repetir el tinte.
+- [ ] **Off** devuelve el cursor al pack original.
+- [ ] Un pack borrado a mano mientras está elegido: el log dice `refused` y el
+      cursor cae en Adwaita, sin dejar el puntero sin tema.
+
 ### Diferidos (decide si los quieres)
 
 - Selector vacío si una clave guardada está vacía **y** la lista en vivo

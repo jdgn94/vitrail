@@ -20,11 +20,13 @@ import shutil
 import struct
 import subprocess
 import sys
+import time
 import zlib
 from pathlib import Path
 from typing import Callable
 from xml.sax.saxutils import escape
 
+from . import cursor as cursor_engine
 from . import prefs
 from .system_theme import set_ini_key, take_file
 
@@ -356,11 +358,17 @@ def state(run: Runner = run_text, roots: list[Path] | None = None, cache: Path |
             paths = cursor_previews(directory, cache)
             if paths:
                 cursor_files[name] = paths
+
+    # The packs a Vitrail design can be built from: every installed cursor
+    # theme that is not itself generated.
+    designs = [name for name in cursors if not name.startswith(cursor_engine.PREFIX)]
+
     return {
         "fonts": families(text),
         "monospace": monospace(text),
         "iconThemes": icons,
         "cursorThemes": cursors,
+        "cursorDesigns": designs,
         "iconPreviews": icon_files,
         "cursorPreviews": cursor_files,
     }
@@ -399,6 +407,19 @@ def console_family(name: str, run: Runner = run_text) -> str:
     return ""
 
 
+def active_palette() -> dict:
+    """The palette the wallpaper produced for the current light/dark mode."""
+    appearance = prefs.read_prefs(prefs.config_dir()).get("appearance", "auto")
+    mode = (
+        appearance if appearance in ("light", "dark") else ("light" if 7 <= time.localtime().tm_hour < 19 else "dark")
+    )
+    path = preview_cache().parent / "generated" / f"theme-{mode}.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8")).get("colors", {})
+    except (OSError, ValueError):
+        return {}
+
+
 def _fontconf(family: str) -> str:
     """The fontconfig aliases: every app asking for the generic gets ours."""
     name = escape(family)
@@ -425,7 +446,14 @@ def _cursor_size(value: object) -> tuple[int, bool]:
 
 
 def apply(
-    values: dict, config: Path, run: Runner = run_text, roots: list[Path] | None = None, hyprland: bool | None = None
+    values: dict,
+    config: Path,
+    run: Runner = run_text,
+    roots: list[Path] | None = None,
+    hyprland: bool | None = None,
+    palette: dict | None = None,
+    data_home: Path | None = None,
+    cache: Path | None = None,
 ) -> int:
     """Applies `fonts.ini` system-wide.
 
@@ -433,7 +461,8 @@ def apply(
     when fontconfig listed nothing and nothing could be validated (nothing is
     written then: defaults would overwrite a working configuration).
     """
-    live = state(run=run, roots=roots)
+    cache = cache or preview_cache()
+    live = state(run=run, roots=roots, cache=cache)
     if not live["fonts"]:
         log("refused: fc-list listed no families; nothing was applied")
         return 2
@@ -458,8 +487,21 @@ def apply(
     else:
         log("skipped: no icon theme found")
     cursor = ""
-    if live["cursorThemes"]:
-        cursor = pick(values.get("cursorTheme"), live["cursorThemes"], DEFAULT_CURSOR, "cursor theme")
+    designs = [cursor_engine.design_name(name) for name in live.get("cursorDesigns", [])]
+    if live["cursorThemes"] or designs:
+        cursor = pick(values.get("cursorTheme"), live["cursorThemes"] + designs, DEFAULT_CURSOR, "cursor theme")
+        pack = cursor_engine.source_of(cursor)
+        if pack:
+            source = theme_dir(pack, roots or DEFAULT_ROOTS)
+            if source is None:
+                log(f"refused: the pack {pack!r} of {cursor!r} is not installed")
+                cursor = DEFAULT_CURSOR
+                replaced = True
+            else:
+                target = ((data_home / "icons") if data_home else cursor_engine.output_root()) / cursor
+                cursor_engine.build(
+                    source, target, palette if palette is not None else active_palette(), cache / "themes"
+                )
     else:
         log("skipped: no cursor theme found")
     size, replaced_size = _cursor_size(values.get("cursorSize", DEFAULT_CURSOR_SIZE))
@@ -500,7 +542,7 @@ def main(argv: list[str] | None = None, run: Runner = run_text) -> int:
         print(json.dumps(state(run=run), separators=(",", ":")))
         return 0
     if args == ["apply"]:
-        return apply(prefs.read_prefs(prefs.config_dir()), config_home(), run=run)
+        return apply(prefs.read_prefs(prefs.config_dir()), config_home(), run=run, palette=active_palette())
     if args == ["console-family"]:
         name = prefs.read_prefs(prefs.config_dir()).get("fontConsole") or DEFAULT_CONSOLE
         family = console_family(name, run=run)

@@ -178,6 +178,11 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(fonts.cursor_previews(self.icons / "Adwaita", self.cache), first)
         self.assertEqual([Path(path).stat().st_mtime_ns for path in first], stamps)
 
+    def test_state_offers_a_vitrail_design_for_each_pack(self) -> None:
+        state = fonts.state(run=lambda argv: FACES, roots=[self.icons], cache=self.cache)
+        self.assertIn("Adwaita", state["cursorDesigns"])
+        self.assertIn("Adwaita", state["cursorThemes"])
+
     def test_state_carries_the_previews(self) -> None:
         state = fonts.state(run=lambda argv: "Roboto\t80\n", roots=[self.icons], cache=self.cache)
         self.assertTrue(state["iconPreviews"]["Adwaita"][0].endswith("folder.png"))
@@ -194,6 +199,8 @@ class ApplyTests(unittest.TestCase):
             for folder in folders:
                 (self.icons / name / folder).mkdir()
             (self.icons / name / "index.theme").write_text("[Icon Theme]\n", encoding="utf-8")
+        xcursor(self.icons / "Adwaita" / "cursors" / "default")
+        xcursor(self.icons / "Adwaita" / "cursors" / "hand2")
         self.config = self.root / "config"
         (self.config / "qt6ct").mkdir(parents=True)
         (self.config / "qt6ct" / "qt6ct.conf").write_text("[Appearance]\n", encoding="utf-8")
@@ -211,7 +218,14 @@ class ApplyTests(unittest.TestCase):
         return run
 
     def apply(self, values: dict, run=None) -> int:
-        return fonts.apply(values, self.config, run=run or self.recording(FACES), roots=[self.icons], hyprland=True)
+        return fonts.apply(
+            values,
+            self.config,
+            run=run or self.recording(FACES),
+            roots=[self.icons],
+            hyprland=True,
+            cache=self.root / "cache",
+        )
 
     def test_the_font_name_keeps_the_size_already_set(self) -> None:
         # gsettings prints the value quoted.
@@ -247,6 +261,7 @@ class ApplyTests(unittest.TestCase):
             run=self.recording(FACES),
             roots=[empty],
             hyprland=True,
+            cache=self.root / "cache",
         )
         self.assertEqual(code, 0)
         self.assertTrue((self.config / "fontconfig/conf.d/50-vitrail-font.conf").exists())
@@ -290,6 +305,37 @@ class ApplyTests(unittest.TestCase):
         )
         self.assertIn("gtk-icon-theme-name=Adwaita", (self.config / "gtk-3.0/settings.ini").read_text(encoding="utf-8"))
         self.assertIn("icon_theme=Adwaita", (self.config / "qt6ct/qt6ct.conf").read_text(encoding="utf-8"))
+
+    def test_a_vitrail_cursor_is_built_before_it_is_set(self) -> None:
+        code = fonts.apply(
+            {"fontSystem": "Roboto", "iconTheme": "Adwaita", "cursorTheme": "vitrail-Adwaita", "cursorSize": 24},
+            self.config,
+            run=self.recording(FACES),
+            roots=[self.icons],
+            hyprland=True,
+            palette={"on_surface": "#ffffff", "surface": "#000000", "primary": "#ff0000"},
+            data_home=self.root / "data",
+            cache=self.root / "cache",
+        )
+        self.assertEqual(code, 0)
+        self.assertTrue((self.root / "data" / "icons" / "vitrail-Adwaita" / "index.theme").is_file())
+        env = (self.config / "environment.d" / "20-vitrail-cursor.conf").read_text(encoding="utf-8")
+        self.assertIn("XCURSOR_THEME=vitrail-Adwaita", env)
+
+    def test_a_vitrail_cursor_without_its_pack_falls_back(self) -> None:
+        code = fonts.apply(
+            {"fontSystem": "Roboto", "iconTheme": "Adwaita", "cursorTheme": "vitrail-NoSuchPack", "cursorSize": 24},
+            self.config,
+            run=self.recording(FACES),
+            roots=[self.icons],
+            hyprland=True,
+            palette={},
+            data_home=self.root / "data",
+            cache=self.root / "cache",
+        )
+        self.assertEqual(code, 1)
+        env = (self.config / "environment.d" / "20-vitrail-cursor.conf").read_text(encoding="utf-8")
+        self.assertIn("XCURSOR_THEME=Adwaita", env)
 
     def test_a_theme_that_is_not_installed_falls_back(self) -> None:
         code = self.apply({"fontSystem": "Roboto", "iconTheme": "Adwaita", "cursorTheme": "Nope", "cursorSize": 24})

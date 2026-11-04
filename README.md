@@ -313,7 +313,10 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   mosaic of everything installed — "Aa" in each family, eight icons per pack,
   six real cursors per theme — with a search box and the name under every
   cell (`kit/VitrailPicker.qml`); the dialog is sized by its content and the
-  trigger shows the chosen one. The window cannot run
+  trigger shows the chosen one. **Palette tint** rebuilds an installed pack in
+  `~/.local/share/icons/vitrail-<pack>` with the wallpaper's `on_surface` and
+  `primary` (`vitrail/cursor.py`); the generated theme is then a normal entry
+  in the cursor list and follows every palette change. The window cannot run
   commands, so `bin/vitrail-settings` injects `python3 -m vitrail.fonts state`
   as `--fonts`; `scripts/apply-settings.sh` runs `fonts apply` when
   `fonts.ini` changes, and a value that is not installed falls back to its
