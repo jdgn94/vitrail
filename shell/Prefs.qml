@@ -46,6 +46,7 @@ QtObject {
     property alias trayStyle: barFile.trayStyle
     property alias barBatteryChip: barFile.barBatteryChip
     property alias barBluetoothChip: barFile.barBluetoothChip
+    property alias barKeyboard: barFile.barKeyboard
     property alias osdKeys: barFile.osdKeys
     property alias osdKeyTime: barFile.osdKeyTime
     property alias osdHotZone: barFile.osdHotZone
@@ -187,6 +188,8 @@ QtObject {
         // The battery and Bluetooth chips: each still needs its hardware.
         property bool barBatteryChip: true
         property bool barBluetoothChip: true
+        // The keyboard layout chip, with its switcher and on-screen keyboard.
+        property bool barKeyboard: true
         // The OSD: whether keys show it, how long a key's slider stays, how far
         // past the frame the hot zone reaches, its slider size and the steps.
         property bool osdKeys: true

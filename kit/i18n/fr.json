@@ -755,5 +755,15 @@
   "bar.batteryChip": "Indicateur de batterie",
   "bar.batteryChip.help": "Affiche la charge et ouvre le profil d'énergie. N'apparaît que sur un appareil à batterie.",
   "bar.bluetoothChip": "Indicateur Bluetooth",
-  "bar.bluetoothChip.help": "Affiche l'adaptateur et les périphériques connectés. N'apparaît qu'avec un adaptateur."
+  "bar.bluetoothChip.help": "Affiche l'adaptateur et les périphériques connectés. N'apparaît qu'avec un adaptateur.",
+  "keyboard.chip": "Clavier",
+  "keyboard.chip.hint": "Clic : dispositions · Clic droit : clavier à l'écran",
+  "keyboard.layouts": "Dispositions du clavier",
+  "keyboard.layouts.help": "Choisissez la disposition pour taper. Les autres restent à un raccourci.",
+  "keyboard.none": "Aucune disposition de clavier trouvée.",
+  "keyboard.osk": "Clavier à l'écran",
+  "keyboard.osk.space": "Espace",
+  "keyboard.osk.hint": "Tape dans la fenêtre active sans lui prendre le focus.",
+  "bar.keyboardChip": "Puce de disposition du clavier",
+  "bar.keyboardChip.help": "Affiche la disposition active : clic pour les dispositions, clic droit pour le clavier à l'écran."
 }

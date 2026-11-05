@@ -755,5 +755,15 @@
   "bar.batteryChip": "Battery chip",
   "bar.batteryChip.help": "Shows the charge and opens the power profile. Only appears on a device with a battery.",
   "bar.bluetoothChip": "Bluetooth chip",
-  "bar.bluetoothChip.help": "Shows the adapter and the connected peripherals. Only appears when there is an adapter."
+  "bar.bluetoothChip.help": "Shows the adapter and the connected peripherals. Only appears when there is an adapter.",
+  "keyboard.chip": "Keyboard",
+  "keyboard.chip.hint": "Click: layouts · Right click: on-screen keyboard",
+  "keyboard.layouts": "Keyboard layouts",
+  "keyboard.layouts.help": "Pick the layout to type with. The other layouts stay one shortcut away.",
+  "keyboard.none": "No keyboard layouts found.",
+  "keyboard.osk": "On-screen keyboard",
+  "keyboard.osk.space": "Space",
+  "keyboard.osk.hint": "Types into the focused window without taking its focus.",
+  "bar.keyboardChip": "Keyboard layout chip",
+  "bar.keyboardChip.help": "Shows the active layout: click for the layouts, right-click for the on-screen keyboard."
 }

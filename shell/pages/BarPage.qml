@@ -141,6 +141,21 @@ Item {
                     }
 
                     VitrailSettingRow {
+                        icon: "keyboard"
+                        label: page.t("bar.keyboardChip")
+                        description: page.t("bar.keyboardChip.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.barKeyboard === undefined || page.prefs.barKeyboard === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.barKeyboard = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
                         icon: "style"
                         label: page.t("bar.style")
                         foreground: page.palette.foreground

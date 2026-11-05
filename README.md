@@ -298,7 +298,7 @@ the window declares it in another file, or the path unit watches another set.
 | File | Keys |
 |------|------|
 | `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase` |
-| `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barMonitors`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle`, `barBatteryChip`, `barBluetoothChip`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep`, `pomodoroWork`, `pomodoroRest`, `pomodoroCycles`, `timerMinutes` |
+| `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barMonitors`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle`, `barBatteryChip`, `barBluetoothChip`, `barKeyboard`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep`, `pomodoroWork`, `pomodoroRest`, `pomodoroCycles`, `timerMinutes` |
 | `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `wallpaperEffect`, `wallpaperMonitors`, `systemColor` (`wallpaperSeed`: legacy) |
 | `background.ini` | `visualiserEnabled`, `visualiserVariant`, `visualiserHeight` |
 | `windows.ini` | `windowLayout`, `visibleColumns`, `followFocus`, `wrapFocus`, `borderWidth`, `opacityFocused`, `opacityUnfocused` |
@@ -388,7 +388,10 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   `vitrail-monitors apply --force`, so a two-monitor layout with different
   scales comes back after a logout without the bar being involved.
 - **Input:** keyboard layouts with variants and the switch shortcut; pointer
-  focus behaviour.
+  focus behaviour. The bar's layout chip shows the live layout (`hyprctl
+  devices -j`), left click switches it and right click opens an on-screen
+  keyboard that types through `wtype` without taking the window's focus;
+  `barKeyboard` keeps the chip out of the bar.
 - **Connection:** Internet (Ethernet and Wi-Fi), VPN and Bluetooth on tabs. The
   window cannot run commands, so `bin/vitrail-settings` injects the state
   (`python3 -m vitrail.network state`, as `--network`), and a click writes

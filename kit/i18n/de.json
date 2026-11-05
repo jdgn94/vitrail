@@ -755,5 +755,15 @@
   "bar.batteryChip": "Akku-Anzeige",
   "bar.batteryChip.help": "Zeigt die Ladung und öffnet das Energieprofil. Erscheint nur auf Geräten mit Akku.",
   "bar.bluetoothChip": "Bluetooth-Anzeige",
-  "bar.bluetoothChip.help": "Zeigt den Adapter und die verbundenen Geräte. Erscheint nur mit Adapter."
+  "bar.bluetoothChip.help": "Zeigt den Adapter und die verbundenen Geräte. Erscheint nur mit Adapter.",
+  "keyboard.chip": "Tastatur",
+  "keyboard.chip.hint": "Klick: Layouts · Rechtsklick: Bildschirmtastatur",
+  "keyboard.layouts": "Tastaturlayouts",
+  "keyboard.layouts.help": "Wähle das Layout zum Tippen. Die anderen bleiben eine Tastenkombination entfernt.",
+  "keyboard.none": "Keine Tastaturlayouts gefunden.",
+  "keyboard.osk": "Bildschirmtastatur",
+  "keyboard.osk.space": "Leertaste",
+  "keyboard.osk.hint": "Schreibt in das fokussierte Fenster, ohne ihm den Fokus zu nehmen.",
+  "bar.keyboardChip": "Tastaturlayout-Chip",
+  "bar.keyboardChip.help": "Zeigt das aktive Layout: Klick für die Layouts, Rechtsklick für die Bildschirmtastatur."
 }

@@ -17,6 +17,8 @@ import "barview.js" as BarView
 import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "clock"
+import "keyboard"
+import "keyboard/keyboard.js" as Keyboard
 import "dialogs"
 import "launcher"
 import "network"
@@ -129,6 +131,12 @@ ShellRoot {
     // The power profile the connection chip shows.
     property string powerProfile: "balanced"
 
+    // The live keyboards (`hyprctl devices -j`), for the layout chip, its
+    // switcher and the on-screen keyboard, and the keys waiting to be typed.
+    property var keyboards: []
+    property var keyQueue: []
+    readonly property bool keyboardShown: shell.prefBool("barKeyboard", true)
+
     // The link's latency and traffic, read once for the whole bar (the two
     // chips and the two popups show the same measure). The preference turns
     // the reading off, not just the line.
@@ -142,6 +150,40 @@ ShellRoot {
 
     function refreshPowerProfile() {
         powerRead.run(Commands.powerProfile(), "")
+    }
+
+    function refreshKeyboards() {
+        if (!keyboardRead.running)
+            keyboardRead.running = true
+    }
+
+    function readKeyboards(text) {
+        shell.keyboards = Keyboard.parse(text)
+    }
+
+    // The chosen layout goes first, so it becomes the active one while the
+    // other layouts stay a switch away.
+    function applyKeyboardLayout(layout) {
+        var order = Keyboard.orderFor(shell.keyboards, layout)
+        keyboardWrite.run(Keyboard.switchCommand(order.layout, order.variant), layout)
+    }
+
+    // Keys arrive faster than one `wtype` exits: they wait their turn, so
+    // "hola" never reaches the focused window out of order.
+    function typeKey(argv) {
+        if (!argv || argv.length === 0)
+            return
+        shell.keyQueue.push(argv)
+        if (!oskType.running)
+            shell.runNextKey()
+    }
+
+    function runNextKey() {
+        var next = shell.keyQueue.shift()
+        if (!next)
+            return
+        oskType.command = next
+        oskType.running = true
     }
 
     function refreshToggles() {
@@ -522,6 +564,8 @@ ShellRoot {
         shell.popupScreen = target
         if (kind === "powerprofile")
             shell.refreshPowerProfile()
+        if (kind === "keyboard" || kind === "keyboardosk")
+            shell.refreshKeyboards()
         if (kind === "bluetooth" && !bluetoothRead.running)
             bluetoothRead.running = true
         shell.popupKind = kind
@@ -880,6 +924,7 @@ ShellRoot {
         shell.syncTokens()
         // The chip shows the profile from the start, not its default.
         shell.refreshPowerProfile()
+        shell.refreshKeyboards()
     }
 
     // The dashboard's pomodoro and timer: kept here, not in the popup, so a
@@ -1156,6 +1201,41 @@ ShellRoot {
         id: powerWrite
 
         onFinished: function (tag, output) { shell.refreshPowerProfile() }
+    }
+
+    // The keyboards Hyprland has added, and the layout switch through its Lua
+    // config. The switch reads the keyboards again once it is applied.
+    Process {
+        id: keyboardRead
+
+        command: ["hyprctl", "devices", "-j"]
+        stdout: StdioCollector {
+            onStreamFinished: shell.readKeyboards(this.text)
+        }
+    }
+
+    Timer {
+        interval: 5000
+        running: shell.keyboardShown
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: shell.refreshKeyboards()
+    }
+
+    AsyncRun {
+        id: keyboardWrite
+
+        onFinished: function (tag, output) {
+            shell.closePopup()
+            shell.refreshKeyboards()
+        }
+    }
+
+    // One `wtype` at a time, in the order the keys were pressed.
+    Process {
+        id: oskType
+
+        onExited: shell.runNextKey()
     }
 
     AsyncRun {
@@ -1837,6 +1917,8 @@ ShellRoot {
                     case "vpn": return barItems.vpnButton
                     case "powerprofile": return barItems.powerProfileButton
                     case "power": return barItems.powerButton
+                    case "keyboard": return keyboardButton
+                    case "keyboardosk": return keyboardButton
                     case "dashboard": return clockButton
                     case "launcher": return launcherButton
                     // The cheatsheet has no button: it grows from the bar's centre.
@@ -2039,6 +2121,19 @@ ShellRoot {
                                 onMutedRequested: shell.toggleNotificationMute()
                                 onHoveredChanged: tooltips.hover(notificationButton, hovered)
                             }
+
+                            KeyboardButton {
+                                id: keyboardButton
+
+                                visible: shell.keyboardShown
+                                strings: shell.strings
+                                keyboards: shell.keyboards
+                                opened: shell.popupOpen && shell.popupScreen === monitor.modelData
+                                        && (shell.popupKind === "keyboard" || shell.popupKind === "keyboardosk")
+                                onClicked: shell.togglePopup("keyboard", keyboardButton, monitor.modelData)
+                                onRightClicked: shell.togglePopup("keyboardosk", keyboardButton, monitor.modelData)
+                                onHoveredChanged: tooltips.hover(keyboardButton, hovered)
+                            }
                         }
 
                         center: GridLayout {
@@ -2219,7 +2314,10 @@ ShellRoot {
                     // the pointer and the focus to itself, so no bar button could be
                     // hovered and no window clicked while it is open; on demand it
                     // keeps the keyboard until another window takes the focus.
+                    // The on-screen keyboard never takes it: `wtype` types into
+                    // the window that already has the focus.
                     readonly property bool wantsKeyboard: popupLiquid.open
+                                                          && shell.popupKind !== "keyboardosk"
                     property bool grabbing: false
                     // The tray app under the pointer in the tray popup, and its icon.
                     property var trayTip: null
@@ -2440,7 +2538,7 @@ ShellRoot {
                         // inside has the focus). Releasing it on close lets the
                         // window underneath take it back.
                         function takeKeys() {
-                            if (shell.popupOpen && popupLiquid.open)
+                            if (shell.popupOpen && popupLiquid.open && shell.popupKind !== "keyboardosk")
                                 popupCard.forceActiveFocus()
                             else
                                 popupCard.focus = false
@@ -2538,6 +2636,20 @@ ShellRoot {
                                 current: popouts.name
                                 handover: popouts.handover
                                 sourceComponent: powerProfileComponent
+                            }
+
+                            Popout {
+                                name: "keyboard"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: keyboardComponent
+                            }
+
+                            Popout {
+                                name: "keyboardosk"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: keyboardOskComponent
                             }
 
                             Popout {
@@ -2826,6 +2938,26 @@ ShellRoot {
                             shell.powerProfile = mode
                             powerWrite.run(Commands.powerSet(mode), "")
                         }
+                    }
+                }
+
+                Component {
+                    id: keyboardComponent
+
+                    KeyboardPanel {
+                        strings: shell.strings
+                        keyboards: shell.keyboards
+                        onLayoutRequested: function (layout) { shell.applyKeyboardLayout(layout) }
+                    }
+                }
+
+                Component {
+                    id: keyboardOskComponent
+
+                    KeyboardOSK {
+                        strings: shell.strings
+                        language: Keyboard.language(Keyboard.activeCode(shell.keyboards))
+                        onKeyPressed: function (argv) { shell.typeKey(argv) }
                     }
                 }
 

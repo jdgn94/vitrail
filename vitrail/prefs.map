@@ -49,6 +49,7 @@ bar trayStyle
 # (only with an adapter).
 bar barBatteryChip
 bar barBluetoothChip
+bar barKeyboard
 bar osdKeys
 bar osdKeyTime
 bar osdHotZone

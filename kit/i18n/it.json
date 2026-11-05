@@ -755,5 +755,15 @@
   "bar.batteryChip": "Indicatore batteria",
   "bar.batteryChip.help": "Mostra la carica e apre il profilo di energia. Appare solo sui dispositivi con batteria.",
   "bar.bluetoothChip": "Indicatore Bluetooth",
-  "bar.bluetoothChip.help": "Mostra l'adattatore e i dispositivi connessi. Appare solo con un adattatore."
+  "bar.bluetoothChip.help": "Mostra l'adattatore e i dispositivi connessi. Appare solo con un adattatore.",
+  "keyboard.chip": "Tastiera",
+  "keyboard.chip.hint": "Clic: layout · Clic destro: tastiera sullo schermo",
+  "keyboard.layouts": "Layout della tastiera",
+  "keyboard.layouts.help": "Scegli il layout per digitare. Gli altri restano a una scorciatoia.",
+  "keyboard.none": "Nessun layout di tastiera trovato.",
+  "keyboard.osk": "Tastiera sullo schermo",
+  "keyboard.osk.space": "Spazio",
+  "keyboard.osk.hint": "Scrive nella finestra attiva senza toglierle il focus.",
+  "bar.keyboardChip": "Chip del layout della tastiera",
+  "bar.keyboardChip.help": "Mostra il layout attivo: clic per i layout, clic destro per la tastiera sullo schermo."
 }

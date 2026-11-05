@@ -755,5 +755,15 @@
   "bar.batteryChip": "Indicador de bateria",
   "bar.batteryChip.help": "Mostra a carga e abre o perfil de energia. Só aparece em equipamentos com bateria.",
   "bar.bluetoothChip": "Indicador de Bluetooth",
-  "bar.bluetoothChip.help": "Mostra o adaptador e os periféricos ligados. Só aparece quando há adaptador."
+  "bar.bluetoothChip.help": "Mostra o adaptador e os periféricos ligados. Só aparece quando há adaptador.",
+  "keyboard.chip": "Teclado",
+  "keyboard.chip.hint": "Clique: layouts · Clique direito: teclado no ecrã",
+  "keyboard.layouts": "Layouts do teclado",
+  "keyboard.layouts.help": "Escolhe o layout para escrever. Os outros ficam a um atalho.",
+  "keyboard.none": "Nenhum layout de teclado encontrado.",
+  "keyboard.osk": "Teclado no ecrã",
+  "keyboard.osk.space": "Espaço",
+  "keyboard.osk.hint": "Escreve na janela ativa sem lhe tirar o foco.",
+  "bar.keyboardChip": "Chip de layout do teclado",
+  "bar.keyboardChip.help": "Mostra o layout ativo: clique para os layouts, clique direito para o teclado no ecrã."
 }
