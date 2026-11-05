@@ -127,6 +127,10 @@ ShellRoot {
     readonly property bool linkStatsShown: shell.prefBool("networkMetrics", true)
     onLinkStatsShownChanged: if (!shell.linkStatsShown) shell.linkStats = ({})
 
+    // Bluetooth: `vitrail.network bluetooth` prints the adapter, its power and
+    // its devices; the chip and the connection popup's Bluetooth tab share it.
+    property var bluetoothDevices: ({})
+
     function refreshPowerProfile() {
         powerRead.run(Commands.powerProfile(), "")
     }
@@ -506,6 +510,8 @@ ShellRoot {
         shell.popupScreen = target
         if (kind === "powerprofile")
             shell.refreshPowerProfile()
+        if (kind === "bluetooth" && !bluetoothRead.running)
+            bluetoothRead.running = true
         shell.popupKind = kind
         shell.popupOpen = true
     }
@@ -977,6 +983,15 @@ ShellRoot {
         }
     }
 
+    function readBluetoothDevices(text) {
+        try {
+            var document = JSON.parse(text)
+            shell.bluetoothDevices = document && typeof document === "object" ? document : ({})
+        } catch (error) {
+            shell.bluetoothDevices = ({})
+        }
+    }
+
     // Every ten seconds: one echo (a second at most) and two counter files.
     Process {
         id: linkRead
@@ -994,6 +1009,27 @@ ShellRoot {
         repeat: true
         triggeredOnStart: true
         onTriggered: if (!linkRead.running) linkRead.running = true
+    }
+
+    // The Bluetooth chip and its popup: one read of the adapter and its
+    // devices every twenty seconds (without an adapter the command only checks
+    // /sys and returns).
+    Process {
+        id: bluetoothRead
+
+        command: ["python3", "-m", "vitrail.network", "bluetooth"]
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.readBluetoothDevices(this.text)
+        }
+    }
+
+    Timer {
+        interval: 20000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: if (!bluetoothRead.running) bluetoothRead.running = true
     }
 
     // The clipboard's programs: the history, a thumbnail, a pick, the paste.
@@ -1730,6 +1766,7 @@ ShellRoot {
                 function anchorFor(kind) {
                     switch (kind) {
                     case "network": return barItems.networkButton
+                    case "bluetooth": return barItems.bluetoothButton
                     case "vpn": return barItems.vpnButton
                     case "powerprofile": return barItems.powerProfileButton
                     case "power": return barItems.powerButton
@@ -1958,6 +1995,9 @@ ShellRoot {
                             trayStyle: shell.prefs.trayStyle || "inline"
                             linkStats: shell.linkStats
                             powerProfile: shell.powerProfile
+                            bluetooth: shell.bluetoothDevices
+                            showBattery: shell.prefBool("barBatteryChip", true)
+                            showBluetooth: shell.prefBool("barBluetoothChip", true)
                             recording: shell.recording
                             onClicked: function (kind, item) { shell.togglePopup(kind, item, monitor.modelData) }
                             onHovered: function (kind, item) { shell.hoverPopup(kind, item, monitor.modelData) }
@@ -2330,6 +2370,13 @@ ShellRoot {
                             }
 
                             Popout {
+                                name: "bluetooth"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: bluetoothComponent
+                            }
+
+                            Popout {
                                 name: "vpn"
                                 current: popouts.name
                                 handover: popouts.handover
@@ -2557,6 +2604,21 @@ ShellRoot {
                     NetworkPanel {
                         strings: shell.strings
                         stats: shell.linkStats
+                        tab: "internet"
+                        bluetooth: shell.bluetoothDevices
+                        onRefreshRequested: if (!bluetoothRead.running) bluetoothRead.running = true
+                    }
+                }
+
+                Component {
+                    id: bluetoothComponent
+
+                    NetworkPanel {
+                        strings: shell.strings
+                        stats: shell.linkStats
+                        tab: "bluetooth"
+                        bluetooth: shell.bluetoothDevices
+                        onRefreshRequested: if (!bluetoothRead.running) bluetoothRead.running = true
                     }
                 }
 

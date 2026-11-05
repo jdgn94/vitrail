@@ -404,6 +404,16 @@ class LinkTests(unittest.TestCase):
         self.assertEqual(json.loads(out.getvalue()), {"interface": "eno1", "latency": 1.0})
         self.assertEqual(link.call_args, mock.call())
 
+    def test_the_bluetooth_subcommand_prints_what_the_bar_shows(self) -> None:
+        found = {"available": True, "powered": True, "devices": [{"name": "Buds", "connected": True}]}
+        with (
+            mock.patch.object(network, "bluetooth", return_value=found) as bluetooth,
+            redirect_stdout(io.StringIO()) as out,
+        ):
+            self.assertEqual(network.main(["bluetooth"]), 0)
+        self.assertEqual(json.loads(out.getvalue()), found)
+        self.assertEqual(bluetooth.call_args, mock.call(network.run_text))
+
 
 class StateTests(unittest.TestCase):
     def state(self, run, **kwargs) -> dict:

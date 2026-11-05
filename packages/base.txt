@@ -37,6 +37,7 @@ networkmanager
 bluez-utils
 btrfs-progs
 power-profiles-daemon
+upower
 ffmpeg
 imagemagick
 pipewire

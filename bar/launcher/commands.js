@@ -99,6 +99,11 @@ function wifiState() { return ["nmcli", "radio", "wifi"] }
 function wifiSet(on) { return ["nmcli", "radio", "wifi", on ? "on" : "off"] }
 function bluetoothState() { return ["bluetoothctl", "show"] }
 function bluetoothSet(on) { return ["bluetoothctl", "power", on ? "on" : "off"] }
+// The connection popup's Bluetooth tab: a scan stays under the popup's
+// patience, and a device joins or leaves by its address.
+function bluetoothScan() { return ["bluetoothctl", "--timeout", "5", "scan", "on"] }
+function bluetoothConnect(mac) { return ["bluetoothctl", "connect", mac] }
+function bluetoothDisconnect(mac) { return ["bluetoothctl", "disconnect", mac] }
 function micState() { return ["wpctl", "get-volume", "@DEFAULT_AUDIO_SOURCE@"] }
 function micToggle() { return ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"] }
 function airplaneState() { return ["rfkill", "-J"] }

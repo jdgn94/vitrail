@@ -45,6 +45,10 @@ bar clipboardMax
 bar clipboardPaste
 bar mediaStyle
 bar trayStyle
+# The chips at the end of the bar: battery (only with a battery) and Bluetooth
+# (only with an adapter).
+bar barBatteryChip
+bar barBluetoothChip
 bar osdKeys
 bar osdKeyTime
 bar osdHotZone

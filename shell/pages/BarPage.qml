@@ -111,6 +111,36 @@ Item {
                     }
 
                     VitrailSettingRow {
+                        icon: "battery_full"
+                        label: page.t("bar.batteryChip")
+                        description: page.t("bar.batteryChip.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.barBatteryChip === undefined || page.prefs.barBatteryChip === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.barBatteryChip = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "bluetooth"
+                        label: page.t("bar.bluetoothChip")
+                        description: page.t("bar.bluetoothChip.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.barBluetoothChip === undefined || page.prefs.barBluetoothChip === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.barBluetoothChip = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
                         icon: "style"
                         label: page.t("bar.style")
                         foreground: page.palette.foreground

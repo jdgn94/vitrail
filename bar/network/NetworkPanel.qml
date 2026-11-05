@@ -15,6 +15,14 @@ Item {
     property var strings: ({})
     // The link's latency and traffic (`vitrail.network link`).
     property var stats: ({})
+    // "internet" or "bluetooth": the connection chip and the Bluetooth chip
+    // both open this popup, each on its own tab.
+    property string tab: "internet"
+    // What `vitrail.network bluetooth` printed, for the Bluetooth tab.
+    property var bluetooth: ({})
+
+    // The Bluetooth tab asks the shell for a fresh copy after an action.
+    signal refreshRequested()
 
     // --- state ---------------------------------------------------------------
     readonly property var wifiDevice: root.deviceOf(DeviceType.Wifi, false)
@@ -58,6 +66,24 @@ Item {
 
         anchors.fill: parent
         spacing: VitrailTokens.gap("md")
+
+        VitrailTabs {
+            Layout.fillWidth: true
+            tabs: [
+                { key: "internet", icon: "public", label: root.t("connection.tab.internet") },
+                { key: "bluetooth", icon: "bluetooth", label: root.t("connection.bluetooth") }
+            ]
+            current: root.tab
+            onSelected: function (key) { root.tab = key }
+        }
+
+        // --- Internet --------------------------------------------------------
+        ColumnLayout {
+            id: internet
+
+            Layout.fillWidth: true
+            visible: root.tab === "internet"
+            spacing: VitrailTokens.gap("md")
 
         // --- status ----------------------------------------------------------
         RowLayout {
@@ -205,6 +231,16 @@ Item {
                     }
                 }
             }
+        }
+        }
+
+        // --- Bluetooth -------------------------------------------------------
+        BluetoothPanel {
+            Layout.fillWidth: true
+            visible: root.tab === "bluetooth"
+            strings: root.strings
+            bluetooth: root.bluetooth
+            onRefreshRequested: root.refreshRequested()
         }
     }
 }

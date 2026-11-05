@@ -44,6 +44,8 @@ QtObject {
     property alias clipboardPaste: barFile.clipboardPaste
     property alias mediaStyle: barFile.mediaStyle
     property alias trayStyle: barFile.trayStyle
+    property alias barBatteryChip: barFile.barBatteryChip
+    property alias barBluetoothChip: barFile.barBluetoothChip
     property alias osdKeys: barFile.osdKeys
     property alias osdKeyTime: barFile.osdKeyTime
     property alias osdHotZone: barFile.osdHotZone
@@ -182,6 +184,9 @@ QtObject {
         property string mediaStyle: "disc"
         // The tray's look: "inline" folds the icons out, "popup" lists them.
         property string trayStyle: "inline"
+        // The battery and Bluetooth chips: each still needs its hardware.
+        property bool barBatteryChip: true
+        property bool barBluetoothChip: true
         // The OSD: whether keys show it, how long a key's slider stays, how far
         // past the frame the hot zone reaches, its slider size and the steps.
         property bool osdKeys: true

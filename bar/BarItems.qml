@@ -2,13 +2,14 @@ import QtQuick
 import QtQuick.Layouts
 import "kit"
 import "kit/base"
+import "devices"
 import "media"
 import "network"
 import "session"
 import "tray"
 
-// The bar's end group: background apps (tray), the network and VPN buttons and
-// the power button.
+// The bar's end group: background apps (tray), the Bluetooth, network and VPN
+// buttons, the battery, and the power button.
 // Every element that has a popout reports its own kind and item, so the
 // popout opens on, and glides to, that exact element.
 GridLayout {
@@ -24,11 +25,18 @@ GridLayout {
     property var linkStats: ({})
     // The mode the power chip shows (power-profiles-daemon).
     property string powerProfile: "balanced"
+    // What `vitrail.network bluetooth` printed, shared by the chip and the
+    // Bluetooth tab of the connection popup.
+    property var bluetooth: ({})
+    // The two chips can be kept out of the bar (bar.ini).
+    property bool showBattery: true
+    property bool showBluetooth: true
     // A session is being recorded: the chip stops it.
     property bool recording: false
     signal recordStopped()
     // The buttons of the popouts that open without a click (IPC).
     readonly property Item networkButton: network
+    readonly property Item bluetoothButton: bluetoothChip
     readonly property Item vpnButton: vpn
     readonly property Item powerProfileButton: profile
     readonly property Item powerButton: power
@@ -100,6 +108,21 @@ GridLayout {
                 }
             }
 
+            BluetoothButton {
+                id: bluetoothChip
+
+                strings: root.strings
+                show: root.showBluetooth
+                bluetooth: root.bluetooth
+                opened: root.open && root.openKind === "bluetooth"
+                onClicked: root.clicked("bluetooth", bluetoothChip)
+                onHoveredChanged: {
+                    root.tipHovered(bluetoothChip, hovered)
+                    if (hovered)
+                        root.hovered("bluetooth", bluetoothChip)
+                }
+            }
+
             VpnButton {
                 id: vpn
 
@@ -127,6 +150,23 @@ GridLayout {
                         root.hovered("powerprofile", profile)
                 }
             }
+        }
+    }
+
+    // The charge, on the machines that have a battery; a click opens the power
+    // profile popup, like the mode chip inside the connection pill.
+    BatteryButton {
+        id: battery
+
+        Layout.alignment: Qt.AlignHCenter
+        strings: root.strings
+        show: root.showBattery
+        opened: root.open && root.openKind === "powerprofile"
+        onClicked: root.clicked("powerprofile", battery)
+        onHoveredChanged: {
+            root.tipHovered(battery, hovered)
+            if (hovered)
+                root.hovered("powerprofile", battery)
         }
     }
 

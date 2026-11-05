@@ -5,6 +5,9 @@ The window cannot run commands, so this module does both halves:
     python3 -m vitrail.network state            prints the state as JSON
     python3 -m vitrail.network link             prints the link's latency and
                                                 traffic rate (the bar's read)
+    python3 -m vitrail.network bluetooth        prints the adapter, its power
+                                                and its connected devices (the
+                                                bar's chip and its popup)
     python3 -m vitrail.network apply <request>  runs one request, then
                                                 rewrites network-state.json
     python3 -m vitrail.network autostart        vitrail-vpn's login rule for
@@ -1309,6 +1312,9 @@ def main(argv: list[str] | None = None) -> int:
     if args == ["link"]:
         print(json.dumps(link(), separators=(",", ":")))
         return 0
+    if args == ["bluetooth"]:
+        print(json.dumps(bluetooth(run_text), separators=(",", ":")))
+        return 0
     if len(args) == 2 and args[0] == "apply":
         # The request comes from connection.ini, where QSettings escaped it.
         try:
@@ -1319,7 +1325,7 @@ def main(argv: list[str] | None = None) -> int:
         return apply(request, runtime=runtime_dir())
     if args == ["autostart"]:
         return autostart(runtime=runtime_dir())
-    print("usage: network state | link | apply <request> | autostart", file=sys.stderr)
+    print("usage: network state | link | bluetooth | apply <request> | autostart", file=sys.stderr)
     return 2
 
 

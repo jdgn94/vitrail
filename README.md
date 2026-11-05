@@ -123,6 +123,7 @@ package to the manifest and a row here.
 | `swappy` | `swappy` | annotating a screenshot before it is copied (optional flow) |
 | `pciutils` | `lspci` | GPU vendor detection in the installer and `vitrail doctor` |
 | `networkmanager`, `bluez-utils`, `wireplumber`, `power-profiles-daemon` | `nmcli`, `bluetoothctl`, `wpctl`, `powerprofilesctl` | the panel's quick toggles, the bar's network and power-profile popups, and the settings window's Connection page (networks, Bluetooth and power profile; `vitrail.network`: Wi-Fi, Bluetooth and VPN state and requests) |
+| `upower` | UPower's D-Bus service | the battery chip's charge, state and time left (Quickshell's UPower service; no process) |
 | `awww`, `mpvpaper` | `awww`, `awww-daemon`, `mpvpaper` | still wallpapers with transitions (awww) and animated ones (mpvpaper with VA-API) |
 
 `vitrail-vpn` comes from the VPN module (`vpn/`), not from the manifest.
@@ -297,7 +298,7 @@ the window declares it in another file, or the path unit watches another set.
 | File | Keys |
 |------|------|
 | `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase` |
-| `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barMonitors`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep`, `pomodoroWork`, `pomodoroRest`, `pomodoroCycles`, `timerMinutes` |
+| `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barMonitors`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle`, `barBatteryChip`, `barBluetoothChip`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep`, `pomodoroWork`, `pomodoroRest`, `pomodoroCycles`, `timerMinutes` |
 | `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `wallpaperEffect`, `wallpaperMonitors`, `systemColor` (`wallpaperSeed`: legacy) |
 | `background.ini` | `visualiserEnabled`, `visualiserVariant`, `visualiserHeight` |
 | `windows.ini` | `windowLayout`, `visibleColumns`, `followFocus`, `wrapFocus`, `borderWidth`, `opacityFocused`, `opacityUnfocused` |
