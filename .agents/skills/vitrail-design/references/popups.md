@@ -67,9 +67,18 @@ timeline, ratios), `motion.smooth`.
   `mask: Region { item: popupCard }` while shown, so only the card takes input;
   the bar buttons (layer Top) and the apps stay clickable, and a click on the
   same button closes, on another one switches. There is no click-catcher: a
-  full-screen one eats every click. An app taking the focus
-  (`Hyprland.activeToplevel` changes) closes the popup, the launcher popout
-  included.
+  full-screen one eats every click.
+- Closing is one rule (`shell.pointerInsidePopup`, pure point/rect helper in
+  `bar/popup.js`): the pointer must have left the card, the tray app's menu
+  card and the button the popup grew from, with `popupCard.margin` of grace.
+  Two `HoverHandler`s feed it the last pointer position in screen coordinates:
+  one on the popup layer (card and menu, children included) and one on the bar
+  (where the invoking button is checked against `shell.popupAnchor`). Over an
+  app the pointer is on neither surface, which counts as outside.
+- An app taking the focus (`Hyprland.activeToplevel` changes) closes the popup
+  only when that rule says the pointer is outside; the launcher popout follows
+  the same rule. A focus change while the pointer reads the popup never closes
+  it.
 - Hover switching: with a popup open, hovering another bar element that has
   one opens it (`shell.hoverPopup`; every element emits `hovered(kind, item)`
   next to `clicked`). It never opens from closed. `shell.popupByHover` marks a
@@ -80,7 +89,8 @@ timeline, ratios), `motion.smooth`.
   enter event the compositor repeats as a popup opens moves the popup the click
   just opened to the other kind, so the next click reopens instead of closing.
 - Launcher popout: same rules as the others (hover, glide, close on focus
-  loss and idle). It takes the keyboard exclusively for 150 ms when it opens
+  loss and idle once the pointer is outside). It takes the keyboard exclusively
+  for 150 ms when it opens
   (the only way to be focused without a click), then `OnDemand`: an exclusive
   layer keeps the pointer and the focus to itself, so no bar button could be
   hovered and no window clicked while it is open. Opened with the pointer over
@@ -159,7 +169,10 @@ timeline, ratios), `motion.smooth`.
   `reserve` for a floating bar) and has no neck (`sourceTarget` is null while
   the bar is docked).
 - The idle close timer (`popupLeave`, 3 s after the pointer leaves the card and
-  the tray menu card) is cancelled when the popup kind changes.
+  the tray menu card) is cancelled when the popup kind changes; it closes only
+  if the pointer is outside the popup's rule above, otherwise it waits another
+  3 s. The 10 s idle timer (`popupIdle`) follows the same rule: while the
+  pointer is inside, it restarts instead of closing.
 
 ## Tray (bar/tray)
 
@@ -196,9 +209,11 @@ timeline, ratios), `motion.smooth`.
 - Closing the menu: picking an entry (`done`), Escape (`menuCard` takes focus
   when it opens), right click on the same icon again (toggle). The tray card
   stays. `closePopup`, a change of `popupKind` or `popupScreen` clear
-  `trayMenuItem`; an app taking the focus or the idle timers close both. The
-  pointer on `menuCard` counts as on the popup (`popupLeave`), opening a menu
-  restarts `popupIdle`, and the icon tooltip is off while a menu is open.
+  `trayMenuItem`; an app taking the focus or the idle timers close both, but
+  only while the pointer is outside the card, the menu and the invoking button
+  (the menu and the tray card are two rects of the same rule). The pointer on
+  `menuCard` counts as on the popup (`popupLeave`), opening a menu restarts
+  `popupIdle`, and the icon tooltip is off while a menu is open.
 - `TrayMenu`: StackView of `MenuLevel`s over `QsMenuOpener`; rows like
   `network/Entry` (`tray.menu` wide, `radius / 2`, foreground 6 % hover,
   checked check / radio entries tinted primary 14 % with a primary glyph),

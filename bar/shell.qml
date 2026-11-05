@@ -14,6 +14,7 @@ import "kit/frame.js" as Frame
 import "effects.js" as Effects
 import "prefs.js" as Prefs
 import "barview.js" as BarView
+import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "clock"
 import "dialogs"
@@ -66,6 +67,14 @@ ShellRoot {
     property rect popupAnchor: Qt.rect(0, 0, 0, 0)
     readonly property real popupAnchorX: shell.popupAnchor.x + shell.popupAnchor.width / 2
     readonly property real popupAnchorY: shell.popupAnchor.y + shell.popupAnchor.height / 2
+    // Where the pointer last was, in screen coordinates, on the popup layer
+    // and on the bar, and which screen saw it. The popup closes only when the
+    // pointer is on neither (or on the bar, away from its own button): over an
+    // app it is on no tracked surface, which is exactly "outside".
+    property var popupPointerScreen: null
+    property point popupPointerAt: Qt.point(-1, -1)
+    property var barPointerScreen: null
+    property point barPointerAt: Qt.point(-1, -1)
     // Per screen name, the monitor scope that owns its bar (anchorFor).
     property var monitors: ({})
     property var strings: ({})
@@ -497,6 +506,9 @@ ShellRoot {
     function openPopup(kind, item, screen) {
         shell.popupByHover = false
         shell.launcherOpen = false
+        // A fresh popup gets its full leave grace, not the one left over from
+        // the pointer leaving the previous one.
+        popupLeave.stop()
         var target = screen || shell.focusedScreen
         var anchor = item || shell.anchorOf(kind, target)
         if (!shell.popupOpen) {
@@ -541,6 +553,26 @@ ShellRoot {
         shell.popupByHover = false
         shell.trayMenuItem = null
         shell.popupOpen = false
+        popupLeave.stop()
+    }
+
+    // The one close rule: the popup may close only once the pointer has left
+    // the card, the tray app's menu beside it and the button it grew from.
+    // The tracked pointer is trusted only on a surface that says where it is
+    // (the popup layer or the bar); over an app it is on neither, so "out".
+    function pointerInsidePopup() {
+        var monitor = shell.popupScreen ? shell.monitors[shell.popupScreen.name] : null
+        if (!monitor)
+            return false
+        // The card and menu handlers are ground truth; the tracked point is
+        // the refinement that also covers the gap and the invoking button.
+        if (monitor.popupHovered)
+            return true
+        if (shell.popupPointerScreen === shell.popupScreen)
+            return monitor.popupContains(shell.popupPointerAt)
+        if (shell.barPointerScreen === shell.popupScreen)
+            return monitor.anchorContains(shell.barPointerAt)
+        return false
     }
 
     // The session menu (lock, log out, power) covers the screen whose button
@@ -1711,12 +1743,28 @@ ShellRoot {
 
     // The popup only takes input on its card, so a click elsewhere reaches
     // the bar or the app under it. An app that takes the focus closes the
-    // popup.
+    // popup only when the pointer is not on it (or on its button): a focus
+    // change while the pointer reads the popup must not make it vanish.
     Connections {
         target: Hyprland
 
         function onActiveToplevelChanged() {
-            if (shell.popupOpen)
+            if (shell.popupOpen && !shell.pointerInsidePopup())
+                shell.closePopup()
+        }
+    }
+
+    // After the pointer leaves, the popup waits a moment (crossing the gap to
+    // the tray app's menu, or back to the card, must not close it) and then
+    // closes unless the pointer is still inside the popup or on its button.
+    Timer {
+        id: popupLeave
+
+        interval: 3000
+        onTriggered: {
+            if (shell.pointerInsidePopup())
+                popupLeave.restart()
+            else
                 shell.closePopup()
         }
     }
@@ -1761,6 +1809,25 @@ ShellRoot {
                 id: monitor
 
                 required property var modelData
+
+                // The popup's "still inside" test in this screen's
+                // coordinates: the card, the tray app's menu beside it, and
+                // the button that opened it, with the card's own margin of
+                // grace (rounded corners and the gap between the surfaces).
+                function popupContains(point) {
+                    var rects = [Qt.rect(popupCard.x, popupCard.y, popupCard.width, popupCard.height)]
+                    if (menuCard.shown)
+                        rects.push(Qt.rect(menuCard.x, menuCard.y, menuCard.width, menuCard.height))
+                    return Popup.insideAny(point, rects, popupCard.margin)
+                }
+
+                function anchorContains(point) {
+                    return Popup.inside(point, shell.popupAnchor, popupCard.margin)
+                }
+
+                // The existing handlers are the ground truth for "on the
+                // popup"; the layer's pointer position is only for the rect.
+                readonly property bool popupHovered: cardHover.hovered || menuHover.hovered
 
                 // The popup button of each kind on this monitor's bar.
                 function anchorFor(kind) {
@@ -1903,6 +1970,31 @@ ShellRoot {
                                                           stackHolder.place.edge, stackHolder.origin,
                                                           stackLiquid.look.spread, 0, 0) }]
                               : []).concat(osd.tabs).concat(notificationLayer.tabs)
+
+                        // Where the pointer is while it is on the bar: over an
+                        // app there is no event, and that is what makes it
+                        // "outside" the popup. Over the button that opened the
+                        // popup it still counts as inside.
+                        HoverHandler {
+                            id: barHover
+
+                            function notePoint() {
+                                shell.barPointerScreen = monitor.modelData
+                                shell.barPointerAt = barHover.parent.mapToItem(null, barHover.point.position.x,
+                                                                               barHover.point.position.y)
+                            }
+
+                            onPointChanged: if (hovered) notePoint()
+                            onHoveredChanged: {
+                                if (hovered) {
+                                    notePoint()
+                                } else if (shell.barPointerScreen === monitor.modelData) {
+                                    shell.barPointerScreen = null
+                                    if (shell.popupOpen)
+                                        popupLeave.restart()
+                                }
+                            }
+                        }
 
                         // The launcher, and the notification bell beside it.
                         start: GridLayout {
@@ -2142,13 +2234,43 @@ ShellRoot {
                     WlrLayershell.keyboardFocus: !popupLayer.wantsKeyboard ? WlrKeyboardFocus.None
                                                  : popupLayer.grabbing ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
 
-                    // A popup left alone closes itself.
+                    // Where the pointer is while it is on the popup: the card
+                    // and the tray app's menu (the layer's mask), children
+                    // included. A handler above them sees every move.
+                    HoverHandler {
+                        id: popupHover
+
+                        function notePoint() {
+                            shell.popupPointerScreen = monitor.modelData
+                            shell.popupPointerAt = popupHover.parent.mapToItem(null, popupHover.point.position.x,
+                                                                               popupHover.point.position.y)
+                        }
+
+                        onPointChanged: if (hovered) notePoint()
+                        onHoveredChanged: {
+                            if (hovered) {
+                                notePoint()
+                            } else if (shell.popupPointerScreen === monitor.modelData) {
+                                shell.popupPointerScreen = null
+                                if (shell.popupOpen)
+                                    popupLeave.restart()
+                            }
+                        }
+                    }
+
+                    // A popup left alone closes itself, unless the pointer is
+                    // still reading it.
                     Timer {
                         id: popupIdle
 
                         interval: 10000
                         running: shell.popupOpen
-                        onTriggered: shell.closePopup()
+                        onTriggered: {
+                            if (shell.pointerInsidePopup())
+                                popupIdle.restart()
+                            else
+                                shell.closePopup()
+                        }
                     }
 
                     Timer {
@@ -2445,12 +2567,6 @@ ShellRoot {
                                     }
                                 }
                             }
-                        }
-
-                        Timer {
-                            id: popupLeave
-                            interval: 3000
-                            onTriggered: shell.closePopup()
                         }
                     }
 
