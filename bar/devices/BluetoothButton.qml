@@ -17,6 +17,8 @@ VitrailButton {
     property var bluetooth: ({})
 
     readonly property var info: Devices.bluetoothInfo(root.bluetooth)
+    // What the bar's entry reads to leave the grid when there is no adapter.
+    readonly property bool shown: root.show && root.info.shown
 
     // What the pointer reads: the adapter, how many are connected, and the
     // first peripheral with its battery.
@@ -35,7 +37,7 @@ VitrailButton {
         return device.name + " · " + root.t("connection.battery").replace("%1", device.battery)
     }
 
-    visible: root.show && root.info.shown
+    visible: root.shown
     variant: root.opened ? "tonal" : "plain"
     tone: root.info.powered && root.info.connected > 0 ? "primary" : "secondary"
     size: "sm"

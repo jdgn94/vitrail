@@ -2036,6 +2036,20 @@ ShellRoot {
                     return entry && entry.cluster !== undefined ? chipWidget : monitor.widgetComponent(entry.id)
                 }
 
+                // Whether an entry has anything to show. The element itself
+                // says so when it can (battery, Bluetooth); the rest read the
+                // shell's state here, in whatever group the editor put them.
+                function entryVisible(entry) {
+                    if (!entry || entry.cluster !== undefined)
+                        return true
+                    switch (entry.id) {
+                    case "media": return shell.mprisPlayer !== null
+                    case "recording": return shell.recording
+                    case "keyboard": return shell.keyboardShown
+                    default: return true
+                    }
+                }
+
                 // --- the bar's elements, one component per id ----------------
                 // The layout document picks which of them a group draws and in
                 // which order; each keeps the bindings it had when it lived in
@@ -2328,9 +2342,10 @@ ShellRoot {
                             Repeater {
                                 model: chip.ids
 
-                                delegate: Loader {
+                                delegate: BarEntry {
                                     required property string modelData
 
+                                    vertical: bar.vertical
                                     sourceComponent: monitor.widgetComponent(modelData)
                                     onLoaded: monitor.register(modelData, item)
                                     Component.onDestruction: monitor.unregister(modelData)
@@ -2606,11 +2621,13 @@ ShellRoot {
                                 Repeater {
                                     model: bar.startEntries
 
-                                    delegate: Loader {
+                                    delegate: BarEntry {
                                         id: startEntry
 
                                         required property var modelData
 
+                                        vertical: bar.vertical
+                                        contentVisible: monitor.entryVisible(startEntry.modelData)
                                         sourceComponent: monitor.entryComponent(startEntry.modelData)
                                         onLoaded: {
                                             if (startEntry.modelData.cluster !== undefined)
@@ -2638,11 +2655,13 @@ ShellRoot {
                                 Repeater {
                                     model: bar.centerEntries
 
-                                    delegate: Loader {
+                                    delegate: BarEntry {
                                         id: centerEntry
 
                                         required property var modelData
 
+                                        vertical: bar.vertical
+                                        contentVisible: monitor.entryVisible(centerEntry.modelData)
                                         sourceComponent: monitor.entryComponent(centerEntry.modelData)
                                         onLoaded: {
                                             if (centerEntry.modelData.cluster !== undefined)
@@ -2670,12 +2689,14 @@ ShellRoot {
                                 Repeater {
                                     model: bar.endEntries
 
-                                    delegate: Loader {
+                                    delegate: BarEntry {
                                         id: endEntry
 
                                         required property var modelData
 
                                         Layout.alignment: Qt.AlignHCenter
+                                        vertical: bar.vertical
+                                        contentVisible: monitor.entryVisible(endEntry.modelData)
                                         sourceComponent: monitor.entryComponent(endEntry.modelData)
                                         onLoaded: {
                                             if (endEntry.modelData.cluster !== undefined)
