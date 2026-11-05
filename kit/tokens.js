@@ -23,6 +23,12 @@ var ranges = {
     osdBrightnessStep: { min: 1, max: 20, step: 1, value: 5 },
     // The percent one wheel notch moves an app's own volume.
     soundStep: { min: 1, max: 20, step: 1, value: 5 },
+    // The dashboard's clock widgets: the pomodoro's work and break periods
+    // (minutes), the rounds before it is over, and the timer's default length.
+    pomodoroWork: { min: 1, max: 120, step: 1, value: 25 },
+    pomodoroRest: { min: 1, max: 60, step: 1, value: 5 },
+    pomodoroCycles: { min: 1, max: 12, step: 1, value: 4 },
+    timerMinutes: { min: 1, max: 180, step: 1, value: 10 },
     // The audio visualiser's strip: how tall it is in the background.
     visualiserHeight: { min: 48, max: 320, step: 8, value: 120 },
     // The pointer's size in pixels.

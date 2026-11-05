@@ -50,6 +50,10 @@ QtObject {
     property alias osdSize: barFile.osdSize
     property alias osdStep: barFile.osdStep
     property alias osdBrightnessStep: barFile.osdBrightnessStep
+    property alias pomodoroWork: barFile.pomodoroWork
+    property alias pomodoroRest: barFile.pomodoroRest
+    property alias pomodoroCycles: barFile.pomodoroCycles
+    property alias timerMinutes: barFile.timerMinutes
     property alias soundOutputApps: soundFile.soundOutputApps
     property alias soundInputApps: soundFile.soundInputApps
     property alias soundFocusApps: soundFile.soundFocusApps
@@ -119,6 +123,8 @@ QtObject {
     property alias selftest: miscFile.selftest
     property alias quickNotes: miscFile.quickNotes
     property alias clipboardColors: miscFile.clipboardColors
+    property alias pomodoroState: miscFile.pomodoroState
+    property alias timerState: miscFile.timerState
 
     property Settings appearanceSettings: Settings {
         id: appearanceFile
@@ -184,6 +190,12 @@ QtObject {
         property string osdSize: VitrailTokens.osd.size
         property int osdStep: VitrailTokens.ranges.osdStep.value
         property int osdBrightnessStep: VitrailTokens.ranges.osdBrightnessStep.value
+        // The dashboard's clock widgets: the pomodoro's periods and rounds and
+        // the timer's default length, in minutes.
+        property int pomodoroWork: VitrailTokens.ranges.pomodoroWork.value
+        property int pomodoroRest: VitrailTokens.ranges.pomodoroRest.value
+        property int pomodoroCycles: VitrailTokens.ranges.pomodoroCycles.value
+        property int timerMinutes: VitrailTokens.ranges.timerMinutes.value
     }
 
     property Settings wallpaperSettings: Settings {
@@ -406,6 +418,10 @@ QtObject {
         property string quickNotes: ""
         // The colour tab's last ten colours, as a JSON array of hex values.
         property string clipboardColors: ""
+        // The dashboard's sessions, as the JSON timers.js writes: the state
+        // and the end time, so a running one continues after a reload.
+        property string pomodoroState: ""
+        property string timerState: ""
         // Written by the smoke test, never by the UI.
         property string selftest: ""
     }

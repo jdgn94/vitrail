@@ -4,9 +4,11 @@ import QtQuick.Layouts
 import "../kit"
 import "../kit/base"
 import "dashboard.js" as Dash
+import "timers.js" as Timers
 
 // The dashboard popup: the clock and date, then the month with today marked,
-// the weather, the machine's performance and now playing, in four tabs. Only
+// the weather, the machine's performance, the focus widgets and now playing,
+// in five tabs. Only
 // the content lives here: the caller owns the data (see DashboardPopout, which
 // runs the services while the popup is open), so the panel renders, and is
 // tested, without a process.
@@ -29,6 +31,9 @@ Item {
     property int mediaIndex: 0
     property string mediaStyle: "disc"
     property Component mediaPanel: null
+    // The clock widgets' engine, kept by the shell so a running session lives
+    // on when the popup closes (TimerEngine.qml).
+    property var timerEngine: null
 
     signal playerChosen(int index)
 
@@ -36,6 +41,7 @@ Item {
         { key: "calendar", label: root.t("dashboard.tab.calendar"), icon: "calendar_month" },
         { key: "weather", label: root.t("dashboard.tab.weather"), icon: "partly_cloudy_day" },
         { key: "performance", label: root.t("dashboard.tab.performance"), icon: "monitoring" },
+        { key: "focus", label: root.t("dashboard.tab.focus"), icon: "timer" },
         { key: "media", label: root.t("dashboard.tab.media"), icon: "music_note" }
     ]
     readonly property bool hasWeather: !!(root.weather && root.weather.current)
@@ -104,6 +110,43 @@ Item {
     function condition(code, fallback) {
         var text = root.strings["weather.code." + Number(code)]
         return text === undefined || text === "" ? (fallback || "") : text
+    }
+
+    // --- the clock widgets: the pomodoro and the free timer -------------------
+    readonly property var pomodoro: root.timerEngine ? root.timerEngine.pomodoro : null
+    readonly property var freeTimer: root.timerEngine ? root.timerEngine.timer : null
+
+    function clockLeft(state) {
+        if (!state)
+            return 0
+        return state.running ? Timers.remaining(state.end, root.now.getTime()) : state.left
+    }
+
+    function clockProgress(state) {
+        return Timers.progress(state, root.now.getTime())
+    }
+
+    function pomodoroPhase(state) {
+        if (!state)
+            return ""
+        if (state.done)
+            return root.t("dashboard.focus.done")
+        var phase = state.phase === "work" ? root.t("dashboard.focus.work")
+                                           : root.t("dashboard.focus.rest")
+        return phase + " · " + root.t("dashboard.focus.round") + " "
+               + Timers.round(state) + "/" + state.cycles
+    }
+
+    function timerPhase(state) {
+        if (!state)
+            return ""
+        if (state.done)
+            return root.t("dashboard.focus.done")
+        if (state.running)
+            return root.t("dashboard.focus.timer")
+        if (state.left > 0 && state.left < state.duration)
+            return root.t("dashboard.focus.paused")
+        return root.t("dashboard.focus.ready")
     }
 
     // The header time ticks every second; the calendar follows the day.
@@ -494,6 +537,66 @@ Item {
                             }
                         }
                     }
+                }
+            }
+
+            // --- focus: the pomodoro and the free timer
+            Item {
+                objectName: "dashboardFocus"
+
+                implicitHeight: focusColumn.implicitHeight
+
+                ColumnLayout {
+                    id: focusColumn
+
+                    anchors.fill: parent
+                    spacing: VitrailTokens.gap("md")
+                    visible: root.timerEngine !== null
+
+                    FocusWidget {
+                        objectName: "focusPomodoro"
+                        Layout.fillWidth: true
+                        name: "pomodoro"
+                        title: root.t("dashboard.focus.pomodoro")
+                        phase: root.pomodoroPhase(root.pomodoro)
+                        remaining: Timers.format(root.clockLeft(root.pomodoro))
+                        progress: root.clockProgress(root.pomodoro)
+                        running: root.pomodoro ? root.pomodoro.running : false
+                        done: root.pomodoro ? root.pomodoro.done : false
+                        startText: root.t("dashboard.focus.start")
+                        pauseText: root.t("dashboard.focus.pause")
+                        resetText: root.t("dashboard.focus.reset")
+                        onStartRequested: root.timerEngine.togglePomodoro()
+                        onPauseRequested: root.timerEngine.pausePomodoro()
+                        onResetRequested: root.timerEngine.resetPomodoro()
+                    }
+
+                    FocusWidget {
+                        objectName: "focusTimer"
+                        Layout.fillWidth: true
+                        name: "timer"
+                        title: root.t("dashboard.focus.timer")
+                        phase: root.timerPhase(root.freeTimer)
+                        remaining: Timers.format(root.clockLeft(root.freeTimer))
+                        progress: root.clockProgress(root.freeTimer)
+                        running: root.freeTimer ? root.freeTimer.running : false
+                        done: root.freeTimer ? root.freeTimer.done : false
+                        startText: root.t("dashboard.focus.start")
+                        pauseText: root.t("dashboard.focus.pause")
+                        resetText: root.t("dashboard.focus.reset")
+                        editableMinutes: true
+                        minutes: root.freeTimer ? root.freeTimer.minutes : 10
+                        minutesLabel: root.t("dashboard.focus.minutes")
+                        onStartRequested: root.timerEngine.toggleTimer(root.freeTimer.minutes)
+                        onPauseRequested: root.timerEngine.pauseTimer()
+                        onResetRequested: root.timerEngine.resetTimer()
+                        onMinutesEdited: function (value) { root.timerEngine.setTimerMinutes(value) }
+                    }
+                }
+
+                Item {
+                    anchors.fill: parent
+                    visible: root.timerEngine === null
                 }
             }
 

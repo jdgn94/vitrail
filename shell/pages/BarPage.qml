@@ -47,6 +47,7 @@ Item {
                 { key: "frame", icon: "crop_free", label: page.t("bar.tab.framePanels") },
                 { key: "notifications", icon: "notifications", label: page.t("bar.section.notifications") },
                 { key: "osd", icon: "tune", label: page.t("bar.section.osd") },
+                { key: "widgets", icon: "timer", label: page.t("bar.section.widgets") },
                 { key: "background", icon: "graphic_eq", label: page.t("bar.section.background") },
                 { key: "capture", icon: "screenshot_monitor", label: page.t("bar.section.capture") }
             ]
@@ -604,6 +605,66 @@ Item {
                             accent: page.palette.primary
                             onToggled: function (value) { page.prefs.captureRecordAudio = value }
                         }
+                    }
+                }
+
+                Section {
+                    Layout.fillWidth: true
+                    visible: page.tab === "widgets"
+                    icon: "timer"
+                    title: page.t("bar.section.widgets")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    VitrailSlider {
+                        Layout.fillWidth: true
+                        label: page.t("bar.widgets.pomodoroWork")
+                        suffix: " min"
+                        from: VitrailTokens.ranges.pomodoroWork.min
+                        to: VitrailTokens.ranges.pomodoroWork.max
+                        stepSize: VitrailTokens.ranges.pomodoroWork.step
+                        value: page.prefs.pomodoroWork
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onMoved: page.prefs.pomodoroWork = value
+                    }
+
+                    VitrailSlider {
+                        Layout.fillWidth: true
+                        label: page.t("bar.widgets.pomodoroRest")
+                        suffix: " min"
+                        from: VitrailTokens.ranges.pomodoroRest.min
+                        to: VitrailTokens.ranges.pomodoroRest.max
+                        stepSize: VitrailTokens.ranges.pomodoroRest.step
+                        value: page.prefs.pomodoroRest
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onMoved: page.prefs.pomodoroRest = value
+                    }
+
+                    VitrailSlider {
+                        Layout.fillWidth: true
+                        label: page.t("bar.widgets.pomodoroCycles")
+                        from: VitrailTokens.ranges.pomodoroCycles.min
+                        to: VitrailTokens.ranges.pomodoroCycles.max
+                        stepSize: VitrailTokens.ranges.pomodoroCycles.step
+                        value: page.prefs.pomodoroCycles
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onMoved: page.prefs.pomodoroCycles = value
+                    }
+
+                    VitrailSlider {
+                        Layout.fillWidth: true
+                        label: page.t("bar.widgets.timerMinutes")
+                        suffix: " min"
+                        from: VitrailTokens.ranges.timerMinutes.min
+                        to: VitrailTokens.ranges.timerMinutes.max
+                        stepSize: VitrailTokens.ranges.timerMinutes.step
+                        value: page.prefs.timerMinutes
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onMoved: page.prefs.timerMinutes = value
                     }
                 }
 

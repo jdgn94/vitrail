@@ -366,6 +366,33 @@ ShellRoot {
         snoozeSend.exec(["python3", "-m", "vitrail.notify", "send", next])
     }
 
+    // A notification of the bar's own, through the same server (and the same
+    // queue) as a snooze that is due: it never takes the focus.
+    function postNotification(summary, body, icon) {
+        snoozeSend.pending.push(JSON.stringify({
+            app: "Vitrail",
+            icon: icon || "notifications",
+            summary: summary,
+            body: body || ""
+        }))
+        shell.sendNextSnooze()
+    }
+
+    // A pomodoro phase or a timer ran out.
+    function timerFinished(kind, phase) {
+        if (kind === "timer") {
+            shell.postNotification(shell.t("dashboard.timer.done"),
+                                   shell.t("dashboard.timer.done.body"), "timer")
+            return
+        }
+        if (phase === "work")
+            shell.postNotification(shell.t("dashboard.pomodoro.workDone"),
+                                   shell.t("dashboard.pomodoro.workDone.body"), "coffee")
+        else
+            shell.postNotification(shell.t("dashboard.pomodoro.restDone"),
+                                   shell.t("dashboard.pomodoro.restDone.body"), "work")
+    }
+
     // A picture or file attachment opens with the desktop's file manager; a
     // web link with the browser.
     function openAttachment(path) {
@@ -815,6 +842,22 @@ ShellRoot {
         shell.syncTokens()
         // The chip shows the profile from the start, not its default.
         shell.refreshPowerProfile()
+    }
+
+    // The dashboard's pomodoro and timer: kept here, not in the popup, so a
+    // running session goes on while the popup is closed and survives a reload
+    // (the state and end time live in misc.ini).
+    TimerEngine {
+        id: focusTimers
+
+        workMinutes: shell.prefNumber("pomodoroWork", VitrailTokens.ranges.pomodoroWork.value)
+        restMinutes: shell.prefNumber("pomodoroRest", VitrailTokens.ranges.pomodoroRest.value)
+        cycles: shell.prefNumber("pomodoroCycles", VitrailTokens.ranges.pomodoroCycles.value)
+        timerMinutes: shell.prefNumber("timerMinutes", VitrailTokens.ranges.timerMinutes.value)
+        savedPomodoro: shell.prefs.pomodoroState || ""
+        savedTimer: shell.prefs.timerState || ""
+        onPersist: function (key, value) { shell.setPref(key, value) }
+        onFinished: function (kind, phase) { shell.timerFinished(kind, phase) }
     }
 
     function syncTokens() {
@@ -2570,6 +2613,7 @@ ShellRoot {
                         mediaPlayers: shell.mprisPlayers
                         mediaIndex: shell.mprisIndex
                         mediaStyle: shell.prefs.mediaStyle || "disc"
+                        timerEngine: focusTimers
                         onPlayerChosen: function (index) { shell.mprisIndex = index }
                     }
                 }

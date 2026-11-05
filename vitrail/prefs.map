@@ -51,6 +51,12 @@ bar osdHotZone
 bar osdSize
 bar osdStep
 bar osdBrightnessStep
+# The dashboard clock widgets: the pomodoro's periods and rounds, and the
+# timer's default length, in minutes.
+bar pomodoroWork
+bar pomodoroRest
+bar pomodoroCycles
+bar timerMinutes
 
 wallpaper wallpaper
 wallpaper wallpaperMode
@@ -141,6 +147,10 @@ connection networkMetrics
 misc selftest
 misc quickNotes
 misc clipboardColors
+# What the dashboard's pomodoro and timer remember, end time included, so a
+# running session continues after the bar reloads.
+misc pomodoroState
+misc timerState
 
 # The place and units of the bar's weather (`vitrail/weather.py`).
 weather weatherLocation

@@ -3,9 +3,10 @@ import QtTest
 import "../../bar/kit"
 import "../../bar/dashboard"
 import "../../bar/dashboard/dashboard.js" as Dash
+import "../../bar/dashboard/timers.js" as Timers
 
-// The dashboard: four tabs, the today calendar, the weather and the
-// performance readout with its empty states and percentages.
+// The dashboard: five tabs, the today calendar, the weather, the performance
+// readout with its empty states and percentages, and the focus widgets.
 TestCase {
     id: testCase
 
@@ -26,6 +27,12 @@ TestCase {
             width: 440
             language: "en"
         }
+    }
+
+    Component {
+        id: engineControl
+
+        TimerEngine {}
     }
 
     function initTestCase() {
@@ -49,10 +56,11 @@ TestCase {
         return box
     }
 
-    function test_there_are_four_tabs_and_the_calendar_is_first() {
+    function test_there_are_five_tabs_and_the_calendar_is_first() {
         var box = make()
-        compare(box.tabs.length, 4)
-        compare(box.tabs.map(function (tab) { return tab.key }), ["calendar", "weather", "performance", "media"])
+        compare(box.tabs.length, 5)
+        compare(box.tabs.map(function (tab) { return tab.key }),
+                ["calendar", "weather", "performance", "focus", "media"])
         compare(box.currentTab, "calendar")
         verify(findChild(box, "dashboardCalendar").visible)
     }
@@ -67,6 +75,8 @@ TestCase {
         verify(findChild(box, "dashboardPerformance").visible)
         box.showTab("media")
         verify(findChild(box, "dashboardMedia").visible)
+        box.showTab("focus")
+        verify(findChild(box, "dashboardFocus").visible)
         box.showTab("calendar")
         verify(findChild(box, "dashboardCalendar").visible)
     }
@@ -103,6 +113,72 @@ TestCase {
         verify(findChild(box, "dashboardPerformanceEmpty").visible)
         box.showTab("media")
         verify(findChild(box, "dashboardMediaEmpty").visible)
+    }
+
+    function test_the_focus_tab_draws_the_pomodoro_and_the_timer() {
+        var engine = createTemporaryObject(engineControl, testCase, {
+            workMinutes: 25, restMinutes: 5, cycles: 4, timerMinutes: 10
+        })
+        var strings = {
+            "dashboard.focus.work": "Work",
+            "dashboard.focus.rest": "Break",
+            "dashboard.focus.round": "Round",
+            "dashboard.focus.done": "Done",
+            "dashboard.focus.ready": "Ready",
+            "dashboard.focus.paused": "Paused",
+            "dashboard.focus.timer": "Timer",
+            "dashboard.focus.pomodoro": "Pomodoro"
+        }
+        var box = make({ timerEngine: engine, strings: strings })
+        box.showTab("focus")
+        verify(findChild(box, "focusPomodoro").visible)
+        verify(findChild(box, "focusTimer").visible)
+        compare(findChild(box, "focusRemaining_pomodoro").text, "25:00")
+        compare(findChild(box, "focusRemaining_timer").text, "10:00")
+        compare(findChild(box, "focusPhase_pomodoro").text, "Work · Round 1/4")
+        compare(findChild(box, "focusPhase_timer").text, "Ready")
+    }
+
+    function test_the_focus_actions_reach_the_engine() {
+        var engine = createTemporaryObject(engineControl, testCase, { timerMinutes: 10 })
+        var strings = {
+            "dashboard.focus.work": "Work",
+            "dashboard.focus.rest": "Break",
+            "dashboard.focus.round": "Round",
+            "dashboard.focus.done": "Done",
+            "dashboard.focus.ready": "Ready",
+            "dashboard.focus.paused": "Paused",
+            "dashboard.focus.timer": "Timer",
+            "dashboard.focus.pomodoro": "Pomodoro"
+        }
+        var box = make({ timerEngine: engine, strings: strings })
+        box.showTab("focus")
+        findChild(box, "focusToggle_pomodoro").clicked()
+        compare(engine.pomodoro.running, true)
+        compare(findChild(box, "focusPhase_pomodoro").text, "Work · Round 1/4")
+        findChild(box, "focusToggle_pomodoro").clicked()
+        compare(engine.pomodoro.running, false)
+        compare(findChild(box, "focusPhase_pomodoro").text, "Work · Round 1/4")
+        findChild(box, "focusReset_pomodoro").clicked()
+        compare(engine.pomodoro.left, 1500)
+        compare(findChild(box, "focusRemaining_pomodoro").text, "25:00")
+
+        findChild(box, "focusToggle_timer").clicked()
+        compare(engine.timer.running, true)
+        findChild(box, "focusToggle_timer").clicked()
+        compare(engine.timer.running, false)
+        findChild(box, "focusReset_timer").clicked()
+        compare(engine.timer.left, 600)
+    }
+
+    function test_the_timer_field_sets_the_free_length() {
+        var engine = createTemporaryObject(engineControl, testCase, { timerMinutes: 10 })
+        var box = make({ timerEngine: engine })
+        box.showTab("focus")
+        var field = findChild(box, "focusMinutes_timer")
+        field.text = "42"
+        compare(engine.timerMinutes, 42)
+        compare(findChild(box, "focusRemaining_timer").text, "42:00")
     }
 
     function test_the_weather_shows_the_place_current_conditions_and_four_days() {        var box = make({

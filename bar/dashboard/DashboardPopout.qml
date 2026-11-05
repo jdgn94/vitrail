@@ -20,6 +20,8 @@ Item {
     property var mediaPlayers: []
     property int mediaIndex: 0
     property string mediaStyle: "disc"
+    // The shell's clock engine: the popup only draws and asks.
+    property var timerEngine: null
 
     signal playerChosen(int index)
 
@@ -51,6 +53,7 @@ Item {
         mediaPlayers: root.mediaPlayers
         mediaIndex: root.mediaIndex
         mediaStyle: root.mediaStyle
+        timerEngine: root.timerEngine
         mediaPanel: mediaComponent
         onPlayerChosen: function (index) { root.playerChosen(index) }
     }
