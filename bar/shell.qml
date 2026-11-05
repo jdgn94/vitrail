@@ -2086,12 +2086,29 @@ ShellRoot {
                     WlrLayershell.namespace: "vitrail-bar"
                     WlrLayershell.layer: WlrLayer.Top
                     mask: Region {
-                        item: bar.showBar && !bar.islands ? bar.area : null
+                        // With a popup open the window takes the rest of the
+                        // screen too, so a click outside the popup lands here
+                        // (and closes it) instead of on the app below. The
+                        // popup card is an Overlay above, and the bar's own
+                        // buttons are above this click area.
+                        item: shell.popupOpen || (bar.showBar && !bar.islands) ? bar : null
 
                         Region { item: bar.startMask }
                         Region { item: bar.centerMask }
                         Region { item: bar.endMask }
                         Region { item: bar.panelArea }
+                    }
+
+                    // A click anywhere but the popup card (or a bar button,
+                    // which is above this area) closes the popup. This is the
+                    // outside-close that does not wait for a focus change: the
+                    // bar background, another monitor and the desktop all land
+                    // here while a popup is open.
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: shell.popupOpen
+                        acceptedButtons: Qt.AllButtons
+                        onClicked: shell.closePopup()
                     }
 
                     VitrailBar {

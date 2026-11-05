@@ -35,6 +35,15 @@ TestCase {
         TimerEngine {}
     }
 
+    Component {
+        id: mediaStub
+
+        Rectangle {
+            implicitWidth: 300
+            implicitHeight: 240
+        }
+    }
+
     function initTestCase() {
         VitrailTokens.configure({
             surface: palette.surface,
@@ -273,6 +282,55 @@ TestCase {
         box.showTab("performance")
         compare(findChild(box, "dashboardValue_cpu").text, "--")
         compare(findChild(box, "dashboardValue_temperature").text, "--")
+    }
+
+    function test_the_card_sizes_to_the_tab_on_screen() {
+        var box = make()
+        var pages = findChild(box, "dashboardPages")
+        var keys = ["calendar", "weather", "performance", "focus", "media"]
+        var names = {
+            calendar: "dashboardCalendar",
+            weather: "dashboardWeather",
+            performance: "dashboardPerformance",
+            focus: "dashboardFocus",
+            media: "dashboardMedia"
+        }
+        var cardHeights = []
+        for (var i = 0; i < keys.length; i++) {
+            box.showTab(keys[i])
+            // The layout recalculates on the next polish pass.
+            wait(50)
+            var page = findChild(box, names[keys[i]])
+            // Not the tallest child: the tab on screen decides.
+            compare(pages.height, page.implicitHeight)
+            cardHeights.push(box.implicitHeight)
+        }
+        // A shorter tab makes a shorter card, and going back restores it.
+        var shortest = Math.min.apply(Math, cardHeights)
+        var tallest = Math.max.apply(Math, cardHeights)
+        verify(shortest < tallest, "every tab produced the same card height")
+        box.showTab(keys[cardHeights.indexOf(shortest)])
+        wait(50)
+        compare(box.implicitHeight, shortest)
+        box.showTab(keys[cardHeights.indexOf(tallest)])
+        wait(50)
+        compare(box.implicitHeight, tallest)
+    }
+
+    function test_the_media_tab_follows_what_is_playing() {
+        var box = make()
+        var pages = findChild(box, "dashboardPages")
+        var media = findChild(box, "dashboardMedia")
+        box.showTab("media")
+        wait(50)
+        compare(pages.height, media.implicitHeight)
+        var emptyHeight = box.implicitHeight
+        box.mediaPlayer = ({})
+        box.mediaPanel = mediaStub
+        wait(50)
+        compare(pages.height, media.implicitHeight)
+        compare(media.implicitHeight, 240)
+        verify(box.implicitHeight !== emptyHeight, "the card kept the empty-media height")
     }
 
     function test_the_percentage_format() {

@@ -208,11 +208,19 @@ Item {
         StackLayout {
             id: pages
 
+            objectName: "dashboardPages"
             Layout.fillWidth: true
             currentIndex: root.tabs.findIndex(function (tab) { return tab.key === root.currentTab })
+            // Only the tab on screen sizes the card. The layout's default is
+            // the tallest child, which padded the shorter tabs (the calendar,
+            // a media tab with nothing playing) with empty space.
+            readonly property var pageFor: [calendarPage, weatherPage, performancePage, focusPage, mediaPage]
+            readonly property var currentPage: pageFor[currentIndex] || null
+            Layout.preferredHeight: currentPage ? currentPage.implicitHeight : 0
 
             // --- calendar: the month, with today in the accent circle
             Item {
+                id: calendarPage
                 objectName: "dashboardCalendar"
 
                 implicitHeight: calendar.implicitHeight
@@ -313,6 +321,7 @@ Item {
 
             // --- weather: the place, now, then the next four days
             Item {
+                id: weatherPage
                 objectName: "dashboardWeather"
 
                 implicitHeight: root.hasWeather ? weatherColumn.implicitHeight : weatherEmpty.implicitHeight
@@ -469,6 +478,7 @@ Item {
 
             // --- performance: CPU, memory, temperature, disk and network
             Item {
+                id: performancePage
                 objectName: "dashboardPerformance"
 
                 implicitHeight: root.hasResources ? performanceColumn.implicitHeight
@@ -542,6 +552,7 @@ Item {
 
             // --- focus: the pomodoro and the free timer
             Item {
+                id: focusPage
                 objectName: "dashboardFocus"
 
                 implicitHeight: focusColumn.implicitHeight
@@ -602,6 +613,7 @@ Item {
 
             // --- media: the panel the caller supplies, or nothing playing
             Item {
+                id: mediaPage
                 objectName: "dashboardMedia"
 
                 implicitHeight: root.hasMedia ? mediaLoader.implicitHeight : mediaEmpty.implicitHeight

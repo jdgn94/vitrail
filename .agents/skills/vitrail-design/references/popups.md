@@ -64,10 +64,14 @@ timeline, ratios), `motion.smooth`.
   `Hyprland.monitorFor(screen) === Hyprland.focusedMonitor`).
 
 - Input: the popup window (`vitrail-popup`, Overlay, full screen) has
-  `mask: Region { item: popupCard }` while shown, so only the card takes input;
-  the bar buttons (layer Top) and the apps stay clickable, and a click on the
-  same button closes, on another one switches. There is no click-catcher: a
-  full-screen one eats every click.
+  `mask: Region { item: popupCard }` while shown, so only the card takes input.
+  The bar window (layer Top) expands its mask to the whole screen while a popup
+  is open and keeps a full-screen `MouseArea` behind its own UI: a click
+  outside the card (bar background, another monitor, an app, the desktop)
+  lands there and closes the popup. The bar buttons are above that area and the
+  card is an Overlay above the bar, so both keep their clicks: the same button
+  closes (toggle), another one switches. The outside click is consumed by the
+  close (it does not reach the app below), as with a menu.
 - Closing is one rule (`shell.pointerInsidePopup`, pure point/rect helper in
   `bar/popup.js`): the pointer must have left the card, the tray app's menu
   card and the button the popup grew from, with `popupCard.margin` of grace.
@@ -78,7 +82,8 @@ timeline, ratios), `motion.smooth`.
 - An app taking the focus (`Hyprland.activeToplevel` changes) closes the popup
   only when that rule says the pointer is outside; the launcher popout follows
   the same rule. A focus change while the pointer reads the popup never closes
-  it.
+  it. Focus is a fallback, not the outside-click mechanism: the click catcher
+  above closes even when the app under the pointer does not take the focus.
 - Hover switching: with a popup open, hovering another bar element that has
   one opens it (`shell.hoverPopup`; every element emits `hovered(kind, item)`
   next to `clicked`). It never opens from closed. `shell.popupByHover` marks a
@@ -115,7 +120,11 @@ timeline, ratios), `motion.smooth`.
 - center: `ClockButton` (SystemClock; "HH\nMM" on a vertical bar) → popup
   kind `dashboard` → `DashboardPopout`, whose header is the big clock and the
   localized date, then the calendar tab (MonthGrid with month paging and a
-  "today" button), weather, performance and media.
+  "today" button), weather, performance and media. The card sizes to the tab
+  on screen: `Dashboard.qml`'s `StackLayout` sets
+  `Layout.preferredHeight` from `pageFor[currentIndex]` (its default is the
+  tallest child, which padded the shorter tabs); switching tabs or
+  losing/regaining media re-sizes the card.
 - end: `BarItems` (tray, the chip with `network`, `vpn` and the power profile,
   and power). Each button has its own popup: `NetworkPanel`, `VpnPanel` and
   `PowerProfilePanel` (the settings window's Connection page is where the link,
