@@ -10,6 +10,8 @@ RowLayout {
     id: root
 
     property bool recording: false
+    // sm / md / lg: the buttons grow with the panel widget's size.
+    property string size: "md"
 
     signal shotRequested(string mode)
     signal recordRequested()
@@ -29,6 +31,7 @@ RowLayout {
 
             Layout.fillWidth: true
             variant: "text"
+            size: root.size
             icon: root.iconOf(modelData)
             onClicked: root.shotRequested(modelData)
         }
@@ -37,6 +40,7 @@ RowLayout {
     VitrailButton {
         Layout.fillWidth: true
         variant: "text"
+        size: root.size
         tone: root.recording ? "error" : "secondary"
         icon: root.recording ? "stop_circle" : "screen_record"
         onClicked: root.recordRequested()

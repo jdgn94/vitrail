@@ -31,6 +31,8 @@ Item {
     property int index: 0
     property var strings: ({})
     property string style: "disc"
+    // sm / md / lg: the card's spacing and control sizes. "md" is today's look.
+    property string size: "md"
 
     signal playerChosen(int index)
 
@@ -46,7 +48,12 @@ Item {
     readonly property string cover: root.current ? root.current.trackArtUrl : ""
 
     readonly property var look: VitrailTokens.media
-    readonly property real unit: VitrailTokens.gap("md")
+    readonly property var scaleBySize: ({
+        sm: { small: "sm", main: "sm", unit: "sm" },
+        md: { small: "sm", main: "md", unit: "md" },
+        lg: { small: "md", main: "lg", unit: "lg" }
+    })[root.size] || ({ small: "sm", main: "md", unit: "md" })
+    readonly property real unit: VitrailTokens.gap(root.scaleBySize.unit)
 
     implicitWidth: Math.max(root.look.panel.width, body.implicitWidth)
     implicitHeight: body.implicitHeight
@@ -266,7 +273,7 @@ Item {
             VitrailButton {
                 variant: "plain"
                 tone: root.shuffled ? "primary" : "secondary"
-                size: "sm"
+                size: root.scaleBySize.small
                 icon: "shuffle"
                 enabled: root.current ? root.current.shuffleSupported : false
                 onClicked: if (root.current) root.current.shuffle = !root.current.shuffle
@@ -275,7 +282,7 @@ Item {
             VitrailButton {
                 variant: "text"
                 tone: "secondary"
-                size: "sm"
+                size: root.scaleBySize.small
                 icon: "skip_previous"
                 enabled: root.current ? root.current.canGoPrevious : false
                 onClicked: if (root.current) root.current.previous()
@@ -283,7 +290,7 @@ Item {
 
             VitrailButton {
                 variant: "filled"
-                size: "md"
+                size: root.scaleBySize.main
                 icon: root.playing ? "pause" : "play_arrow"
                 enabled: root.current ? root.current.canTogglePlaying : false
                 onClicked: if (root.current) root.current.togglePlaying()
@@ -292,7 +299,7 @@ Item {
             VitrailButton {
                 variant: "text"
                 tone: "secondary"
-                size: "sm"
+                size: root.scaleBySize.small
                 icon: "skip_next"
                 enabled: root.current ? root.current.canGoNext : false
                 onClicked: if (root.current) root.current.next()
@@ -301,7 +308,7 @@ Item {
             VitrailButton {
                 variant: "plain"
                 tone: root.looping ? "primary" : "secondary"
-                size: "sm"
+                size: root.scaleBySize.small
                 icon: "repeat"
                 enabled: root.current !== null
                 onClicked: root.cycleLoop()

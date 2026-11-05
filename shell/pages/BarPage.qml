@@ -24,7 +24,16 @@ Item {
     property var monitors: ({ available: false, monitors: [] })
     // The monitor whose order and visibility the editor edits; "" is global.
     property string monitor: ""
+    // Which surface the editor edits: "bar" (today's groups) or "panel" (one
+    // flat list). The desktop will reuse the same surface switch.
+    property string editorSurface: "bar"
     readonly property var layout: Layouts.effective(page.prefs.barLayout || "", page.monitor)
+    // The panel's flat document (bar.ini `panelLayout`); empty is today's panel.
+    readonly property var panelLayout: Layouts.effective(page.prefs.panelLayout || "", "", null, "panel")
+    // Where a dragged panel widget would land: an insertion index, -1 when no
+    // drag is running.
+    property int panelDragFrom: -1
+    property int panelDropIndex: -1
 
     onTabChanged: scroller.contentY = 0
 
@@ -35,7 +44,7 @@ Item {
 
     function labelOf(id) {
         var widget = Layouts.find(id)
-        return page.t(widget ? widget.label : id)
+        return page.t(widget ? widget.labelKey : id)
     }
 
     function monitorOptions() {
@@ -69,6 +78,39 @@ Item {
 
     function moveWidget(id, delta) {
         page.commit({ order: Layouts.move(page.layout.order, id, delta) })
+    }
+
+    // One patch of the panel's document, as layouts.js writes it; unchanged
+    // values write nothing.
+    function commitPanel(patch) {
+        var text = Layouts.write(page.prefs.panelLayout || "", "", patch, "panel")
+        if (text !== null)
+            page.prefs.panelLayout = text
+    }
+
+    function panelSetting(id) {
+        return Layouts.setting(page.panelLayout, id, "panel")
+    }
+
+    function setPanelVisible(id, visible) {
+        if (visible === (page.panelLayout.hidden.indexOf(id) < 0))
+            return
+        page.commitPanel({ hidden: Layouts.toggle(page.panelLayout.hidden, id) })
+    }
+
+    function setPanelSize(id, size) {
+        page.commitPanel({ widgets: Layouts.configure(page.panelLayout.widgets, id, { size: size }, "panel") })
+    }
+
+    function setPanelStyle(id, style) {
+        page.commitPanel({ widgets: Layouts.configure(page.panelLayout.widgets, id, { style: style }, "panel") })
+    }
+
+    // A drag ended on an insertion slot: put the widget there.
+    function dropPanelWidget(from, to) {
+        if (from < 0 || to < 0)
+            return
+        page.commitPanel({ order: Layouts.reorder(page.panelLayout.order, from, to) })
     }
 
     readonly property var icons: ({
@@ -308,9 +350,28 @@ Item {
                     }
 
                     VitrailSettingRow {
+                        icon: "layers"
+                        label: page.t("bar.editor.surface")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            options: [
+                                { key: "bar", icon: "toolbar", label: page.t("bar.editor.surface.bar") },
+                                { key: "panel", icon: "view_sidebar", label: page.t("bar.editor.surface.panel") }
+                            ]
+                            current: page.editorSurface
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: page.editorSurface = key
+                        }
+                    }
+
+                    VitrailSettingRow {
                         icon: "monitor"
                         label: page.t("bar.editor.monitor")
                         description: page.t("bar.editor.monitor.help")
+                        visible: page.editorSurface === "bar"
                         foreground: page.palette.foreground
                         muted: page.palette.muted
 
@@ -327,6 +388,7 @@ Item {
                         icon: "compress"
                         label: page.t("bar.editor.density")
                         description: page.t("bar.editor.density.help")
+                        visible: page.editorSurface === "bar"
                         foreground: page.palette.foreground
                         muted: page.palette.muted
 
@@ -346,6 +408,7 @@ Item {
                         icon: "fullscreen"
                         label: page.t("bar.editor.fullscreen")
                         description: page.t("bar.editor.fullscreen.help")
+                        visible: page.editorSurface === "bar"
                         foreground: page.palette.foreground
                         muted: page.palette.muted
 
@@ -369,7 +432,7 @@ Item {
                         required property string modelData
 
                         Layout.fillWidth: true
-                        visible: page.tab === "editor"
+                        visible: page.tab === "editor" && page.editorSurface === "bar"
                         icon: page.icons.group[groupCard.modelData] || "widgets"
                         title: page.t("bar.editor.group." + groupCard.modelData)
                         foreground: page.palette.foreground
@@ -412,6 +475,232 @@ Item {
                                     onClicked: if (widgetRow.index < widgetRow.ids.length - 1)
                                                    page.moveWidget(widgetRow.modelData, 1)
                                 }
+                            }
+                        }
+                    }
+                }
+
+                // The panel's widgets: one card each, in the document's order.
+                // Drag a card by its handle to reorder it (the line marks the
+                // insertion point); the switch hides it.
+                Section {
+                    Layout.fillWidth: true
+                    visible: page.tab === "editor" && page.editorSurface === "panel"
+                    icon: "view_sidebar"
+                    title: page.t("panel.editor.title")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: page.t("panel.editor.help")
+                        color: page.palette.muted
+                        font.pixelSize: 12
+                        font.family: VitrailTokens.fontFamily
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Repeater {
+                        model: page.panelLayout.order
+
+                        delegate: Item {
+                            id: cardItem
+
+                            required property string modelData
+                            required property int index
+
+                            readonly property var meta: Layouts.find(cardItem.modelData, "panel")
+                            readonly property var setting: page.panelSetting(cardItem.modelData)
+                            readonly property bool shown: page.panelLayout.hidden.indexOf(cardItem.modelData) < 0
+
+                            objectName: "panelEditorCard"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: card.height
+                            opacity: handleDrag.active ? 0.6 : (cardItem.shown ? 1 : 0.5)
+
+                            Behavior on opacity {
+                                NumberAnimation { duration: VitrailTokens.duration("fast") }
+                            }
+
+                            Drag.active: handleDrag.active
+                            Drag.source: cardItem
+                            Drag.dragType: Drag.Internal
+                            Drag.hotSpot: Qt.point(cardItem.width / 2, cardItem.height / 2)
+
+                            VitrailSurface {
+                                id: card
+
+                                width: parent.width
+                                height: content.implicitHeight + 2 * VitrailTokens.gap("md")
+                                tint: page.palette.surfaceHigh
+                                radius: VitrailTokens.radius * 0.85
+
+                                ColumnLayout {
+                                    id: content
+
+                                    anchors.fill: parent
+                                    anchors.margins: VitrailTokens.gap("md")
+                                    spacing: VitrailTokens.gap("sm")
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: VitrailTokens.gap("sm")
+
+                                        Item {
+                                            id: handle
+
+                                            implicitWidth: 24
+                                            implicitHeight: 24
+
+                                            VitrailIcon {
+                                                anchors.centerIn: parent
+                                                icon: "drag_indicator"
+                                                size: "sm"
+                                                tone: "secondary"
+                                            }
+
+                                            HoverHandler {
+                                                cursorShape: handleDrag.active ? Qt.ClosedHandCursor
+                                                                               : Qt.OpenHandCursor
+                                            }
+
+                                            DragHandler {
+                                                id: handleDrag
+
+                                                target: null
+                                                onActiveChanged: {
+                                                    if (active) {
+                                                        page.panelDragFrom = cardItem.index
+                                                        page.panelDropIndex = cardItem.index
+                                                    } else {
+                                                        page.panelDropIndex = -1
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        VitrailIcon {
+                                            icon: cardItem.meta ? cardItem.meta.icon : "widgets"
+                                            size: "sm"
+                                            tone: "secondary"
+                                        }
+
+                                        VitrailText {
+                                            Layout.fillWidth: true
+                                            variant: "body"
+                                            elide: Text.ElideRight
+                                            text: page.t(cardItem.meta ? cardItem.meta.labelKey
+                                                                       : cardItem.modelData)
+                                        }
+
+                                        VitrailSwitch {
+                                            checked: cardItem.shown
+                                            foreground: page.palette.foreground
+                                            accent: page.palette.primary
+                                            onToggled: page.setPanelVisible(cardItem.modelData, value)
+                                        }
+                                    }
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: VitrailTokens.gap("sm")
+                                        visible: cardItem.meta
+                                                 && (cardItem.meta.sizes.length > 1
+                                                     || cardItem.meta.styles.length > 0)
+
+                                        VitrailText {
+                                            variant: "label"
+                                            text: page.t("panel.editor.size")
+                                            visible: cardItem.meta && cardItem.meta.sizes.length > 0
+                                        }
+
+                                        VitrailSegmented {
+                                            visible: cardItem.meta && cardItem.meta.sizes.length > 0
+                                            options: cardItem.meta ? cardItem.meta.sizes.map(function (size) {
+                                                return { key: size,
+                                                         label: page.t("panel.editor.size." + size) }
+                                            }) : []
+                                            current: cardItem.setting.size
+                                            foreground: page.palette.foreground
+                                            accent: page.palette.primary
+                                            onSelected: page.setPanelSize(cardItem.modelData, key)
+                                        }
+
+                                        VitrailText {
+                                            variant: "label"
+                                            text: page.t("panel.editor.style")
+                                            visible: cardItem.meta && cardItem.meta.styles.length > 0
+                                        }
+
+                                        VitrailSegmented {
+                                            visible: cardItem.meta && cardItem.meta.styles.length > 0
+                                            options: cardItem.meta ? [{ key: "",
+                                                                        label: page.t("panel.editor.style.default") }]
+                                                .concat(cardItem.meta.styles.map(function (style) {
+                                                    return { key: style,
+                                                             label: page.t("panel.editor.style." + style) }
+                                                })) : []
+                                            current: cardItem.setting.style
+                                            foreground: page.palette.foreground
+                                            accent: page.palette.primary
+                                            onSelected: page.setPanelStyle(cardItem.modelData, key)
+                                        }
+
+                                        Item { Layout.fillWidth: true }
+                                    }
+                                }
+                            }
+
+                            // Where the dragged card would land: above this one,
+                            // or below the last one when it goes to the end.
+                            VitrailSurface {
+                                objectName: "panelEditorDropLine"
+
+                                visible: page.panelDragFrom >= 0
+                                         && page.panelDropIndex === cardItem.index
+                                anchors {
+                                    left: parent.left
+                                    right: parent.right
+                                    top: parent.top
+                                }
+                                height: 2
+                                radius: 1
+                                tint: page.palette.primary
+                                opacityLevel: 1
+                                z: 2
+
+                                Behavior on opacity {
+                                    NumberAnimation { duration: VitrailTokens.duration("fast") }
+                                }
+                            }
+
+                            VitrailSurface {
+                                visible: page.panelDragFrom >= 0
+                                         && cardItem.index === page.panelLayout.order.length - 1
+                                         && page.panelDropIndex === page.panelLayout.order.length
+                                anchors {
+                                    left: parent.left
+                                    right: parent.right
+                                    bottom: parent.bottom
+                                }
+                                height: 2
+                                radius: 1
+                                tint: page.palette.primary
+                                opacityLevel: 1
+                                z: 2
+                            }
+
+                            DropArea {
+                                anchors.fill: parent
+                                onEntered: function (drag) {
+                                    page.panelDropIndex = cardItem.index
+                                                          + (drag.y > cardItem.height / 2 ? 1 : 0)
+                                }
+                                onPositionChanged: function (drag) {
+                                    page.panelDropIndex = cardItem.index
+                                                          + (drag.y > cardItem.height / 2 ? 1 : 0)
+                                }
+                                onDropped: page.dropPanelWidget(page.panelDragFrom, page.panelDropIndex)
                             }
                         }
                     }

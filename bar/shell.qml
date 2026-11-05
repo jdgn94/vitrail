@@ -2720,6 +2720,9 @@ ShellRoot {
                     mediaStyle: shell.prefs.mediaStyle || "disc"
                     mediaPlayers: shell.mprisPlayers
                     mediaIndex: shell.mprisIndex
+                    // The panel's widget order, visibility and per-widget
+                    // size/style (bar.ini `panelLayout`, bar → Editor).
+                    layoutText: shell.prefs.panelLayout || ""
                     onOpenRequested: shell.openNotifications(notificationLayer.screen)
                     onCloseRequested: shell.notificationsOpen = false
                     onDndToggled: {

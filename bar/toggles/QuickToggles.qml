@@ -14,6 +14,8 @@ RowLayout {
     property bool micMuted: false
     property bool dnd: false
     property bool airplaneOn: false
+    // sm / md / lg: the pills grow with the panel widget's size.
+    property string size: "md"
 
     signal toggled(string key)
 
@@ -22,6 +24,7 @@ RowLayout {
     VitrailButton {
         Layout.fillWidth: true
         variant: "text"
+        size: root.size
         tone: root.wifiOn ? "primary" : "secondary"
         icon: root.wifiOn ? "wifi" : "wifi_off"
         onClicked: root.toggled("wifi")
@@ -31,6 +34,7 @@ RowLayout {
         Layout.fillWidth: true
         visible: root.bluetoothPresent
         variant: "text"
+        size: root.size
         tone: root.bluetoothOn ? "primary" : "secondary"
         icon: root.bluetoothOn ? "bluetooth" : "bluetooth_disabled"
         onClicked: root.toggled("bluetooth")
@@ -39,6 +43,7 @@ RowLayout {
     VitrailButton {
         Layout.fillWidth: true
         variant: "text"
+        size: root.size
         tone: root.micMuted ? "error" : "secondary"
         icon: root.micMuted ? "mic_off" : "mic"
         onClicked: root.toggled("mic")
@@ -47,6 +52,7 @@ RowLayout {
     VitrailButton {
         Layout.fillWidth: true
         variant: "text"
+        size: root.size
         tone: root.airplaneOn ? "primary" : "secondary"
         icon: root.airplaneOn ? "airplanemode_active" : "airplanemode_inactive"
         onClicked: root.toggled("airplane")
@@ -55,6 +61,7 @@ RowLayout {
     VitrailButton {
         Layout.fillWidth: true
         variant: "text"
+        size: root.size
         tone: root.dnd ? "primary" : "secondary"
         icon: root.dnd ? "do_not_disturb_on" : "notifications"
         onClicked: root.toggled("dnd")

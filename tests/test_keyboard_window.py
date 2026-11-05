@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 WINDOW = ROOT / "bar" / "keyboard" / "KeyboardWindow.qml"
 SHELL = ROOT / "bar" / "shell.qml"
-LAYOUTS = ROOT / "bar" / "layouts.js"
+WIDGETS = ROOT / "bar" / "widgets.js"
 
 
 class KeyboardWindowTests(unittest.TestCase):
@@ -50,8 +50,8 @@ class KeyboardWindowTests(unittest.TestCase):
     def test_the_abbreviation_is_the_last_element_of_the_end_group(self) -> None:
         # The layout registry is the default document (bar → Editor): the
         # keyboard sits between the battery and the power button.
-        text = LAYOUTS.read_text(encoding="utf-8")
-        rows = re.findall(r'\{ id: "(\w+)", surface: "bar", group: "(\w+)"', text)
+        text = WIDGETS.read_text(encoding="utf-8")
+        rows = re.findall(r'\{ id: "(\w+)", surfaces: \["bar"\], group: "(\w+)"', text)
         end = [name for name, group in rows if group == "end"]
         self.assertEqual(end[-2:], ["keyboard", "power"])
 

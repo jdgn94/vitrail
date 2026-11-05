@@ -15,6 +15,9 @@ ColumnLayout {
     property string text: ""
     // How many notes the panel lists.
     property int visibleCount: 3
+    // sm / md / lg: "md" keeps the panel's compact field and buttons; "lg"
+    // gives them the next size up.
+    property string size: "md"
 
     signal noteAdded(string note)
     signal noteRemoved(int index)
@@ -31,7 +34,7 @@ ColumnLayout {
         id: field
 
         Layout.fillWidth: true
-        size: "sm"
+        size: root.size === "lg" ? "md" : "sm"
         leadingIcon: "edit_note"
         placeholder: root.t("notes.placeholder")
         onAccepted: {
@@ -61,7 +64,7 @@ ColumnLayout {
             VitrailButton {
                 variant: "plain"
                 tone: "secondary"
-                size: "sm"
+                size: root.size === "lg" ? "md" : "sm"
                 icon: "close"
                 onClicked: root.noteRemoved(index)
             }

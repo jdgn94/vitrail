@@ -25,6 +25,7 @@ QtObject {
     property alias barStyle: barFile.barStyle
     property alias barMonitors: barFile.barMonitors
     property alias barLayout: barFile.barLayout
+    property alias panelLayout: barFile.panelLayout
     property alias barSize: barFile.barSize
     property alias barOpacity: barFile.barOpacity
     property alias barOpacityFollow: barFile.barOpacityFollow
@@ -161,6 +162,10 @@ QtObject {
         // the hidden elements, the density and whether a fullscreen window
         // hides the bar (bar/layouts.js). Empty is today's bar.
         property string barLayout: "{}"
+        // The notification panel's widgets: their order, visibility and the
+        // size/style of each one (bar/layouts.js, bar/widgets.js). Empty is
+        // today's panel.
+        property string panelLayout: "{}"
         property int barSize: VitrailTokens.ranges.bar.value
         property real barOpacity: VitrailTokens.ranges.opacity.value
         property bool barOpacityFollow: true

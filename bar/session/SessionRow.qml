@@ -16,6 +16,9 @@ RowLayout {
 
     signal chosen(string key)
 
+    // sm / md / lg: the buttons grow with the panel widget's size.
+    property string size: "md"
+
     spacing: VitrailTokens.gap("xs")
 
     Repeater {
@@ -26,6 +29,7 @@ RowLayout {
 
             Layout.fillWidth: true
             variant: "text"
+            size: root.size
             tone: modelData.tone
             icon: modelData.icon
             onClicked: root.chosen(modelData.key)

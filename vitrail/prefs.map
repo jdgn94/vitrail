@@ -28,6 +28,9 @@ bar barMonitors
 # The bar's elements: their order per group, visibility, density and whether a
 # fullscreen window hides it. One JSON document (bar/layouts.js).
 bar barLayout
+# The notification panel's widgets: order, visibility, and the size/style of
+# each one. One JSON document (bar/layouts.js, bar/widgets.js).
+bar panelLayout
 bar barSize
 bar barOpacity
 bar barOpacityFollow

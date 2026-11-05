@@ -7,11 +7,8 @@ import "../kit/base"
 import "../kit/composed"
 import "../osd"
 import "../osd/osd.js" as Osd
-import "../session"
-import "../notes"
-import "../media"
-import "../toggles"
-import "../capture"
+import "../layouts.js" as Layouts
+import "../widgets"
 
 // The notification panel of one monitor: full height on the notification side,
 // built like the OSD. The panel stays on the monitor it was opened on (`pinned`)
@@ -26,7 +23,9 @@ import "../capture"
 //   and left, or IPC closes it. Only the zone and the open panel take input.
 // - Docked, the panel is a tab of the frame (`tabs`, for VitrailBar.tabs); a
 //   floating bar gets an island. Both open like the popups (VitrailLiquid).
-// - `widgets` is the slot of the panel for the widgets that come later.
+// - The widget slot is drawn from the shared registry (bar/widgets.js) and the
+//   panel's document (bar.ini `panelLayout`): today's five widgets in today's
+//   order when the document is empty.
 Scope {
     id: root
 
@@ -69,11 +68,21 @@ Scope {
     property string mediaStyle: "disc"
     property var mediaPlayers: []
     property int mediaIndex: 0
+    // The panel's widget document (bar.ini `panelLayout`); empty is today's
+    // panel. It changes rarely, so the document is built from the text only.
+    property string layoutText: ""
+    readonly property var panelDocument: Layouts.effective(root.layoutText, "", Layouts.defaults("panel"), "panel")
     property real opacityLevel: VitrailTokens.opacity
     // Previews pin a state without timers or hover.
     property bool animated: true
 
-    default property alias widgets: panel.widgets
+    // An empty style means the widget's own default; the player follows the
+    // bar's `mediaStyle` preference, as it did before the panel had a document.
+    function widgetStyle(id, style) {
+        if (style !== "")
+            return style
+        return id === "media" ? root.mediaStyle : ""
+    }
 
     signal openRequested()
     signal closeRequested()
@@ -244,47 +253,40 @@ Scope {
                 onMutedToggled: root.mutedToggled()
                 onStatsToggled: root.statsToggled()
 
-                // The widgets slot: now playing, quick notes, the session row.
-                MediaPanel {
-                    Layout.fillWidth: true
-                    visible: root.mediaPlayer !== null
-                    player: root.mediaPlayer
-                    style: root.mediaStyle
-                    players: root.mediaPlayers
-                    index: root.mediaIndex
-                    strings: root.strings
-                    onPlayerChosen: function (index) { root.mediaIndex = index }
-                }
+                // The widget slot, from the shared registry: the document's
+                // visible ids, in its order, each through the same host.
+                Repeater {
+                    model: Layouts.visible(root.panelDocument.order, root.panelDocument.hidden)
 
-                QuickToggles {
-                    Layout.fillWidth: true
-                    wifiOn: root.wifiOn
-                    bluetoothOn: root.bluetoothOn
-                    bluetoothPresent: root.bluetoothPresent
-                    micMuted: root.micMuted
-                    airplaneOn: root.airplaneOn
-                    dnd: root.dnd
-                    onToggled: function (key) { root.quickToggled(key) }
-                }
+                    delegate: PanelWidget {
+                        required property string modelData
 
-                CaptureRow {
-                    Layout.fillWidth: true
-                    recording: root.recording
-                    onShotRequested: function (mode) { root.shotRequested(mode) }
-                    onRecordRequested: root.recordRequested()
-                }
+                        readonly property var setting: Layouts.setting(root.panelDocument, modelData, "panel")
 
-                QuickNotes {
-                    Layout.fillWidth: true
-                    strings: root.strings
-                    text: root.notes
-                    onNoteAdded: function (note) { root.noteAdded(note) }
-                    onNoteRemoved: function (index) { root.noteRemoved(index) }
-                }
-
-                SessionRow {
-                    Layout.fillWidth: true
-                    onChosen: function (key) { root.sessionRequested(key) }
+                        Layout.fillWidth: true
+                        widgetId: modelData
+                        size: setting.size
+                        style: root.widgetStyle(modelData, setting.style)
+                        strings: root.strings
+                        mediaPlayer: root.mediaPlayer
+                        mediaPlayers: root.mediaPlayers
+                        mediaIndex: root.mediaIndex
+                        wifiOn: root.wifiOn
+                        bluetoothOn: root.bluetoothOn
+                        bluetoothPresent: root.bluetoothPresent
+                        micMuted: root.micMuted
+                        airplaneOn: root.airplaneOn
+                        dnd: root.dnd
+                        notes: root.notes
+                        recording: root.recording
+                        onPlayerChosen: function (index) { root.mediaIndex = index }
+                        onQuickToggled: function (key) { root.quickToggled(key) }
+                        onShotRequested: function (mode) { root.shotRequested(mode) }
+                        onRecordRequested: root.recordRequested()
+                        onNoteAdded: function (note) { root.noteAdded(note) }
+                        onNoteRemoved: function (index) { root.noteRemoved(index) }
+                        onSessionRequested: function (key) { root.sessionRequested(key) }
+                    }
                 }
             }
         }
