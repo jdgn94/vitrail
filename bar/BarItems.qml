@@ -177,23 +177,8 @@ GridLayout {
         }
     }
 
-    PowerButton {
-        id: power
-
-        Layout.alignment: Qt.AlignHCenter
-        strings: root.strings
-        opened: root.open && root.openKind === "power"
-        onClicked: root.sessionRequested()
-        onMenuRequested: root.clicked("power", power)
-        onHoveredChanged: {
-            root.tipHovered(power, hovered)
-            if (hovered)
-                root.hovered("power", power)
-        }
-    }
-
-    // The active layout abbreviation, last: right on a horizontal bar, bottom
-    // on a vertical one.
+    // The active layout abbreviation, between the connection chip and the
+    // power button.
     KeyboardButton {
         id: keyboard
 
@@ -210,4 +195,20 @@ GridLayout {
                 root.hovered("keyboard", keyboard)
         }
     }
+
+    PowerButton {
+        id: power
+
+        Layout.alignment: Qt.AlignHCenter
+        strings: root.strings
+        opened: root.open && root.openKind === "power"
+        onClicked: root.sessionRequested()
+        onMenuRequested: root.clicked("power", power)
+        onHoveredChanged: {
+            root.tipHovered(power, hovered)
+            if (hovered)
+                root.hovered("power", power)
+        }
+    }
+
 }
