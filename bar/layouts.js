@@ -25,19 +25,31 @@
 //       "widgets": { "media": { "size": "md", "style": "" } }
 //     }
 //
+// desktop (one placed list per monitor; x/y are 0..1 of the monitor):
+//     {
+//       "monitors": { "DP-1": { "widgets": [
+//         { "id": "clock", "x": 0.35, "y": 0.30, "size": "lg", "style": "full" }
+//       ] } }
+//     }
+//
 // An empty or invalid document is the built-in default: today's bar or today's
-// panel. Per-monitor entries replace the global field they name (a monitor
-// without one follows the global value); the editor writes the whole field, so
-// a monitor never inherits half an override.
+// panel, and no desktop widgets. Per-monitor entries replace the global field
+// they name (a monitor without one follows the global value); the editor
+// writes the whole field, so a monitor never inherits half an override.
 
 // The groups of each surface, in the order the settings page lists them. An
 // empty list is a flat surface (one ordered list, no groups).
 var SURFACES = {
     bar: ["start", "center", "end"],
-    panel: []
+    panel: [],
+    desktop: []
 }
 
 var FLAT = { panel: true }
+
+// The desktop is not a flat order either: every monitor places its own widgets
+// at a point of the screen.
+var DESKTOP = { desktop: true }
 
 // Elements the bar does not draw until the user asks for them: the screenshot
 // button is an editor option, not a change to today's bar.
@@ -70,6 +82,10 @@ function isFlat(surface) {
     return FLAT[surface || "bar"] === true
 }
 
+function isDesktop(surface) {
+    return DESKTOP[surface || ""] === true
+}
+
 function groups(surface) {
     return (SURFACES[surface || "bar"] || []).slice()
 }
@@ -90,6 +106,8 @@ function defaultHidden(surface) {
 // look (only the editor-only elements hidden).
 function defaults(surface) {
     var name = surface || "bar"
+    if (isDesktop(name))
+        return { monitors: {} }
     if (isFlat(name))
         return { order: cleanFlatList([], name), hidden: defaultHidden(name), widgets: {} }
     var out = { order: {}, hidden: defaultHidden(name), density: "comfortable",
@@ -265,6 +283,156 @@ function configure(widgets, id, values, surface) {
     return out
 }
 
+// --- the desktop: one placed list of widgets per monitor -------------------
+
+// A point of the monitor: 0..1 from its top-left, clamped. A missing or
+// unreadable coordinate is the centre.
+function coordinate(value, fallback) {
+    if (value === null || value === undefined || value === "")
+        return fallback
+    var number = Number(value)
+    if (!isFinite(number))
+        return fallback
+    return Math.max(0, Math.min(1, number))
+}
+
+// A widget with its id, point and validated size/style, in a stable shape.
+function cleanDesktopWidget(entry) {
+    var value = objectOf(entry)
+    if (!value || typeof value.id !== "string")
+        return null
+    var widget = find(value.id, "desktop")
+    if (!widget)
+        return null
+    var setting = cleanSetting(value, widget)
+    return { id: widget.id,
+             x: coordinate(value.x, 0.5),
+             y: coordinate(value.y, 0.5),
+             size: setting.size,
+             style: setting.style }
+}
+
+// One widget per id, in document order; unknown ids and duplicates drop.
+function cleanDesktopWidgets(list) {
+    var out = []
+    var seen = {}
+    if (!Array.isArray(list))
+        return out
+    for (var i = 0; i < list.length; i++) {
+        var widget = cleanDesktopWidget(list[i])
+        if (!widget || seen[widget.id])
+            continue
+        seen[widget.id] = true
+        out.push(widget)
+    }
+    return out
+}
+
+function copyDesktopWidgets(list) {
+    var out = []
+    if (!Array.isArray(list))
+        return out
+    for (var i = 0; i < list.length; i++) {
+        var widget = objectOf(list[i])
+        if (widget)
+            out.push({ id: widget.id, x: widget.x, y: widget.y,
+                       size: widget.size, style: widget.style })
+    }
+    return out
+}
+
+function cleanDesktopMonitors(raw) {
+    var out = {}
+    var monitors = objectOf(raw) || {}
+    for (var name in monitors) {
+        var entry = objectOf(monitors[name])
+        if (!entry)
+            continue
+        var widgets = cleanDesktopWidgets(entry.widgets)
+        if (widgets.length > 0)
+            out[name] = { widgets: widgets }
+    }
+    return out
+}
+
+function desktopWidgets(doc, monitor) {
+    var values = objectOf(doc) ? objectOf(doc.monitors) : null
+    var entry = values && monitor ? objectOf(values[monitor]) : null
+    return entry ? copyDesktopWidgets(entry.widgets) : []
+}
+
+// How many widgets the document places on every monitor.
+function desktopCount(textOrDoc) {
+    var doc = sanitize(textOrDoc, "desktop")
+    var total = 0
+    for (var name in doc.monitors)
+        total += doc.monitors[name].widgets.length
+    return total
+}
+
+// One widget added at a point, unless it is unknown or already there.
+function desktopAdd(widgets, id, x, y) {
+    var out = copyDesktopWidgets(widgets)
+    var widget = find(id, "desktop")
+    if (!widget)
+        return out
+    for (var i = 0; i < out.length; i++) {
+        if (out[i].id === id)
+            return out
+    }
+    var setting = cleanSetting({}, widget)
+    out.push({ id: id,
+               x: coordinate(x, 0.5),
+               y: coordinate(y, 0.5),
+               size: setting.size,
+               style: setting.style })
+    return out
+}
+
+function desktopRemove(widgets, id) {
+    var out = []
+    var list = copyDesktopWidgets(widgets)
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].id !== id)
+            out.push(list[i])
+    }
+    return out
+}
+
+function desktopMove(widgets, id, x, y) {
+    var out = copyDesktopWidgets(widgets)
+    for (var i = 0; i < out.length; i++) {
+        if (out[i].id === id) {
+            out[i].x = coordinate(x, out[i].x)
+            out[i].y = coordinate(y, out[i].y)
+            break
+        }
+    }
+    return out
+}
+
+function desktopConfigure(widgets, id, values) {
+    var out = copyDesktopWidgets(widgets)
+    var widget = find(id, "desktop")
+    if (!widget)
+        return out
+    var patch = objectOf(values) || {}
+    for (var i = 0; i < out.length; i++) {
+        if (out[i].id !== id)
+            continue
+        var current = { size: out[i].size, style: out[i].style }
+        if (has(patch, "size"))
+            current.size = patch.size
+        if (has(patch, "style"))
+            current.style = patch.style
+        var setting = cleanSetting(current, widget)
+        out[i].size = setting.size
+        out[i].style = setting.style
+        break
+    }
+    return out
+}
+
 // The document from preference text (or an already parsed object), completed
 // and type-checked. Anything that is not a valid document becomes the default.
 function sanitize(text, surface) {
@@ -272,6 +440,8 @@ function sanitize(text, surface) {
     var raw = typeof text === "string" ? parse(text) : objectOf(text)
     if (!raw)
         raw = {}
+    if (isDesktop(name))
+        return { monitors: cleanDesktopMonitors(raw.monitors) }
     if (isFlat(name)) {
         return {
             order: cleanFlatList(raw.order, name),
@@ -296,6 +466,8 @@ function effective(layout, monitor, base, surface) {
     var name = surface || "bar"
     var source = layout === undefined || layout === null || layout === "" ? base : layout
     var doc = sanitize(source, name)
+    if (isDesktop(name))
+        return { widgets: desktopWidgets(doc, monitor) }
     if (isFlat(name))
         return { order: doc.order.slice(), hidden: doc.hidden.slice(), widgets: copyWidgets(doc.widgets) }
     var entry = monitor && doc.monitors[monitor] ? doc.monitors[monitor] : null
@@ -413,7 +585,15 @@ function write(text, monitor, patch, surface) {
     var before = sanitize(text, name)
     var doc = sanitize(text, name)
     var values = objectOf(patch) || {}
-    if (isFlat(name)) {
+    if (isDesktop(name)) {
+        if (monitor && has(values, "widgets")) {
+            var placed = copyDesktopWidgets(values.widgets)
+            if (placed.length > 0)
+                doc.monitors[monitor] = { widgets: cleanDesktopWidgets(placed) }
+            else
+                delete doc.monitors[monitor]
+        }
+    } else if (isFlat(name)) {
         if (has(values, "order"))
             doc.order = (values.order || []).slice()
         if (has(values, "hidden"))

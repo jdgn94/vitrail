@@ -24,21 +24,31 @@ VitrailSurface {
     property bool editableMinutes: false
     property int minutes: 0
     property string minutesLabel: ""
+    // The common widget API: sm / md / lg, and "plain" for no card behind it.
+    property string size: "md"
+    property string variant: ""
+
+    readonly property var metricsLook: ({
+        sm: { title: "body", remaining: "subtitle", pad: "sm", button: "sm", symbol: "sm" },
+        md: { title: "subtitle", remaining: "title", pad: "md", button: "md", symbol: "sm" },
+        lg: { title: "title", remaining: "display", pad: "lg", button: "lg", symbol: "md" }
+    })[root.size] || ({ title: "subtitle", remaining: "title", pad: "md", button: "md", symbol: "sm" })
 
     signal startRequested()
     signal pauseRequested()
     signal resetRequested()
     signal minutesEdited(int value)
 
-    implicitHeight: column.implicitHeight + 2 * VitrailTokens.gap("md")
+    implicitHeight: column.implicitHeight + 2 * VitrailTokens.gap(root.metricsLook.pad)
     radius: VitrailTokens.radius
+    opacityLevel: root.variant === "plain" ? 0 : VitrailTokens.opacity
 
     ColumnLayout {
         id: column
 
-        x: VitrailTokens.gap("md")
-        y: VitrailTokens.gap("md")
-        width: root.width - 2 * VitrailTokens.gap("md")
+        x: VitrailTokens.gap(root.metricsLook.pad)
+        y: VitrailTokens.gap(root.metricsLook.pad)
+        width: root.width - 2 * VitrailTokens.gap(root.metricsLook.pad)
         spacing: VitrailTokens.gap("sm")
 
         RowLayout {
@@ -47,13 +57,14 @@ VitrailSurface {
 
             VitrailIcon {
                 icon: root.done ? "task_alt" : "timer"
-                size: "sm"
+                size: root.metricsLook.symbol
                 tone: "primary"
             }
 
             VitrailText {
                 Layout.fillWidth: true
-                variant: "subtitle"
+                variant: root.metricsLook.title
+                elide: Text.ElideRight
                 text: root.title
             }
 
@@ -66,7 +77,7 @@ VitrailSurface {
 
         VitrailText {
             objectName: "focusRemaining_" + root.name
-            variant: "title"
+            variant: root.metricsLook.remaining
             font.features: ({ "tnum": 1 })
             text: root.remaining
         }
@@ -89,7 +100,7 @@ VitrailSurface {
             objectName: "focusMinutes_" + root.name
             Layout.fillWidth: true
             visible: root.editableMinutes && !root.running
-            size: "sm"
+            size: root.size === "lg" ? "md" : "sm"
             label: root.minutesLabel
             text: String(root.minutes)
             onTextChanged: {
@@ -106,6 +117,7 @@ VitrailSurface {
             VitrailButton {
                 objectName: "focusToggle_" + root.name
                 variant: root.running ? "tonal" : "flat"
+                size: root.metricsLook.button
                 icon: root.running ? "pause" : "play_arrow"
                 text: root.running ? root.pauseText : root.startText
                 onClicked: root.running ? root.pauseRequested() : root.startRequested()
@@ -114,6 +126,7 @@ VitrailSurface {
             VitrailButton {
                 objectName: "focusReset_" + root.name
                 variant: "text"
+                size: root.metricsLook.button
                 tone: "secondary"
                 icon: "restart_alt"
                 text: root.resetText

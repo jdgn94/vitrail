@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import "../../kit"
 import "../../kit/base"
 import "../../bar/layouts.js" as Layouts
+import "../../bar/widgets.js" as Widgets
 
 // Bar category: where the system bar docks, its style, the screen frame,
 // the side panels and where notifications appear. An empty preference
@@ -30,6 +31,36 @@ Item {
     readonly property var layout: Layouts.effective(page.prefs.barLayout || "", page.monitor)
     // The panel's flat document (bar.ini `panelLayout`); empty is today's panel.
     readonly property var panelLayout: Layouts.effective(page.prefs.panelLayout || "", "", null, "panel")
+    // The desktop widgets of the selected output (bar.ini `desktopLayout`).
+    property string desktopMonitor: ""
+    readonly property var desktopOutputs: page.monitors && page.monitors.monitors
+                                             ? page.monitors.monitors : []
+    readonly property string desktopMonitorName: {
+        for (var i = 0; i < page.desktopOutputs.length; i++) {
+            if (page.desktopOutputs[i].name === page.desktopMonitor)
+                return page.desktopMonitor
+        }
+        return page.desktopOutputs.length > 0 ? page.desktopOutputs[0].name : ""
+    }
+    readonly property var desktopOutput: {
+        for (var i = 0; i < page.desktopOutputs.length; i++) {
+            if (page.desktopOutputs[i].name === page.desktopMonitorName)
+                return page.desktopOutputs[i]
+        }
+        return null
+    }
+    readonly property real desktopAspect: page.desktopOutput && page.desktopOutput.width > 0
+                                          && page.desktopOutput.height > 0
+                                          ? page.desktopOutput.width / page.desktopOutput.height
+                                          : 16 / 9
+    readonly property var desktopDocument: Layouts.effective(page.prefs.desktopLayout || "",
+                                                              page.desktopMonitorName, null, "desktop")
+    readonly property var desktopAvailable: {
+        var placed = page.desktopDocument.widgets.map(function (widget) { return widget.id })
+        return Layouts.widgets("desktop").filter(function (widget) {
+            return placed.indexOf(widget.id) < 0
+        })
+    }
     // Where a dragged panel widget would land: an insertion index, -1 when no
     // drag is running.
     property int panelDragFrom: -1
@@ -111,6 +142,72 @@ Item {
         if (from < 0 || to < 0)
             return
         page.commitPanel({ order: Layouts.reorder(page.panelLayout.order, from, to) })
+    }
+
+    // --- the desktop canvas --------------------------------------------------
+    function desktopCommit(widgets) {
+        if (page.desktopMonitorName === "")
+            return
+        var text = Layouts.write(page.prefs.desktopLayout || "", page.desktopMonitorName,
+                                 { widgets: widgets }, "desktop")
+        if (text !== null)
+            page.prefs.desktopLayout = text
+    }
+
+    function desktopAddWidget(id) {
+        var count = page.desktopDocument.widgets.length
+        page.desktopCommit(Layouts.desktopAdd(page.desktopDocument.widgets, id, 0.5,
+                                              0.3 + Math.min(0.5, count * 0.08)))
+    }
+
+    function desktopRemoveWidget(id) {
+        page.desktopCommit(Layouts.desktopRemove(page.desktopDocument.widgets, id))
+    }
+
+    function desktopMoveWidget(id, x, y) {
+        page.desktopCommit(Layouts.desktopMove(page.desktopDocument.widgets, id, x, y))
+    }
+
+    function desktopSetSize(id, size) {
+        page.desktopCommit(Layouts.desktopConfigure(page.desktopDocument.widgets, id,
+                                                     { size: size }))
+    }
+
+    function desktopSetStyle(id, style) {
+        page.desktopCommit(Layouts.desktopConfigure(page.desktopDocument.widgets, id,
+                                                     { style: style }))
+    }
+
+    function desktopWidget(id) {
+        return Layouts.find(id, "desktop")
+    }
+
+    function desktopLabel(id) {
+        var widget = page.desktopWidget(id)
+        return page.t(widget ? widget.labelKey : id)
+    }
+
+    function desktopMonitorOptions() {
+        return page.desktopOutputs.map(function (output) {
+            return { key: output.name, label: output.name }
+        })
+    }
+
+    function desktopSizeOptions(id) {
+        var widget = page.desktopWidget(id)
+        return widget ? widget.sizes.map(function (size) {
+            return { key: size, label: page.t("panel.editor.size." + size) }
+        }) : []
+    }
+
+    function desktopStyleOptions(id) {
+        var widget = page.desktopWidget(id)
+        if (!widget)
+            return []
+        return [{ key: "", label: page.t("panel.editor.style.default") }].concat(
+            widget.styles.map(function (style) {
+                return { key: style, label: page.t("panel.editor.style." + style) }
+            }))
     }
 
     readonly property var icons: ({
@@ -358,7 +455,8 @@ Item {
                         VitrailSegmented {
                             options: [
                                 { key: "bar", icon: "toolbar", label: page.t("bar.editor.surface.bar") },
-                                { key: "panel", icon: "view_sidebar", label: page.t("bar.editor.surface.panel") }
+                                { key: "panel", icon: "view_sidebar", label: page.t("bar.editor.surface.panel") },
+                                { key: "desktop", icon: "desktop_windows", label: page.t("bar.editor.surface.desktop") }
                             ]
                             current: page.editorSurface
                             foreground: page.palette.foreground
@@ -701,6 +799,245 @@ Item {
                                                           + (drag.y > cardItem.height / 2 ? 1 : 0)
                                 }
                                 onDropped: page.dropPanelWidget(page.panelDragFrom, page.panelDropIndex)
+                            }
+                        }
+                    }
+                }
+
+                // The desktop: a canvas of the selected monitor. Cards show
+                // where each widget sits; drag one to move it, and the rows
+                // below set its size, style or removal.
+                Section {
+                    Layout.fillWidth: true
+                    visible: page.tab === "editor" && page.editorSurface === "desktop"
+                    icon: "desktop_windows"
+                    title: page.t("desktop.editor.title")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: page.t("desktop.editor.help")
+                        color: page.palette.muted
+                        font.pixelSize: 12
+                        font.family: VitrailTokens.fontFamily
+                        wrapMode: Text.WordWrap
+                    }
+
+                    VitrailSettingRow {
+                        icon: "monitor"
+                        label: page.t("desktop.editor.monitor")
+                        description: page.t("desktop.editor.monitor.help")
+                        visible: page.desktopOutputs.length > 0
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            options: page.desktopMonitorOptions()
+                            current: page.desktopMonitorName
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: page.desktopMonitor = key
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: page.desktopAvailable.length > 0
+                        spacing: VitrailTokens.gap("xs")
+
+                        Text {
+                            text: page.t("desktop.editor.add")
+                            color: page.palette.muted
+                            font.pixelSize: 12
+                            font.family: VitrailTokens.fontFamily
+                        }
+
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: VitrailTokens.gap("xs")
+
+                            Repeater {
+                                model: page.desktopAvailable
+
+                                delegate: VitrailButton {
+                                    required property var modelData
+
+                                    variant: "outlined"
+                                    tone: "secondary"
+                                    size: "sm"
+                                    icon: modelData.icon
+                                    text: page.t(modelData.labelKey)
+                                    onClicked: page.desktopAddWidget(modelData.id)
+                                }
+                            }
+                        }
+                    }
+
+                    VitrailSurface {
+                        id: canvas
+
+                        objectName: "desktopEditorCanvas"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(300, canvas.width / page.desktopAspect)
+                        tint: page.palette.surface
+                        radius: VitrailTokens.radius
+
+                        Item {
+                            id: canvasArea
+
+                            anchors.fill: parent
+                            clip: true
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                visible: page.desktopDocument.widgets.length === 0
+                                spacing: VitrailTokens.gap("xs")
+
+                                VitrailIcon {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    icon: "desktop_windows"
+                                    size: "xl"
+                                    tone: "muted"
+                                }
+
+                                VitrailText {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    variant: "content"
+                                    text: page.t("desktop.editor.empty")
+                                }
+                            }
+
+                            Repeater {
+                                model: page.desktopDocument.widgets
+
+                                delegate: Item {
+                                    id: placed
+
+                                    required property var modelData
+                                    required property int index
+
+                                    readonly property var meta: page.desktopWidget(placed.modelData.id)
+                                    readonly property real naturalWidth: Widgets.widthOf(placed.modelData.id,
+                                                                                         placed.modelData.size)
+                                    readonly property real canvasScale: page.desktopOutput
+                                                                        && page.desktopOutput.width > 0
+                                                                        ? canvasArea.width
+                                                                          / page.desktopOutput.width : 0.3
+                                    readonly property real cardWidth: Math.max(56,
+                                                                                placed.naturalWidth
+                                                                                * placed.canvasScale)
+                                    readonly property real cardHeight: 40
+
+                                    objectName: "desktopEditorWidget"
+                                    width: Math.min(placed.cardWidth,
+                                                    Math.max(56, canvasArea.width - placed.x))
+                                    height: placed.cardHeight
+                                    z: grab.active ? 1 : 0
+
+                                    Binding on x {
+                                        when: !grab.active
+                                        value: placed.modelData.x * canvasArea.width
+                                    }
+                                    Binding on y {
+                                        when: !grab.active
+                                        value: placed.modelData.y * canvasArea.height
+                                    }
+
+                                    Behavior on x {
+                                        enabled: !grab.active
+                                        NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic }
+                                    }
+                                    Behavior on y {
+                                        enabled: !grab.active
+                                        NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic }
+                                    }
+
+                                    VitrailSurface {
+                                        anchors.fill: parent
+                                        tint: grab.active ? page.palette.primary : page.palette.surfaceHigh
+                                        radius: VitrailTokens.radius * 0.75
+
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: VitrailTokens.gap("xs")
+                                            spacing: VitrailTokens.gap("xs")
+
+                                            VitrailIcon {
+                                                icon: placed.meta ? placed.meta.icon : "widgets"
+                                                size: "sm"
+                                                tone: "secondary"
+                                            }
+
+                                            VitrailText {
+                                                Layout.fillWidth: true
+                                                variant: "label"
+                                                elide: Text.ElideRight
+                                                text: page.desktopLabel(placed.modelData.id)
+                                            }
+                                        }
+                                    }
+
+                                    HoverHandler {
+                                        cursorShape: grab.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                                    }
+
+                                    DragHandler {
+                                        id: grab
+
+                                        target: placed
+                                        xAxis.minimum: 0
+                                        xAxis.maximum: Math.max(0, canvasArea.width - placed.width)
+                                        yAxis.minimum: 0
+                                        yAxis.maximum: Math.max(0, canvasArea.height - placed.height)
+                                        onActiveChanged: if (!grab.active)
+                                                             page.desktopMoveWidget(placed.modelData.id,
+                                                                                    placed.x / canvasArea.width,
+                                                                                    placed.y / canvasArea.height)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Repeater {
+                        model: page.desktopDocument.widgets
+
+                        delegate: VitrailSettingRow {
+                            id: desktopRow
+
+                            required property var modelData
+
+                            readonly property var meta: page.desktopWidget(desktopRow.modelData.id)
+
+                            Layout.fillWidth: true
+                            icon: desktopRow.meta ? desktopRow.meta.icon : "widgets"
+                            label: page.desktopLabel(desktopRow.modelData.id)
+                            foreground: page.palette.foreground
+                            muted: page.palette.muted
+
+                            VitrailSegmented {
+                                options: page.desktopSizeOptions(desktopRow.modelData.id)
+                                current: desktopRow.modelData.size
+                                foreground: page.palette.foreground
+                                accent: page.palette.primary
+                                onSelected: page.desktopSetSize(desktopRow.modelData.id, key)
+                            }
+
+                            VitrailSegmented {
+                                visible: desktopRow.meta && desktopRow.meta.styles.length > 0
+                                options: page.desktopStyleOptions(desktopRow.modelData.id)
+                                current: desktopRow.modelData.style
+                                foreground: page.palette.foreground
+                                accent: page.palette.primary
+                                onSelected: page.desktopSetStyle(desktopRow.modelData.id, key)
+                            }
+
+                            VitrailButton {
+                                variant: "text"
+                                tone: "secondary"
+                                icon: "delete"
+                                onClicked: page.desktopRemoveWidget(desktopRow.modelData.id)
                             }
                         }
                     }

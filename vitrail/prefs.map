@@ -31,6 +31,9 @@ bar barLayout
 # The notification panel's widgets: order, visibility, and the size/style of
 # each one. One JSON document (bar/layouts.js, bar/widgets.js).
 bar panelLayout
+# The desktop widgets: per monitor, each one's point (0..1), size and style.
+# One JSON document (bar/layouts.js, bar/widgets.js).
+bar desktopLayout
 bar barSize
 bar barOpacity
 bar barOpacityFollow

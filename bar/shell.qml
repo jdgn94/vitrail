@@ -31,6 +31,7 @@ import "notifications/notifications.js" as Notifications
 import "notes/notes.js" as Notes
 import "clipboard"
 import "dashboard"
+import "desktop"
 import "binds"
 import "media"
 import "launcher/commands.js" as Commands
@@ -827,6 +828,9 @@ ShellRoot {
     readonly property string visualiserVariant: shell.prefs.visualiserVariant || VitrailStyle.defaults.visualiser
     readonly property bool visualiserActive: shell.visualiserEnabled && shell.audioPlaying
                                              && shell.visualiserValues.length > 0
+    // Whether any monitor places a desktop widget; the data services run only
+    // then, and an empty document costs nothing.
+    readonly property bool desktopWidgetsActive: Layouts.desktopCount(shell.prefs.desktopLayout || "") > 0
     onVisualiserEnabledChanged: if (!shell.visualiserEnabled) shell.visualiserValues = []
     onAudioPlayingChanged: if (!shell.audioPlaying) shell.visualiserValues = []
     readonly property string themeFile: shell.generatedDir + "/theme-dark.json"
@@ -998,6 +1002,14 @@ ShellRoot {
         savedTimer: shell.prefs.timerState || ""
         onPersist: function (key, value) { shell.setPref(key, value) }
         onFinished: function (kind, phase) { shell.timerFinished(kind, phase) }
+    }
+
+    // The desktop widgets' services, shared by every monitor (unlike the
+    // dashboard popup, which runs them only while its tab is open).
+    DesktopData {
+        id: desktopData
+
+        active: shell.desktopWidgetsActive
     }
 
     function syncTokens() {
@@ -2435,6 +2447,36 @@ ShellRoot {
                         tint: VitrailTokens.color("primary")
                         opacityLevel: VitrailTokens.opacity
                     }
+                }
+
+                // The desktop's widgets, each a small background window at its
+                // point (bar.ini `desktopLayout`, bar → Editor → Desktop). They
+                // leave with the bar and frame under a fullscreen window.
+                DesktopLayer {
+                    screen: monitor.modelData
+                    monitor: monitor.modelData.name
+                    layoutText: shell.prefs.desktopLayout || ""
+                    hiddenFullscreen: monitor.hiddenFullscreen
+                    strings: shell.strings
+                    language: shell.prefs.language || "en"
+                    weather: desktopData.weather
+                    resources: desktopData.resources
+                    timerEngine: focusTimers
+                    mediaPlayer: shell.mprisPlayer
+                    mediaPlayers: shell.mprisPlayers
+                    mediaIndex: shell.mprisIndex
+                    mediaStyle: shell.prefs.mediaStyle || "disc"
+                    wifiOn: shell.wifiOn
+                    bluetoothOn: shell.bluetoothOn
+                    bluetoothPresent: shell.bluetoothPresent
+                    micMuted: shell.micMuted
+                    airplaneOn: shell.airplaneOn
+                    dnd: shell.dnd
+                    notes: shell.notes
+                    onPlayerChosen: function (index) { shell.mprisIndex = index }
+                    onQuickToggled: function (key) { shell.toggleQuick(key) }
+                    onNoteAdded: function (note) { shell.notes = Notes.add(shell.notes, note) }
+                    onNoteRemoved: function (index) { shell.notes = Notes.remove(shell.notes, index) }
                 }
 
                 // The frame, the bar and the panel: a transparent full-screen

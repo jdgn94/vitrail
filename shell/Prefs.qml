@@ -26,6 +26,7 @@ QtObject {
     property alias barMonitors: barFile.barMonitors
     property alias barLayout: barFile.barLayout
     property alias panelLayout: barFile.panelLayout
+    property alias desktopLayout: barFile.desktopLayout
     property alias barSize: barFile.barSize
     property alias barOpacity: barFile.barOpacity
     property alias barOpacityFollow: barFile.barOpacityFollow
@@ -166,6 +167,9 @@ QtObject {
         // size/style of each one (bar/layouts.js, bar/widgets.js). Empty is
         // today's panel.
         property string panelLayout: "{}"
+        // The desktop widgets: per monitor, each one's point (0..1), size and
+        // style (bar/layouts.js, bar/widgets.js). Empty is no widgets.
+        property string desktopLayout: "{}"
         property int barSize: VitrailTokens.ranges.bar.value
         property real barOpacity: VitrailTokens.ranges.opacity.value
         property bool barOpacityFollow: true

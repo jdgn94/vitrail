@@ -3,8 +3,10 @@ import QtTest
 import "../../bar/widgets.js" as Widgets
 import "../../bar/layouts.js" as Layouts
 
-// The shared widget registry (bar/widgets.js) and the flat panel document
-// (bar.ini `panelLayout`). The panel's empty document is today's panel.
+// The shared widget registry (bar/widgets.js), the flat panel document
+// (bar.ini `panelLayout`) and the per-monitor desktop document
+// (bar.ini `desktopLayout`). An empty document is today's panel or no
+// desktop widgets.
 TestCase {
     name: "Widgets"
 
@@ -18,8 +20,10 @@ TestCase {
         var desktop = Widgets.WIDGETS.filter(function (widget) {
             return widget.surfaces.indexOf("desktop") >= 0
         }).map(function (widget) { return widget.id })
-        for (var i = 0; i < ["clock", "weather", "resources", "pomodoro", "calendar"].length; i++)
-            verify(desktop.indexOf(["clock", "weather", "resources", "pomodoro", "calendar"][i]) >= 0)
+        var desktopIds = ["clock", "weather", "resources", "pomodoro", "timer", "calendar",
+                          "media", "toggles", "notes"]
+        for (var i = 0; i < desktopIds.length; i++)
+            verify(desktop.indexOf(desktopIds[i]) >= 0, desktopIds[i])
         for (var j = 0; j < Widgets.WIDGETS.length; j++) {
             var widget = Widgets.WIDGETS[j]
             verify(widget.id !== "")
@@ -142,5 +146,85 @@ TestCase {
         }
         compare(Layouts.groups("panel"), [])
         compare(Layouts.widgets("panel").length, panelIds.length)
+    }
+
+    // --- the desktop document: widgets placed on each monitor ----------------
+
+    function test_the_empty_desktop_document_has_no_widgets() {
+        compare(Layouts.sanitize("", "desktop"), { monitors: {} })
+        compare(Layouts.defaults("desktop"), { monitors: {} })
+        compare(Layouts.effective("", "DP-1", null, "desktop"), { widgets: [] })
+        compare(Layouts.desktopCount(""), 0)
+    }
+
+    function test_invalid_desktop_json_is_the_default_document() {
+        var bad = ["not json", "[]", "null", "1", '{"monitors":[]}']
+        for (var i = 0; i < bad.length; i++)
+            compare(JSON.stringify(Layouts.sanitize(bad[i], "desktop")),
+                    JSON.stringify(Layouts.defaults("desktop")))
+    }
+
+    function test_desktop_widgets_are_checked_and_placed_inside_the_monitor() {
+        var text = JSON.stringify({
+            monitors: {
+                "DP-1": {
+                    widgets: [
+                        { id: "clock", x: -0.5, y: 2, size: "lg", style: "compact" },
+                        { id: "clock", x: 0.2, y: 0.2 },
+                        { id: "ghost", x: 0.1, y: 0.1 },
+                        { id: "weather", size: "huge", style: "ghost" }
+                    ]
+                }
+            }
+        })
+        var widgets = Layouts.effective(text, "DP-1", null, "desktop").widgets
+        compare(widgets.length, 2)
+        compare(widgets[0].id, "clock")
+        compare(widgets[0].x, 0)
+        compare(widgets[0].y, 1)
+        compare(widgets[0].size, "lg")
+        compare(widgets[0].style, "compact")
+        compare(widgets[1].id, "weather")
+        compare(widgets[1].x, 0.5)
+        compare(widgets[1].y, 0.5)
+        compare(widgets[1].size, "md")
+        compare(widgets[1].style, "")
+        compare(Layouts.effective(text, "HDMI-A-1", null, "desktop").widgets, [])
+    }
+
+    function test_desktop_add_remove_and_configure_never_change_the_input() {
+        var widgets = Layouts.desktopAdd([], "clock", 0.25, 0.75)
+        compare(widgets.length, 1)
+        compare(widgets[0], { id: "clock", x: 0.25, y: 0.75, size: "md", style: "" })
+        compare(Layouts.desktopAdd(widgets, "clock", 0.1, 0.1).length, 1)
+        compare(Layouts.desktopAdd(widgets, "ghost", 0.1, 0.1).length, 1)
+        widgets = Layouts.desktopConfigure(widgets, "clock", { size: "lg", style: "compact" })
+        compare(widgets[0].size, "lg")
+        compare(widgets[0].style, "compact")
+        compare(Layouts.desktopRemove(widgets, "clock"), [])
+        compare(Layouts.desktopAdd([], "clock", 0.25, 0.75)[0].x, 0.25)
+    }
+
+    function test_desktop_move_clamps_and_keeps_the_other_settings() {
+        var widgets = Layouts.desktopAdd([], "weather", 0.5, 0.5)
+        widgets = Layouts.desktopConfigure(widgets, "weather", { size: "sm" })
+        widgets = Layouts.desktopMove(widgets, "weather", 1.4, -0.2)
+        compare(widgets[0].x, 1)
+        compare(widgets[0].y, 0)
+        compare(widgets[0].size, "sm")
+        compare(Layouts.desktopMove(widgets, "ghost", 0.1, 0.1)[0].x, 1)
+    }
+
+    function test_desktop_write_keeps_the_other_monitors_and_empty_entries() {
+        var dp = Layouts.desktopAdd([], "clock", 0.1, 0.2)
+        var text = Layouts.write("", "DP-1", { widgets: dp }, "desktop")
+        compare(Layouts.sanitize(text, "desktop").monitors["DP-1"].widgets.length, 1)
+        var hdmi = Layouts.desktopAdd([], "weather", 0.3, 0.4)
+        text = Layouts.write(text, "HDMI-A-1", { widgets: hdmi }, "desktop")
+        compare(Layouts.desktopCount(text), 2)
+        compare(Layouts.write(text, "DP-1", { widgets: dp }, "desktop"), null)
+        text = Layouts.write(text, "DP-1", { widgets: [] }, "desktop")
+        compare(Layouts.sanitize(text, "desktop").monitors["DP-1"], undefined)
+        compare(Layouts.sanitize(text, "desktop").monitors["HDMI-A-1"].widgets.length, 1)
     }
 }

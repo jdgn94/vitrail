@@ -35,6 +35,8 @@ layer contract.
    - `references/launcher.md` — application launcher: modes, files, data flow.
    - `references/visualiser.md` — audio visualiser: cava JSON, base bars,
      the three approved looks, background wiring.
+   - `references/desktop.md` — desktop widgets: registry entries, layer,
+     points, editor canvas and how to add one.
 2. Geometry goes in `kit/frame.js` (pure, tested in `tests/qml/tst_frame.qml`);
    QML only binds to it. Write the test first.
 3. Literal values only in `kit/tokens.js`; new looks become a variant in

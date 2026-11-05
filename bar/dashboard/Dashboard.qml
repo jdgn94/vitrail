@@ -1,10 +1,8 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import "../kit"
 import "../kit/base"
-import "dashboard.js" as Dash
-import "timers.js" as Timers
+import "../widgets"
 
 // The dashboard popup: the clock and date, then the month with today marked,
 // the weather, the machine's performance, the focus widgets and now playing,
@@ -44,31 +42,8 @@ Item {
         { key: "focus", label: root.t("dashboard.tab.focus"), icon: "timer" },
         { key: "media", label: root.t("dashboard.tab.media"), icon: "music_note" }
     ]
-    readonly property bool hasWeather: !!(root.weather && root.weather.current)
-    readonly property bool hasResources: !!(root.resources && root.resources.memory)
     readonly property bool hasMedia: (root.mediaPlayer !== null && root.mediaPlayer !== undefined)
                                      || root.mediaPlayers.length > 0
-    readonly property var forecast: {
-        var days = root.hasWeather ? root.weather.daily : null
-        if (!days || days.length === undefined)
-            return []
-        var shown = []
-        for (var i = 0; i < Math.min(4, days.length); i++)
-            shown.push(days[i])
-        return shown
-    }
-    // One row per reading; a missing value reads as absent, never as zero.
-    readonly property var metrics: {
-        var data = root.resources || ({})
-        return [
-            { key: "cpu", icon: "speed", label: root.t("dashboard.cpu"), value: Dash.percent(data.cpu) },
-            { key: "memory", icon: "memory", label: root.t("dashboard.memory"), value: Dash.usage(data.memory) },
-            { key: "temperature", icon: "thermostat", label: root.t("dashboard.temperature"),
-              value: Dash.temperature(data.temperature, "°C") },
-            { key: "disk", icon: "storage", label: root.t("dashboard.disk"), value: Dash.usage(data.disk) },
-            { key: "network", icon: "swap_vert", label: root.t("dashboard.network"), value: Dash.network(data.network) }
-        ]
-    }
 
     implicitWidth: 440
     implicitHeight: body.implicitHeight
@@ -83,11 +58,6 @@ Item {
             root.currentTab = key
     }
 
-    function monthTitle() {
-        var text = root.shown.toLocaleDateString(Qt.locale(root.language), "MMMM yyyy")
-        return text.charAt(0).toUpperCase() + text.slice(1)
-    }
-
     function page(step) {
         root.shown = new Date(root.shown.getFullYear(), root.shown.getMonth() + step, 1)
     }
@@ -98,56 +68,9 @@ Item {
                && root.shown.getFullYear() === root.now.getFullYear()
     }
 
-    function weekday(iso) {
-        var date = new Date(String(iso || "") + "T12:00:00")
-        if (isNaN(date.getTime()))
-            return String(iso || "")
-        return date.toLocaleDateString(Qt.locale(root.language), "ddd")
-    }
-
-    // The words for a WMO code in the user's language (weather.code.<n>); the
-    // service's English falls back for a code the table does not name.
-    function condition(code, fallback) {
-        var text = root.strings["weather.code." + Number(code)]
-        return text === undefined || text === "" ? (fallback || "") : text
-    }
-
-    // --- the clock widgets: the pomodoro and the free timer -------------------
-    readonly property var pomodoro: root.timerEngine ? root.timerEngine.pomodoro : null
-    readonly property var freeTimer: root.timerEngine ? root.timerEngine.timer : null
-
-    function clockLeft(state) {
-        if (!state)
-            return 0
-        return state.running ? Timers.remaining(state.end, root.now.getTime()) : state.left
-    }
-
-    function clockProgress(state) {
-        return Timers.progress(state, root.now.getTime())
-    }
-
-    function pomodoroPhase(state) {
-        if (!state)
-            return ""
-        if (state.done)
-            return root.t("dashboard.focus.done")
-        var phase = state.phase === "work" ? root.t("dashboard.focus.work")
-                                           : root.t("dashboard.focus.rest")
-        return phase + " · " + root.t("dashboard.focus.round") + " "
-               + Timers.round(state) + "/" + state.cycles
-    }
-
-    function timerPhase(state) {
-        if (!state)
-            return ""
-        if (state.done)
-            return root.t("dashboard.focus.done")
-        if (state.running)
-            return root.t("dashboard.focus.timer")
-        if (state.left > 0 && state.left < state.duration)
-            return root.t("dashboard.focus.paused")
-        return root.t("dashboard.focus.ready")
-    }
+    // The weather page computes the same forecast it draws (kept here because
+    // the dashboard's tests and callers read it).
+    readonly property var forecast: weatherWidget ? weatherWidget.forecast : []
 
     // The header time ticks every second; the calendar follows the day.
     Timer {
@@ -167,26 +90,11 @@ Item {
             Layout.fillWidth: true
             spacing: VitrailTokens.gap("sm")
 
-            ColumnLayout {
+            DashboardClock {
                 Layout.fillWidth: true
-                spacing: 0
-
-                VitrailText {
-                    objectName: "dashboardClock"
-                    variant: "display"
-                    font.features: ({ "tnum": 1 })
-                    text: root.now.toLocaleTimeString(Qt.locale(root.language), "HH:mm")
-                }
-
-                VitrailText {
-                    objectName: "dashboardClockDate"
-                    Layout.fillWidth: true
-                    variant: "content"
-                    text: {
-                        var day = root.now.toLocaleDateString(Qt.locale(root.language), "dddd d MMMM yyyy")
-                        return day.charAt(0).toUpperCase() + day.slice(1)
-                    }
-                }
+                now: root.now
+                language: root.language
+                size: "md"
             }
 
             VitrailIcon {
@@ -223,99 +131,19 @@ Item {
                 id: calendarPage
                 objectName: "dashboardCalendar"
 
-                implicitHeight: calendar.implicitHeight
+                implicitHeight: calendarWidget.implicitHeight
 
-                ColumnLayout {
-                    id: calendar
+                DashboardCalendar {
+                    id: calendarWidget
 
                     anchors.fill: parent
-                    spacing: VitrailTokens.gap("md")
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: VitrailTokens.gap("xs")
-
-                        VitrailText {
-                            Layout.fillWidth: true
-                            variant: "body"
-                            font.weight: Font.DemiBold
-                            text: root.monthTitle()
-                        }
-
-                        VitrailButton {
-                            visible: !root.showingThisMonth()
-                            variant: "text"
-                            size: "sm"
-                            text: root.t("clock.today")
-                            onClicked: root.shown = new Date()
-                        }
-
-                        VitrailButton {
-                            variant: "plain"
-                            tone: "secondary"
-                            icon: "chevron_left"
-                            onClicked: root.page(-1)
-                        }
-
-                        VitrailButton {
-                            variant: "plain"
-                            tone: "secondary"
-                            icon: "chevron_right"
-                            onClicked: root.page(1)
-                        }
-                    }
-
-                    DayOfWeekRow {
-                        Layout.fillWidth: true
-                        locale: Qt.locale(root.language)
-
-                        delegate: VitrailText {
-                            required property string shortName
-
-                            horizontalAlignment: Text.AlignHCenter
-                            variant: "label"
-                            text: shortName.charAt(0).toUpperCase() + shortName.slice(1, 2)
-                        }
-                    }
-
-                    MonthGrid {
-                        Layout.fillWidth: true
-                        locale: Qt.locale(root.language)
-                        month: root.shown.getMonth()
-                        year: root.shown.getFullYear()
-
-                        delegate: Item {
-                            id: day
-
-                            required property var model
-
-                            readonly property bool today: day.model.today
-                            readonly property bool inMonth: day.model.month === root.shown.getMonth()
-
-                            implicitWidth: VitrailTokens.size("display") + VitrailTokens.gap("xs")
-                            implicitHeight: implicitWidth
-
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: Math.min(parent.width, parent.height)
-                                height: width
-                                radius: width / 2
-                                visible: day.today
-                                color: VitrailTokens.color("primary")
-                            }
-
-                            VitrailText {
-                                anchors.centerIn: parent
-                                variant: "content"
-                                font.features: ({ "tnum": 1 })
-                                font.weight: day.today ? Font.DemiBold : Font.Normal
-                                opacity: day.inMonth ? 1 : 0.35
-                                color: day.today ? VitrailTokens.color("accentForeground")
-                                                 : VitrailTokens.color("foreground")
-                                text: day.model.day
-                            }
-                        }
-                    }
+                    now: root.now
+                    shown: root.shown
+                    language: root.language
+                    size: "md"
+                    todayText: root.t("clock.today")
+                    onPageRequested: function (step) { root.page(step) }
+                    onTodayRequested: root.shown = new Date()
                 }
             }
 
@@ -324,155 +152,16 @@ Item {
                 id: weatherPage
                 objectName: "dashboardWeather"
 
-                implicitHeight: root.hasWeather ? weatherColumn.implicitHeight : weatherEmpty.implicitHeight
+                implicitHeight: weatherWidget.implicitHeight
 
-                ColumnLayout {
-                    id: weatherEmpty
+                DashboardWeather {
+                    id: weatherWidget
 
                     anchors.fill: parent
-                    spacing: VitrailTokens.gap("sm")
-                    visible: !root.hasWeather
-
-                    Item { Layout.fillHeight: true }
-
-                    VitrailIcon {
-                        Layout.alignment: Qt.AlignHCenter
-                        icon: "partly_cloudy_day"
-                        size: "xl"
-                        tone: "muted"
-                    }
-
-                    VitrailText {
-                        objectName: "dashboardWeatherEmpty"
-                        Layout.alignment: Qt.AlignHCenter
-                        variant: "content"
-                        text: root.t("dashboard.weather.empty")
-                    }
-
-                    Item { Layout.fillHeight: true }
-                }
-
-                ColumnLayout {
-                    id: weatherColumn
-
-                    objectName: "dashboardWeatherData"
-                    anchors.fill: parent
-                    spacing: VitrailTokens.gap("md")
-                    visible: root.hasWeather
-
-                    readonly property var current: root.hasWeather ? root.weather.current : ({})
-                    readonly property var units: root.weather && root.weather.units ? root.weather.units : ({})
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: VitrailTokens.gap("sm")
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 0
-
-                            VitrailText {
-                                objectName: "dashboardWeatherLocation"
-                                Layout.fillWidth: true
-                                variant: "label"
-                                text: root.weather.location ? root.weather.location.name : ""
-                            }
-
-                            RowLayout {
-                                spacing: VitrailTokens.gap("sm")
-
-                                VitrailText {
-                                    objectName: "dashboardWeatherTemperature"
-                                    variant: "display"
-                                    text: Dash.temperature(weatherColumn.current.temperature,
-                                                           weatherColumn.units.temperature)
-                                }
-
-                                VitrailText {
-                                    objectName: "dashboardWeatherCondition"
-                                    Layout.alignment: Qt.AlignBottom
-                                    variant: "content"
-                                    text: root.condition(weatherColumn.current.code,
-                                                         weatherColumn.current.condition)
-                                }
-                            }
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: VitrailTokens.gap("md")
-
-                        VitrailText {
-                            variant: "label"
-                            text: root.t("dashboard.humidity")
-                        }
-
-                        VitrailText {
-                            objectName: "dashboardWeatherHumidity"
-                            variant: "body"
-                            font.features: ({ "tnum": 1 })
-                            text: weatherColumn.current.humidity !== undefined
-                                  ? weatherColumn.current.humidity + " " + (weatherColumn.units.humidity || "")
-                                  : "--"
-                        }
-
-                        Item { Layout.fillWidth: true }
-
-                        VitrailText {
-                            variant: "label"
-                            text: root.t("dashboard.wind")
-                        }
-
-                        VitrailText {
-                            objectName: "dashboardWeatherWind"
-                            variant: "body"
-                            font.features: ({ "tnum": 1 })
-                            text: weatherColumn.current.wind !== undefined
-                                  ? weatherColumn.current.wind + " " + (weatherColumn.units.wind || "")
-                                  : "--"
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        implicitHeight: 1
-                        color: VitrailTokens.solid("foreground", 0.12)
-                    }
-
-                    Repeater {
-                        model: root.forecast
-
-                        delegate: RowLayout {
-                            id: forecastDay
-
-                            required property var modelData
-                            required property int index
-
-                            objectName: "dashboardWeatherDay" + forecastDay.index
-                            Layout.fillWidth: true
-                            spacing: VitrailTokens.gap("sm")
-
-                            VitrailText {
-                                variant: "label"
-                                text: root.weekday(forecastDay.modelData.date)
-                            }
-
-                            VitrailText {
-                                objectName: "dashboardWeatherDayCondition" + forecastDay.index
-                                Layout.fillWidth: true
-                                variant: "content"
-                                text: root.condition(forecastDay.modelData.code, forecastDay.modelData.condition)
-                            }
-
-                            VitrailText {
-                                variant: "body"
-                                font.features: ({ "tnum": 1 })
-                                text: Dash.degrees(forecastDay.modelData.high) + " / "
-                                      + Dash.degrees(forecastDay.modelData.low)
-                            }
-                        }
-                    }
+                    weather: root.weather
+                    strings: root.strings
+                    language: root.language
+                    size: "md"
                 }
             }
 
@@ -481,72 +170,15 @@ Item {
                 id: performancePage
                 objectName: "dashboardPerformance"
 
-                implicitHeight: root.hasResources ? performanceColumn.implicitHeight
-                                                  : performanceEmpty.implicitHeight
+                implicitHeight: resourcesWidget.implicitHeight
 
-                ColumnLayout {
-                    id: performanceEmpty
+                DashboardResources {
+                    id: resourcesWidget
 
                     anchors.fill: parent
-                    spacing: VitrailTokens.gap("sm")
-                    visible: !root.hasResources
-
-                    Item { Layout.fillHeight: true }
-
-                    VitrailIcon {
-                        Layout.alignment: Qt.AlignHCenter
-                        icon: "monitoring"
-                        size: "xl"
-                        tone: "muted"
-                    }
-
-                    VitrailText {
-                        objectName: "dashboardPerformanceEmpty"
-                        Layout.alignment: Qt.AlignHCenter
-                        variant: "content"
-                        text: root.t("dashboard.performance.empty")
-                    }
-
-                    Item { Layout.fillHeight: true }
-                }
-
-                ColumnLayout {
-                    id: performanceColumn
-
-                    objectName: "dashboardPerformanceData"
-                    anchors.fill: parent
-                    spacing: VitrailTokens.gap("sm")
-                    visible: root.hasResources
-
-                    Repeater {
-                        model: root.metrics
-
-                        delegate: RowLayout {
-                            required property var modelData
-
-                            Layout.fillWidth: true
-                            spacing: VitrailTokens.gap("sm")
-
-                            VitrailIcon {
-                                icon: modelData.icon
-                                size: "sm"
-                                tone: "secondary"
-                            }
-
-                            VitrailText {
-                                Layout.fillWidth: true
-                                variant: "label"
-                                text: modelData.label
-                            }
-
-                            VitrailText {
-                                objectName: "dashboardValue_" + modelData.key
-                                variant: "body"
-                                font.features: ({ "tnum": 1 })
-                                text: modelData.value
-                            }
-                        }
-                    }
+                    readings: root.resources
+                    strings: root.strings
+                    size: "md"
                 }
             }
 
@@ -562,52 +194,26 @@ Item {
 
                     anchors.fill: parent
                     spacing: VitrailTokens.gap("md")
-                    visible: root.timerEngine !== null
 
-                    FocusWidget {
+                    DashboardFocus {
                         objectName: "focusPomodoro"
                         Layout.fillWidth: true
-                        name: "pomodoro"
-                        title: root.t("dashboard.focus.pomodoro")
-                        phase: root.pomodoroPhase(root.pomodoro)
-                        remaining: Timers.format(root.clockLeft(root.pomodoro))
-                        progress: root.clockProgress(root.pomodoro)
-                        running: root.pomodoro ? root.pomodoro.running : false
-                        done: root.pomodoro ? root.pomodoro.done : false
-                        startText: root.t("dashboard.focus.start")
-                        pauseText: root.t("dashboard.focus.pause")
-                        resetText: root.t("dashboard.focus.reset")
-                        onStartRequested: root.timerEngine.togglePomodoro()
-                        onPauseRequested: root.timerEngine.pausePomodoro()
-                        onResetRequested: root.timerEngine.resetPomodoro()
+                        engine: root.timerEngine
+                        kind: "pomodoro"
+                        strings: root.strings
+                        now: root.now.getTime()
+                        size: "md"
                     }
 
-                    FocusWidget {
+                    DashboardFocus {
                         objectName: "focusTimer"
                         Layout.fillWidth: true
-                        name: "timer"
-                        title: root.t("dashboard.focus.timer")
-                        phase: root.timerPhase(root.freeTimer)
-                        remaining: Timers.format(root.clockLeft(root.freeTimer))
-                        progress: root.clockProgress(root.freeTimer)
-                        running: root.freeTimer ? root.freeTimer.running : false
-                        done: root.freeTimer ? root.freeTimer.done : false
-                        startText: root.t("dashboard.focus.start")
-                        pauseText: root.t("dashboard.focus.pause")
-                        resetText: root.t("dashboard.focus.reset")
-                        editableMinutes: true
-                        minutes: root.freeTimer ? root.freeTimer.minutes : 10
-                        minutesLabel: root.t("dashboard.focus.minutes")
-                        onStartRequested: root.timerEngine.toggleTimer(root.freeTimer.minutes)
-                        onPauseRequested: root.timerEngine.pauseTimer()
-                        onResetRequested: root.timerEngine.resetTimer()
-                        onMinutesEdited: function (value) { root.timerEngine.setTimerMinutes(value) }
+                        engine: root.timerEngine
+                        kind: "timer"
+                        strings: root.strings
+                        now: root.now.getTime()
+                        size: "md"
                     }
-                }
-
-                Item {
-                    anchors.fill: parent
-                    visible: root.timerEngine === null
                 }
             }
 
