@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "base"
+import "composed"
 
 // Shared base for the login and lock screens.
 //
@@ -18,16 +19,54 @@ Item {
     property string passwordLabel: ""
     property string actionLabel: ""
     property string wallpaper: ""
+    // The on-screen keyboard: its language, its title and whether it is up.
+    property string keyboardLayout: "en"
+    property string keyboardTitle: ""
+    property bool keyboardOpen: false
 
     signal submitted(string username, string password)
 
     default property alias extras: extrasLayout.data
     property alias header: headerLayout.data
+    readonly property alias passwordText: passwordField.text
+    readonly property alias keyboardItem: keyboard
 
     readonly property color surfaceColor: root.palette.surface || "#111318"
     readonly property color textColor: root.palette.foreground || "#e2e2e9"
     readonly property color mutedColor: root.palette.muted || "#c4c6d0"
     readonly property color accentColor: root.palette.primary || "#a8c7fa"
+
+    // The keyboard writes into the field it belongs to, not through `wtype`.
+    function insertPassword(text) {
+        var value = String(text || "")
+        if (value === "")
+            return
+        var current = passwordField.text
+        var at = Math.max(0, Math.min(passwordField.cursorPosition, current.length))
+        passwordField.text = current.slice(0, at) + value + current.slice(at)
+        passwordField.cursorPosition = at + value.length
+        passwordField.forceActiveFocus()
+    }
+
+    function pressPasswordKey(name) {
+        if (name === "BackSpace") {
+            var at = Math.max(0, Math.min(passwordField.cursorPosition, passwordField.text.length))
+            if (at === 0)
+                return
+            passwordField.text = passwordField.text.slice(0, at - 1) + passwordField.text.slice(at)
+            passwordField.cursorPosition = at - 1
+            passwordField.forceActiveFocus()
+        } else if (name === "Return") {
+            root.submitted(root.username, passwordField.text)
+        } else if (name === "Tab") {
+            if (root.editableUsername)
+                userField.forceActiveFocus()
+            else
+                passwordField.forceActiveFocus()
+        }
+    }
+
+    onKeyboardOpenChanged: if (root.keyboardOpen) passwordField.forceActiveFocus()
 
     Rectangle {
         id: background
@@ -142,14 +181,28 @@ Item {
             leftPadding: 2
         }
 
-        VitrailField {
-            id: passwordField
-
+        RowLayout {
             Layout.fillWidth: true
             Layout.topMargin: 2
-            type: "password"
-            label: root.passwordLabel
-            onAccepted: root.submitted(root.username, text)
+            spacing: VitrailTokens.gap("sm")
+
+            VitrailField {
+                id: passwordField
+
+                Layout.fillWidth: true
+                type: "password"
+                label: root.passwordLabel
+                onAccepted: root.submitted(root.username, text)
+                onEscaped: root.keyboardOpen = false
+            }
+
+            VitrailButton {
+                Layout.alignment: Qt.AlignVCenter
+                variant: root.keyboardOpen ? "tonal" : "plain"
+                tone: root.keyboardOpen ? "primary" : "secondary"
+                icon: "keyboard"
+                onClicked: root.keyboardOpen = !root.keyboardOpen
+            }
         }
 
         Rectangle {
@@ -190,6 +243,80 @@ Item {
 
                 Layout.fillWidth: true
                 spacing: 12
+            }
+        }
+    }
+
+    // The on-screen keyboard over the card: it writes into the password field
+    // through the component's signals, never through `wtype`. A click outside
+    // or the close button puts it away; Escape reaches the field and does too.
+    Item {
+        id: keyboardLayer
+
+        anchors.fill: parent
+        visible: root.keyboardOpen
+        z: 20
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.keyboardOpen = false
+        }
+
+        VitrailSurface {
+            id: keyboardCard
+
+            readonly property real pad: VitrailTokens.gap("lg")
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: VitrailTokens.gap("lg")
+            width: keyboard.implicitWidth + 2 * pad
+            height: keyboardContent.implicitHeight + 2 * pad
+            radius: VitrailTokens.radius
+            tint: root.surfaceColor
+            opacityLevel: VitrailTokens.opacity
+
+            // Clicks on the card, between the keys, stay on the card.
+            MouseArea {
+                anchors.fill: parent
+            }
+
+            ColumnLayout {
+                id: keyboardContent
+
+                anchors.fill: parent
+                anchors.margins: keyboardCard.pad
+                spacing: VitrailTokens.gap("sm")
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: VitrailTokens.gap("sm")
+
+                    VitrailText {
+                        Layout.fillWidth: true
+                        visible: root.keyboardTitle !== ""
+                        variant: "subtitle"
+                        text: root.keyboardTitle
+                    }
+
+                    VitrailButton {
+                        size: "sm"
+                        variant: "plain"
+                        tone: "secondary"
+                        icon: "close"
+                        onClicked: root.keyboardOpen = false
+                    }
+                }
+
+                VitrailKeyboard {
+                    id: keyboard
+
+                    Layout.fillWidth: true
+                    layout: root.keyboardLayout
+                    onTyped: function (text) { root.insertPassword(text) }
+                    onKey: function (name) { root.pressPasswordKey(name) }
+                    onLayoutRequested: function (layout) { root.keyboardLayout = layout }
+                }
             }
         }
     }

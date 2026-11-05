@@ -1,50 +1,70 @@
 import QtQuick
 import QtQuick.Layouts
-import "../kit"
-import "../kit/base"
+import ".."
+import "../base"
 import "keyboard.js" as Keyboard
 
-// The on-screen keyboard for the active language. It never takes the focus:
-// each key runs `wtype`, which types into the window underneath.
+// The on-screen keyboard, shared by the bar, the login and the lock. It knows
+// the layouts and the keys, never how text is written: `typed` carries a
+// character, `key` a special key name (BackSpace, Return, Tab), and
+// `layoutRequested` asks the host for the next language. The host owns the
+// focus and the destination field.
 Item {
     id: root
 
-    property var strings: ({})
-    // The language code of the active layout (an unsupported one falls to en).
-    property string language: "en"
-
-    signal keyPressed(var argv)
-    signal dismissed()
-
-    property string shown: "en"
+    // es / en / de / fr / it / pt; anything else falls back to en.
+    property string layout: "en"
+    // The layout currently drawn: `layout`, or the one the language button
+    // cycled to while the host keeps `layout` for its own state.
+    property string shownLayout: "en"
+    // Shift is a local toggle: it uppercases the next letters only.
     property bool shifted: false
 
-    readonly property var letterRows: Keyboard.rows(root.shown)
+    signal typed(string text)
+    signal key(string name)
+    signal layoutRequested(string layout)
+
+    readonly property var letterRows: Keyboard.rows(root.shownLayout)
     readonly property var digitRow: Keyboard.digits()
 
     implicitWidth: 380
     implicitHeight: body.implicitHeight
 
-    onLanguageChanged: root.shown = root.language
-    Component.onCompleted: root.shown = root.language
+    onLayoutChanged: root.shownLayout = Keyboard.normalise(root.layout)
+    Component.onCompleted: root.shownLayout = Keyboard.normalise(root.layout)
 
-    function t(key) {
-        var value = root.strings[key]
-        return value === undefined ? key : value
+    // A key from the visible rows, or one of the special names.
+    function press(value) {
+        var key = String(value)
+        if (key === "shift") {
+            root.shifted = !root.shifted
+            return
+        }
+        if (key === "backspace") {
+            root.key("BackSpace")
+            return
+        }
+        if (key === "enter") {
+            root.key("Return")
+            return
+        }
+        if (key === "tab") {
+            root.key("Tab")
+            return
+        }
+        var text = key
+        if (root.shifted && /^[a-zñüöäçòàù]$/.test(text))
+            text = text.toUpperCase()
+        root.typed(text)
     }
 
-    function press(key) {
-        var keys = Keyboard.argv(key, root.shifted)
-        if (keys)
-            root.keyPressed(keys)
-    }
-
+    // The language button: the next supported layout, announced to the host.
     function cycle() {
-        var at = Keyboard.LANGUAGES.indexOf(root.shown)
-        root.shown = Keyboard.LANGUAGES[(at + 1) % Keyboard.LANGUAGES.length]
+        var at = Keyboard.LANGUAGES.indexOf(root.shownLayout)
+        var next = Keyboard.LANGUAGES[(at + 1) % Keyboard.LANGUAGES.length]
+        root.shownLayout = next
+        root.layoutRequested(next)
     }
-
-    Keys.onEscapePressed: root.dismissed()
 
     ColumnLayout {
         id: body
@@ -54,12 +74,10 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: VitrailTokens.gap("sm")
+            spacing: VitrailTokens.gap("xs")
 
-            VitrailText {
+            Item {
                 Layout.fillWidth: true
-                variant: "subtitle"
-                text: root.t("keyboard.osk")
             }
 
             VitrailButton {
@@ -67,16 +85,8 @@ Item {
                 variant: "outlined"
                 tone: "primary"
                 icon: "swap_horiz"
-                text: Keyboard.code(root.shown)
+                text: root.shownLayout.toUpperCase()
                 onClicked: root.cycle()
-            }
-
-            VitrailButton {
-                size: "sm"
-                variant: "plain"
-                tone: "secondary"
-                icon: "close"
-                onClicked: root.dismissed()
             }
         }
 
@@ -137,7 +147,7 @@ Item {
                 variant: root.shifted ? "tonal" : "plain"
                 tone: root.shifted ? "primary" : "secondary"
                 icon: "shift"
-                onClicked: root.shifted = !root.shifted
+                onClicked: root.press("shift")
             }
 
             VitrailButton {
@@ -145,7 +155,7 @@ Item {
                 size: "sm"
                 variant: "plain"
                 tone: "secondary"
-                text: root.t("keyboard.osk.space")
+                icon: "space_bar"
                 onClicked: root.press(" ")
             }
 
@@ -172,14 +182,6 @@ Item {
                 icon: "keyboard_return"
                 onClicked: root.press("enter")
             }
-        }
-
-        VitrailText {
-            Layout.fillWidth: true
-            variant: "label"
-            opacity: 0.6
-            elide: Text.ElideRight
-            text: root.t("keyboard.osk.hint")
         }
     }
 }

@@ -2,8 +2,9 @@ import QtQuick
 import QtTest
 import "../../bar/keyboard/keyboard.js" as Keyboard
 
-// The keyboard chip, its switcher and the on-screen keyboard: the pure pieces
-// that turn `hyprctl devices -j` and a key press into text and an argv.
+// The bar's chip and layout switcher: the pure pieces that turn
+// `hyprctl devices -j` into labels, rows and a live switch command. The
+// on-screen keyboard itself is tested in tst_vitrail_keyboard.qml.
 TestCase {
     name: "Keyboard"
 
@@ -69,28 +70,5 @@ TestCase {
         var argv = Keyboard.switchCommand(order.layout, order.variant)
         compare(argv[0], "hyprctl")
         verify(argv[2].indexOf('kb_layout="us,latam"') >= 0)
-    }
-
-    function test_the_on_screen_keyboard_has_rows_for_each_language() {
-        var spanish = Keyboard.rows("es")
-        compare(spanish.length, 3)
-        verify(spanish[1].indexOf("ñ") >= 0)
-        var english = Keyboard.rows("en")
-        compare(english.length, 3)
-        verify(english[1].indexOf("ñ") < 0)
-        compare(Keyboard.rows("xx").join("|"), english.join("|"))
-        verify(Keyboard.rows("de")[2].indexOf("y") >= 0)
-        compare(Keyboard.digits().length, 10)
-    }
-
-    function test_a_key_press_becomes_the_right_wtype_argv() {
-        compare(Keyboard.argv("a", false).join(" "), "wtype a")
-        compare(Keyboard.argv("a", true).join(" "), "wtype A")
-        compare(Keyboard.argv("backspace", false).join(" "), "wtype -k BackSpace")
-        compare(Keyboard.argv("enter", false).join(" "), "wtype -k Return")
-        compare(Keyboard.argv("tab", false).join(" "), "wtype -k Tab")
-        compare(Keyboard.argv("shift", false), null)
-        compare(Keyboard.argv(" ", false)[0], "wtype")
-        compare(Keyboard.argv(" ", false)[1], " ")
     }
 }

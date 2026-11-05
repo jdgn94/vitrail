@@ -1,10 +1,7 @@
-// The keyboard chip, its switcher and the on-screen keyboard. The bar reads
-// `hyprctl devices -j`; everything here is pure so tests/qml/tst_keyboard.qml
-// can check it without a compositor.
+// The keyboard chip, its switcher and the language the bar's on-screen
+// keyboard starts in. The bar reads `hyprctl devices -j`; everything here is
+// pure so tests/qml/tst_keyboard.qml can check it without a compositor.
 .pragma library
-
-// The languages the on-screen keyboard draws. Anything else falls back to en.
-var LANGUAGES = ["es", "en", "de", "fr", "it", "pt"]
 
 var LABELS = {
     us: "English (US)",
@@ -43,16 +40,6 @@ var LANGUAGES_OF = {
     br: "pt",
     pt: "pt",
     ru: "en"
-}
-
-// Three letter rows per language, the OSK's own layouts.
-var LETTERS = {
-    en: ["qwertyuiop", "asdfghjkl", "zxcvbnm"],
-    es: ["qwertyuiop", "asdfghjklñ", "zxcvbnm"],
-    de: ["qwertzuiopü", "asdfghjklöä", "yxcvbnm"],
-    fr: ["azertyuiop", "qsdfghjklm", "wxcvbn"],
-    it: ["qwertyuiop", "asdfghjklòàù", "zxcvbnm"],
-    pt: ["qwertyuiop", "asdfghjklç", "zxcvbnm"]
 }
 
 // "grp:alt_shift_toggle" -> "Alt+Shift"; the first option wins.
@@ -248,30 +235,4 @@ function lua(text) {
 function switchCommand(layout, variant) {
     return ["hyprctl", "eval",
             'hl.config({input={kb_layout="' + lua(layout) + '", kb_variant="' + lua(variant) + '"}})']
-}
-
-function rows(languageCode) {
-    var letters = LETTERS[languageCode] || LETTERS.en
-    return letters.map(function (row) {
-        return row.split("")
-    })
-}
-
-function digits() {
-    return "1234567890".split("")
-}
-
-var SPECIAL = { backspace: "BackSpace", enter: "Return", tab: "Tab" }
-
-// What one key press runs: `wtype` with text, or `wtype -k` for a special key.
-// Shift only changes the letters; shift itself is a local toggle.
-function argv(key, shift) {
-    var value = String(key)
-    if (value === "shift")
-        return null
-    if (SPECIAL[value])
-        return ["wtype", "-k", SPECIAL[value]]
-    if (shift && /^[a-zñüöäçòàù]$/.test(value))
-        value = value.toUpperCase()
-    return ["wtype", value]
 }

@@ -62,6 +62,8 @@ Item {
         userLabel: root.t("auth.username")
         passwordLabel: root.t("auth.password")
         actionLabel: root.t("auth.unlock")
+        keyboardLayout: root.language
+        keyboardTitle: root.t("keyboard.osk")
         onSubmitted: function (username, password) {
             console.log("unlock submitted:", username)
         }

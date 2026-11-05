@@ -181,6 +181,16 @@ ShellRoot {
             shell.runNextKey()
     }
 
+    function typeText(text) {
+        if (String(text || "") !== "")
+            shell.typeKey(["wtype", String(text)])
+    }
+
+    function typeKeyName(name) {
+        if (String(name || "") !== "")
+            shell.typeKey(["wtype", "-k", String(name)])
+    }
+
     function runNextKey() {
         var next = shell.keyQueue.shift()
         if (!next)
@@ -3006,7 +3016,8 @@ ShellRoot {
                     shown: shell.keyboardOskOpen && shell.keyboardOskScreen === monitor.modelData
                     strings: shell.strings
                     language: Keyboard.language(Keyboard.activeCode(shell.keyboards))
-                    onKeyPressed: function (argv) { shell.typeKey(argv) }
+                    onTyped: function (text) { shell.typeText(text) }
+                    onKey: function (name) { shell.typeKeyName(name) }
                     onDismissed: shell.closeKeyboardOsk()
                 }
 

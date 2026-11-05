@@ -719,6 +719,40 @@ Window {
 
         VitrailText {
             variant: "title"
+            text: "VitrailKeyboard · es, en, de, fr, it, pt"
+        }
+
+        GridLayout {
+            columns: 3
+            columnSpacing: VitrailTokens.gap("xl")
+            rowSpacing: VitrailTokens.gap("lg")
+
+            Repeater {
+                model: ["es", "en", "de", "fr", "it", "pt"]
+
+                delegate: ColumnLayout {
+                    id: keyboardColumn
+
+                    required property string modelData
+
+                    Layout.alignment: Qt.AlignTop
+                    spacing: VitrailTokens.gap("sm")
+
+                    VitrailText {
+                        variant: "label"
+                        text: keyboardColumn.modelData.toUpperCase()
+                    }
+
+                    VitrailKeyboard {
+                        Layout.preferredWidth: 380
+                        layout: keyboardColumn.modelData
+                    }
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
             text: "VitrailBar · frame × bar × edge"
         }
 
