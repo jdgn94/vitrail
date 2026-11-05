@@ -36,7 +36,7 @@ class BarPopupKindTests(unittest.TestCase):
         # The battery chip shares the power profile popup with the mode chip
         # inside the connection pill, so its kind appears twice.
         clicked, _ = kinds(BAR_ITEMS.read_text(encoding="utf-8"))
-        self.assertEqual(clicked, ["network", "bluetooth", "vpn", "powerprofile", "powerprofile", "power"])
+        self.assertEqual(clicked, ["network", "bluetooth", "vpn", "powerprofile", "powerprofile", "power", "keyboard"])
 
     def test_the_clock_opens_the_dashboard(self) -> None:
         source = SHELL.read_text(encoding="utf-8")

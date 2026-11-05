@@ -3,8 +3,9 @@ import "../kit"
 import "../kit/base"
 import "keyboard.js" as Keyboard
 
-// The keyboard chip: the live layout(s) on the focused keyboard. Left click
-// opens the switcher, right click the on-screen keyboard.
+// The keyboard chip: only the live abbreviation of the active layout (ES, EN,
+// DE…). Left click opens the switcher; right click the floating on-screen
+// keyboard.
 Item {
     id: root
 
@@ -28,8 +29,8 @@ Item {
                                   : root.t("keyboard.chip.hint")
     }
 
-    implicitWidth: row.implicitWidth + 2 * VitrailTokens.gap("sm")
-    implicitHeight: row.implicitHeight + 2 * VitrailTokens.gap("xs")
+    implicitWidth: label.implicitWidth + 2 * VitrailTokens.gap("sm")
+    implicitHeight: label.implicitHeight + 2 * VitrailTokens.gap("xs")
 
     function t(key) {
         var value = root.strings[key]
@@ -45,26 +46,14 @@ Item {
         Behavior on color { ColorAnimation { duration: VitrailTokens.duration("fast") } }
     }
 
-    Row {
-        id: row
+    VitrailText {
+        id: label
 
         anchors.centerIn: parent
-        spacing: VitrailTokens.gap("xs")
-
-        VitrailText {
-            anchors.verticalCenter: parent.verticalCenter
-            variant: "icon"
-            text: "keyboard"
-            color: root.opened ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
-        }
-
-        VitrailText {
-            anchors.verticalCenter: parent.verticalCenter
-            variant: "content"
-            font.weight: Font.DemiBold
-            text: Keyboard.chipText(root.keyboards)
-            color: root.opened ? VitrailTokens.color("primary") : VitrailTokens.color("foreground")
-        }
+        variant: "content"
+        font.weight: Font.DemiBold
+        text: Keyboard.chipText(root.keyboards)
+        color: root.opened ? VitrailTokens.color("primary") : VitrailTokens.color("foreground")
     }
 
     HoverHandler {

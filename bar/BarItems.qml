@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import "kit"
 import "kit/base"
 import "devices"
+import "keyboard"
 import "media"
 import "network"
 import "session"
@@ -31,6 +32,9 @@ GridLayout {
     // The two chips can be kept out of the bar (bar.ini).
     property bool showBattery: true
     property bool showBluetooth: true
+    // The keyboard layout abbreviation, and the live keyboards it reads.
+    property bool showKeyboard: true
+    property var keyboards: []
     // A session is being recorded: the chip stops it.
     property bool recording: false
     signal recordStopped()
@@ -40,11 +44,14 @@ GridLayout {
     readonly property Item vpnButton: vpn
     readonly property Item powerProfileButton: profile
     readonly property Item powerButton: power
+    readonly property Item keyboardButton: keyboard
 
 
     // The power button's left click opens the session menu; its right click
     // is the "power" popout.
     signal sessionRequested()
+    // The keyboard's right click: the floating on-screen keyboard.
+    signal keyboardOskRequested()
     signal clicked(string kind, Item item)
     signal hovered(string kind, Item item)
     // The pointer entered or left an element: its tooltip.
@@ -182,6 +189,25 @@ GridLayout {
             root.tipHovered(power, hovered)
             if (hovered)
                 root.hovered("power", power)
+        }
+    }
+
+    // The active layout abbreviation, last: right on a horizontal bar, bottom
+    // on a vertical one.
+    KeyboardButton {
+        id: keyboard
+
+        Layout.alignment: Qt.AlignHCenter
+        visible: root.showKeyboard
+        strings: root.strings
+        keyboards: root.keyboards
+        opened: root.open && root.openKind === "keyboard"
+        onClicked: root.clicked("keyboard", keyboard)
+        onRightClicked: root.keyboardOskRequested()
+        onHoveredChanged: {
+            root.tipHovered(keyboard, hovered)
+            if (hovered)
+                root.hovered("keyboard", keyboard)
         }
     }
 }

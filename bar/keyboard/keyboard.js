@@ -152,9 +152,11 @@ function activeCode(devices) {
     return list[main ? Math.max(0, Math.min(main.activeIndex, list.length - 1)) : 0] || ""
 }
 
+// The chip is only the abbreviation of the active layout, never a glyph or the
+// whole list.
 function chipText(devices) {
-    var list = codes(mainKeyboard(devices)).map(code)
-    return list.length > 0 ? list.join(" ") : "KB"
+    var active = activeCode(devices)
+    return active !== "" ? code(active) : "KB"
 }
 
 function mainSwitch(devices) {

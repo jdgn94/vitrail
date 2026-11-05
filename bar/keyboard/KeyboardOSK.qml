@@ -14,6 +14,7 @@ Item {
     property string language: "en"
 
     signal keyPressed(var argv)
+    signal dismissed()
 
     property string shown: "en"
     property bool shifted: false
@@ -43,6 +44,8 @@ Item {
         root.shown = Keyboard.LANGUAGES[(at + 1) % Keyboard.LANGUAGES.length]
     }
 
+    Keys.onEscapePressed: root.dismissed()
+
     ColumnLayout {
         id: body
 
@@ -66,6 +69,14 @@ Item {
                 icon: "swap_horiz"
                 text: Keyboard.code(root.shown)
                 onClicked: root.cycle()
+            }
+
+            VitrailButton {
+                size: "sm"
+                variant: "plain"
+                tone: "secondary"
+                icon: "close"
+                onClicked: root.dismissed()
             }
         }
 

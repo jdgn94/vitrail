@@ -136,6 +136,9 @@ ShellRoot {
     property var keyboards: []
     property var keyQueue: []
     readonly property bool keyboardShown: shell.prefBool("barKeyboard", true)
+    // The floating on-screen keyboard and the screen it was opened on.
+    property bool keyboardOskOpen: false
+    property var keyboardOskScreen: null
 
     // The link's latency and traffic, read once for the whole bar (the two
     // chips and the two popups show the same measure). The preference turns
@@ -184,6 +187,42 @@ ShellRoot {
             return
         oskType.command = next
         oskType.running = true
+    }
+
+    // The floating keyboard: bottom centre of the focused screen, independent
+    // of the bar and its button. It never takes the keyboard focus.
+    function openKeyboardOsk() {
+        var target = shell.focusedScreen || shell.primaryScreen
+        if (!target)
+            return
+        shell.closePopup()
+        shell.keyboardOskScreen = target
+        shell.keyboardOskOpen = true
+        shell.refreshKeyboards()
+        shell.grabKeyboardEscape(true)
+    }
+
+    function closeKeyboardOsk() {
+        if (!shell.keyboardOskOpen)
+            return
+        shell.keyboardOskOpen = false
+        shell.keyboardOskScreen = null
+        shell.grabKeyboardEscape(false)
+    }
+
+    function toggleKeyboardOsk() {
+        if (shell.keyboardOskOpen)
+            shell.closeKeyboardOsk()
+        else
+            shell.openKeyboardOsk()
+    }
+
+    // Without keyboard focus the window cannot see Escape, so a Hyprland bind
+    // closes it while it is up. The bind is reused and only enabled meanwhile.
+    function grabKeyboardEscape(active) {
+        oskEscape.run(["hyprctl", "eval", active
+            ? 'if _vitrail_osk_esc then _vitrail_osk_esc:set_enabled(true) else _vitrail_osk_esc = hl.bind("ESCAPE", hl.dsp.exec_cmd("vitrail-bar ipc -i ' + Quickshell.instanceId + ' call keyboard close"), { description = "vitrail/keyboard-close" }) end'
+            : 'if _vitrail_osk_esc then _vitrail_osk_esc:set_enabled(false) end'], "")
     }
 
     function refreshToggles() {
@@ -548,6 +587,8 @@ ShellRoot {
     function openPopup(kind, item, screen) {
         shell.popupByHover = false
         shell.launcherOpen = false
+        if (shell.keyboardOskOpen)
+            shell.closeKeyboardOsk()
         // A fresh popup gets its full leave grace, not the one left over from
         // the pointer leaving the previous one.
         popupLeave.stop()
@@ -564,7 +605,7 @@ ShellRoot {
         shell.popupScreen = target
         if (kind === "powerprofile")
             shell.refreshPowerProfile()
-        if (kind === "keyboard" || kind === "keyboardosk")
+        if (kind === "keyboard")
             shell.refreshKeyboards()
         if (kind === "bluetooth" && !bluetoothRead.running)
             bluetoothRead.running = true
@@ -925,7 +966,10 @@ ShellRoot {
         // The chip shows the profile from the start, not its default.
         shell.refreshPowerProfile()
         shell.refreshKeyboards()
+        // A previous bar may have left the Escape bind of its keyboard enabled.
+        shell.grabKeyboardEscape(false)
     }
+    Component.onDestruction: if (shell.keyboardOskOpen) shell.grabKeyboardEscape(false)
 
     // The dashboard's pomodoro and timer: kept here, not in the popup, so a
     // running session goes on while the popup is closed and survives a reload
@@ -1236,6 +1280,10 @@ ShellRoot {
         id: oskType
 
         onExited: shell.runNextKey()
+    }
+
+    AsyncRun {
+        id: oskEscape
     }
 
     AsyncRun {
@@ -1804,6 +1852,22 @@ ShellRoot {
         }
     }
 
+    IpcHandler {
+        target: "keyboard"
+
+        function open(): void {
+            shell.openKeyboardOsk()
+        }
+
+        function close(): void {
+            shell.closeKeyboardOsk()
+        }
+
+        function toggle(): void {
+            shell.toggleKeyboardOsk()
+        }
+    }
+
     Process {
         id: paletteJson
 
@@ -1917,8 +1981,7 @@ ShellRoot {
                     case "vpn": return barItems.vpnButton
                     case "powerprofile": return barItems.powerProfileButton
                     case "power": return barItems.powerButton
-                    case "keyboard": return keyboardButton
-                    case "keyboardosk": return keyboardButton
+                    case "keyboard": return barItems.keyboardButton
                     case "dashboard": return clockButton
                     case "launcher": return launcherButton
                     // The cheatsheet has no button: it grows from the bar's centre.
@@ -2121,19 +2184,6 @@ ShellRoot {
                                 onMutedRequested: shell.toggleNotificationMute()
                                 onHoveredChanged: tooltips.hover(notificationButton, hovered)
                             }
-
-                            KeyboardButton {
-                                id: keyboardButton
-
-                                visible: shell.keyboardShown
-                                strings: shell.strings
-                                keyboards: shell.keyboards
-                                opened: shell.popupOpen && shell.popupScreen === monitor.modelData
-                                        && (shell.popupKind === "keyboard" || shell.popupKind === "keyboardosk")
-                                onClicked: shell.togglePopup("keyboard", keyboardButton, monitor.modelData)
-                                onRightClicked: shell.togglePopup("keyboardosk", keyboardButton, monitor.modelData)
-                                onHoveredChanged: tooltips.hover(keyboardButton, hovered)
-                            }
                         }
 
                         center: GridLayout {
@@ -2185,11 +2235,14 @@ ShellRoot {
                             bluetooth: shell.bluetoothDevices
                             showBattery: shell.prefBool("barBatteryChip", true)
                             showBluetooth: shell.prefBool("barBluetoothChip", true)
+                            showKeyboard: shell.keyboardShown
+                            keyboards: shell.keyboards
                             recording: shell.recording
                             onClicked: function (kind, item) { shell.togglePopup(kind, item, monitor.modelData) }
                             onHovered: function (kind, item) { shell.hoverPopup(kind, item, monitor.modelData) }
                             onTipHovered: function (item, on) { tooltips.hover(item, on) }
                             onSessionRequested: shell.toggleSession(monitor.modelData)
+                            onKeyboardOskRequested: shell.toggleKeyboardOsk()
                             onRecordStopped: shell.toggleRecording()
                         }
                     }
@@ -2314,10 +2367,9 @@ ShellRoot {
                     // the pointer and the focus to itself, so no bar button could be
                     // hovered and no window clicked while it is open; on demand it
                     // keeps the keyboard until another window takes the focus.
-                    // The on-screen keyboard never takes it: `wtype` types into
-                    // the window that already has the focus.
+                    // The on-screen keyboard is a separate floating window
+                    // (KeyboardWindow) and never takes this layer's keyboard.
                     readonly property bool wantsKeyboard: popupLiquid.open
-                                                          && shell.popupKind !== "keyboardosk"
                     property bool grabbing: false
                     // The tray app under the pointer in the tray popup, and its icon.
                     property var trayTip: null
@@ -2538,7 +2590,7 @@ ShellRoot {
                         // inside has the focus). Releasing it on close lets the
                         // window underneath take it back.
                         function takeKeys() {
-                            if (shell.popupOpen && popupLiquid.open && shell.popupKind !== "keyboardosk")
+                            if (shell.popupOpen && popupLiquid.open)
                                 popupCard.forceActiveFocus()
                             else
                                 popupCard.focus = false
@@ -2643,13 +2695,6 @@ ShellRoot {
                                 current: popouts.name
                                 handover: popouts.handover
                                 sourceComponent: keyboardComponent
-                            }
-
-                            Popout {
-                                name: "keyboardosk"
-                                current: popouts.name
-                                handover: popouts.handover
-                                sourceComponent: keyboardOskComponent
                             }
 
                             Popout {
@@ -2951,14 +2996,18 @@ ShellRoot {
                     }
                 }
 
-                Component {
-                    id: keyboardOskComponent
+                // The on-screen keyboard: a floating overlay at the bottom of
+                // the focused screen. It is not focusable, so `wtype` types
+                // into the application that already has the focus.
+                KeyboardWindow {
+                    id: keyboardWindow
 
-                    KeyboardOSK {
-                        strings: shell.strings
-                        language: Keyboard.language(Keyboard.activeCode(shell.keyboards))
-                        onKeyPressed: function (argv) { shell.typeKey(argv) }
-                    }
+                    screen: monitor.modelData
+                    shown: shell.keyboardOskOpen && shell.keyboardOskScreen === monitor.modelData
+                    strings: shell.strings
+                    language: Keyboard.language(Keyboard.activeCode(shell.keyboards))
+                    onKeyPressed: function (argv) { shell.typeKey(argv) }
+                    onDismissed: shell.closeKeyboardOsk()
                 }
 
                 // System requests: a dimmed screen and one dialog in the middle

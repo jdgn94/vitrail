@@ -42,9 +42,11 @@ TestCase {
         compare(Keyboard.parse("not json").length, 0)
     }
 
-    function test_the_chip_shows_every_layout_and_the_active_one_is_known() {
+    function test_the_chip_shows_only_the_active_layout_abbreviation() {
         var devices = Keyboard.parse(sample)
-        compare(Keyboard.chipText(devices), "LATAM US")
+        compare(Keyboard.chipText(devices), "LATAM")
+        var switched = Keyboard.parse(sample.replace('"active_layout_index":0', '"active_layout_index":1'))
+        compare(Keyboard.chipText(switched), "US")
         compare(Keyboard.activeCode(devices), "latam")
         verify(Keyboard.tooltip(devices).indexOf("LATAM US") >= 0)
     }
