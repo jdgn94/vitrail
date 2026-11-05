@@ -54,11 +54,25 @@ import "session/actions.js" as Session
 ShellRoot {
     id: shell
 
+    // A start-up trace, off unless asked for: VITRAIL_STARTUP_TRACE=1
+    // vitrail-bar, then read the "[startup]" lines.
+    readonly property bool startupTrace: Quickshell.env("VITRAIL_STARTUP_TRACE") === "1"
+    readonly property real startupAt: Date.now()
+    function startupMark(label) {
+        if (shell.startupTrace)
+            console.log("[startup]", Date.now() - shell.startupAt, label)
+    }
+
     // One INI file per area (vitrail/prefs.map), merged into `prefs`.
     readonly property string configDir: (Quickshell.env("XDG_CONFIG_HOME")
                                          || Quickshell.env("HOME") + "/.config") + "/vitrail"
     property var prefFiles: []
     property var prefParts: ({})
+    onPrefPartsChanged: {
+        if (shell.prefFiles.length > 0
+                && Object.keys(shell.prefParts).length === shell.prefFiles.length)
+            shell.startupMark("preferences ready")
+    }
     readonly property var prefs: Prefs.merge(shell.prefParts, shell.prefFiles)
     property bool popupOpen: false
     property string popupKind: ""
@@ -119,6 +133,9 @@ ShellRoot {
     property var clipboardPending: ({})
     // The other two tabs: the emoji set, and the colour tab's state.
     property var clipboardEmojis: []
+    // Loaded the first time the emoji tab opens: assets/emoji.json is 520 KB
+    // and parsing it is no part of drawing the bar.
+    property string emojiPath: ""
     property var clipboardRecent: Colors.recentFrom(shell.prefs.clipboardColors)
     property string clipboardColor: ""
     property string clipboardFormat: "hex"
@@ -521,10 +538,18 @@ ShellRoot {
         if (!screen)
             return
         shell.clipboardMode = mode || "history"
+        if (shell.clipboardMode === "emoji")
+            shell.ensureEmojis()
         shell.clipboardScreen = screen
         shell.clipboardOpen = true
         cursorRun.run(["hyprctl", "cursorpos"], "")
         clipList.run(Commands.clipList(), "")
+    }
+
+    // The emoji tab asks for the set when it is shown, however it was opened.
+    function ensureEmojis() {
+        if (shell.emojiPath === "")
+            shell.emojiPath = Quickshell.shellDir + "/../assets/emoji.json"
     }
 
     // The first time an image entry is on screen, its bytes go to a PNG the
@@ -621,6 +646,9 @@ ShellRoot {
             shell.refreshPowerProfile()
         if (kind === "keyboard")
             shell.refreshKeyboards()
+        if (kind === "network" || kind === "vpn")
+            if (!linkRead.running)
+                linkRead.running = true
         if (kind === "bluetooth" && !bluetoothRead.running)
             bluetoothRead.running = true
         shell.popupKind = kind
@@ -833,7 +861,10 @@ ShellRoot {
     readonly property bool desktopWidgetsActive: Layouts.desktopCount(shell.prefs.desktopLayout || "") > 0
     onVisualiserEnabledChanged: if (!shell.visualiserEnabled) shell.visualiserValues = []
     onAudioPlayingChanged: if (!shell.audioPlaying) shell.visualiserValues = []
-    readonly property string themeFile: shell.generatedDir + "/theme-dark.json"
+    // The palette both modes use, written with the theme files by
+    // `vitrail colors` (`vitrail/colors.py`). Reading it is one small file
+    // instead of a Python spawn.
+    readonly property string paletteStore: shell.generatedDir + "/palette.json"
     // Bumped on every new palette: a regenerated SVG of the same name reloads.
     property int paletteVersion: 0
     // An adaptive SVG is shown recoloured for the current mode.
@@ -979,9 +1010,8 @@ ShellRoot {
         vitrailCli.exec(["python3", "-m", "vitrail.cli", "theme", "apply", "--mode", shell.dark ? "dark" : "light"])
     }
     Component.onCompleted: {
+        shell.startupMark("configuration complete")
         shell.syncTokens()
-        // The chip shows the profile from the start, not its default.
-        shell.refreshPowerProfile()
         shell.refreshKeyboards()
         // A previous bar may have left the Escape bind of its keyboard enabled.
         shell.grabKeyboardEscape(false)
@@ -1138,7 +1168,8 @@ ShellRoot {
         }
     }
 
-    // Every ten seconds: one echo (a second at most) and two counter files.
+    // While the connection popup is up: one echo (a second at most) and two
+    // counter files. The chips keep the last reading between openings.
     Process {
         id: linkRead
 
@@ -1151,7 +1182,8 @@ ShellRoot {
 
     Timer {
         interval: 10000
-        running: shell.linkStatsShown
+        running: shell.linkStatsShown && shell.popupOpen
+                 && (shell.popupKind === "network" || shell.popupKind === "vpn")
         repeat: true
         triggeredOnStart: true
         onTriggered: if (!linkRead.running) linkRead.running = true
@@ -1427,9 +1459,11 @@ ShellRoot {
         id: pasteRun
     }
 
-    // The emoji set, built from Unicode by scripts/build-emoji.py.
+    // The emoji set, built from Unicode by scripts/build-emoji.py. Its path is
+    // empty until the emoji tab opens (see ensureEmojis), so the 520 KB file is
+    // never parsed to draw the bar.
     FileView {
-        path: Quickshell.shellDir + "/../assets/emoji.json"
+        path: shell.emojiPath
         printErrors: false
         onLoaded: {
             try {
@@ -1437,6 +1471,7 @@ ShellRoot {
             } catch (error) {
                 shell.clipboardEmojis = []
             }
+            shell.startupMark("emojis loaded")
         }
         onLoadFailed: shell.clipboardEmojis = []
     }
@@ -1471,12 +1506,26 @@ ShellRoot {
         }
     }
 
-    // `vitrail colors` rewrites the theme when the wallpaper changes.
+    // The palette as a file, watched: a new wallpaper rewrites it and the bar
+    // recolours. Only a cache without it (an upgrade, a fresh profile) falls
+    // back to the Python reader, which writes it for the next start.
     FileView {
-        path: shell.themeFile
+        path: shell.paletteStore
         watchChanges: true
         printErrors: false
-        onFileChanged: paletteJson.running = true
+        onFileChanged: this.reload()
+        onLoaded: shell.readPalettes(this.text())
+        onLoadFailed: if (!paletteJson.running) paletteJson.running = true
+    }
+
+    function readPalettes(text) {
+        try {
+            shell.palettes = JSON.parse(text)
+        } catch (error) {
+            shell.palettes = ({})
+        }
+        shell.paletteVersion++
+        shell.startupMark("palette ready")
     }
 
     FileView {
@@ -1896,17 +1945,12 @@ ShellRoot {
     Process {
         id: paletteJson
 
-        command: ["python3", Quickshell.shellDir + "/../scripts/palette-json.py"]
-        running: true
+        // The fallback when palette.json is not there yet; --write leaves it
+        // for the next start. Off the start-up path otherwise.
+        command: ["python3", Quickshell.shellDir + "/../scripts/palette-json.py", "--write"]
+        running: false
         stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    shell.palettes = JSON.parse(this.text)
-                } catch (error) {
-                    shell.palettes = ({})
-                }
-                shell.paletteVersion++
-            }
+            onStreamFinished: shell.readPalettes(this.text)
         }
     }
 
@@ -3800,6 +3844,10 @@ ShellRoot {
                         onColorCopied: function (text) { shell.copyText(text) }
                         onColorPickRequested: shell.pickColor()
                         onColorFormatPicked: function (format) { shell.clipboardFormat = format }
+                        onModeSelected: function (mode) {
+                            if (mode === "emoji")
+                                shell.ensureEmojis()
+                        }
                     }
                 }
 

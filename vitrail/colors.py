@@ -495,11 +495,19 @@ def write_theme(
     and terminal palettes, so light and dark can switch without extracting."""
     theme = generate(image, scheme, mode, contrast, prefer, run, seed)
     written = write_outputs(theme, out_dir)
+    palettes: dict[str, dict[str, str]] = {}
     for variant_mode in ("dark", "light"):
         variant = generate(image, scheme, variant_mode, contrast, prefer, run, seed)
         written.append(write_summary(variant, out_dir / f"theme-{variant_mode}.json"))
+        palettes[variant_mode] = variant.colors
         kitty = out_dir / "terminal" / f"kitty-{variant_mode}.conf"
         kitty.parent.mkdir(parents=True, exist_ok=True)
         kitty.write_text(render_kitty(variant, glass_tokens(variant)), encoding="utf-8")
         written.append(kitty)
+    # One small file for the QML entry points: both modes' colours, written
+    # with the theme files so the bar reads it instead of spawning Python.
+    palette = out_dir / "palette.json"
+    palette.parent.mkdir(parents=True, exist_ok=True)
+    palette.write_text(json.dumps(palettes, separators=(",", ":")) + "\n", encoding="utf-8")
+    written.append(palette)
     return theme, written

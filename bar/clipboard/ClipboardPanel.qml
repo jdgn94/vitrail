@@ -36,6 +36,8 @@ FocusScope {
     signal colorCopied(string text)
     signal colorPickRequested()
     signal colorFormatPicked(string format)
+    // The tab the user picked, so the shell can load that tab's data.
+    signal modeSelected(string mode)
 
     readonly property int margin: VitrailTokens.gap("md")
 
@@ -100,7 +102,10 @@ FocusScope {
                     { key: "emoji", label: root.t("clipboard.mode.emoji") },
                     { key: "color", label: root.t("clipboard.mode.color") }
                 ]
-                onSelected: function (key) { root.mode = key }
+                onSelected: function (key) {
+                    root.mode = key
+                    root.modeSelected(key)
+                }
             }
         }
 

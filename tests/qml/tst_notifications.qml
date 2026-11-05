@@ -65,6 +65,13 @@ TestCase {
                                              hints: { "x-vitrail-conversation": "thread 4" } }), "thread 4")
     }
 
+    function test_a_notification_image_survives_a_restart() {
+        compare(Notifications.persistedImage("file:///tmp/a.png"), "file:///tmp/a.png")
+        compare(Notifications.persistedImage("image://icon/telegram"), "image://icon/telegram")
+        compare(Notifications.persistedImage("image://qsimage/75/1"), "")
+        compare(Notifications.persistedImage(""), "")
+    }
+
     function test_a_bare_url_becomes_a_link() {
         compare(Notifications.linkify("see https://example.com/x now"),
                 'see <a href="https://example.com/x">https://example.com/x</a> now')

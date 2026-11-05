@@ -89,6 +89,15 @@ function conversation(notification) {
     return messaging(notification) ? String(notification.summary || "") : ""
 }
 
+// A notification's image when it can still be drawn after the bar restarts.
+// `image://qsimage/N/1` is a handle into this process's image provider: the
+// next process answers "unknown handle", and the failing Image logs on every
+// frame. A file or the icon provider survives.
+function persistedImage(image) {
+    var text = String(image || "")
+    return text.indexOf("image://qsimage/") === 0 ? "" : text
+}
+
 // A body rendered as StyledText: its bare URLs become links, without touching
 // the ones the app already wrapped (`onLinkActivated` opens them).
 function linkify(text) {

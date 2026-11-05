@@ -28,6 +28,9 @@ Item {
     property var queue
     property var strings: ({})
     property string side: "right"
+    // The panel has been opened: until then it builds no group and no card,
+    // so a closed bar does not reconstruct the whole history at start-up.
+    property bool active: false
     // Do Not Disturb: arrivals are listed, not toasted.
     property bool dnd: false
     // What a button asks the shell to do, and the settings' switches.
@@ -90,7 +93,7 @@ Item {
     // removed in place, so the cards that stay keep their state and only the
     // new one animates in.
     function sync() {
-        if (!root.queue)
+        if (!root.queue || !root.active)
             return
 
         var rows = []
@@ -229,6 +232,7 @@ Item {
     }
 
     Component.onCompleted: root.sync()
+    onActiveChanged: if (root.active) root.sync()
 
     ColumnLayout {
         anchors.fill: parent

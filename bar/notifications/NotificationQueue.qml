@@ -235,7 +235,7 @@ QtObject {
             var row = root.history.get(i)
             rows.push({
                 arrived: row.arrived, summary: row.summary, body: row.body, appName: row.appName,
-                icon: row.icon, image: row.image, conversation: row.conversation,
+                icon: row.icon, image: Notifications.persistedImage(row.image), conversation: row.conversation,
                 urgent: row.urgent, acted: row.acted
             })
         }
@@ -254,7 +254,7 @@ QtObject {
                 body: row.body || "",
                 appName: row.appName || "",
                 icon: row.icon || "",
-                image: row.image || "",
+                image: Notifications.persistedImage(row.image),
                 arrived: row.arrived || Date.now(),
                 expired: true,
                 conversation: row.conversation || "",

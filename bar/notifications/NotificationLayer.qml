@@ -239,6 +239,7 @@ Scope {
                 opacity: liquid.look.content
                 enter: liquid.look.content
                 queue: root.queue
+                active: root.open || liquid.shown
                 strings: root.strings
                 side: root.side
                 dnd: root.dnd
