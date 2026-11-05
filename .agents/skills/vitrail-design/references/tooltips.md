@@ -70,6 +70,17 @@ tooltip is not finished** (`tests/test_tooltips.py` enforces it for
 | network | SSID, or `eno1 · Wired`; offline: Disconnected | IPv4 of that interface (`ip -j -4 addr show dev`, refreshed every 30 s and on link change) |
 | vpn | provider (`ProtonVPN`); none: No VPN | server and region (`us-free-26 · US`) from `vitrail-vpn list --json` |
 | power | Power | Click: menu · Right click: quick menu |
+| notifications | Notifications | `bar/notifications/tooltip.js`: Do Not Disturb, silent until HH:MM (X min left), `%1` in the centre, or the click hint |
+
+## Silence-aware tooltips
+
+A state that explains itself (why something is quiet, for how long) keeps its
+rule in a `.pragma library` next to the element — `tooltip.js` for the bell —
+and takes `now` as an argument, so the wording is testable without a clock.
+`reason()` names the state (`none`, `dnd`, `until`) and `describe()` turns it
+into the two tooltip lines with the element's strings; a new reason is one
+branch, not a string of ternaries in QML. A timed state binds a Timer to
+`reason().kind` and refreshes `now`.
 
 Hyprland glass blur for the pill needs the usual layer rule for the
 `vitrail-tooltip` namespace, like the other bar layers.

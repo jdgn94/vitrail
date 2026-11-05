@@ -1825,6 +1825,7 @@ ShellRoot {
                                 strings: shell.strings
                                 opened: shell.notificationsOpen && shell.notificationsScreen === monitor.modelData
                                 muted: shell.dnd
+                                muteUntil: shell.prefs.notificationMuteUntil || "0"
                                 count: toasts.history.count
                                 onClicked: shell.toggleNotifications(monitor.modelData)
                                 onMutedRequested: shell.toggleNotificationMute()

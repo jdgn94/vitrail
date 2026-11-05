@@ -77,6 +77,9 @@ var motion = {
     cycle: 650,
     // Hover time before a tooltip appears.
     tooltip: 500,
+    // How often the bell re-reads a silence that has an end, so the tooltip's
+    // "X min left" follows the clock.
+    minute: 60000,
     // How long the pointer must rest on a hot zone before its panel opens.
     dwell: 150,
     // How long typing in a menu keeps building the same search.

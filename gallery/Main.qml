@@ -115,6 +115,37 @@ Window {
 
         VitrailText {
             variant: "title"
+            text: "VitrailBadge · count × tone"
+        }
+
+        GridLayout {
+            columns: 6
+            columnSpacing: VitrailTokens.gap("lg")
+            rowSpacing: VitrailTokens.gap("md")
+
+            Repeater {
+                model: ["1", "9", "9+"]
+
+                delegate: Repeater {
+                    id: badgeRow
+
+                    required property string modelData
+
+                    model: ["error", "primary", "info"]
+
+                    delegate: VitrailBadge {
+                        required property string modelData
+
+                        Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                        text: badgeRow.modelData
+                        tone: modelData
+                    }
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
             text: "VitrailSlider · size × segments × icons × read-only"
         }
 
