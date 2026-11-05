@@ -311,7 +311,7 @@ the window declares it in another file, or the path unit watches another set.
 | `launcher.ini` | `launcherEngine`, `launcherBangs`, `launcherModes`, `launcherView`, `launcherClear` |
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
-| `connection.ini` | `connectionRequest`, `connectionSeq` (the Connection page's request, run once per counter value) |
+| `connection.ini` | `connectionRequest`, `connectionSeq` (the Connection page's request, run once per counter value), `networkMetrics` (the bar's latency and traffic line) |
 | `weather.ini` | `weatherLocation` (the city; empty follows the IP's guess), `weatherUnits` (`metric` or `imperial`) |
 | `misc.ini` | `selftest` (written by the smoke test), `quickNotes`, `clipboardColors` and any key the map does not list |
 
@@ -399,14 +399,21 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   `~/.config/vitrail/network-state.json`, which the page polls while it waits
   (its `result` says which verb it answers and whether it failed).
   `--tab internet|vpn|bluetooth` opens a tab; `--view global|<connection id>`
-  opens a VPN view.
+  opens a VPN view. The state also carries `latency` (one echo, in ms, to the
+  gateway or 1.1.1.1) and `traffic` (`rx`/`tx` bytes per second since the
+  previous read, from `/sys/class/net/<iface>/statistics` and a sample in
+  `~/.cache/vitrail/network-traffic.json`; the first read has no rate). The bar
+  asks the same measurement with `python3 -m vitrail.network link` (the
+  interface in use, one `-c 1 -W 1` echo, the same counters), once every ten
+  seconds while `networkMetrics` is on, and writes it as "12 ms · ↓ 1.2 MB/s ↑
+  80 kB/s" in the network and VPN tooltips and popups.
 
   The VPN tab shows **vitrail-vpn's own model**, never a parallel list. The
   state's `vpn` has `tunnels` (id, name, provider, region, credential,
   config_path, active), `credentials` (name, username, usedBy; no password),
   `mode` (`split`/`full`), `domains` (domain, address count), `enabled` (the
   tool's `~/.config/vitrail-vpn/enabled` marker), `quality` (`{id: {latency,
-  loss}}` from the last probe; `state` never pings). Four views: the
+  loss}}` from the last probe; the VPN's own pings only run on a probe). Four views: the
   connections (a `tune` button at the left of each row opens its settings, the
   ping and quality level (good < 100 ms and no loss, fair < 250 ms and at most
   10 % loss, poor, or "—" when unmeasured) of every connection sits left of

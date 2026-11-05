@@ -20,6 +20,8 @@ GridLayout {
     property string barEdge: "left"
     property var strings: ({})
     property string trayStyle: "inline"
+    // The link's latency and traffic, shared by the network and VPN chips.
+    property var linkStats: ({})
     // The mode the power chip shows (power-profiles-daemon).
     property string powerProfile: "balanced"
     // A session is being recorded: the chip stops it.
@@ -88,6 +90,7 @@ GridLayout {
                 id: network
 
                 strings: root.strings
+                stats: root.linkStats
                 opened: root.open && root.openKind === "network"
                 onClicked: root.clicked("network", network)
                 onHoveredChanged: {
@@ -101,6 +104,7 @@ GridLayout {
                 id: vpn
 
                 strings: root.strings
+                stats: root.linkStats
                 opened: root.open && root.openKind === "vpn"
                 onClicked: root.clicked("vpn", vpn)
                 onHoveredChanged: {

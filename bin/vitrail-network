@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Runs a helper of `vitrail.network` (state, apply, autostart) with the repo on
-# PYTHONPATH. The VPN login unit calls `vitrail-network autostart`, so the rule
-# does not depend on the shell being started.
+# Runs a helper of `vitrail.network` (state, link, apply, autostart) with the
+# repo on PYTHONPATH. The VPN login unit calls `vitrail-network autostart`, so
+# the rule does not depend on the shell being started.
 set -euo pipefail
 
 HERE="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"

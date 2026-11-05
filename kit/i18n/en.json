@@ -472,6 +472,8 @@
   "connection.wifi.networks": "Networks around",
   "connection.wifi.none": "No networks found",
   "connection.wifi.help": "Joins open networks and the ones you already saved.",
+  "connection.metrics": "Latency and traffic",
+  "connection.metrics.help": "Shows the round-trip time and the upload and download rate in the bar and the panels.",
   "connection.security.open": "Open",
   "connection.vpn.missing": "VPN module not found (vitrail-vpn)",
   "connection.vpn.connections": "Connections",

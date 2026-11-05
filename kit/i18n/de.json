@@ -472,6 +472,8 @@
   "connection.wifi.networks": "Netzwerke in der Nähe",
   "connection.wifi.none": "Keine Netzwerke gefunden",
   "connection.wifi.help": "Verbindet mit offenen und bereits gespeicherten Netzwerken.",
+  "connection.metrics": "Latenz und Datenverkehr",
+  "connection.metrics.help": "Zeigt die Antwortzeit und die Sende- und Empfangsrate in der Leiste und den Panels.",
   "connection.security.open": "Offen",
   "connection.vpn.missing": "VPN-Modul nicht gefunden (vitrail-vpn)",
   "connection.vpn.connections": "Verbindungen",

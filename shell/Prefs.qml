@@ -113,6 +113,7 @@ QtObject {
     property alias ntp: datetimeFile.ntp
     property alias connectionRequest: connectionFile.connectionRequest
     property alias connectionSeq: connectionFile.connectionSeq
+    property alias networkMetrics: connectionFile.networkMetrics
     property alias weatherLocation: weatherFile.weatherLocation
     property alias weatherUnits: weatherFile.weatherUnits
     property alias selftest: miscFile.selftest
@@ -378,6 +379,9 @@ QtObject {
         // counter that grows with every ask so the same one can be repeated.
         property string connectionRequest: ""
         property int connectionSeq: 0
+        // The bar's latency and traffic line: one echo every ten seconds and
+        // the interface's counters.
+        property bool networkMetrics: true
     }
 
     property Settings weatherSettings: Settings {

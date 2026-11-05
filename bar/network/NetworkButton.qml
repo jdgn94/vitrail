@@ -4,6 +4,7 @@ import Quickshell.Io
 import Quickshell.Networking
 import "../kit"
 import "../kit/base"
+import "format.js" as Format
 import "network.js" as Network
 
 // The connection button: Ethernet when it is up, the Wi-Fi signal when that
@@ -14,6 +15,9 @@ Item {
 
     property bool opened: false
     property var strings: ({})
+    // The link's latency and traffic (`vitrail.network link`): what the bar
+    // measured for the interface in use.
+    property var stats: ({})
 
     signal clicked()
 
@@ -41,12 +45,15 @@ Item {
     // IPv4 of the interface in use, from `ip`.
     property string address: ""
 
-    // What the pointer reads: the connection and its address.
+    // What the pointer reads: the connection, its address and how it moves.
+    readonly property string metrics: Format.summary(root.stats)
     property string tooltip: !root.connected ? root.t("network.offline")
                              : root.wiredDevice ? root.wiredDevice.name + " · " + root.t("tooltip.wired")
                              : root.wifiDevice && root.wifiNetwork ? root.wifiNetwork.name
                              : root.t("network.connected")
-    property string tooltipDetail: root.connected ? root.address : ""
+    property string tooltipDetail: root.connected ? [root.address, root.metrics].filter(function (part) {
+                                                      return part !== ""
+                                                  }).join(" · ") : ""
 
     implicitWidth: icon.implicitWidth + VitrailTokens.gap("sm")
     // Square, so the round background fits the chip's pill.

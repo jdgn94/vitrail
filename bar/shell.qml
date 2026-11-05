@@ -120,6 +120,13 @@ ShellRoot {
     // The power profile the connection chip shows.
     property string powerProfile: "balanced"
 
+    // The link's latency and traffic, read once for the whole bar (the two
+    // chips and the two popups show the same measure). The preference turns
+    // the reading off, not just the line.
+    property var linkStats: ({})
+    readonly property bool linkStatsShown: shell.prefBool("networkMetrics", true)
+    onLinkStatsShownChanged: if (!shell.linkStatsShown) shell.linkStats = ({})
+
     function refreshPowerProfile() {
         powerRead.run(Commands.powerProfile(), "")
     }
@@ -915,6 +922,35 @@ ShellRoot {
             return
         prefWriter.command = ["python3", "-m", "vitrail.cli", "config", "set", next[0], next[1]]
         prefWriter.running = true
+    }
+
+    // What `vitrail.network link` answered: the interface, one echo and the
+    // rate since the previous read.
+    function readLinkStats(text) {
+        try {
+            shell.linkStats = JSON.parse(text)
+        } catch (error) {
+            shell.linkStats = ({})
+        }
+    }
+
+    // Every ten seconds: one echo (a second at most) and two counter files.
+    Process {
+        id: linkRead
+
+        command: ["python3", "-m", "vitrail.network", "link"]
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.readLinkStats(this.text)
+        }
+    }
+
+    Timer {
+        interval: 10000
+        running: shell.linkStatsShown
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: if (!linkRead.running) linkRead.running = true
     }
 
     // The clipboard's programs: the history, a thumbnail, a pick, the paste.
@@ -1877,6 +1913,7 @@ ShellRoot {
                             openKind: shell.popupKind
                             strings: shell.strings
                             trayStyle: shell.prefs.trayStyle || "inline"
+                            linkStats: shell.linkStats
                             powerProfile: shell.powerProfile
                             recording: shell.recording
                             onClicked: function (kind, item) { shell.togglePopup(kind, item, monitor.modelData) }
@@ -2476,6 +2513,7 @@ ShellRoot {
 
                     NetworkPanel {
                         strings: shell.strings
+                        stats: shell.linkStats
                     }
                 }
 
@@ -2551,6 +2589,7 @@ ShellRoot {
                     VpnPanel {
                         strings: shell.strings
                         configDir: shell.configDir
+                        stats: shell.linkStats
                         onProbeRequested: shell.requestVpnProbe()
                     }
                 }

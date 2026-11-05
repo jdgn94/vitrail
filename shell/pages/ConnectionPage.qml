@@ -373,6 +373,22 @@ Item {
                             muted: page.palette.muted
                         }
                     }
+
+                    // The bar's latency and traffic line, and the read behind it.
+                    VitrailSettingRow {
+                        icon: "speed"
+                        label: page.t("connection.metrics")
+                        description: page.t("connection.metrics.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.networkMetrics !== false
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.networkMetrics = value }
+                        }
+                    }
                 }
 
                 Section {

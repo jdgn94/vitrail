@@ -472,6 +472,8 @@
   "connection.wifi.networks": "Réseaux à proximité",
   "connection.wifi.none": "Aucun réseau trouvé",
   "connection.wifi.help": "Se connecte aux réseaux ouverts et à ceux déjà enregistrés.",
+  "connection.metrics": "Latence et trafic",
+  "connection.metrics.help": "Affiche le temps aller-retour et le débit montant et descendant dans la barre et les panneaux.",
   "connection.security.open": "Ouvert",
   "connection.vpn.missing": "Module VPN introuvable (vitrail-vpn)",
   "connection.vpn.connections": "Connexions",

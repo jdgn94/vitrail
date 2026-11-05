@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell.Io
 import "../kit"
 import "../kit/base"
+import "format.js" as Format
 import "vpn.js" as Vpn
 
 // VPN popup: the tunnel at a glance, then every imported connection with its
@@ -20,6 +21,8 @@ Item {
     property var strings: ({})
     // The Vitrail preference folder, where network-state.json lives.
     property string configDir: ""
+    // The link's latency and traffic (`vitrail.network link`).
+    property var stats: ({})
     signal probeRequested()
 
     // { "<id>": { latency, loss } } and when the file was written (ms).
@@ -31,6 +34,8 @@ Item {
     // VPN id being connected or disconnected, until the list catches up.
     property string pending: ""
     readonly property var activeVpn: Vpn.active(root.connections)
+    // How the link moves: "12 ms · ↓ 1.2 MB/s ↑ 80 kB/s", or nothing.
+    readonly property string metrics: Format.summary(root.stats)
 
     implicitWidth: 380
     implicitHeight: body.implicitHeight
@@ -99,6 +104,14 @@ Item {
                     text: root.activeVpn
                           ? root.t("network.vpnActive") + " " + Vpn.title(root.activeVpn.name)
                           : root.t("network.vpnInactive")
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    visible: root.metrics !== ""
+                    variant: "label"
+                    elide: Text.ElideRight
+                    text: root.metrics
                 }
             }
 

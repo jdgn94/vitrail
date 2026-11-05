@@ -250,9 +250,169 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(network.parse_domains("{}"), [])
 
 
+class LinkTests(unittest.TestCase):
+    """The link of the bar: how long a round trip takes and how much moves.
+
+    Both reads must be cheap: the bar asks again and again, so the ping is one
+    echo with a one-second wait and the traffic is two files in /sys."""
+
+    PING = "rtt min/avg/max/mdev = 10.100/12.500/15.000/1.000 ms\n"
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.sysfs = self.root / "net"
+        self.cache = self.root / "cache"
+        self.interface = "wlan0"
+        self.counters(1000, 200)
+
+    def counters(self, rx: int, tx: int, interface: str | None = None) -> None:
+        folder = self.sysfs / (interface or self.interface) / "statistics"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "rx_bytes").write_text(f"{rx}\n", encoding="utf-8")
+        (folder / "tx_bytes").write_text(f"{tx}\n", encoding="utf-8")
+
+    def traffic(self, now: float, interface: str | None = None) -> dict:
+        return network.traffic(self.interface if interface is None else interface, self.cache, now, self.sysfs)
+
+    def test_the_link_in_use_is_the_connected_wired_one_first(self) -> None:
+        devices = network.parse_devices(DEVICES)
+        self.assertEqual(network.active_link(devices)["name"], "eno1")
+        wireless = network.parse_devices("wlan0:wifi:connected:Home\n")
+        self.assertEqual(network.active_link(wireless)["name"], "wlan0")
+        self.assertIsNone(network.active_link(network.parse_devices("wlan0:wifi:disconnected:\n")))
+
+    def test_the_counters_come_from_sysfs(self) -> None:
+        self.assertEqual(network.read_counters("wlan0", self.sysfs), (1000, 200))
+        self.assertIsNone(network.read_counters("", self.sysfs))
+        self.assertIsNone(network.read_counters("gone", self.sysfs))
+        self.assertIsNone(network.read_counters("../etc", self.sysfs))
+
+    def test_a_broken_counter_is_not_read(self) -> None:
+        (self.sysfs / "wlan0" / "statistics" / "rx_bytes").write_text("nope\n", encoding="utf-8")
+        self.assertIsNone(network.read_counters("wlan0", self.sysfs))
+
+    def test_the_first_reading_has_no_rate_and_is_remembered(self) -> None:
+        self.assertEqual(self.traffic(100.0), {"rx": None, "tx": None})
+        sample = json.loads((self.cache / network.TRAFFIC_FILE).read_text(encoding="utf-8"))
+        self.assertEqual(sample, {"interface": "wlan0", "rx": 1000, "tx": 200, "time": 100.0})
+
+    def test_the_rate_is_the_difference_over_the_elapsed_time(self) -> None:
+        self.traffic(100.0)
+        self.counters(1900, 500)
+        self.assertEqual(self.traffic(102.0), {"rx": 450, "tx": 150})
+
+    def test_the_rate_is_per_second_and_rounded(self) -> None:
+        self.traffic(100.0)
+        self.counters(1099, 201)
+        self.assertEqual(self.traffic(101.5), {"rx": 66, "tx": 1})
+
+    def test_another_interface_and_a_reset_counter_start_the_rate_again(self) -> None:
+        self.traffic(100.0)
+        self.counters(10, 20, "eth0")
+        self.assertEqual(self.traffic(101.0, "eth0"), {"rx": None, "tx": None})
+        self.counters(5, 300, "eth0")
+        self.assertEqual(self.traffic(102.0, "eth0"), {"rx": None, "tx": 280})
+
+    def test_the_same_moment_gives_no_rate(self) -> None:
+        self.traffic(100.0)
+        self.counters(2000, 400)
+        self.assertEqual(self.traffic(100.0), {"rx": None, "tx": None})
+
+    def test_a_broken_or_missing_cache_is_ignored_and_replaced(self) -> None:
+        self.cache.mkdir()
+        (self.cache / network.TRAFFIC_FILE).write_text("{not json", encoding="utf-8")
+        self.assertEqual(self.traffic(100.0), {"rx": None, "tx": None})
+        self.assertIn('"interface":"wlan0"', (self.cache / network.TRAFFIC_FILE).read_text(encoding="utf-8"))
+
+    def test_without_an_interface_there_is_nothing_to_read(self) -> None:
+        self.assertEqual(self.traffic(100.0, ""), {"rx": None, "tx": None})
+        self.assertFalse((self.cache / network.TRAFFIC_FILE).exists())
+
+    def test_latency_is_one_echo_of_the_gateway(self) -> None:
+        asked: list[list[str]] = []
+
+        def run(argv: list[str]) -> str:
+            asked.append(argv)
+            return self.PING
+
+        self.assertEqual(network.link_latency("192.168.1.1", run), 12.5)
+        self.assertEqual(asked, [["env", "LANG=C", "ping", "-c", "1", "-W", "1", "192.168.1.1"]])
+
+    def test_latency_falls_back_to_a_public_address_and_ignores_a_bad_host(self) -> None:
+        asked: list[list[str]] = []
+
+        def run(argv: list[str]) -> str:
+            asked.append(argv)
+            return self.PING
+
+        self.assertEqual(network.link_latency("", run), 12.5)
+        self.assertEqual(asked[-1][-1], "1.1.1.1")
+        self.assertIsNone(network.link_latency("--help", run))
+        self.assertEqual(network.link_latency("no.answer", lambda _argv: None), None)
+
+    def test_the_gateway_ping_wait_is_short(self) -> None:
+        self.assertEqual(
+            network.read_timeout(["env", "LANG=C", "ping", "-c", "1", "-W", "1", "1.1.1.1"]), network.LINK_TIMEOUT
+        )
+        self.assertLess(network.LINK_TIMEOUT, network.PING_TIMEOUT)
+        self.assertEqual(network.LINK_WAIT, 1)
+
+    def test_the_state_carries_the_latency_and_the_traffic(self) -> None:
+        outputs = {
+            **EVERYTHING,
+            "env LANG=C ping -c 1 -W 1 192.168.1.1": self.PING,
+        }
+        self.counters(1000, 200, "eno1")
+        first = network.state(fake(outputs), cache=self.cache, sysfs=self.sysfs, now=100.0)
+        self.assertEqual(first["latency"], 12.5)
+        self.assertEqual(first["traffic"], {"rx": None, "tx": None})
+        self.counters(3000, 500, "eno1")
+        second = network.state(fake(outputs), cache=self.cache, sysfs=self.sysfs, now=101.0)
+        self.assertEqual(second["traffic"], {"rx": 2000, "tx": 300})
+
+    def test_offline_nothing_is_pinged_and_nothing_is_read(self) -> None:
+        asked: list[list[str]] = []
+        outputs = {"nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device": "lo:loopback:connected (externally):lo\n"}
+
+        def run(argv: list[str]) -> str | None:
+            asked.append(argv)
+            return fake(outputs)(argv)
+
+        data = network.state(run, cache=self.cache, sysfs=self.sysfs)
+        self.assertEqual((data["latency"], data["traffic"]), (None, {"rx": None, "tx": None}))
+        self.assertFalse([argv for argv in asked if "ping" in argv])
+        self.assertFalse((self.cache / network.TRAFFIC_FILE).exists())
+
+    def test_the_link_read_answers_what_the_bar_needs(self) -> None:
+        outputs = {
+            **EVERYTHING,
+            "env LANG=C ping -c 1 -W 1 1.1.1.1": self.PING,
+        }
+        got = network.link(fake(outputs), cache=self.cache, sysfs=self.sysfs, now=100.0)
+        self.assertEqual(got, {"interface": "eno1", "latency": 12.5, "traffic": {"rx": None, "tx": None}})
+        named = network.link(fake(outputs), "wlan0", cache=self.cache, sysfs=self.sysfs, now=100.0)
+        self.assertEqual(named["interface"], "wlan0")
+
+    def test_the_link_subcommand_prints_json(self) -> None:
+        with (
+            mock.patch.object(network, "link", return_value={"interface": "eno1", "latency": 1.0}) as link,
+            redirect_stdout(io.StringIO()) as out,
+        ):
+            self.assertEqual(network.main(["link"]), 0)
+        self.assertEqual(json.loads(out.getvalue()), {"interface": "eno1", "latency": 1.0})
+        self.assertEqual(link.call_args, mock.call())
+
+
 class StateTests(unittest.TestCase):
+    def state(self, run, **kwargs) -> dict:
+        # The traffic sample is a file in the cache: keep it out of the user's.
+        with tempfile.TemporaryDirectory() as folder:
+            return network.state(run, cache=Path(folder) / "cache", sysfs=Path(folder) / "net", **kwargs)
+
     def test_the_state_of_a_full_system(self) -> None:
-        data = network.state(fake(EVERYTHING), bluetooth_present=controller(True))
+        data = self.state(fake(EVERYTHING), bluetooth_present=controller(True))
         self.assertEqual(
             data["ethernet"]["devices"],
             [
@@ -282,12 +442,12 @@ class StateTests(unittest.TestCase):
         json.dumps(data)
 
     def test_the_wifi_list_is_not_asked_while_the_radio_is_off(self) -> None:
-        data = network.state(fake({**EVERYTHING, "nmcli radio wifi": "disabled\n"}), bluetooth_present=controller(True))
+        data = self.state(fake({**EVERYTHING, "nmcli radio wifi": "disabled\n"}), bluetooth_present=controller(True))
         self.assertEqual((data["wifi"]["enabled"], data["wifi"]["networks"]), (False, []))
         self.assertTrue(data["wifi"]["available"])
 
     def test_without_any_tool_every_section_is_empty_and_unavailable(self) -> None:
-        data = network.state(fake({}))
+        data = self.state(fake({}))
         self.assertFalse(data["ethernet"]["available"])
         self.assertEqual(data["ethernet"]["devices"], [])
         self.assertEqual(data["wifi"], {"available": False, "enabled": False, "device": "", "networks": []})
@@ -307,13 +467,13 @@ class StateTests(unittest.TestCase):
 
     def test_nameless_beacons_found_by_a_scan_are_not_listed_but_paired_ones_are(self) -> None:
         listed = BT_DEVICES + "Device 00:04:EA:A4:48:90 00-04-EA-A4-48-90\n"
-        data = network.state(fake({**EVERYTHING, "bluetoothctl devices": listed}), bluetooth_present=controller(True))
+        data = self.state(fake({**EVERYTHING, "bluetoothctl devices": listed}), bluetooth_present=controller(True))
         self.assertEqual(
             [one["mac"] for one in data["bluetooth"]["devices"]], ["A0:1B:9E:B3:9A:65", "11:22:33:44:55:66"]
         )
 
     def test_without_a_bluetooth_controller_the_devices_are_not_listed(self) -> None:
-        data = network.state(
+        data = self.state(
             fake({**EVERYTHING, "bluetoothctl show": "No default controller available\n"}),
             bluetooth_present=controller(True),
         )
@@ -327,7 +487,7 @@ class StateTests(unittest.TestCase):
             asked.append(argv)
             return fake(EVERYTHING)(argv)
 
-        data = network.state(run, bluetooth_present=controller(False))
+        data = self.state(run, bluetooth_present=controller(False))
         self.assertEqual(data["bluetooth"], {"available": False, "powered": False, "devices": []})
         self.assertFalse([argv for argv in asked if argv[0] == "bluetoothctl"])
 
@@ -364,7 +524,10 @@ class ApplyTests(unittest.TestCase):
             return code, "boom" if code else ""
 
         with tempfile.TemporaryDirectory() as folder, redirect_stdout(io.StringIO()) as log:
-            result = network.apply(request, Path(folder), act, fake(EVERYTHING if outputs is None else outputs))
+            cache = mock.patch.object(network, "cache_dir", return_value=Path(folder) / "cache")
+            sysfs = mock.patch.object(network, "SYSFS_NET", Path(folder) / "net")
+            with cache, sysfs:
+                result = network.apply(request, Path(folder), act, fake(EVERYTHING if outputs is None else outputs))
             written = (
                 json.loads((Path(folder) / network.STATE_FILE).read_text(encoding="utf-8"))
                 if (Path(folder) / network.STATE_FILE).exists()
@@ -729,6 +892,15 @@ class VpnHarness(unittest.TestCase):
         self.share = Path(self.tmp.name) / "share"
         self.folder.mkdir()
         self.runtime.mkdir()
+        # The traffic sample never touches the user's cache nor the real /sys.
+        self.cache = Path(self.tmp.name) / "cache"
+        self.sysfs = Path(self.tmp.name) / "net"
+        sysfs = mock.patch.object(network, "SYSFS_NET", self.sysfs)
+        sysfs.start()
+        self.addCleanup(sysfs.stop)
+        cache = mock.patch.object(network, "cache_dir", return_value=self.cache)
+        cache.start()
+        self.addCleanup(cache.stop)
         self.calls: list[list[str]] = []
         self.seen_files: list[dict[str, str]] = []
         self.pinged: list[str] = []

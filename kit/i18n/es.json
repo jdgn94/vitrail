@@ -472,6 +472,8 @@
   "connection.wifi.networks": "Redes cercanas",
   "connection.wifi.none": "No se encontraron redes",
   "connection.wifi.help": "Se une a redes abiertas y a las que ya guardaste.",
+  "connection.metrics": "Latencia y tráfico",
+  "connection.metrics.help": "Muestra el tiempo de ida y vuelta y la velocidad de subida y bajada en la barra y los paneles.",
   "connection.security.open": "Abierta",
   "connection.vpn.missing": "Módulo VPN no encontrado (vitrail-vpn)",
   "connection.vpn.connections": "Conexiones",

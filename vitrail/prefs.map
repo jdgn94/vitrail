@@ -135,6 +135,8 @@ datetime ntp
 # differs from the last one it ran.
 connection connectionRequest
 connection connectionSeq
+# Whether the bar reads and shows the link's latency and traffic.
+connection networkMetrics
 
 misc selftest
 misc quickNotes

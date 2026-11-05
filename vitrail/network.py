@@ -3,6 +3,8 @@
 The window cannot run commands, so this module does both halves:
 
     python3 -m vitrail.network state            prints the state as JSON
+    python3 -m vitrail.network link             prints the link's latency and
+                                                traffic rate (the bar's read)
     python3 -m vitrail.network apply <request>  runs one request, then
                                                 rewrites network-state.json
     python3 -m vitrail.network autostart        vitrail-vpn's login rule for
@@ -56,6 +58,17 @@ from . import prefs
 from . import vpndoc
 
 STATE_FILE = "network-state.json"
+# The last traffic sample, so the next read can give a rate: a file in the
+# cache, not in the state (the page does not need the previous counters).
+TRAFFIC_FILE = "network-traffic.json"
+# The kernel's counters, one pair per interface.
+SYSFS_NET = Path("/sys/class/net")
+# Where the bar's link read looks when the gateway is not known.
+LINK_HOST = "1.1.1.1"
+# One echo with a second to answer: the bar asks again and again, so this read
+# must never hold it for long (the VPN probe's three are for the settings page).
+LINK_WAIT = 1
+LINK_TIMEOUT = 2
 # How long `bluetoothctl scan` looks around, as the bar's launcher does.
 SCAN_SECONDS = 6
 # Longest a command may take: a Wi-Fi join waits for DHCP and the password.
@@ -67,6 +80,8 @@ BLUETOOTH_SYSFS = Path("/sys/class/bluetooth")
 ACT_TIMEOUT = 60
 
 MAC = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
+# A network interface as the kernel names it (no path, no option).
+INTERFACE = re.compile(r"^[A-Za-z0-9_.:@-]{1,64}$")
 # A vitrail-vpn connection id: "us-free-12-protonvpn-udp".
 VPN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
@@ -502,6 +517,8 @@ def parse_mode(text: str) -> str:
 
 
 def read_timeout(argv: list[str]) -> int:
+    if argv[:3] == ["env", "LANG=C", "ping"]:
+        return LINK_TIMEOUT
     if argv[:3] == ["vitrail-vpn", "domain", "list"]:
         return LONG_READ
     return BLUETOOTH_READ if argv[0] == "bluetoothctl" else READ_TIMEOUT
@@ -549,6 +566,111 @@ def wifi(run: Runner, devices: list[dict]) -> dict:
     return {"available": card != "", "enabled": enabled and card != "", "device": card, "networks": networks}
 
 
+def cache_dir() -> Path:
+    base = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+    return base / "vitrail"
+
+
+def read_counters(interface: str, sysfs: Path | None = None) -> tuple[int, int] | None:
+    """The interface's rx and tx byte counters; None for a name the kernel does
+    not list or a counter it cannot read."""
+    sysfs = SYSFS_NET if sysfs is None else sysfs
+    if not INTERFACE.match(interface):
+        return None
+    try:
+        rx = int((sysfs / interface / "statistics" / "rx_bytes").read_text(encoding="utf-8").strip())
+        tx = int((sysfs / interface / "statistics" / "tx_bytes").read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+    return rx, tx
+
+
+def read_traffic(folder: Path) -> dict | None:
+    """The sample the last read left ({interface, rx, tx, time}); None when
+    there is none or it cannot be trusted."""
+    try:
+        found = json.loads((folder / TRAFFIC_FILE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if (
+        not isinstance(found, dict)
+        or not isinstance(found.get("interface"), str)
+        or not isinstance(found.get("rx"), int)
+        or not isinstance(found.get("tx"), int)
+        or not isinstance(found.get("time"), (int, float))
+    ):
+        return None
+    return found
+
+
+def write_traffic(folder: Path, sample: dict) -> None:
+    """Replaces the sample whole; a cache that cannot be written is no error."""
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        partial = folder / (TRAFFIC_FILE + ".tmp")
+        partial.write_text(json.dumps(sample, separators=(",", ":")), encoding="utf-8")
+        os.replace(partial, folder / TRAFFIC_FILE)
+    except OSError:
+        pass
+
+
+def traffic(interface: str, folder: Path | None = None, now: float | None = None, sysfs: Path | None = None) -> dict:
+    """rx and tx bytes per second since the last read of this interface, from
+    the kernel's counters and the sample in the cache. The first read (or one
+    after the interface changed, the counters went back or no time passed) has
+    no rate: None, never a made-up number."""
+    counters = read_counters(interface, sysfs)
+    if counters is None:
+        return {"rx": None, "tx": None}
+    folder = cache_dir() if folder is None else folder
+    now = time.time() if now is None else now
+    previous = read_traffic(folder)
+    write_traffic(folder, {"interface": interface, "rx": counters[0], "tx": counters[1], "time": now})
+    if previous is None or previous["interface"] != interface or now <= previous["time"]:
+        return {"rx": None, "tx": None}
+    elapsed = now - previous["time"]
+    return {
+        key: round((value - previous[key]) / elapsed) if value >= previous[key] else None
+        for key, value in (("rx", counters[0]), ("tx", counters[1]))
+    }
+
+
+def active_link(devices: list[dict]) -> dict | None:
+    """The device carrying the traffic: the connected wired one, else Wi-Fi."""
+    connected = [one for one in devices if one["state"] == "connected" and one["type"] in ("ethernet", "wifi")]
+    connected.sort(key=lambda one: one["type"] != "ethernet")
+    return connected[0] if connected else None
+
+
+def link_latency(host: str = "", run: Runner = run_text) -> float | None:
+    """One echo to `host` (the gateway, else 1.1.1.1), in milliseconds; None when
+    nothing answered or the host is not a name to hand to ping."""
+    target = host or LINK_HOST
+    if not PING_HOST.match(target):
+        return None
+    return parse_ping(run(["env", "LANG=C", "ping", "-c", "1", "-W", str(LINK_WAIT), target]) or "")[0]
+
+
+def link(
+    run: Runner = run_text,
+    interface: str = "",
+    cache: Path | None = None,
+    now: float | None = None,
+    sysfs: Path | None = None,
+) -> dict:
+    """What the bar asks for while it runs: the interface in use, its latency
+    and its traffic rate. Cheap enough to be asked again and again."""
+    name = interface
+    if not name:
+        found = active_link(device_list(run) or [])
+        name = found["name"] if found else ""
+    return {
+        "interface": name,
+        "latency": link_latency("", run) if name else None,
+        "traffic": traffic(name, cache, now, sysfs),
+    }
+
+
 def marker_path() -> Path:
     """vitrail-vpn's `enabled` marker: it exists while a tunnel is up (the tool
     keeps it for every connect, disconnect and removal, from any frontend)."""
@@ -558,7 +680,7 @@ def marker_path() -> Path:
 
 def vpn(run: Runner, quality: dict | None = None, marker: Path | None = None) -> dict:
     """The VPN as vitrail-vpn has it. `quality` is the last probe's (see
-    `probe`): state() itself never pings."""
+    `probe`): the VPN's own pings only run on a probe, never per state."""
     listed = run(["vitrail-vpn", "list", "--json"])
     tunnels = parse_vpn(listed or "")
     ids = {one["id"] for one in tunnels}
@@ -612,14 +734,26 @@ def state(
     quality: dict | None = None,
     marker: Path | None = None,
     bluetooth_present: Callable[[], bool] = has_bluetooth_controller,
+    *,
+    cache: Path | None = None,
+    now: float | None = None,
+    sysfs: Path | None = None,
 ) -> dict:
     """Everything the page shows. `updated` (milliseconds) tells which copy of
-    the state is the newer one."""
+    the state is the newer one. `latency` is one echo to the gateway (1.1.1.1
+    without one), `traffic` the link's rate since the last read (see
+    `traffic`); neither is measured without a link."""
     listed = device_list(run)
     devices = listed or []
+    wired = ethernet(run, devices)
+    link_device = active_link(devices)
+    name = link_device["name"] if link_device else ""
+    gateway = next((one["gateway"] for one in wired["devices"] if one["name"] == name), "")
     return {
         "updated": int(time.time() * 1000),
-        "ethernet": {"available": listed is not None} | ethernet(run, devices),
+        "latency": link_latency(gateway, run) if name else None,
+        "traffic": traffic(name, cache, now, sysfs),
+        "ethernet": {"available": listed is not None} | wired,
         "wifi": wifi(run, devices),
         "vpn": vpn(run, quality, marker),
         "bluetooth": bluetooth(run, bluetooth_present),
@@ -1172,6 +1306,9 @@ def main(argv: list[str] | None = None) -> int:
     if args == ["state"]:
         print(json.dumps(state(quality=load_quality(prefs.config_dir())), separators=(",", ":")))
         return 0
+    if args == ["link"]:
+        print(json.dumps(link(), separators=(",", ":")))
+        return 0
     if len(args) == 2 and args[0] == "apply":
         # The request comes from connection.ini, where QSettings escaped it.
         try:
@@ -1182,7 +1319,7 @@ def main(argv: list[str] | None = None) -> int:
         return apply(request, runtime=runtime_dir())
     if args == ["autostart"]:
         return autostart(runtime=runtime_dir())
-    print("usage: network state | apply <request> | autostart", file=sys.stderr)
+    print("usage: network state | link | apply <request> | autostart", file=sys.stderr)
     return 2
 
 

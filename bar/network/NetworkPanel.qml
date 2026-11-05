@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Networking
 import "../kit"
 import "../kit/base"
+import "format.js" as Format
 import "network.js" as Network
 
 // Network popup: a status header, then Ethernet and Wi-Fi.
@@ -12,6 +13,8 @@ Item {
     id: root
 
     property var strings: ({})
+    // The link's latency and traffic (`vitrail.network link`).
+    property var stats: ({})
 
     // --- state ---------------------------------------------------------------
     readonly property var wifiDevice: root.deviceOf(DeviceType.Wifi, false)
@@ -29,6 +32,8 @@ Item {
     // setups), yet still reports connectivity: that alone counts as online.
     readonly property bool online: root.wiredDevice !== null || root.wifiNetwork !== null
                                    || Networking.connectivity === NetworkConnectivity.Full
+    // How the link moves: "12 ms · ↓ 1.2 MB/s ↑ 80 kB/s", or nothing.
+    readonly property string metrics: Format.summary(root.stats)
 
     implicitWidth: 380
     implicitHeight: body.implicitHeight
@@ -93,6 +98,14 @@ Item {
                     text: root.wiredDevice ? root.t("network.ethernet") + " · " + root.wiredDevice.name
                           : root.wifiNetwork ? root.t("network.wifi") + " · " + root.wifiNetwork.name
                           : root.online ? root.t("network.connected") : root.t("network.offline")
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    visible: root.metrics !== ""
+                    variant: "label"
+                    elide: Text.ElideRight
+                    text: root.metrics
                 }
             }
         }
