@@ -8,11 +8,11 @@ import "../kit/base"
 import "../kit/composed"
 import "keyboard.js" as Keyboard
 
-// The on-screen keyboard as a floating window: an overlay layer centred at the
-// bottom of the focused screen. It is not focusable and asks for no keyboard,
-// so the bar's typed/key signals can keep sending `wtype` to the active
-// application. The whole layer takes the pointer only to notice a click
-// outside; the card itself is the only visible part.
+// The on-screen keyboard as a floating window: an overlay layer over the
+// focused screen, its card draggable and kept on screen. It is not focusable
+// and asks for no keyboard, so the bar's typed/key signals can keep sending
+// `wtype` to the active application. Only its close button or Escape puts it
+// away; a click outside is not its business and goes through to the app.
 PanelWindow {
     id: root
 
@@ -43,6 +43,10 @@ PanelWindow {
     // No keyboard: the focused app keeps it and the bar's `wtype` types there.
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     focusable: false
+    // Only the card takes the pointer; the rest of the screen is the app's.
+    mask: Region {
+        item: card
+    }
 
     onLanguageChanged: root.shownLanguage = Keyboard.language(root.language)
     Component.onCompleted: root.shownLanguage = Keyboard.language(root.language)
@@ -52,23 +56,23 @@ PanelWindow {
         return value === undefined ? key : value
     }
 
-    // The layer is full screen so a click outside the card can close it. The
-    // card is above this catcher and its buttons take their own clicks.
-    MouseArea {
-        anchors.fill: parent
-        onClicked: root.dismissed()
-    }
-
     Item {
         id: card
 
+        property bool moved: false
         readonly property real pad: VitrailTokens.gap("lg")
 
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: VitrailTokens.gap("lg")
         width: content.implicitWidth + 2 * pad
         height: content.implicitHeight + 2 * pad
+
+        function place() {
+            x = Math.max(0, (root.width - width) / 2)
+            y = Math.max(0, root.height - height - VitrailTokens.gap("lg"))
+        }
+
+        onWidthChanged: if (!card.moved) card.place()
+        onHeightChanged: if (!card.moved) card.place()
+        Component.onCompleted: card.place()
 
         RectangularShadow {
             anchors.fill: surface
@@ -85,9 +89,16 @@ PanelWindow {
             radius: VitrailTokens.radius
         }
 
-        // A click on the card itself, between the keys, must not close it.
+        // Dragging on the card background; keys and the header sit above it.
         MouseArea {
             anchors.fill: parent
+            cursorShape: Qt.SizeAllCursor
+            drag.target: card
+            drag.minimumX: 0
+            drag.maximumX: Math.max(0, root.width - card.width)
+            drag.minimumY: 0
+            drag.maximumY: Math.max(0, root.height - card.height)
+            onPressed: card.moved = true
         }
 
         ColumnLayout {
@@ -98,6 +109,8 @@ PanelWindow {
             spacing: VitrailTokens.gap("sm")
 
             RowLayout {
+                id: header
+
                 Layout.fillWidth: true
                 spacing: VitrailTokens.gap("sm")
 
@@ -125,4 +138,16 @@ PanelWindow {
             }
         }
     }
+
+    onShownChanged: {
+        if (root.shown) {
+            card.moved = false
+            Qt.callLater(function () { card.place() })
+        }
+    }
+
+    // The window is created before it has a size; place the card once it does,
+    // and reset it to the bottom centre on every opening.
+    onWidthChanged: if (root.shown && !card.moved) card.place()
+    onHeightChanged: if (root.shown && !card.moved) card.place()
 }

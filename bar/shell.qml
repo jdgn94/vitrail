@@ -19,6 +19,7 @@ import "wallpapermonitors.js" as WallpaperMonitors
 import "clock"
 import "keyboard"
 import "keyboard/keyboard.js" as Keyboard
+import "keyboard/wtype.js" as Wtype
 import "dialogs"
 import "launcher"
 import "network"
@@ -183,12 +184,12 @@ ShellRoot {
 
     function typeText(text) {
         if (String(text || "") !== "")
-            shell.typeKey(["wtype", String(text)])
+            shell.typeKey(Wtype.typed(text))
     }
 
     function typeKeyName(name) {
         if (String(name || "") !== "")
-            shell.typeKey(["wtype", "-k", String(name)])
+            shell.typeKey(Wtype.key(name))
     }
 
     function runNextKey() {

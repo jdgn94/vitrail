@@ -18,9 +18,9 @@ var LABELS = {
 
 var CODES = {
     us: "US",
-    gb: "EN",
+    gb: "GB",
     es: "ES",
-    latam: "LATAM",
+    latam: "LA",
     br: "BR",
     pt: "PT",
     de: "DE",
@@ -64,7 +64,10 @@ function label(layout) {
 }
 
 function code(layout) {
-    return CODES[layout] || String(layout || "").toUpperCase()
+    if (CODES[layout])
+        return CODES[layout]
+    var text = String(layout || "").replace(/[^A-Za-z]/g, "")
+    return text.slice(0, 2).toUpperCase()
 }
 
 function language(layout) {

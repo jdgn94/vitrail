@@ -61,6 +61,26 @@ TestCase {
         return keyboard
     }
 
+    function textItem(item, text) {
+        if (item.text === text)
+            return item
+        for (var i = 0; i < item.children.length; i++) {
+            var found = textItem(item.children[i], text)
+            if (found)
+                return found
+        }
+        return null
+    }
+
+    function test_clicking_a_key_emits_typed_and_does_not_dismiss() {
+        var keyboard = make()
+        var key = textItem(keyboard, "a")
+        verify(key)
+        mouseClick(key)
+        compare(typedSpy.count, 1)
+        compare(typedSpy.signalArguments[0][0], "a")
+    }
+
     function test_rows_follow_the_language_and_fall_back_to_en() {
         var keyboard = make()
         compare(keyboard.letterRows.length, 3)

@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import "../../bar/keyboard/keyboard.js" as Keyboard
+import "../../bar/keyboard/wtype.js" as Wtype
 
 // The bar's chip and layout switcher: the pure pieces that turn
 // `hyprctl devices -j` into labels, rows and a live switch command. The
@@ -24,12 +25,19 @@ TestCase {
         compare(Keyboard.humaniseSwitch(""), "")
     }
 
-    function test_a_layout_has_a_readable_label_and_a_short_code() {
+    function test_a_layout_has_a_readable_label_and_a_two_letter_code() {
         compare(Keyboard.label("es"), "Español")
         compare(Keyboard.label("en"), "EN")
         compare(Keyboard.label("us"), "English (US)")
-        compare(Keyboard.code("latam"), "LATAM")
+        compare(Keyboard.code("latam"), "LA")
         compare(Keyboard.code("us"), "US")
+        compare(Keyboard.code("es"), "ES")
+        compare(Keyboard.code("de"), "DE")
+        compare(Keyboard.code("fr"), "FR")
+        compare(Keyboard.code("it"), "IT")
+        compare(Keyboard.code("pt"), "PT")
+        compare(Keyboard.code("gb"), "GB")
+        compare(Keyboard.code("dvorak"), "DV")
         compare(Keyboard.language("latam"), "es")
         compare(Keyboard.language("gb"), "en")
         compare(Keyboard.language("xx"), "en")
@@ -45,11 +53,11 @@ TestCase {
 
     function test_the_chip_shows_only_the_active_layout_abbreviation() {
         var devices = Keyboard.parse(sample)
-        compare(Keyboard.chipText(devices), "LATAM")
+        compare(Keyboard.chipText(devices), "LA")
         var switched = Keyboard.parse(sample.replace('"active_layout_index":0', '"active_layout_index":1'))
         compare(Keyboard.chipText(switched), "US")
         compare(Keyboard.activeCode(devices), "latam")
-        verify(Keyboard.tooltip(devices).indexOf("LATAM US") >= 0)
+        verify(Keyboard.tooltip(devices).indexOf("LA US") >= 0)
     }
 
     function test_the_rows_list_each_layout_with_its_devices_and_switch() {
@@ -70,5 +78,13 @@ TestCase {
         var argv = Keyboard.switchCommand(order.layout, order.variant)
         compare(argv[0], "hyprctl")
         verify(argv[2].indexOf('kb_layout="us,latam"') >= 0)
+    }
+
+    function test_a_key_becomes_the_right_wtype_argv() {
+        compare(Wtype.typed("a").join(" "), "wtype a")
+        compare(Wtype.typed(" ").join(" "), "wtype  ")
+        compare(Wtype.key("BackSpace").join(" "), "wtype -k BackSpace")
+        compare(Wtype.key("Return").join(" "), "wtype -k Return")
+        compare(Wtype.key("Tab").join(" "), "wtype -k Tab")
     }
 }

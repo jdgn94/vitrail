@@ -35,6 +35,17 @@ class KeyboardWindowTests(unittest.TestCase):
         self.assertIn("KeyboardWindow {", shell)
         self.assertIn("keyboardOskOpen", shell)
 
+    def test_the_card_alone_takes_the_pointer_and_can_be_dragged(self) -> None:
+        text = WINDOW.read_text(encoding="utf-8")
+        for expected in (
+            "mask: Region",
+            "drag.target: card",
+            "drag.minimumX: 0",
+            "drag.maximumY: Math.max(0, root.height - card.height)",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, text)
+
     def test_the_abbreviation_is_the_last_element_of_the_end_group(self) -> None:
         text = BAR_ITEMS.read_text(encoding="utf-8")
         self.assertGreater(text.rfind("KeyboardButton {"), text.rfind("PowerButton {"))
