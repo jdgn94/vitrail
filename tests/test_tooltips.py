@@ -13,10 +13,6 @@ TOOLTIP = ROOT / "kit" / "base" / "VitrailTooltip.qml"
 DECLARES = re.compile(r"(?m)^\s*(?:property\s+string\s+)?tooltip:\s*\S")
 
 
-# Lay out the elements; each element sets its own tooltip.
-CONTAINERS = {"BarItems.qml"}
-
-
 def bar_sources() -> list[Path]:
     return sorted(p for p in BAR.rglob("*.qml") if not p.is_relative_to(BAR / "kit"))
 
@@ -25,9 +21,9 @@ def clickable_elements() -> list[Path]:
     """Files that define a clickable bar element: a *Button, or anything that
     emits `clicked` (the tray's delegates live in TrayItems)."""
     found = [
-        p for p in bar_sources()
-        if p.name not in CONTAINERS
-        and (p.name.endswith("Button.qml") or re.search(r"signal clicked\(", p.read_text(encoding="utf-8")))
+        p
+        for p in bar_sources()
+        if p.name.endswith("Button.qml") or re.search(r"signal clicked\(", p.read_text(encoding="utf-8"))
     ]
     return sorted({*found, BAR / "tray" / "TrayItems.qml"})
 
@@ -35,15 +31,22 @@ def clickable_elements() -> list[Path]:
 class BarTooltipTests(unittest.TestCase):
     def test_there_are_bar_buttons_to_check(self) -> None:
         names = {p.name for p in clickable_elements()}
-        for expected in ("LauncherButton.qml", "ClockButton.qml", "NetworkButton.qml",
-                         "VpnButton.qml", "PowerButton.qml", "TrayItems.qml"):
+        for expected in (
+            "LauncherButton.qml",
+            "ClockButton.qml",
+            "NetworkButton.qml",
+            "VpnButton.qml",
+            "PowerButton.qml",
+            "TrayItems.qml",
+        ):
             self.assertIn(expected, names)
 
     def test_every_clickable_bar_element_sets_a_tooltip(self) -> None:
         for path in clickable_elements():
             with self.subTest(file=str(path.relative_to(ROOT))):
                 self.assertRegex(
-                    path.read_text(encoding="utf-8"), DECLARES,
+                    path.read_text(encoding="utf-8"),
+                    DECLARES,
                     "declare `tooltip` (and `tooltipDetail`): every bar element is informative",
                 )
 

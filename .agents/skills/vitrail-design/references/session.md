@@ -1,7 +1,7 @@
 # Session menu
 
-- Power button (`bar/session/PowerButton.qml`), last of the end group
-  (`BarItems`). Left click: full-screen menu on that monitor
+- Power button (`bar/session/PowerButton.qml`), last of the end group in the
+  default layout document. Left click: full-screen menu on that monitor
   (`shell.toggleSession(screen)`); right click: popout kind `power`
   (`SessionPopout`: icon + label rows, pill hover, destructive in `error`).
 - `bar/session/actions.js` is the one table: key, i18n label (`session.*`),

@@ -12,8 +12,9 @@ tooltip is not finished** (`tests/test_tooltips.py` enforces it for
   element; the host does not read it.
 - Strings go through the element's `t("tooltip.*")` (`strings` comes from
   the shell); data that is not translatable (SSID, app title, IP) is used as is.
-- The container reports hover: `onHoveredChanged: tooltips.hover(item, hovered)`
-  (BarItems and TrayItems forward it as `tipHovered(item, on)`).
+- Each element reports its own hover in `bar/shell.qml`'s component:
+  `onHoveredChanged: tooltips.hover(item, hovered)`. `TrayItems` forwards its
+  icons and chevron as `tipHovered(item, on)`; the bar's wrapper listens.
 
 ## Pieces
 

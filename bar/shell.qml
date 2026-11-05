@@ -14,12 +14,14 @@ import "kit/frame.js" as Frame
 import "effects.js" as Effects
 import "prefs.js" as Prefs
 import "barview.js" as BarView
+import "layouts.js" as Layouts
 import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "clock"
 import "keyboard"
 import "keyboard/keyboard.js" as Keyboard
 import "keyboard/wtype.js" as Wtype
+import "devices"
 import "dialogs"
 import "launcher"
 import "network"
@@ -1965,6 +1967,367 @@ ShellRoot {
 
                 required property var modelData
 
+                // The bar elements this monitor loaded, by the id the layout
+                // document gives them: a popup opened without a button (IPC)
+                // still grows out of the right one.
+                property var loaded: ({})
+
+                function register(id, item) {
+                    if (id)
+                        monitor.loaded[id] = item
+                }
+
+                function unregister(id) {
+                    if (id)
+                        delete monitor.loaded[id]
+                }
+
+                function loadedItem(id) {
+                    return monitor.loaded[id] === undefined ? null : monitor.loaded[id]
+                }
+
+                // The bar's layout document (bar.ini `barLayout`), read only
+                // when the preference text changes so a setting elsewhere does
+                // not rebuild the elements.
+                readonly property string layoutText: shell.prefs.barLayout || ""
+                readonly property var barDocument: Layouts.effective(monitor.layoutText, monitor.modelData.name)
+                readonly property var hyprMonitor: Hyprland.monitorFor(monitor.modelData)
+                readonly property bool fullscreen: !!(hyprMonitor
+                    && hyprMonitor.activeWorkspace && hyprMonitor.activeWorkspace.hasFullscreen)
+                // A fullscreen window with the bar's own switch on: the bar
+                // and the frame leave the screen alone.
+                readonly property bool hiddenFullscreen: monitor.barDocument.hideFullscreen && monitor.fullscreen
+
+                // The component of one element id, and of one layout entry (a
+                // run of connection buttons draws inside one pill).
+                function widgetComponent(id) {
+                    switch (id) {
+                    case "launcher": return launcherWidget
+                    case "notifications": return notificationsWidget
+                    case "media": return mediaWidget
+                    case "clock": return clockWidget
+                    case "capture": return captureWidget
+                    case "recording": return recordingWidget
+                    case "tray": return trayWidget
+                    case "network": return networkWidget
+                    case "bluetooth": return bluetoothWidget
+                    case "vpn": return vpnWidget
+                    case "profile": return profileWidget
+                    case "battery": return batteryWidget
+                    case "keyboard": return keyboardWidget
+                    case "power": return powerWidget
+                    default: return null
+                    }
+                }
+
+                function entryComponent(entry) {
+                    return entry && entry.cluster !== undefined ? chipWidget : monitor.widgetComponent(entry.id)
+                }
+
+                // --- the bar's elements, one component per id ----------------
+                // The layout document picks which of them a group draws and in
+                // which order; each keeps the bindings it had when it lived in
+                // the bar's markup.
+
+                Component {
+                    id: launcherWidget
+
+                    LauncherButton {
+                        id: launcherButton
+
+                        strings: shell.strings
+                        opened: (shell.popupOpen && shell.popupKind === "launcher" && shell.popupScreen === monitor.modelData)
+                                || (shell.launcherOpen && shell.launcherScreen === monitor.modelData)
+                        onClicked: {
+                            // The popout is already here: the click is for it.
+                            if (shell.popupOpen && shell.popupKind === "launcher" && shell.popupScreen === monitor.modelData)
+                                shell.togglePopup("launcher", launcherButton, monitor.modelData)
+                            else
+                                shell.toggleLauncher(monitor.modelData, "")
+                        }
+                        onMenuRequested: {
+                            shell.launcherOpen = false
+                            shell.launcherMode = ""
+                            shell.togglePopup("launcher", launcherButton, monitor.modelData)
+                        }
+                        onHoveredChanged: {
+                            tooltips.hover(launcherButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("launcher", launcherButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
+                    id: notificationsWidget
+
+                    NotificationButton {
+                        id: notificationButton
+
+                        strings: shell.strings
+                        opened: shell.notificationsOpen && shell.notificationsScreen === monitor.modelData
+                        muted: shell.dnd
+                        muteUntil: shell.prefs.notificationMuteUntil || "0"
+                        count: toasts.history.count
+                        onClicked: shell.toggleNotifications(monitor.modelData)
+                        onMutedRequested: shell.toggleNotificationMute()
+                        onHoveredChanged: tooltips.hover(notificationButton, hovered)
+                    }
+                }
+
+                Component {
+                    id: mediaWidget
+
+                    MediaButton {
+                        id: mediaButton
+
+                        visible: shell.mprisPlayer !== null
+                        player: shell.mprisPlayer
+                        strings: shell.strings
+                        onClicked: shell.togglePopup("media", mediaButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(mediaButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("media", mediaButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
+                    id: clockWidget
+
+                    ClockButton {
+                        id: clockButton
+
+                        vertical: bar.vertical
+                        language: shell.prefs.language || "en"
+                        strings: shell.strings
+                        opened: shell.popupOpen && shell.popupKind === "dashboard" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("dashboard", clockButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(clockButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("dashboard", clockButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                // A screenshot button the layout keeps out of the bar until it
+                // is asked for (the editor's capture element).
+                Component {
+                    id: captureWidget
+
+                    VitrailButton {
+                        id: captureButton
+
+                        variant: "plain"
+                        icon: "screenshot_monitor"
+                        property string tooltip: shell.t("bar.widget.capture")
+                        property string tooltipDetail: shell.t("bar.widget.capture.help")
+                        onClicked: shell.captureShot("region")
+                        onHoveredChanged: tooltips.hover(captureButton, hovered)
+                    }
+                }
+
+                // A recording in progress: its chip stops it.
+                Component {
+                    id: recordingWidget
+
+                    VitrailButton {
+                        id: recordingButton
+
+                        visible: shell.recording
+                        variant: "plain"
+                        tone: "error"
+                        icon: "stop_circle"
+                        property string tooltip: shell.t("bar.widget.recording")
+                        onClicked: shell.toggleRecording()
+                        onHoveredChanged: tooltips.hover(recordingButton, hovered)
+                    }
+                }
+
+                Component {
+                    id: trayWidget
+
+                    TrayItems {
+                        vertical: bar.vertical
+                        barEdge: bar.layout.edge
+                        style: shell.prefs.trayStyle || "inline"
+                        openKind: shell.popupOpen && shell.popupScreen === monitor.modelData ? shell.popupKind : ""
+                        strings: shell.strings
+                        onMenuRequested: function (kind, item) { shell.togglePopup(kind, item, monitor.modelData) }
+                        onHovered: function (kind, item) { shell.hoverPopup(kind, item, monitor.modelData) }
+                        onTipHovered: function (item, on) { tooltips.hover(item, on) }
+                    }
+                }
+
+                Component {
+                    id: networkWidget
+
+                    NetworkButton {
+                        id: networkButton
+
+                        strings: shell.strings
+                        stats: shell.linkStats
+                        opened: shell.popupOpen && shell.popupKind === "network" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("network", networkButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(networkButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("network", networkButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
+                    id: bluetoothWidget
+
+                    BluetoothButton {
+                        id: bluetoothButton
+
+                        strings: shell.strings
+                        show: shell.prefBool("barBluetoothChip", true)
+                        bluetooth: shell.bluetoothDevices
+                        opened: shell.popupOpen && shell.popupKind === "bluetooth" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("bluetooth", bluetoothButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(bluetoothButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("bluetooth", bluetoothButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
+                    id: vpnWidget
+
+                    VpnButton {
+                        id: vpnButton
+
+                        strings: shell.strings
+                        stats: shell.linkStats
+                        opened: shell.popupOpen && shell.popupKind === "vpn" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("vpn", vpnButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(vpnButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("vpn", vpnButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
+                    id: profileWidget
+
+                    PowerProfileButton {
+                        id: profileButton
+
+                        strings: shell.strings
+                        profile: shell.powerProfile
+                        opened: shell.popupOpen && shell.popupKind === "powerprofile" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("powerprofile", profileButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(profileButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("powerprofile", profileButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
+                    id: batteryWidget
+
+                    BatteryButton {
+                        id: batteryButton
+
+                        strings: shell.strings
+                        show: shell.prefBool("barBatteryChip", true)
+                        opened: shell.popupOpen && shell.popupKind === "powerprofile" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("powerprofile", batteryButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(batteryButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("powerprofile", batteryButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
+                    id: keyboardWidget
+
+                    KeyboardButton {
+                        id: keyboardButton
+
+                        visible: shell.keyboardShown
+                        strings: shell.strings
+                        keyboards: shell.keyboards
+                        opened: shell.popupOpen && shell.popupKind === "keyboard" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("keyboard", keyboardButton, monitor.modelData)
+                        onRightClicked: shell.toggleKeyboardOsk()
+                        onHoveredChanged: {
+                            tooltips.hover(keyboardButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("keyboard", keyboardButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
+                    id: powerWidget
+
+                    PowerButton {
+                        id: powerButton
+
+                        strings: shell.strings
+                        opened: shell.popupOpen && shell.popupKind === "power" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.toggleSession(monitor.modelData)
+                        onMenuRequested: shell.togglePopup("power", powerButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(powerButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("power", powerButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                // Neighbouring connection buttons share one pill, exactly as
+                // they did when the bar had a fixed chip.
+                Component {
+                    id: chipWidget
+
+                    Rectangle {
+                        id: chip
+
+                        property var ids: []
+                        implicitWidth: chipRow.implicitWidth
+                        implicitHeight: chipRow.implicitHeight + 2
+                        radius: height / 2
+                        // A soft primary: opaque, so it does not smear over the glass.
+                        color: VitrailTokens.solid("primary", 0.14)
+
+                        GridLayout {
+                            id: chipRow
+
+                            anchors.centerIn: parent
+                            flow: bar.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+                            rowSpacing: 0
+                            columnSpacing: 0
+
+                            Repeater {
+                                model: chip.ids
+
+                                delegate: Loader {
+                                    required property string modelData
+
+                                    sourceComponent: monitor.widgetComponent(modelData)
+                                    onLoaded: monitor.register(modelData, item)
+                                    Component.onDestruction: monitor.unregister(modelData)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // The popup's "still inside" test in this screen's
                 // coordinates: the card, the tray app's menu beside it, and
                 // the button that opened it, with the card's own margin of
@@ -1984,19 +2347,21 @@ ShellRoot {
                 // popup"; the layer's pointer position is only for the rect.
                 readonly property bool popupHovered: cardHover.hovered || menuHover.hovered
 
-                // The popup button of each kind on this monitor's bar.
+                // The popup button of each kind on this monitor's bar. An
+                // element the layout hides has none: the popup opens where it
+                // last did.
                 function anchorFor(kind) {
                     switch (kind) {
-                    case "network": return barItems.networkButton
-                    case "bluetooth": return barItems.bluetoothButton
-                    case "vpn": return barItems.vpnButton
-                    case "powerprofile": return barItems.powerProfileButton
-                    case "power": return barItems.powerButton
-                    case "keyboard": return barItems.keyboardButton
-                    case "dashboard": return clockButton
-                    case "launcher": return launcherButton
+                    case "network": return monitor.loadedItem("network")
+                    case "bluetooth": return monitor.loadedItem("bluetooth")
+                    case "vpn": return monitor.loadedItem("vpn")
+                    case "powerprofile": return monitor.loadedItem("profile")
+                    case "power": return monitor.loadedItem("power")
+                    case "keyboard": return monitor.loadedItem("keyboard")
+                    case "dashboard": return monitor.loadedItem("clock")
+                    case "launcher": return monitor.loadedItem("launcher")
                     // The cheatsheet has no button: it grows from the bar's centre.
-                    case "binds": return clockButton
+                    case "binds": return monitor.loadedItem("clock")
                     default: return null
                     }
                 }
@@ -2120,13 +2485,25 @@ ShellRoot {
                         readonly property var barLayout: BarView.forMonitor(
                             shell.prefs.barMonitors, monitor.modelData.name,
                             { edge: shell.prefs.barEdge || "left", style: shell.prefs.barStyle || "" })
+                        // What this monitor draws, in which order (bar.ini
+                        // `barLayout`, bar → Editor).
+                        readonly property var startEntries: Layouts.entries(monitor.barDocument.order.start,
+                                                                            monitor.barDocument.hidden)
+                        readonly property var centerEntries: Layouts.entries(monitor.barDocument.order.center,
+                                                                             monitor.barDocument.hidden)
+                        readonly property var endEntries: Layouts.entries(monitor.barDocument.order.end,
+                                                                          monitor.barDocument.hidden)
 
                         anchors.fill: parent
                         edge: bar.barLayout.edge
                         variant: bar.barLayout.style
                         frameVariant: shell.prefs.frameStyle || ""
-                        showBar: shell.prefs.barScreens === "all"
-                                 || monitor.modelData === shell.primaryScreen
+                        density: monitor.barDocument.density
+                        // A fullscreen window takes the bar with it (the
+                        // editor's switch, on by default).
+                        showBar: !monitor.hiddenFullscreen && (shell.prefs.barScreens === "all"
+                                                               || monitor.modelData === shell.primaryScreen)
+                        visible: !monitor.hiddenFullscreen
                         opacityLevel: shell.barOpacity
                         panelVariant: shell.panelKind
                         panelOpen: shell.panelOpen
@@ -2169,109 +2546,105 @@ ShellRoot {
                             }
                         }
 
-                        // The launcher, and the notification bell beside it.
-                        start: GridLayout {
-                            flow: bar.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
-                            rowSpacing: bar.gap
-                            columnSpacing: bar.gap
+                        // The launcher, the notification bell, and whatever the
+                        // layout document puts here. Each group draws its
+                        // elements in the document's order; a run of connection
+                        // buttons shares one pill.
+                        start: Item {
+                            implicitWidth: startGrid.implicitWidth
+                            implicitHeight: startGrid.implicitHeight
 
-                            LauncherButton {
-                                id: launcherButton
+                            GridLayout {
+                                id: startGrid
 
-                                strings: shell.strings
-                                opened: (shell.popupOpen && shell.popupKind === "launcher" && shell.popupScreen === monitor.modelData)
-                                        || (shell.launcherOpen && shell.launcherScreen === monitor.modelData)
-                                onClicked: {
-                                    // The popout is already here: the click is for it.
-                                    if (shell.popupOpen && shell.popupKind === "launcher" && shell.popupScreen === monitor.modelData)
-                                        shell.togglePopup("launcher", launcherButton, monitor.modelData)
-                                    else
-                                        shell.toggleLauncher(monitor.modelData, "")
+                                flow: bar.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+                                rowSpacing: bar.gap
+                                columnSpacing: bar.gap
+
+                                Repeater {
+                                    model: bar.startEntries
+
+                                    delegate: Loader {
+                                        id: startEntry
+
+                                        required property var modelData
+
+                                        sourceComponent: monitor.entryComponent(startEntry.modelData)
+                                        onLoaded: {
+                                            if (startEntry.modelData.cluster !== undefined)
+                                                item.ids = startEntry.modelData.ids
+                                            else
+                                                monitor.register(startEntry.modelData.id, item)
+                                        }
+                                        Component.onDestruction: monitor.unregister(startEntry.modelData.id)
+                                    }
                                 }
-                                onMenuRequested: {
-                                    shell.launcherOpen = false
-                                    shell.launcherMode = ""
-                                    shell.togglePopup("launcher", launcherButton, monitor.modelData)
-                                }
-                                onHoveredChanged: {
-                                    tooltips.hover(launcherButton, hovered)
-                                    if (hovered)
-                                        shell.hoverPopup("launcher", launcherButton, monitor.modelData)
-                                }
-                            }
-
-                            NotificationButton {
-                                id: notificationButton
-
-                                strings: shell.strings
-                                opened: shell.notificationsOpen && shell.notificationsScreen === monitor.modelData
-                                muted: shell.dnd
-                                muteUntil: shell.prefs.notificationMuteUntil || "0"
-                                count: toasts.history.count
-                                onClicked: shell.toggleNotifications(monitor.modelData)
-                                onMutedRequested: shell.toggleNotificationMute()
-                                onHoveredChanged: tooltips.hover(notificationButton, hovered)
                             }
                         }
 
-                        center: GridLayout {
-                            flow: bar.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
-                            rowSpacing: VitrailTokens.gap("sm")
-                            columnSpacing: VitrailTokens.gap("sm")
+                        center: Item {
+                            implicitWidth: centerGrid.implicitWidth
+                            implicitHeight: centerGrid.implicitHeight
 
-                            MediaButton {
-                                id: mediaButton
+                            GridLayout {
+                                id: centerGrid
 
-                                visible: shell.mprisPlayer !== null
-                                player: shell.mprisPlayer
-                                strings: shell.strings
-                                onClicked: shell.togglePopup("media", mediaButton, monitor.modelData)
-                                onHoveredChanged: {
-                                    tooltips.hover(mediaButton, hovered)
-                                    if (hovered)
-                                        shell.hoverPopup("media", mediaButton, monitor.modelData)
+                                flow: bar.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+                                rowSpacing: bar.gap
+                                columnSpacing: bar.gap
+
+                                Repeater {
+                                    model: bar.centerEntries
+
+                                    delegate: Loader {
+                                        id: centerEntry
+
+                                        required property var modelData
+
+                                        sourceComponent: monitor.entryComponent(centerEntry.modelData)
+                                        onLoaded: {
+                                            if (centerEntry.modelData.cluster !== undefined)
+                                                item.ids = centerEntry.modelData.ids
+                                            else
+                                                monitor.register(centerEntry.modelData.id, item)
+                                        }
+                                        Component.onDestruction: monitor.unregister(centerEntry.modelData.id)
+                                    }
                                 }
-                            }
-
-                            ClockButton {
-                            id: clockButton
-
-                            vertical: bar.vertical
-                            language: shell.prefs.language || "en"
-                            strings: shell.strings
-                            opened: shell.popupOpen && shell.popupKind === "dashboard" && shell.popupScreen === monitor.modelData
-                            onClicked: shell.togglePopup("dashboard", clockButton, monitor.modelData)
-                            onHoveredChanged: {
-                                tooltips.hover(clockButton, hovered)
-                                if (hovered)
-                                    shell.hoverPopup("dashboard", clockButton, monitor.modelData)
-                            }
                             }
                         }
 
-                        end: BarItems {
-                            id: barItems
+                        end: Item {
+                            implicitWidth: endGrid.implicitWidth
+                            implicitHeight: endGrid.implicitHeight
 
-                            vertical: bar.vertical
-                            barEdge: bar.layout.edge
-                            open: shell.popupOpen && shell.popupScreen === monitor.modelData
-                            openKind: shell.popupKind
-                            strings: shell.strings
-                            trayStyle: shell.prefs.trayStyle || "inline"
-                            linkStats: shell.linkStats
-                            powerProfile: shell.powerProfile
-                            bluetooth: shell.bluetoothDevices
-                            showBattery: shell.prefBool("barBatteryChip", true)
-                            showBluetooth: shell.prefBool("barBluetoothChip", true)
-                            showKeyboard: shell.keyboardShown
-                            keyboards: shell.keyboards
-                            recording: shell.recording
-                            onClicked: function (kind, item) { shell.togglePopup(kind, item, monitor.modelData) }
-                            onHovered: function (kind, item) { shell.hoverPopup(kind, item, monitor.modelData) }
-                            onTipHovered: function (item, on) { tooltips.hover(item, on) }
-                            onSessionRequested: shell.toggleSession(monitor.modelData)
-                            onKeyboardOskRequested: shell.toggleKeyboardOsk()
-                            onRecordStopped: shell.toggleRecording()
+                            GridLayout {
+                                id: endGrid
+
+                                flow: bar.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+                                rowSpacing: bar.gapOf("xs")
+                                columnSpacing: bar.gapOf("xs")
+
+                                Repeater {
+                                    model: bar.endEntries
+
+                                    delegate: Loader {
+                                        id: endEntry
+
+                                        required property var modelData
+
+                                        Layout.alignment: Qt.AlignHCenter
+                                        sourceComponent: monitor.entryComponent(endEntry.modelData)
+                                        onLoaded: {
+                                            if (endEntry.modelData.cluster !== undefined)
+                                                item.ids = endEntry.modelData.ids
+                                            else
+                                                monitor.register(endEntry.modelData.id, item)
+                                        }
+                                        Component.onDestruction: monitor.unregister(endEntry.modelData.id)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -2313,16 +2686,12 @@ ShellRoot {
                 NotificationLayer {
                     id: notificationLayer
 
-                    readonly property var hyprMonitor: Hyprland.monitorFor(monitor.modelData)
-                    readonly property bool fullscreen: !!(hyprMonitor
-                        && hyprMonitor.activeWorkspace && hyprMonitor.activeWorkspace.hasFullscreen)
-
                     screen: monitor.modelData
                     layout: bar.layout
                     docked: bar.style.docked
                     side: shell.notificationSide
                     // Every monitor keeps its hot zone; only the pinned one draws the panel.
-                    active: !notificationLayer.fullscreen
+                    active: !monitor.fullscreen
                     pinned: monitor.modelData === shell.notificationsScreen
                     open: shell.notificationsOpen
                     queue: toasts

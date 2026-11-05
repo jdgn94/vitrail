@@ -594,6 +594,7 @@ Window {
                                         palette: app.theme
                                         prefs: app.store
                                         strings: app.strings
+                                        monitors: app.monitors
                                         tab: Args.value("--tab", "layout")
                                     }
                                 }

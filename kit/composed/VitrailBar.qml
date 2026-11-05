@@ -17,6 +17,9 @@ Item {
     property string edge: "left"
     property string variant: ""
     property string frameVariant: ""
+    // "comfortable" or "compact": a compact bar keeps a smaller share of each
+    // gap. The font never changes.
+    property string density: "comfortable"
     // False draws only the frame, for screens that do not carry the bar.
     property bool showBar: true
     // Frame, bar and overlay panel opacity.
@@ -45,7 +48,14 @@ Item {
     property alias panelContent: panelSlot.data
 
     readonly property var style: VitrailStyle.resolve("bar", root.variant)
-    readonly property int gap: VitrailTokens.gap(root.style.gap)
+    readonly property real densityScale: VitrailTokens.density[root.density] === undefined
+                                         ? 1 : VitrailTokens.density[root.density]
+    readonly property int gap: root.gapOf(root.style.gap)
+
+    // One of the token gap steps, scaled by the density.
+    function gapOf(name) {
+        return Math.round(VitrailTokens.gap(name) * root.densityScale)
+    }
     readonly property var layout: Frame.layout(
         VitrailStyle.resolve("frame", root.frameVariant), root.showBar ? root.style : null, root.edge, {
             frame: VitrailTokens.frame,

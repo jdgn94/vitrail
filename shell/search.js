@@ -49,6 +49,8 @@ var index = [
       terms: ["panel", "toolbar"] },
     { category: "bar", tab: "layout", key: "bar.section.layout", label: "Position and style",
       terms: ["bar", "position", "edge", "style"] },
+    { category: "bar", tab: "editor", key: "bar.tab.editor", label: "Elements",
+      terms: ["bar", "elements", "widgets", "order", "density", "hide", "fullscreen"] },
     { category: "bar", tab: "frame", key: "bar.tab.framePanels", label: "Frame and panels",
       terms: ["frame", "panel", "islands", "floating"] },
     { category: "bar", tab: "notifications", key: "bar.section.notifications", label: "Notifications",

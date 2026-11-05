@@ -46,7 +46,7 @@ TestCase {
             ["fonts", ""], ["fonts", "text"], ["fonts", "icons"], ["fonts", "cursor"],
             ["wallpaper", ""], ["colors", ""],
             ["design", ""], ["design", "shape"], ["design", "surface"], ["design", "share"],
-            ["bar", ""], ["bar", "layout"], ["bar", "frame"], ["bar", "notifications"],
+            ["bar", ""], ["bar", "layout"], ["bar", "editor"], ["bar", "frame"], ["bar", "notifications"],
             ["bar", "osd"], ["bar", "capture"],
             ["windows", ""], ["windows", "border"], ["windows", "opacity"], ["windows", "layout"],
             ["monitors", ""],

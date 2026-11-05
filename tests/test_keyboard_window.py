@@ -6,13 +6,14 @@ application. That rules out a focusable window and a bar `Popout`.
 
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 WINDOW = ROOT / "bar" / "keyboard" / "KeyboardWindow.qml"
 SHELL = ROOT / "bar" / "shell.qml"
-BAR_ITEMS = ROOT / "bar" / "BarItems.qml"
+LAYOUTS = ROOT / "bar" / "layouts.js"
 
 
 class KeyboardWindowTests(unittest.TestCase):
@@ -47,8 +48,12 @@ class KeyboardWindowTests(unittest.TestCase):
                 self.assertIn(expected, text)
 
     def test_the_abbreviation_is_the_last_element_of_the_end_group(self) -> None:
-        text = BAR_ITEMS.read_text(encoding="utf-8")
-        self.assertGreater(text.rfind("KeyboardButton {"), text.rfind("PowerButton {"))
+        # The layout registry is the default document (bar → Editor): the
+        # keyboard sits between the battery and the power button.
+        text = LAYOUTS.read_text(encoding="utf-8")
+        rows = re.findall(r'\{ id: "(\w+)", surface: "bar", group: "(\w+)"', text)
+        end = [name for name, group in rows if group == "end"]
+        self.assertEqual(end[-2:], ["keyboard", "power"])
 
 
 if __name__ == "__main__":

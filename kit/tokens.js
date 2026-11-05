@@ -386,6 +386,12 @@ var space = {
     xl: 2.4
 }
 
+// Bar density: the share of each gap a bar keeps. The font never changes.
+var density = {
+    comfortable: 1,
+    compact: 0.55
+}
+
 function size(name) {
     return Math.round(font.base * (font.scale[name] || 1))
 }

@@ -25,6 +25,9 @@ bar barEdge
 bar barScreens
 bar barStyle
 bar barMonitors
+# The bar's elements: their order per group, visibility, density and whether a
+# fullscreen window hides it. One JSON document (bar/layouts.js).
+bar barLayout
 bar barSize
 bar barOpacity
 bar barOpacityFollow

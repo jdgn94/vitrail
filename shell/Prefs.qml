@@ -24,6 +24,7 @@ QtObject {
     property alias barScreens: barFile.barScreens
     property alias barStyle: barFile.barStyle
     property alias barMonitors: barFile.barMonitors
+    property alias barLayout: barFile.barLayout
     property alias barSize: barFile.barSize
     property alias barOpacity: barFile.barOpacity
     property alias barOpacityFollow: barFile.barOpacityFollow
@@ -156,6 +157,10 @@ QtObject {
         // One JSON object keyed by output name ("DP-1"): {"edge","style"}.
         // An output without an entry follows the global edge and style.
         property string barMonitors: "{}"
+        // The bar's elements: one JSON document with the order of each group,
+        // the hidden elements, the density and whether a fullscreen window
+        // hides the bar (bar/layouts.js). Empty is today's bar.
+        property string barLayout: "{}"
         property int barSize: VitrailTokens.ranges.bar.value
         property real barOpacity: VitrailTokens.ranges.opacity.value
         property bool barOpacityFollow: true

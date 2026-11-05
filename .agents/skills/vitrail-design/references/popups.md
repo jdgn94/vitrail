@@ -125,12 +125,14 @@ timeline, ratios), `motion.smooth`.
   `Layout.preferredHeight` from `pageFor[currentIndex]` (its default is the
   tallest child, which padded the shorter tabs); switching tabs or
   losing/regaining media re-sizes the card.
-- end: `BarItems` (tray, the chip with `network`, `vpn` and the power profile,
-  and power). Each button has its own popup: `NetworkPanel`, `VpnPanel` and
+- end: tray, the connection chip (`network`, `bluetooth`, `vpn`, `profile`,
+  one pill while they are neighbours), battery, keyboard layout and power.
+  Each button has its own popup: `NetworkPanel`, `VpnPanel` and
   `PowerProfilePanel` (the settings window's Connection page is where the link,
-  Bluetooth and power profile are configured together). Clicking another bar
-  button while a popup is open moves the popup to it (`togglePopup` →
-  `openPopup`); hovering one does the same (see Hover switching).
+  Bluetooth and power profile are configured together). The order is the
+  layout document's (see `frame-and-bar.md`). Clicking another bar button while
+  a popup is open moves the popup to it (`togglePopup` → `openPopup`);
+  hovering one does the same (see Hover switching).
 
 ## Popouts (after caelestia-dots/shell)
 

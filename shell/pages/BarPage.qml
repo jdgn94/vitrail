@@ -2,10 +2,17 @@ import QtQuick
 import QtQuick.Layouts
 import "../../kit"
 import "../../kit/base"
+import "../../bar/layouts.js" as Layouts
 
 // Bar category: where the system bar docks, its style, the screen frame,
 // the side panels and where notifications appear. An empty preference
 // inherits the family default from VitrailStyle.
+//
+// Its Editor tab is the one UI for the bar's elements: their order in the
+// start / center / end groups, their visibility per monitor, the density and
+// whether a fullscreen window hides the bar. It writes bar.ini `barLayout`, the
+// document bar/shell.qml reads (bar/layouts.js), so panel, desktop and lock
+// can offer the same editor later with a document of their own.
 Item {
     id: page
 
@@ -13,6 +20,11 @@ Item {
     property var prefs
     property var strings
     property string tab: "layout"
+    // { available, monitors: [{ name, … }] } as the settings window injected it.
+    property var monitors: ({ available: false, monitors: [] })
+    // The monitor whose order and visibility the editor edits; "" is global.
+    property string monitor: ""
+    readonly property var layout: Layouts.effective(page.prefs.barLayout || "", page.monitor)
 
     onTabChanged: scroller.contentY = 0
 
@@ -21,13 +33,59 @@ Item {
         return value === undefined ? key : value
     }
 
+    function labelOf(id) {
+        var widget = Layouts.find(id)
+        return page.t(widget ? widget.label : id)
+    }
+
+    function monitorOptions() {
+        var out = [{ key: "", label: page.t("bar.editor.global") }]
+        var list = page.monitors && page.monitors.monitors ? page.monitors.monitors : []
+        for (var i = 0; i < list.length; i++)
+            out.push({ key: list[i].name, label: list[i].name })
+        return out
+    }
+
+    // One patch of the document, on the selected monitor (or globally), as
+    // layouts.js writes it; unchanged values write nothing.
+    function commit(patch) {
+        var text = Layouts.write(page.prefs.barLayout || "", page.monitor, patch)
+        if (text !== null)
+            page.prefs.barLayout = text
+    }
+
+    // Density and fullscreen hiding are one bar, not one monitor.
+    function commitGlobal(patch) {
+        var text = Layouts.write(page.prefs.barLayout || "", "", patch)
+        if (text !== null)
+            page.prefs.barLayout = text
+    }
+
+    function setVisible(id, visible) {
+        if (visible === (page.layout.hidden.indexOf(id) < 0))
+            return
+        page.commit({ hidden: Layouts.toggle(page.layout.hidden, id) })
+    }
+
+    function moveWidget(id, delta) {
+        page.commit({ order: Layouts.move(page.layout.order, id, delta) })
+    }
+
     readonly property var icons: ({
         edge: { left: "left_panel_open", top: "top_panel_open", right: "right_panel_open", bottom: "bottom_panel_open" },
         style: { docked: "dock_to_bottom", floating: "bottom_navigation", islands: "splitscreen", floatingIslands: "view_agenda" },
         screens: { primary: "monitor", all: "devices" },
         frame: { full: "border_outer", corners: "rounded_corner", none: "border_clear" },
         vertical: { top: "vertical_align_top", bottom: "vertical_align_bottom" },
-        visualiser: { bars: "bar_chart", reflection: "flip", panel: "crop_free" }
+        visualiser: { bars: "bar_chart", reflection: "flip", panel: "crop_free" },
+        group: { start: "first_page", center: "filter_center_focus", end: "last_page" },
+        widget: {
+            launcher: "apps", notifications: "notifications", media: "play_circle",
+            clock: "schedule", capture: "screenshot_monitor", recording: "stop_circle",
+            tray: "widgets", network: "lan", bluetooth: "bluetooth", vpn: "shield",
+            profile: "speed", battery: "battery_full", keyboard: "keyboard",
+            power: "power_settings_new"
+        }
     })
 
     function options(prefix, keys, icons) {
@@ -44,6 +102,7 @@ Item {
             Layout.fillWidth: true
             tabs: [
                 { key: "layout", icon: "toolbar", label: page.t("bar.section.layout") },
+                { key: "editor", icon: "tune", label: page.t("bar.tab.editor") },
                 { key: "frame", icon: "crop_free", label: page.t("bar.tab.framePanels") },
                 { key: "notifications", icon: "notifications", label: page.t("bar.section.notifications") },
                 { key: "osd", icon: "tune", label: page.t("bar.section.osd") },
@@ -228,6 +287,133 @@ Item {
                         foreground: page.palette.foreground
                         accent: page.palette.primary
                         onMoved: page.prefs.barSize = value
+                    }
+                }
+
+                Section {
+                    Layout.fillWidth: true
+                    visible: page.tab === "editor"
+                    icon: "tune"
+                    title: page.t("bar.section.editor")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: page.t("bar.editor.help")
+                        color: page.palette.muted
+                        font.pixelSize: 12
+                        font.family: VitrailTokens.fontFamily
+                        wrapMode: Text.WordWrap
+                    }
+
+                    VitrailSettingRow {
+                        icon: "monitor"
+                        label: page.t("bar.editor.monitor")
+                        description: page.t("bar.editor.monitor.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            options: page.monitorOptions()
+                            current: page.monitor
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: page.monitor = key
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "compress"
+                        label: page.t("bar.editor.density")
+                        description: page.t("bar.editor.density.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            options: [
+                                { key: "comfortable", icon: "density_medium", label: page.t("bar.editor.density.comfortable") },
+                                { key: "compact", icon: "density_small", label: page.t("bar.editor.density.compact") }
+                            ]
+                            current: page.layout.density
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: page.commitGlobal({ density: key })
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "fullscreen"
+                        label: page.t("bar.editor.fullscreen")
+                        description: page.t("bar.editor.fullscreen.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.layout.hideFullscreen
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: page.commitGlobal({ hideFullscreen: value })
+                        }
+                    }
+                }
+
+                // One list per group, in the document's order: show or hide an
+                // element, and move it up or down inside its group.
+                Repeater {
+                    model: Layouts.groups("bar")
+
+                    delegate: Section {
+                        id: groupCard
+
+                        required property string modelData
+
+                        Layout.fillWidth: true
+                        visible: page.tab === "editor"
+                        icon: page.icons.group[groupCard.modelData] || "widgets"
+                        title: page.t("bar.editor.group." + groupCard.modelData)
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+
+                        Repeater {
+                            model: page.layout.order[groupCard.modelData] || []
+
+                            delegate: VitrailSettingRow {
+                                id: widgetRow
+
+                                required property string modelData
+                                required property int index
+
+                                readonly property var ids: page.layout.order[groupCard.modelData] || []
+
+                                Layout.fillWidth: true
+                                icon: page.icons.widget[widgetRow.modelData] || "widgets"
+                                label: page.labelOf(widgetRow.modelData)
+                                foreground: page.palette.foreground
+                                muted: page.palette.muted
+
+                                VitrailSwitch {
+                                    checked: page.layout.hidden.indexOf(widgetRow.modelData) < 0
+                                    foreground: page.palette.foreground
+                                    accent: page.palette.primary
+                                    onToggled: page.setVisible(widgetRow.modelData, value)
+                                }
+
+                                VitrailButton {
+                                    variant: "text"
+                                    icon: "arrow_upward"
+                                    onClicked: if (widgetRow.index > 0)
+                                                   page.moveWidget(widgetRow.modelData, -1)
+                                }
+
+                                VitrailButton {
+                                    variant: "text"
+                                    icon: "arrow_downward"
+                                    onClicked: if (widgetRow.index < widgetRow.ids.length - 1)
+                                                   page.moveWidget(widgetRow.modelData, 1)
+                                }
+                            }
+                        }
                     }
                 }
 
