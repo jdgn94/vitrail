@@ -36,6 +36,7 @@ TestCase {
             property string barLayout: ""
             property string panelLayout: ""
             property string desktopLayout: "{}"
+            property bool desktopMenu: true
             property string barEdge: "top"
             property string barStyle: ""
             property string barScreens: "primary"

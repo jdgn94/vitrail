@@ -39,6 +39,8 @@ Scope {
     property bool airplaneOn: false
     property bool dnd: false
     property string notes: ""
+    // The image widget's picture: the wallpaper the library chose.
+    property string imageSource: ""
 
     property date now: new Date()
 
@@ -121,6 +123,7 @@ Scope {
                     airplaneOn: root.airplaneOn
                     dnd: root.dnd
                     notes: root.notes
+                    imageSource: root.imageSource
                     onPlayerChosen: function (index) { root.playerChosen(index) }
                     onQuickToggled: function (key) { root.quickToggled(key) }
                     onNoteAdded: function (note) { root.noteAdded(note) }

@@ -44,6 +44,9 @@ Item {
     property bool airplaneOn: false
     property bool dnd: false
     property string notes: ""
+    // The picture the image widget shows: the monitor's wallpaper from the
+    // library (the image widget stays a placeholder for a video).
+    property string imageSource: ""
 
     signal playerChosen(int index)
     signal quickToggled(string key)
@@ -80,6 +83,7 @@ Item {
                        : root.widgetId === "resources" ? resourcesWidget
                        : root.widgetId === "pomodoro" ? pomodoroWidget
                        : root.widgetId === "timer" ? timerWidget
+                       : root.widgetId === "image" ? imageWidget
                        : null
     }
 
@@ -197,6 +201,19 @@ Item {
             fontWeight: root.fontWeight
             italic: root.italic
             variant: root.style
+        }
+    }
+
+    Component {
+        id: imageWidget
+
+        DesktopImage {
+            width: loader.width
+            height: loader.height
+            source: root.imageSource
+            size: root.size
+            variant: root.style
+            strings: root.strings
         }
     }
 }

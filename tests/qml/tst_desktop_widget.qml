@@ -64,6 +64,18 @@ TestCase {
         }
     }
 
+    Component {
+        id: imageHost
+
+        DesktopWidget {
+            width: 380
+            height: 240
+            widgetId: "image"
+            style: "contain"
+            imageSource: ""
+        }
+    }
+
     function initTestCase() {
         VitrailTokens.configure({
             surface: palette.surface,
@@ -128,6 +140,15 @@ TestCase {
         compare(day.font.family, "DejaVu Sans")
         compare(day.font.weight, Font.Normal)
         compare(day.font.italic, true)
+    }
+
+    function test_the_image_widget_loads_with_its_variant() {
+        var host = createTemporaryObject(imageHost, testCase, {})
+        verify(host !== null)
+        var image = findChild(host, "desktopImage")
+        verify(image !== null)
+        compare(image.variant, "contain")
+        verify(image.implicitHeight > 0)
     }
 
     function test_the_document_typography_reaches_the_host() {

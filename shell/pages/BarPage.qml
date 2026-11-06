@@ -898,6 +898,21 @@ Item {
                         }
                     }
 
+                    VitrailSettingRow {
+                        icon: "mouse"
+                        label: page.t("desktop.menu.enabled")
+                        description: page.t("desktop.menu.enabled.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.desktopMenu === undefined || page.prefs.desktopMenu === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.desktopMenu = value }
+                        }
+                    }
+
                     ColumnLayout {
                         Layout.fillWidth: true
                         visible: page.desktopAvailable.length > 0

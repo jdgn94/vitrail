@@ -18,6 +18,9 @@ ColumnLayout {
     // sm / md / lg: "md" keeps the panel's compact field and buttons; "lg"
     // gives them the next size up.
     property string size: "md"
+    // card / plain / minimal: "minimal" keeps only the field; "plain" drops the
+    // remove buttons; "" and "card" keep today's notes.
+    property string style: ""
     // The widget's own typography; empty values keep the variant's look.
     property string fontFamily: ""
     property string fontWeight: ""
@@ -54,6 +57,7 @@ ColumnLayout {
             required property var modelData
             required property int index
 
+            visible: root.style !== "minimal"
             Layout.fillWidth: true
             spacing: VitrailTokens.gap("xs")
 
@@ -71,6 +75,7 @@ ColumnLayout {
 
             VitrailButton {
                 variant: "plain"
+                visible: root.style !== "plain"
                 fontFamily: root.fontFamily
                 fontWeight: root.fontWeight
                 italic: root.italic

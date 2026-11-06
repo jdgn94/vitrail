@@ -38,6 +38,8 @@ bar panelLayout
 # The desktop widgets: per monitor, each one's point (0..1), size and style.
 # One JSON document (bar/layouts.js, bar/widgets.js).
 bar desktopLayout
+# Whether a right click on the desktop opens its menu (Edit → in-place editor).
+bar desktopMenu
 bar barSize
 bar barOpacity
 bar barOpacityFollow

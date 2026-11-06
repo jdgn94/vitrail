@@ -148,6 +148,26 @@ TestCase {
         compare(Layouts.widgets("panel").length, panelIds.length)
     }
 
+    function test_the_palette_widgets_offer_three_variants_each() {
+        var ids = ["clock", "media", "image", "notes"]
+        for (var i = 0; i < ids.length; i++) {
+            var widget = Widgets.find(ids[i], "desktop")
+            verify(widget !== null, ids[i])
+            compare(widget.styles.length, 3, ids[i])
+        }
+        compare(Widgets.find("image", "desktop").sizes, ["sm", "md", "lg"])
+        compare(Widgets.find("image", "desktop").labelKey, "panel.widget.image")
+        compare(Widgets.widthOf("image", "md") > 0, true)
+    }
+
+    function test_a_width_maps_to_the_nearest_registry_size() {
+        compare(Widgets.sizeForWidth("clock", 1), "sm")
+        compare(Widgets.sizeForWidth("clock", Widgets.widthOf("clock", "md")), "md")
+        compare(Widgets.sizeForWidth("clock", 2000), "lg")
+        compare(Widgets.sizeForWidth("clock", Widgets.widthOf("clock", "sm")), "sm")
+        compare(Widgets.sizeForWidth("ghost", 300), "md")
+    }
+
     // --- the desktop document: widgets placed on each monitor ----------------
 
     function test_the_empty_desktop_document_has_no_widgets() {

@@ -32,6 +32,7 @@ import "notes/notes.js" as Notes
 import "clipboard"
 import "dashboard"
 import "desktop"
+import "desktop/policy.js" as DesktopPolicy
 import "binds"
 import "media"
 import "launcher/commands.js" as Commands
@@ -107,6 +108,20 @@ ShellRoot {
     // The monitor the panel was opened on. It stays there whatever the focus
     // does, until it is opened on another one.
     property var notificationsScreen: null
+
+    // The in-place desktop editor (right-click → Edit): one monitor at a time,
+    // one global flag the bar, the notification panel and the toasts follow
+    // (bar/desktop/policy.js). The local document is the edited one until the
+    // preference file catches up, so two quick drags never lose a change.
+    property bool editMode: false
+    property var editScreen: null
+    property string desktopEditLayout: ""
+    // The right-click menu and the point it came from.
+    property bool desktopMenuOpen: false
+    property var desktopMenuScreen: null
+    property real desktopMenuX: 0
+    property real desktopMenuY: 0
+    readonly property bool desktopMenuEnabled: shell.prefBool("desktopMenu", true)
 
     // What the notification centre remembers, in its own file
     // (vitrail/notify.py): the rows, the per-app counts and the snoozes. A
@@ -321,6 +336,8 @@ ShellRoot {
     // Left click and Super: the full-screen launcher on that monitor (the
     // focused one without a screen); the popout is the right click.
     function toggleLauncher(screen, mode) {
+        if (shell.editMode)
+            return
         var target = screen || shell.focusedScreen
         if (shell.launcherOpen && shell.launcherScreen === target && !mode) {
             shell.launcherOpen = false
@@ -345,9 +362,14 @@ ShellRoot {
     property bool popupByHover: false
 
     // Opens the panel on `screen` (the monitor whose hot zone asked, or the
-    // focused one), and moves it there if it was open somewhere else.
+    // focused one), and moves it there if it was open somewhere else. A
+    // fullscreen window and the in-place editor do not allow it: their policy
+    // owns the panel (bar/desktop/policy.js).
     function openNotifications(screen) {
         var target = screen || shell.focusedScreen || shell.primaryScreen
+        var monitor = target ? shell.monitors[target.name] : null
+        if (shell.editMode || (monitor && monitor.fullscreen))
+            return
         if (target)
             shell.notificationsScreen = target
         shell.notificationsOpen = true
@@ -624,6 +646,9 @@ ShellRoot {
     // the focused monitor when there is none (IPC), anchored on its own
     // button there.
     function openPopup(kind, item, screen) {
+        // The editor is modal; its own layer owns the screen.
+        if (shell.editMode)
+            return
         shell.popupByHover = false
         shell.launcherOpen = false
         if (shell.keyboardOskOpen)
@@ -683,6 +708,43 @@ ShellRoot {
         popupLeave.stop()
     }
 
+    // --- the desktop's right-click menu and in-place editor ------------------
+
+    function openDesktopMenu(screen, x, y) {
+        if (!shell.desktopMenuEnabled || !screen)
+            return
+        shell.desktopMenuScreen = screen
+        shell.desktopMenuX = x
+        shell.desktopMenuY = y
+        shell.desktopMenuOpen = true
+    }
+
+    function closeDesktopMenu() {
+        shell.desktopMenuOpen = false
+        shell.desktopMenuScreen = null
+    }
+
+    // The editor is modal: every other floating surface leaves first, and the
+    // notification panel stays out of the way while it is open.
+    function startDesktopEdit(screen) {
+        if (!screen)
+            return
+        shell.closeDesktopMenu()
+        shell.closePopup()
+        shell.notificationsOpen = false
+        shell.launcherOpen = false
+        shell.sessionOpen = false
+        shell.clipboardOpen = false
+        shell.desktopEditLayout = shell.prefs.desktopLayout || "{}"
+        shell.editScreen = screen
+        shell.editMode = true
+    }
+
+    function stopDesktopEdit() {
+        shell.editMode = false
+        shell.editScreen = null
+    }
+
     // The one close rule: the popup may close only once the pointer has left
     // the card, the tray app's menu beside it and the button it grew from.
     // The tracked pointer is trusted only on a surface that says where it is
@@ -713,6 +775,8 @@ ShellRoot {
     property real sessionNow: Date.now()
 
     function toggleSession(screen) {
+        if (shell.editMode)
+            return
         shell.closePopup()
         shell.launcherOpen = false
         shell.sessionScreen = screen || shell.focusedScreen
@@ -2083,6 +2147,10 @@ ShellRoot {
                 // A fullscreen window with the bar's own switch on: the bar
                 // and the frame leave the screen alone.
                 readonly property bool hiddenFullscreen: monitor.barDocument.hideFullscreen && monitor.fullscreen
+                // A fullscreen window takes the notification panel with it: an
+                // open panel closes, it does not just hide and reappear later.
+                onFullscreenChanged: if (monitor.fullscreen && shell.notificationsOpen)
+                                         shell.notificationsOpen = false
 
                 // The component of one element id, and of one layout entry (a
                 // run of connection buttons draws inside one pill).
@@ -2491,6 +2559,7 @@ ShellRoot {
 
                     open: monitor.modelData === (shell.toastScreen || shell.notificationScreen) && toasts.shown.count > 0
                           && !shell.notificationsOpen
+                          && DesktopPolicy.toastsAllowed(monitor.fullscreen, shell.editMode)
                 }
 
                 // Until a wallpaper is chosen, whatever draws it today stays.
@@ -2507,7 +2576,22 @@ ShellRoot {
                     exclusionMode: ExclusionMode.Ignore
                     WlrLayershell.namespace: "vitrail-wallpaper"
                     WlrLayershell.layer: WlrLayer.Background
-                    mask: Region {}
+                    // The desktop takes the secondary button for its menu; a
+                    // fullscreen window and the editor leave the background
+                    // alone.
+                    mask: Region {
+                        item: shell.desktopMenuEnabled && !monitor.fullscreen && !shell.editMode
+                              ? desktopClick : null
+                    }
+
+                    DesktopClickCatcher {
+                        id: desktopClick
+
+                        anchors.fill: parent
+                        onMenuRequested: function (x, y) {
+                            shell.openDesktopMenu(monitor.modelData, x, y)
+                        }
+                    }
 
                     VitrailWallpaper {
                         anchors.fill: parent
@@ -2545,6 +2629,7 @@ ShellRoot {
                     monitor: monitor.modelData.name
                     layoutText: shell.prefs.desktopLayout || ""
                     hiddenFullscreen: monitor.hiddenFullscreen
+                                       || (shell.editMode && shell.editScreen === monitor.modelData)
                     strings: shell.strings
                     language: shell.prefs.language || "en"
                     weather: desktopData.weather
@@ -2561,6 +2646,7 @@ ShellRoot {
                     airplaneOn: shell.airplaneOn
                     dnd: shell.dnd
                     notes: shell.notes
+                    imageSource: shell.wallpaperFor(monitor.modelData.name)
                     onPlayerChosen: function (index) { shell.mprisIndex = index }
                     onQuickToggled: function (key) { shell.toggleQuick(key) }
                     onNoteAdded: function (note) { shell.notes = Notes.add(shell.notes, note) }
@@ -2630,10 +2716,12 @@ ShellRoot {
                         frameVariant: shell.prefs.frameStyle || ""
                         density: monitor.barDocument.density
                         // A fullscreen window takes the bar with it (the
-                        // editor's switch, on by default).
-                        showBar: !monitor.hiddenFullscreen && (shell.prefs.barScreens === "all"
-                                                               || monitor.modelData === shell.primaryScreen)
-                        visible: !monitor.hiddenFullscreen
+                        // editor's switch, on by default); the editor takes it
+                        // too, while its window stays alive for the OSD.
+                        showBar: DesktopPolicy.barDrawn(monitor.hiddenFullscreen, shell.editMode)
+                                 && (shell.prefs.barScreens === "all"
+                                     || monitor.modelData === shell.primaryScreen)
+                        visible: DesktopPolicy.barWindowAlive()
                         opacityLevel: shell.barOpacity
                         panelVariant: shell.panelKind
                         panelOpen: shell.panelOpen
@@ -2785,6 +2873,37 @@ ShellRoot {
                     }
                 }
 
+                // The in-place editor: an overlay above the bar, under the
+                // OSD (created next), so the volume OSD keeps working while
+                // the desktop is being edited.
+                DesktopEditLayer {
+                    id: desktopEditLayer
+
+                    screen: monitor.modelData
+                    active: shell.editMode && shell.editScreen === monitor.modelData
+                    monitor: monitor.modelData.name
+                    layoutText: shell.desktopEditLayout
+                    strings: shell.strings
+                    screenWidth: monitor.modelData.width
+                    screenHeight: monitor.modelData.height
+                    onLayoutChanged: function (text) {
+                        shell.desktopEditLayout = text
+                        shell.setPref("desktopLayout", text)
+                    }
+                    onFinished: shell.stopDesktopEdit()
+                }
+
+                // The desktop's right-click menu, above the editor it opens.
+                DesktopMenuLayer {
+                    screen: monitor.modelData
+                    open: shell.desktopMenuOpen && shell.desktopMenuScreen === monitor.modelData
+                    anchorX: shell.desktopMenuX
+                    anchorY: shell.desktopMenuY
+                    strings: shell.strings
+                    onEditRequested: shell.startDesktopEdit(monitor.modelData)
+                    onDismissed: shell.closeDesktopMenu()
+                }
+
                 // Tooltips of the bar's elements: one host per monitor.
                 TooltipLayer {
                     id: tooltips
@@ -2835,7 +2954,7 @@ ShellRoot {
                     docked: bar.style.docked
                     side: shell.notificationSide
                     // Every monitor keeps its hot zone; only the pinned one draws the panel.
-                    active: !monitor.fullscreen
+                    active: DesktopPolicy.notificationsAllowed(monitor.fullscreen, shell.editMode)
                     pinned: monitor.modelData === shell.notificationsScreen
                     open: shell.notificationsOpen
                     queue: toasts

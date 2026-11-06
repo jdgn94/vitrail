@@ -28,10 +28,12 @@ ColumnLayout {
         md: { time: "display", date: "content" },
         lg: { time: "display", date: "body" }
     })[root.size] || ({ time: "display", date: "content" })
+    readonly property bool withDate: root.variant !== "compact" && root.variant !== "minimal"
+    readonly property string timeVariant: root.variant === "minimal" ? "title" : root.look.time
 
     VitrailText {
         objectName: root.clockName
-        variant: root.look.time
+        variant: root.timeVariant
         family: root.fontFamily
         fontWeight: root.fontWeight
         italic: root.italic
@@ -42,7 +44,7 @@ ColumnLayout {
     VitrailText {
         objectName: root.dateName
         Layout.fillWidth: true
-        visible: root.variant !== "compact"
+        visible: root.withDate
         variant: root.look.date
         family: root.fontFamily
         fontWeight: root.fontWeight

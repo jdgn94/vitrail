@@ -109,7 +109,7 @@ Item {
         id: body
 
         width: parent.width
-        columns: 2
+        columns: root.style === "minimal" ? 1 : 2
         columnSpacing: root.unit
         rowSpacing: root.unit
 
@@ -119,6 +119,7 @@ Item {
             id: art
 
             Layout.alignment: Qt.AlignVCenter
+            visible: root.style !== "minimal"
             implicitWidth: Math.max(disc.implicitWidth, cassette.implicitWidth)
             implicitHeight: Math.max(disc.implicitHeight, cassette.implicitHeight)
 

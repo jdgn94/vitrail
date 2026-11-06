@@ -128,6 +128,7 @@ Item {
             width: loader.width
             height: loader.height
             size: root.size
+            style: root.style
             fontFamily: root.fontFamily
             fontWeight: root.fontWeight
             italic: root.italic

@@ -29,19 +29,21 @@ var WIDGETS = [
     { id: "power", surfaces: ["bar"], group: "end", labelKey: "bar.widget.power", icon: "power_settings_new", sizes: [], styles: [] },
 
     // --- the notification panel (bar → Editor → Panel)
-    { id: "media", surfaces: ["panel", "desktop"], labelKey: "panel.widget.media", icon: "play_circle", sizes: ["sm", "md", "lg"], styles: ["disc", "cassette"], interactive: true },
+    { id: "media", surfaces: ["panel", "desktop"], labelKey: "panel.widget.media", icon: "play_circle", sizes: ["sm", "md", "lg"], styles: ["disc", "cassette", "minimal"], interactive: true },
     { id: "toggles", surfaces: ["panel", "desktop"], labelKey: "panel.widget.toggles", icon: "toggle_on", sizes: ["sm", "md", "lg"], styles: [], interactive: true },
     { id: "capture", surfaces: ["panel"], labelKey: "panel.widget.capture", icon: "screenshot_monitor", sizes: ["sm", "md", "lg"], styles: [], interactive: true },
-    { id: "notes", surfaces: ["panel", "desktop"], labelKey: "panel.widget.notes", icon: "edit_note", sizes: ["sm", "md", "lg"], styles: [], interactive: true },
+    { id: "notes", surfaces: ["panel", "desktop"], labelKey: "panel.widget.notes", icon: "edit_note", sizes: ["sm", "md", "lg"], styles: ["card", "plain", "minimal"], interactive: true },
     { id: "session", surfaces: ["panel"], labelKey: "panel.widget.session", icon: "power_settings_new", sizes: ["sm", "md", "lg"], styles: [], interactive: true },
 
     // --- the desktop (bar → Editor → Desktop)
-    { id: "clock", surfaces: ["desktop"], labelKey: "panel.widget.clock", icon: "schedule", sizes: ["sm", "md", "lg"], styles: ["full", "compact"], interactive: false },
+    { id: "clock", surfaces: ["desktop"], labelKey: "panel.widget.clock", icon: "schedule", sizes: ["sm", "md", "lg"], styles: ["full", "compact", "minimal"], interactive: false },
     { id: "weather", surfaces: ["desktop"], labelKey: "panel.widget.weather", icon: "partly_cloudy_day", sizes: ["sm", "md", "lg"], styles: ["full", "compact"], interactive: false },
     { id: "resources", surfaces: ["desktop"], labelKey: "panel.widget.resources", icon: "monitor_heart", sizes: ["sm", "md", "lg"], styles: ["full", "compact"], interactive: false },
     { id: "pomodoro", surfaces: ["desktop"], labelKey: "panel.widget.pomodoro", icon: "timer", sizes: ["sm", "md", "lg"], styles: ["card", "plain"], interactive: true },
     { id: "timer", surfaces: ["desktop"], labelKey: "panel.widget.timer", icon: "av_timer", sizes: ["sm", "md", "lg"], styles: ["card", "plain"], interactive: true },
-    { id: "calendar", surfaces: ["desktop"], labelKey: "panel.widget.calendar", icon: "calendar_month", sizes: ["sm", "md", "lg"], styles: ["full", "compact"], interactive: true }
+    { id: "calendar", surfaces: ["desktop"], labelKey: "panel.widget.calendar", icon: "calendar_month", sizes: ["sm", "md", "lg"], styles: ["full", "compact"], interactive: true },
+    // The picture the wallpaper library chose: one of three frames.
+    { id: "image", surfaces: ["desktop"], labelKey: "panel.widget.image", icon: "image", sizes: ["sm", "md", "lg"], styles: ["cover", "contain", "frame"], interactive: false }
 ]
 
 // The same widget id may exist on more than one surface ("media" is on the bar,
@@ -73,11 +75,31 @@ function defaultSize(widget) {
 // height always comes from the widget's content.
 var DESKTOP_WIDTH = {
     clock: 280, calendar: 360, weather: 320, resources: 300,
-    pomodoro: 300, timer: 300, media: 360, toggles: 380, notes: 300
+    pomodoro: 300, timer: 300, media: 360, toggles: 380, notes: 300,
+    image: 380
 }
 
 function widthOf(id, size) {
     var base = DESKTOP_WIDTH[id] || 300
     var factor = size === "sm" ? 0.85 : (size === "lg" ? 1.25 : 1)
     return Math.round(base * factor)
+}
+
+// The registry size closest to a width: the in-place editor turns a corner
+// drag into one of the widget's own sizes, so a widget is never a size the
+// registry does not know.
+function sizeForWidth(id, width) {
+    var widget = find(id, "desktop")
+    if (!widget || !widget.sizes || widget.sizes.length === 0)
+        return "md"
+    var best = widget.sizes[0]
+    var distance = Infinity
+    for (var i = 0; i < widget.sizes.length; i++) {
+        var current = Math.abs(widthOf(id, widget.sizes[i]) - width)
+        if (current < distance) {
+            distance = current
+            best = widget.sizes[i]
+        }
+    }
+    return best
 }

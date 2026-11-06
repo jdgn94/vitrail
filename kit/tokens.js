@@ -207,6 +207,16 @@ var monitorEdit = {
     labelGap: "xl"
 }
 
+// The in-place desktop editor: the right-click menu's width, the palette's
+// height, the card heights per registry size and the resize handle.
+var desktopEdit = {
+    menu: 232,
+    cardSm: 64,
+    cardMd: 84,
+    cardLg: 104,
+    handle: 18
+}
+
 // The media player (bar/media). Lengths are px, times ms.
 // disc: `size` of the cover, `pad` of room around it for the ring, `marks`
 // dashes in the ring, `gap` from the cover to the ring, `dot` the mark's
