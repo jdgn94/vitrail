@@ -95,10 +95,9 @@ Item {
                 asynchronous: true
             }
 
-            VitrailText {
+            VitrailIcon {
                 anchors.centerIn: parent
                 visible: row.thumbnail === "" && !art.visible
-                variant: "icon"
                 icon: row.glyph
                 color: row.selected ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
             }
@@ -126,9 +125,8 @@ Item {
             }
         }
 
-        VitrailText {
+        VitrailIcon {
             visible: row.pinned
-            variant: "icon"
             icon: "push_pin"
             color: VitrailTokens.color("primary")
         }
@@ -139,9 +137,8 @@ Item {
             text: row.hint
         }
 
-        VitrailText {
+        VitrailIcon {
             visible: row.hasMenu && (row.selected || row.hovered)
-            variant: "icon"
             icon: "chevron_right"
         }
 

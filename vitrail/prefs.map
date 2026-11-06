@@ -17,7 +17,7 @@ appearance radius
 appearance blurStrength
 appearance spacing
 appearance fontBase
-# The shell icon style: outlined glyphs or a filled container.
+# The shell icon style: an outlined glyph, or the glyph inside a badge.
 appearance uiIconFill
 # One cursor pack for both themes, or one per theme (see the Cursor tab).
 appearance cursorThemeSplit

@@ -146,12 +146,11 @@ Item {
                 visible: thumb.kind === "video"
                 spacing: 2
 
-                Text {
+                VitrailIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "play_circle"
+                    icon: "play_circle"
                     color: page.palette.foreground
-                    font.family: VitrailTokens.iconFamily
-                    font.pixelSize: 30
+                    pixelSize: 30
                 }
 
                 Text {

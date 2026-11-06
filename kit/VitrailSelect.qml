@@ -234,14 +234,13 @@ FocusScope {
             }
         }
 
-        VitrailText {
+        VitrailIcon {
             id: leading
 
             visible: root.currentOption !== null && !!root.currentOption.icon
             x: root.padX
             anchors.verticalCenter: parent.verticalCenter
-            variant: "icon"
-            font.pixelSize: root.iconPx
+            pixelSize: root.iconPx
             icon: root.currentOption && root.currentOption.icon ? root.currentOption.icon : ""
             color: root.ink
         }
@@ -277,15 +276,14 @@ FocusScope {
             Behavior on color { ColorAnimation { duration: root.duration } }
         }
 
-        VitrailText {
+        VitrailIcon {
             id: chevron
 
             objectName: "chevron"
             anchors.right: parent.right
             anchors.rightMargin: VitrailTokens.gap("sm")
             anchors.verticalCenter: parent.verticalCenter
-            variant: "icon"
-            font.pixelSize: root.iconPx
+            pixelSize: root.iconPx
             icon: "expand_more"
             color: root.active ? root.accent : VitrailTokens.color("muted")
             rotation: root.expanded ? 180 : 0
@@ -362,10 +360,9 @@ FocusScope {
                     width: parent.width - 2 * VitrailTokens.gap("md")
                     spacing: VitrailTokens.gap("sm")
 
-                    VitrailText {
+                    VitrailIcon {
                         visible: !!row.modelData.icon
-                        variant: "icon"
-                        font.pixelSize: root.iconPx
+                        pixelSize: root.iconPx
                         icon: row.modelData.icon || ""
                         color: row.chosen ? root.accent : root.ink
                     }
@@ -378,10 +375,9 @@ FocusScope {
                         text: row.modelData.label
                     }
 
-                    VitrailText {
+                    VitrailIcon {
                         visible: row.chosen
-                        variant: "icon"
-                        font.pixelSize: root.iconPx
+                        pixelSize: root.iconPx
                         icon: "check"
                         color: root.accent
                     }

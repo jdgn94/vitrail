@@ -129,10 +129,9 @@ StackView {
                     }
 
                     // Checkbox and radio entries: a check when on.
-                    VitrailText {
+                    VitrailIcon {
                         visible: row.modelData.buttonType !== QsMenuButtonType.None
-                        variant: "icon"
-                        font.pixelSize: VitrailTokens.size("body") + 2
+                        pixelSize: VitrailTokens.size("body") + 2
                         icon: row.modelData.buttonType === QsMenuButtonType.RadioButton
                               ? (row.modelData.checkState === Qt.Checked ? "radio_button_checked" : "radio_button_unchecked")
                               : (row.modelData.checkState === Qt.Checked ? "check_box" : "check_box_outline_blank")
@@ -146,10 +145,9 @@ StackView {
                         text: row.modelData.text.replace(/_(?!_)/, "")
                     }
 
-                    VitrailText {
+                    VitrailIcon {
                         visible: row.modelData.hasChildren
-                        variant: "icon"
-                        font.pixelSize: VitrailTokens.size("body") + 4
+                        pixelSize: VitrailTokens.size("body") + 4
                         icon: "chevron_right"
                     }
                 }

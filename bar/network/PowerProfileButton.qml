@@ -48,11 +48,10 @@ Item {
         color: VitrailTokens.solid("primary", 0.16)
     }
 
-    VitrailText {
+    VitrailIcon {
         id: glyph
 
         anchors.centerIn: parent
-        variant: "icon"
         icon: root.mode.icon
         color: VitrailTokens.color(root.mode.tone)
     }

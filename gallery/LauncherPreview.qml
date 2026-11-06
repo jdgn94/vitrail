@@ -99,10 +99,9 @@ Item {
                             color: VitrailTokens.color("primary")
                             opacity: 0.25
 
-                            VitrailText {
+                            VitrailIcon {
                                 anchors.centerIn: parent
-                                variant: "icon"
-                                font.pixelSize: art.width * 0.6
+                                pixelSize: art.width * 0.6
                                 icon: cell.modelData.icon
                                 color: VitrailTokens.color("primary")
                             }

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "base"
 import "wheel.js" as Wheel
 import "slider.js" as SliderShape
 
@@ -278,7 +279,7 @@ ColumnLayout {
                 }
 
                 // Inside the fill when it is long enough, else just past the handle.
-                Text {
+                VitrailIcon {
                     readonly property bool onFill: slider.activeEnd >= root.track + slider.iconSize
 
                     x: onFill ? (root.track - slider.iconSize) / 2
@@ -286,23 +287,21 @@ ColumnLayout {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.icon !== ""
                     rotation: root.vertical ? 90 : 0
-                    text: root.icon
+                    icon: root.icon
                     color: onFill ? root.onAccent : root.bandColor(slider.visualPosition)
-                    font.family: VitrailTokens.iconFamily
-                    font.pixelSize: slider.iconSize
+                    pixelSize: slider.iconSize
                 }
 
-                Text {
+                VitrailIcon {
                     readonly property bool onFill: slider.activeEnd >= slider.span - root.track / 2
 
                     x: slider.span - (root.track + slider.iconSize) / 2
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.endIcon !== "" && slider.inactiveStart <= x
                     rotation: root.vertical ? 90 : 0
-                    text: root.endIcon
+                    icon: root.endIcon
                     color: onFill ? root.onAccent : root.bandColor(1)
-                    font.family: VitrailTokens.iconFamily
-                    font.pixelSize: slider.iconSize
+                    pixelSize: slider.iconSize
                 }
             }
 

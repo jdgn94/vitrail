@@ -79,7 +79,7 @@
   "fonts.uiIcons.sharp": "Scharf",
   "fonts.uiIcons.outlined": "Kontur",
   "fonts.uiIcons.outline": "Kontur",
-  "fonts.uiIcons.container": "Gefüllt",
+  "fonts.uiIcons.container": "Container",
   "fonts.iconTheme": "Symbolpaket der Apps",
   "fonts.iconTheme.help": "Das Symbolthema, aus dem GTK-Apps ihre Programmsymbole nehmen.",
   "fonts.iconTheme.normal": "Normal",

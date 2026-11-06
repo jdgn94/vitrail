@@ -81,10 +81,9 @@ Item {
                 visible: status === Image.Ready
             }
 
-            VitrailText {
+            VitrailIcon {
                 anchors.centerIn: parent
                 visible: !art.visible
-                variant: "icon"
                 icon: "apps"
             }
 

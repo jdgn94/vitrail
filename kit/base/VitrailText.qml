@@ -2,8 +2,12 @@ import QtQuick
 import ".."
 
 // Text primitive: size, weight and color come from the `text` variant.
-// Icons take the user's FILL style (outline or container); an active/selected
-// icon still changes only its colour, never the axis.
+//
+// `icon` draws a Material Symbol ligature instead of text; it is the glyph
+// renderer VitrailIcon wraps in its container badge. The glyph is never
+// filled: the FILL axis stays 0, and a container icon is a shape drawn by
+// VitrailIcon, not a Material Symbols fill. An active/selected icon still
+// changes only its colour, never the axis.
 Text {
     id: root
 
@@ -29,6 +33,6 @@ Text {
     opacity: root.style.opacity
     font.pixelSize: VitrailTokens.size(root.style.size)
     font.family: root.resolvedFamily
-    font.variableAxes: root.style.family === "icons" ? ({ "FILL": VitrailTokens.iconFill }) : ({})
+    font.variableAxes: root.style.family === "icons" ? ({ "FILL": 0 }) : ({})
     font.weight: root.style.weight
 }

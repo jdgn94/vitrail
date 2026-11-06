@@ -187,7 +187,7 @@ TestCase {
     }
 
     function test_a_chosen_glyph_is_not_filled() {
-        VitrailTokens.iconFill = 0
+        VitrailTokens.iconContainer = false
         var picker = createTemporaryObject(glyphComponent, testCase)
         picker.open()
         tryCompare(picker, "expanded", true)
@@ -195,10 +195,11 @@ TestCase {
         verify(glyph !== null)
         // Choosing a cell changes its colour, never the FILL axis.
         compare(glyph.font.variableAxes["FILL"], 0)
-        // The container style is the only thing that fills the glyph.
-        VitrailTokens.iconFill = 1
-        compare(glyph.font.variableAxes["FILL"], 1)
-        VitrailTokens.iconFill = 0
+        // The container style is a badge drawn around the glyph; the glyph
+        // itself stays outlined.
+        VitrailTokens.iconContainer = true
+        compare(glyph.font.variableAxes["FILL"], 0)
+        VitrailTokens.iconContainer = false
     }
 
     function test_neither_trigger_draws_a_chevron() {

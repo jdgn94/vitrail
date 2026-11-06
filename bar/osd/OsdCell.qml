@@ -75,10 +75,9 @@ Item {
                 onClicked: root.muteRequested()
             }
 
-            VitrailText {
+            VitrailIcon {
                 anchors.centerIn: parent
                 visible: !root.muteable
-                variant: "icon"
                 icon: root.icon
                 color: VitrailTokens.color("foreground")
             }

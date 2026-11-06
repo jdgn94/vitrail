@@ -96,8 +96,8 @@ TestCase {
         var box = make()
         var icon = textOf(box.currentItem, true)
         tryVerify(function () { return sameColor(icon.color, box.onAccent) })
-        // No FILL axis anywhere: the chosen state is the pill and its ink.
-        verify(icon.font.variableAxes["FILL"] === undefined)
+        // The FILL axis stays 0: the chosen state is the pill and its ink.
+        compare(icon.font.variableAxes["FILL"], 0)
         box.current = "c"
         tryVerify(function () {
             var next = textOf(box.currentItem, true)
@@ -105,7 +105,7 @@ TestCase {
         })
         // The old icon settles on the normal ink.
         tryVerify(function () { return sameColor(icon.color, box.foreground) })
-        verify(icon.font.variableAxes["FILL"] === undefined)
+        compare(icon.font.variableAxes["FILL"], 0)
     }
 
     function test_the_icon_family_follows_the_token() {

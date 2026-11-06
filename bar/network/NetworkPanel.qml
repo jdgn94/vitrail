@@ -98,9 +98,8 @@ Item {
 
                 Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
 
-                VitrailText {
+                VitrailIcon {
                     anchors.centerIn: parent
-                    variant: "icon"
                     icon: root.wiredDevice ? "lan"
                           : root.wifiNetwork ? Network.wifiGlyph(root.wifiNetwork.signalStrength)
                           : root.online ? "lan" : "signal_wifi_off"

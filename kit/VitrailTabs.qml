@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "base"
 
 // Horizontal subcategory tabs. One underline marks the current tab and
 // slides to the new one when it changes. A tab is { key, label, icon }: `icon`
@@ -75,13 +76,12 @@ Item {
 
                     Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("base") } }
 
-                    Text {
+                    VitrailIcon {
                         anchors.verticalCenter: parent.verticalCenter
-                        visible: text !== ""
-                        text: tab.modelData.icon || ""
+                        visible: (tab.modelData.icon || "") !== ""
+                        icon: tab.modelData.icon || ""
                         color: tab.chosen ? root.accent : root.foreground
-                        font.family: VitrailTokens.iconFamily
-                        font.pixelSize: 18
+                        pixelSize: 18
 
                         Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
                     }

@@ -9,11 +9,13 @@ import "icons.js" as Icons
 // is empty, unknown or misspelt resolves to `question_mark`, which is why no
 // `Text` sets an icon name without passing through here.
 QtObject {
-    // The family and FILL axis of the active style; `VitrailText` binds its
-    // icon font to these, so a preference change repaints every glyph at once.
+    // The family and container style of the active style; `VitrailIcon` binds
+    // its family to the former and draws the latter as a badge, so a
+    // preference change repaints every glyph at once. The FILL axis is never
+    // part of the style: a glyph is always outlined.
     readonly property var style: ({
         family: VitrailTokens.iconFamily,
-        fill: VitrailTokens.iconFill
+        container: VitrailTokens.iconContainer
     })
 
     // The glyph an unresolvable name draws.

@@ -50,11 +50,10 @@ Item {
         color: VitrailTokens.solid("primary", 0.16)
     }
 
-    VitrailText {
+    VitrailIcon {
         id: glyph
 
         anchors.centerIn: parent
-        variant: "icon"
         icon: "shield_lock"
         color: root.activeVpn ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
         opacity: root.activeVpn ? 1 : 0.45

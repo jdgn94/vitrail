@@ -494,10 +494,9 @@ Item {
                                 asynchronous: true
                             }
 
-                            VitrailText {
+                            VitrailIcon {
                                 anchors.centerIn: parent
                                 visible: groupIcon.status !== Image.Ready
-                                variant: "icon"
                                 icon: "info"
                             }
                         }

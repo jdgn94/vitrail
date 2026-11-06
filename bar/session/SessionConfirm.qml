@@ -114,10 +114,9 @@ Item {
                                VitrailTokens.color(root.phase === "problem" ? "error" : root.tone).g,
                                VitrailTokens.color(root.phase === "problem" ? "error" : root.tone).b, 0.18)
 
-                VitrailText {
+                VitrailIcon {
                     anchors.centerIn: parent
-                    variant: "icon"
-                    font.pixelSize: VitrailTokens.size("display")
+                    pixelSize: VitrailTokens.size("display")
                     icon: root.phase === "problem" ? "pending_actions" : (root.entry ? root.entry.icon : "power_settings_new")
                     color: VitrailTokens.color(root.phase === "problem" ? "error" : root.tone)
                 }
@@ -178,8 +177,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: VitrailTokens.gap("xs")
 
-                        VitrailText {
-                            variant: "icon"
+                        VitrailIcon {
                             color: VitrailTokens.color("primary")
                             icon: root.iconFor(modelData.kind)
                         }

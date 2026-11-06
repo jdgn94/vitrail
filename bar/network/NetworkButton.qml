@@ -94,11 +94,10 @@ Item {
         color: VitrailTokens.solid("primary", 0.16)
     }
 
-    VitrailText {
+    VitrailIcon {
         id: icon
 
         anchors.centerIn: parent
-        variant: "icon"
         icon: root.glyph
         color: root.connected ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
         opacity: root.connected ? 1 : 0.45

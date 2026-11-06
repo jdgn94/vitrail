@@ -612,9 +612,8 @@ FocusScope {
                     anchors.centerIn: parent
                     spacing: VitrailTokens.gap("xs")
 
-                    VitrailText {
+                    VitrailIcon {
                         anchors.verticalCenter: parent.verticalCenter
-                        variant: "icon"
                         icon: chip.glyphs[root.parsed.mode]
                         color: VitrailTokens.color("primary")
                     }

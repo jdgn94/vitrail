@@ -37,11 +37,10 @@ Item {
         Behavior on color { ColorAnimation { duration: VitrailTokens.duration("fast") } }
     }
 
-    VitrailText {
+    VitrailIcon {
         id: glyph
 
         anchors.centerIn: parent
-        variant: "icon"
         icon: "power_settings_new"
         color: root.opened || root.hovered ? VitrailTokens.color("error") : VitrailTokens.color("foreground")
 

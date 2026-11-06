@@ -294,8 +294,7 @@ Item {
             Layout.fillWidth: true
             spacing: VitrailTokens.gap("xs")
 
-            VitrailText {
-                variant: "icon"
+            VitrailIcon {
                 icon: card.icon
                 color: page.palette.muted
             }
@@ -453,9 +452,8 @@ Item {
                             spacing: VitrailTokens.gap("md")
 
                             // The chosen family's own glyph, beside the choice.
-                            VitrailText {
-                                variant: "icon"
-                                font.pixelSize: VitrailTokens.size("title")
+                            VitrailIcon {
+                                pixelSize: VitrailTokens.size("title")
                                 family: VitrailTokens.font.iconFamilyOf(page.prefs.uiIcons)
                                 icon: "interests"
                                 color: page.palette.primary
@@ -495,11 +493,10 @@ Item {
                             Layout.fillWidth: true
                             spacing: VitrailTokens.gap("sm")
 
-                            VitrailText {
+                            VitrailIcon {
                                 Layout.alignment: Qt.AlignTop
                                 Layout.preferredWidth: 24
-                                variant: "icon"
-                                font.pixelSize: VitrailTokens.size("title")
+                                pixelSize: VitrailTokens.size("title")
                                 icon: "widgets"
                                 color: page.palette.muted
                             }
@@ -634,11 +631,10 @@ Item {
                             Layout.fillWidth: true
                             spacing: VitrailTokens.gap("sm")
 
-                            VitrailText {
+                            VitrailIcon {
                                 Layout.alignment: Qt.AlignTop
                                 Layout.preferredWidth: 24
-                                variant: "icon"
-                                font.pixelSize: VitrailTokens.size("title")
+                                pixelSize: VitrailTokens.size("title")
                                 icon: "mouse"
                                 color: page.palette.muted
                             }

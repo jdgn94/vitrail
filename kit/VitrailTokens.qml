@@ -26,14 +26,16 @@ QtObject {
     // (see `iconFamily` below).
     property string iconVariant: "rounded"
     readonly property string iconFamily: Tokens.font.iconFamilyOf(iconVariant)
-    // Material Symbols' FILL axis: 0 draws the outline, 1 the container.
-    property int iconFill: 0
+    // The icon style: outlined draws the bare glyph, container the glyph inside
+    // a circular badge (see VitrailIcon). The glyph itself is never filled.
+    property bool iconContainer: false
     property real frame: Tokens.ranges.frame.value
     property real bar: Tokens.ranges.bar.value
     property real panel: Tokens.ranges.panel.value
 
     readonly property var ranges: Tokens.ranges
     readonly property var font: Tokens.font
+    readonly property var icon: Tokens.icon
     readonly property var motion: Tokens.motion
     readonly property var slider: Tokens.slider
     readonly property var osd: Tokens.osd
@@ -62,8 +64,8 @@ QtObject {
             root.fontBase = source.fontBase
         if (source.fontFamily !== undefined)
             root.fontFamily = source.fontFamily
-        if (source.iconFill !== undefined)
-            root.iconFill = source.iconFill
+        if (source.iconContainer !== undefined)
+            root.iconContainer = source.iconContainer
         if (source.frame !== undefined)
             root.frame = source.frame
         if (source.bar !== undefined)

@@ -76,10 +76,9 @@ Item {
                            VitrailTokens.color(root.error ? "error" : "primary").g,
                            VitrailTokens.color(root.error ? "error" : "primary").b, 0.18)
 
-            VitrailText {
+            VitrailIcon {
                 anchors.centerIn: parent
-                variant: "icon"
-                font.pixelSize: VitrailTokens.size("display")
+                pixelSize: VitrailTokens.size("display")
                 icon: root.icon
                 color: VitrailTokens.color(root.error ? "error" : "primary")
             }

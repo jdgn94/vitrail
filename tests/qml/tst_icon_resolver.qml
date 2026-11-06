@@ -47,7 +47,7 @@ TestCase {
 
     function init() {
         VitrailTokens.iconVariant = "rounded"
-        VitrailTokens.iconFill = 0
+        VitrailTokens.iconContainer = false
     }
 
     function test_a_known_name_resolves_to_itself() {
@@ -83,14 +83,16 @@ TestCase {
 
     function test_the_active_style_is_the_token_style() {
         compare(VitrailIcons.style.family, VitrailTokens.iconFamily)
-        compare(VitrailIcons.style.fill, VitrailTokens.iconFill)
+        compare(VitrailIcons.style.container, VitrailTokens.iconContainer)
 
         VitrailTokens.iconVariant = "sharp"
-        VitrailTokens.iconFill = 1
+        VitrailTokens.iconContainer = true
         compare(VitrailIcons.style.family, "Material Symbols Sharp")
-        compare(VitrailIcons.style.fill, 1)
-        // The drawn glyph follows the same style.
+        compare(VitrailIcons.style.container, true)
+        // The drawn glyph follows the same family; the container style is a
+        // badge, never a FILL axis.
         compare(known.fontInfo.family, "Material Symbols Sharp")
-        compare(known.font.variableAxes["FILL"], 1)
+        compare(known.font.variableAxes["FILL"], 0)
+        compare(primitive.container, true)
     }
 }

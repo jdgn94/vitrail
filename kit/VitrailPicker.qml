@@ -244,17 +244,14 @@ FocusScope {
             }
         }
 
-        VitrailText {
+        VitrailIcon {
             id: glyph
 
             anchors.fill: parent
             visible: preview.count === 0 && !!preview.option && !!preview.option.glyph
-            variant: "icon"
             // The chosen cell only changes colour; icons are never filled.
-            font.pixelSize: Math.min(preview.size, VitrailTokens.size("title"))
+            pixelSize: Math.min(preview.size, VitrailTokens.size("title"))
             icon: visible ? preview.option.glyph : ""
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
         }
 
         VitrailText {

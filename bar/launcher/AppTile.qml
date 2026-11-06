@@ -63,21 +63,19 @@ Item {
     }
 
     // An app whose icon the theme does not have.
-    VitrailText {
+    VitrailIcon {
         anchors.centerIn: art
         visible: !art.visible
-        variant: "icon"
-        font.pixelSize: art.width * 0.8
+        pixelSize: art.width * 0.8
         icon: "apps"
         color: VitrailTokens.color("muted")
     }
 
-    VitrailText {
+    VitrailIcon {
         visible: tile.pinned
         anchors.top: art.top
         anchors.left: art.right
         anchors.leftMargin: -VitrailTokens.gap("sm")
-        variant: "icon"
         icon: "push_pin"
         color: VitrailTokens.color("primary")
     }

@@ -6,9 +6,9 @@ silent failure in development: a typo would look deliberate. This test makes
 the typo fail the suite instead, by comparing the table with the names the QML
 actually uses (collected exactly as `tests/test_icons.py` does).
 
-A second rule keeps the resolver on the only path an icon may take: a
-`VitrailText` with the icon variant sets `icon`, never `text`, so the string
-can not skip `resolve`.
+A second rule keeps the resolver on the only path an icon may take: an icon
+primitive (`VitrailIcon`, or a `VitrailText` with the icon variant) sets
+`icon`, never `text`, so the string can not skip `resolve`.
 """
 
 from __future__ import annotations
@@ -48,8 +48,8 @@ def qml_icon_names() -> set[str]:
     return icon_names()
 
 
-def icon_blocks() -> list[tuple[Path, int, list[str]]]:
-    """Every `VitrailText { ... }` block, as (file, line, lines)."""
+def icon_blocks() -> list[tuple[Path, int, str, list[str]]]:
+    """Every `VitrailIcon` / `VitrailText` block, as (file, line, kind, lines)."""
     blocks = []
     for folder in QML_DIRS:
         for path in sorted((ROOT / folder).rglob("*.qml")):
@@ -57,10 +57,11 @@ def icon_blocks() -> list[tuple[Path, int, list[str]]]:
                 continue
             lines = path.read_text(encoding="utf-8").splitlines()
             for index, line in enumerate(lines):
-                match = re.match(r"^(\s*)VitrailText\s*\{\s*$", line)
+                match = re.match(r"^(\s*)(VitrailIcon|VitrailText)\s*\{\s*$", line)
                 if match is None:
                     continue
                 indent = len(match.group(1))
+                kind = match.group(2)
                 end = next(
                     (
                         other
@@ -70,7 +71,7 @@ def icon_blocks() -> list[tuple[Path, int, list[str]]]:
                     None,
                 )
                 if end is not None:
-                    blocks.append((path, index + 1, lines[index + 1 : end]))
+                    blocks.append((path, index + 1, kind, lines[index + 1 : end]))
     return blocks
 
 
@@ -94,9 +95,9 @@ class ResolverTableTests(unittest.TestCase):
     def test_the_question_mark_is_itself_an_icon(self) -> None:
         self.assertEqual(resolver_names().get("question_mark"), "question_mark")
 
-    def test_icon_variant_text_sets_icon_not_text(self) -> None:
-        for path, line, body in icon_blocks():
-            if not any(re.match(r'^\s*variant:\s*"icon"\s*$', row) for row in body):
+    def test_icon_blocks_set_icon_not_text(self) -> None:
+        for path, line, kind, body in icon_blocks():
+            if kind == "VitrailText" and not any(re.match(r'^\s*variant:\s*"icon"\s*$', row) for row in body):
                 continue
             with self.subTest(file=str(path.relative_to(ROOT)), line=line):
                 self.assertTrue(

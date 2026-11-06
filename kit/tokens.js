@@ -77,6 +77,17 @@ font.iconFamilyOf = function (key) {
     return font.iconVariants[font.iconVariantOf(key)]
 }
 
+// The container icon style: the glyph sits inside a circular badge that keeps
+// the icon's outlined footprint, so nothing reflows when the style changes.
+// `scale` is the glyph's share of the full size, `badge` the circle's colour
+// role and `ink` the glyph's (an explicit glyph colour is ignored there).
+// The badge is a shape, not a Material Symbols fill: the FILL axis stays 0.
+var icon = {
+    scale: 0.6,
+    badge: "primary",
+    ink: "accentForeground"
+}
+
 // Motion travels with the variant, not with the component.
 var motion = {
     fast: 120,

@@ -625,6 +625,49 @@ Window {
 
         VitrailText {
             variant: "title"
+            text: "VitrailIcon · outlined × container"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("xl")
+
+            Repeater {
+                model: [false, true]
+
+                delegate: ColumnLayout {
+                    id: iconStyle
+
+                    required property var modelData
+
+                    spacing: VitrailTokens.gap("xs")
+
+                    RowLayout {
+                        spacing: VitrailTokens.gap("sm")
+
+                        Repeater {
+                            model: ["screen_record", "lan", "shield_lock", "favorite"]
+
+                            delegate: VitrailIcon {
+                                required property string modelData
+
+                                icon: modelData
+                                size: "lg"
+                                container: iconStyle.modelData
+                            }
+                        }
+                    }
+
+                    VitrailText {
+                        Layout.alignment: Qt.AlignHCenter
+                        variant: "label"
+                        text: iconStyle.modelData ? "container" : "outlined"
+                    }
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
             text: "VitrailBusy · plain, contained, sizes · busy buttons"
         }
 

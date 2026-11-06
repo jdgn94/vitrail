@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "base"
 
 // Titled block of settings: a Material icon and a title, an optional badge
 // that says how it applies, then its rows.
@@ -20,12 +21,11 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: VitrailTokens.gap("sm")
 
-        Text {
+        VitrailIcon {
             visible: root.icon !== ""
-            text: root.icon
+            icon: root.icon
             color: root.foreground
-            font.family: VitrailTokens.iconFamily
-            font.pixelSize: 22
+            pixelSize: 22
         }
 
         Text {

@@ -79,9 +79,8 @@ Item {
 
                 Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
 
-                VitrailText {
+                VitrailIcon {
                     anchors.centerIn: parent
-                    variant: "icon"
                     icon: "shield_lock"
                     color: root.activeVpn ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
                 }

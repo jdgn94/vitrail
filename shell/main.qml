@@ -148,7 +148,7 @@ Window {
         opacity: prefs.surfaceOpacity,
         fontBase: prefs.fontBase,
         fontFamily: app.fontSystemInstalled ? prefs.fontSystem : VitrailTokens.font.family,
-        iconFill: prefs.uiIconFill === "container" ? 1 : 0,
+        iconContainer: prefs.uiIconFill === "container",
         frame: prefs.frameSize,
         bar: prefs.barSize,
         panel: prefs.panelSize
@@ -416,9 +416,8 @@ Window {
                                     anchors.rightMargin: VitrailTokens.gap("md")
                                     spacing: VitrailTokens.gap("sm")
 
-                                    VitrailText {
-                                        variant: "icon"
-                                        font.pixelSize: VitrailTokens.size("subtitle")
+                                    VitrailIcon {
+                                        pixelSize: VitrailTokens.size("subtitle")
                                         icon: app.categoryOf(result.modelData.category).glyph
                                         color: result.highlighted ? app.theme.primary : app.theme.muted
                                     }
@@ -511,11 +510,10 @@ Window {
                             Layout.fillWidth: true
                             spacing: VitrailTokens.gap("sm")
 
-                            Text {
-                                text: app.currentCategory.glyph
+                            VitrailIcon {
+                                icon: app.currentCategory.glyph
                                 color: palette.primary
-                                font.family: VitrailTokens.iconFamily
-                                font.pixelSize: 26
+                                pixelSize: 26
                             }
 
                             Text {

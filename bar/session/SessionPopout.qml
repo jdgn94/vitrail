@@ -64,9 +64,8 @@ ColumnLayout {
                 width: parent.width - 2 * VitrailTokens.gap("sm")
                 spacing: VitrailTokens.gap("sm")
 
-                VitrailText {
-                    variant: "icon"
-                    font.pixelSize: VitrailTokens.size("body") + 2
+                VitrailIcon {
+                    pixelSize: VitrailTokens.size("body") + 2
                     icon: row.modelData.icon
                     color: row.ink
                 }

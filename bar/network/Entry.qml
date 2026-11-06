@@ -70,11 +70,9 @@ Item {
         width: parent.width - 2 * VitrailTokens.gap("sm")
         spacing: VitrailTokens.gap("sm")
 
-        VitrailText {
+        VitrailIcon {
             // Glyphs differ in width; a fixed slot keeps the names aligned.
             Layout.preferredWidth: VitrailTokens.size("display")
-            horizontalAlignment: Text.AlignHCenter
-            variant: "icon"
             icon: entry.icon
             color: entry.active ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
         }

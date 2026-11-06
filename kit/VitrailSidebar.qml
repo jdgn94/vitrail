@@ -122,13 +122,12 @@ Item {
                             id: hover
                         }
 
-                        Text {
+                        VitrailIcon {
                             x: (64 - width) / 2
                             anchors.verticalCenter: parent.verticalCenter
-                            text: row.modelData.glyph
+                            icon: row.modelData.glyph
                             color: row.active ? root.accent : root.foreground
-                            font.family: VitrailTokens.iconFamily
-                            font.pixelSize: 22
+                            pixelSize: 22
 
                             Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
                         }

@@ -22,11 +22,10 @@ RowLayout {
 
     spacing: VitrailTokens.gap("xs")
 
-    VitrailText {
-        variant: "icon"
+    VitrailIcon {
         icon: root.icons[root.level] || root.icons.unknown
         color: root.tint
-        font.pixelSize: VitrailTokens.size("subtitle")
+        pixelSize: VitrailTokens.size("subtitle")
     }
 
     VitrailText {

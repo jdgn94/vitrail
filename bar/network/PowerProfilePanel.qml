@@ -44,8 +44,7 @@ Item {
             Layout.fillWidth: true
             spacing: VitrailTokens.gap("sm")
 
-            VitrailText {
-                variant: "icon"
+            VitrailIcon {
                 icon: root.mode.icon
                 color: VitrailTokens.color(root.mode.tone)
             }

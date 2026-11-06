@@ -88,8 +88,8 @@ TestCase {
         var box = make()
         var icon = textOf(box.currentItem, true)
         tryVerify(function () { return sameColor(icon.color, box.accent) })
-        // No FILL axis anywhere: the active state is the colour.
-        verify(icon.font.variableAxes["FILL"] === undefined)
+        // The FILL axis stays 0: the active state is the colour.
+        compare(icon.font.variableAxes["FILL"], 0)
         box.current = "c"
         tryVerify(function () {
             var next = textOf(box.currentItem, true)
@@ -97,7 +97,7 @@ TestCase {
         })
         // The old icon fades back to the normal ink.
         tryVerify(function () { return sameColor(icon.color, box.foreground) })
-        verify(icon.font.variableAxes["FILL"] === undefined)
+        compare(icon.font.variableAxes["FILL"], 0)
     }
 
     function test_the_icon_family_follows_the_token() {

@@ -999,7 +999,7 @@ ShellRoot {
         }
         if (shell.prefs.fontSystem)
             values.fontFamily = shell.prefs.fontSystem
-        values.iconFill = shell.prefs.uiIconFill === "container" ? 1 : 0
+        values.iconContainer = shell.prefs.uiIconFill === "container"
         return values
     }
 

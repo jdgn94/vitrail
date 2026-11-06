@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "base"
 
 // One setting: a Material icon, its name and an optional hint, with the
 // control (switch, segmented, button…) on the right.
@@ -17,16 +18,14 @@ RowLayout {
     Layout.fillWidth: true
     spacing: VitrailTokens.gap("sm")
 
-    Text {
+    VitrailIcon {
         Layout.alignment: Qt.AlignTop
         Layout.topMargin: 1
         Layout.preferredWidth: 24
         visible: root.icon !== ""
-        horizontalAlignment: Text.AlignHCenter
-        text: root.icon
+        icon: root.icon
         color: root.muted
-        font.family: VitrailTokens.iconFamily
-        font.pixelSize: 20
+        pixelSize: 20
     }
 
     ColumnLayout {

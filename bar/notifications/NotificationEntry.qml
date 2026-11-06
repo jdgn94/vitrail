@@ -184,17 +184,15 @@ Item {
                     asynchronous: true
                 }
 
-                VitrailText {
+                VitrailIcon {
                     anchors.centerIn: parent
                     visible: !root.avatarImage && appIcon.status !== Image.Ready
-                    variant: "icon"
                     icon: "info"
                 }
             }
 
-            VitrailText {
+            VitrailIcon {
                 visible: root.isUrgent
-                variant: "icon"
                 color: VitrailTokens.color("error")
                 icon: "priority_high"
             }

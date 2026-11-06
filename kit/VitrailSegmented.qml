@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "base"
 
 // Single-choice segmented control. One pill marks the choice and slides to
 // the new one when it changes. An option is { key, label, icon }: `icon` is an
@@ -128,15 +129,14 @@ Rectangle {
                         anchors.centerIn: parent
                         spacing: 6
 
-                        Text {
+                        VitrailIcon {
                             id: glyph
 
                             anchors.verticalCenter: parent.verticalCenter
-                            visible: text !== ""
-                            text: segment.modelData.icon || ""
+                            visible: (segment.modelData.icon || "") !== ""
+                            icon: segment.modelData.icon || ""
                             color: segment.ink
-                            font.family: VitrailTokens.iconFamily
-                            font.pixelSize: 18
+                            pixelSize: 18
 
                             Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
                         }

@@ -162,10 +162,9 @@ Item {
                 asynchronous: true
             }
 
-            VitrailText {
+            VitrailIcon {
                 anchors.centerIn: parent
                 visible: image.status !== Image.Ready
-                variant: "icon"
                 icon: "info"
             }
         }
@@ -180,9 +179,8 @@ Item {
                 Layout.fillWidth: true
                 spacing: VitrailTokens.gap("xs")
 
-                VitrailText {
+                VitrailIcon {
                     visible: root.isUrgent
-                    variant: "icon"
                     color: VitrailTokens.color("error")
                     icon: "priority_high"
                 }

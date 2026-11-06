@@ -1,9 +1,10 @@
-"""Icons take one user style, never a selected/active fill.
+"""Icons are never filled: the container style is a badge, not a FILL axis.
 
 Material Symbols can fill a glyph through the `FILL` variable axis. Vitrail
-uses it only for the system's outline/container choice (`VitrailTokens.iconFill`
-in `VitrailText`); a selected or active icon is drawn in the accent colour, so
-state never changes the shape.
+does not use it: `VitrailText` draws every glyph outlined (`FILL: 0`) and the
+container style is a circular badge drawn behind the glyph by `VitrailIcon`.
+A selected or active icon is drawn in the accent colour, so state never
+changes the shape.
 """
 
 from __future__ import annotations
@@ -18,6 +19,8 @@ SOURCES = ("kit", "shell", "bar", "gallery", "login", "lock")
 
 # The FILL axis: `font.variableAxes` at all, or the axis name.
 FILL_AXIS = re.compile(r"\bvariableAxes\b|[\"']FILL[\"']")
+# The value the axis is set to.
+FILL_VALUE = re.compile(r"[\"']FILL[\"']\s*:\s*([^,}\)]+)")
 # The icon `filled:` property. `field`'s "filled" variant is a table entry
 # (`filled: { role: ... }`), not an icon state, so an object value is allowed.
 FILLED_PROPERTY = re.compile(r"(?m)^\s*filled\s*:(?![ \t]*\{)")
@@ -42,7 +45,7 @@ class IconFillTest(unittest.TestCase):
             body = code_of(path)
             if path == icon_text:
                 self.assertIsNotNone(FILL_AXIS.search(body))
-                self.assertIn("VitrailTokens.iconFill", body)
+                self.assertIn('"FILL": 0', body)
             else:
                 self.assertIsNone(
                     FILL_AXIS.search(body),
@@ -52,6 +55,23 @@ class IconFillTest(unittest.TestCase):
                 FILLED_PROPERTY.search(body),
                 f"{path.relative_to(ROOT)} fills an icon from its state",
             )
+
+    def test_no_icon_is_ever_filled(self) -> None:
+        for path in ui_sources():
+            for value in FILL_VALUE.findall(code_of(path)):
+                with self.subTest(file=str(path.relative_to(ROOT))):
+                    self.assertEqual(value.strip(), "0", "the FILL axis is always outlined")
+
+    def test_the_container_is_a_badge_behind_the_glyph(self) -> None:
+        body = (ROOT / "kit" / "base" / "VitrailIcon.qml").read_text(encoding="utf-8")
+        badge = body.index("Rectangle {")
+        glyph = body.index('objectName: "glyph"')
+        # Siblings paint in document order: the circle has to come first.
+        self.assertLess(badge, glyph, "the badge is drawn under the glyph")
+        self.assertIn("radius: width / 2", body)
+        self.assertIn("visible: root.container", body)
+        self.assertIn("VitrailTokens.icon.badge", body)
+        self.assertIn("VitrailTokens.icon.ink", body)
 
     def test_the_vpn_icon_is_a_coloured_shield_with_a_lock(self) -> None:
         for name in ("bar/network/VpnButton.qml", "bar/network/VpnPanel.qml"):
