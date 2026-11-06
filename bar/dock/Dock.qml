@@ -46,7 +46,7 @@ Item {
                                            : root.count * root.cell + (root.count - 1) * root.gap
     readonly property real margin: Dock.margin(root.attached, VitrailTokens.gap(root.look.margin || "md"))
 
-    signal launchRequested(var app)
+    signal launchRequested(var app, var rect)
     signal focusRequested(var app)
     signal reordered(string text)
     signal hovered(var item, bool on)
@@ -58,11 +58,19 @@ Item {
         NumberAnimation { duration: VitrailTokens.duration(root.look.motion); easing.type: Easing.OutCubic }
     }
 
-    function activate(app) {
+    function activate(app, item) {
         if (Dock.activates(app))
             root.focusRequested(app)
         else
-            root.launchRequested(app)
+            root.launchRequested(app, root.itemRect(item))
+    }
+
+    // The tile's rect in this window (the dock's band), for the launch drop.
+    function itemRect(item) {
+        if (!item)
+            return null
+        var point = item.mapToItem(null, 0, 0)
+        return { x: point.x, y: point.y, width: item.width, height: item.height }
     }
 
     // A drag ends on a whole cell: the caller stores the new document.
@@ -114,7 +122,7 @@ Item {
                 hoveredIndex: root.hoveredIndex
                 pinned: modelData.kind === "pinned"
                 strings: root.strings
-                onClicked: root.activate(modelData)
+                onClicked: root.activate(modelData, tile)
                 onHoverChanged: function (on) {
                     if (on)
                         root.hoveredIndex = tile.index

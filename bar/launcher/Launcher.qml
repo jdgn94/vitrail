@@ -15,6 +15,7 @@ import "actions.js" as Actions
 import "commands.js" as Commands
 import "desktop.js" as Desktop
 import "wallpapers.js" as Wallpapers
+import "state.js" as LauncherState
 import "../dock/dock.js" as Dock
 
 // Vitrail's application launcher, the content of the "launcher" popout.
@@ -55,6 +56,9 @@ FocusScope {
     property Item selectedItem: null
 
     signal done()
+    // An app starts: its item and the row/tile it came from (screen-local), so
+    // the shell can grow the launch droplet from there.
+    signal launched(var item, var rect)
     signal openPopup(string kind)
     signal openSession()
     signal dockPinRequested(var item)
@@ -177,6 +181,43 @@ FocusScope {
         return value === undefined ? key : value
     }
 
+    // Every opening starts clean: no query, selection, filter, mode, menu or
+    // stale async result from the previous one.
+    function reset() {
+        var clean = LauncherState.start(root.initialMode)
+        field.text = clean.text
+        root.current = clean.current
+        root.tab = clean.tab
+        root.expanded = clean.expanded
+        root.menu = clean.menu
+        root.menuCurrent = clean.menuCurrent
+        root.calcQuery = clean.calcQuery
+        root.calcText = clean.calcText
+        root.fileQuery = clean.fileQuery
+        root.fileItems = clean.fileItems
+        root.clips = clean.clips
+        root.wallpaperFiles = clean.wallpaperFiles
+        root.wallpaperLoaded = clean.wallpaperLoaded
+        root.modeBefore = clean.modeBefore
+        root.selectedItem = clean.selected
+        root.tipTarget = clean.tip
+        calcRun.cancel()
+        fileRun.cancel()
+        clipRun.cancel()
+        wallpaperRun.cancel()
+        if (clean.text !== "")
+            field.cursorPosition = clean.text.length
+    }
+
+    // The row or tile in this window's coordinates (the window is the screen,
+    // or the popout card that fills it); no anchor means no known point.
+    function anchorRect(anchor) {
+        if (!anchor)
+            return null
+        var point = anchor.mapToItem(null, 0, 0)
+        return { x: point.x, y: point.y, width: anchor.width, height: anchor.height }
+    }
+
     // --- running things --------------------------------------------------------
     function detach(command) {
         Quickshell.execDetached(command)
@@ -195,7 +236,9 @@ FocusScope {
         return dir || root.home + "/.config/vitrail/wallpapers"
     }
 
-    function launchApp(item) {
+    function launchApp(item, anchor) {
+        // The shell hears first, so the drop starts before the window can map.
+        root.launched(item, root.anchorRect(anchor))
         if (item.entry && typeof item.entry.execute === "function")
             item.entry.execute()
         else
@@ -205,10 +248,10 @@ FocusScope {
         root.done()
     }
 
-    function carryOut(run, shift) {
+    function carryOut(run, shift, anchor) {
         switch (run.kind) {
         case "app":
-            root.launchApp(run.item)
+            root.launchApp(run.item, anchor)
             return
         case "appAction":
             run.action.execute()
@@ -285,7 +328,7 @@ FocusScope {
         }
         if (root.browsing) {
             if (root.currentApp)
-                root.launchApp(root.currentApp)
+                root.launchApp(root.currentApp, root.selectedItem)
             return
         }
         var result = root.shown.list[root.current]
@@ -390,7 +433,7 @@ FocusScope {
         else if (ctrl && key >= Qt.Key_1 && key <= Qt.Key_9 && !root.browsing) {
             var result = root.shown.list[key - Qt.Key_1]
             if (result)
-                root.carryOut(result.run, shift)
+                root.carryOut(result.run, shift, root.selectedItem)
         } else if (key === Qt.Key_PageDown && root.browsing && !root.listView)
             root.page("down")
         else if (key === Qt.Key_PageUp && root.browsing && !root.listView)
@@ -496,8 +539,7 @@ FocusScope {
     Component.onCompleted: {
         Hyprland.refreshToplevels()
         probe.run(Commands.probeFiles(), "")
-        if (root.initialMode && Query.PREFIXES[root.initialMode])
-            field.text = Query.PREFIXES[root.initialMode]
+        root.reset()
         field.forceActiveFocus()
     }
 
@@ -790,7 +832,7 @@ FocusScope {
                                         selected: root.current === section.modelData.offset + tile.index
                                         onSelectedChanged: if (tile.selected) browse.reveal(tile)
                                         onHoveredChanged: root.hover(tile, tile.hovered)
-                                        onClicked: root.launchApp(tile.modelData)
+                                        onClicked: root.launchApp(tile.modelData, tile)
                                         onContextRequested: root.openMenu(tile.modelData, tile)
 
                                         Binding {
@@ -827,7 +869,7 @@ FocusScope {
                                         selected: root.current === section.modelData.offset + line.index
                                         onSelectedChanged: if (line.selected) browse.reveal(line)
                                         onHoveredChanged: root.hover(line, line.hovered)
-                                        onClicked: root.launchApp(line.modelData)
+                                        onClicked: root.launchApp(line.modelData, line)
                                         onContextRequested: root.openMenu(line.modelData, line)
 
                                         Binding {
@@ -899,7 +941,7 @@ FocusScope {
                         hint: entry.modelData.index !== undefined && entry.modelData.index < 9 ? "Ctrl+" + (entry.modelData.index + 1) : ""
                         selected: entry.modelData.index === root.current
                         onHoveredChanged: root.hover(result, result.hovered)
-                        onClicked: root.carryOut(result.payload.run, false)
+                        onClicked: root.carryOut(result.payload.run, false, result)
                         onContextRequested: if (result.payload.run && result.payload.run.kind === "app") root.openMenu(result.payload.run.item, result)
 
                         Binding {

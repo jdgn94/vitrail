@@ -255,6 +255,7 @@ var names = {
     vpn_key: "vpn_key",
     wallpaper: "wallpaper",
     warning: "warning",
+    water_drop: "water_drop",
     widgets: "widgets",
     wifi: "wifi",
     wifi_off: "wifi_off",

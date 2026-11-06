@@ -18,12 +18,23 @@ Item {
     property bool open: false
 
     signal dismissed()
+    signal launched(var item, var rect)
     signal openPopup(string kind)
     signal openSession()
     signal dockPinRequested(var item)
 
     focus: true
     opacity: root.open ? 1 : 0
+
+    // A warmed launcher is built once and kept; every opening puts it back to
+    // its initial state (no query, selection, filter or mode left over).
+    function resetContent() {
+        if (loader.item)
+            loader.item.reset()
+    }
+
+    onOpenChanged: if (root.open)
+                        root.resetContent()
 
     Behavior on opacity { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
 
@@ -70,9 +81,13 @@ Item {
             screenWidth: root.width
             screenHeight: root.height
             onDone: root.dismissed()
+            onLaunched: function (item, rect) { root.launched(item, rect) }
             onOpenPopup: function (kind) { root.openPopup(kind) }
             onOpenSession: root.openSession()
             onDockPinRequested: function (item) { root.dockPinRequested(item) }
         }
+
+        onLoaded: if (root.open)
+                      item.reset()
     }
 }

@@ -13,6 +13,8 @@
   "surface.glass": "Vidrio",
   "surface.opacity": "Opacidad",
   "surface.help": "Sólido solo cambia el alfa. Vidrio añade desenfoque y un borde de luz.",
+  "appearance.launchAnimation": "Animar la apertura de apps",
+  "appearance.launchAnimation.help": "Una gota crece desde el icono hasta el espacio de la ventana mientras la app arranca.",
   "windows.radius": "Radio de borde",
   "language.label": "Idioma del sistema",
   "language.help": "Cambia Vitrail y tu próxima sesión.",

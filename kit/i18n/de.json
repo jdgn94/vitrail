@@ -13,6 +13,8 @@
   "surface.glass": "Glas",
   "surface.opacity": "Deckkraft",
   "surface.help": "Massiv ändert nur den Alphawert. Glas fügt Unschärfe und eine Lichtkante hinzu.",
+  "appearance.launchAnimation": "App-Starts animieren",
+  "appearance.launchAnimation.help": "Während die App startet, wächst ein Tropfen vom Symbol in den Platz des Fensters.",
   "windows.radius": "Eckenradius",
   "language.label": "Systemsprache",
   "language.help": "Ändert Vitrail und deine nächste Sitzung.",

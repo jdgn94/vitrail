@@ -67,6 +67,37 @@ variant table plus a token block; the gallery draws every entry
 A bare URL opens directly. Async programs go through `AsyncRun.qml` (latest
 request wins, timeout `motion.timeout`).
 
+## Clean opening
+
+Every opening is a fresh one. `Launcher.reset()` (its field set comes from
+`state.js`, tested in `tests/qml/tst_launcher_state.qml`) clears the query,
+selection, tab, expansion, menu, tooltip and async results, and cancels the
+running calculator/file/clipboard/wallpaper reads so their answers cannot
+arrive afterwards. The full-screen content is warmed and kept, so
+`LauncherScreen` calls `reset()` from `onOpenChanged` (and `onLoaded`); the
+popout is rebuilt, and its `Component.onCompleted` does the same. A requested
+initial mode starts on that mode's prefix and nowhere else.
+
+## Launch droplet
+
+A launch from the dock or the launcher grows a drop from the chosen icon/row
+into the space the new window will take (`bar/droplet/`):
+
+- `droplet.js` is the state machine (`tests/qml/tst_launch_droplet.qml`):
+  `request()` refuses an app that already has a window (that path focuses),
+  `arrival()` picks the first new Hyprland toplevel on the monitor that asked,
+  `arrive()` / `timeout()` start the fade, and `finish()` clears it.
+- `LaunchDropletLayer.qml` is one overlay `PanelWindow` per monitor with an
+  empty mask and `WlrKeyboardFocus.None`: it never takes input. It borrows the
+  `vitrail-osd` namespace so the glass rule already covers it. `LaunchDroplet.qml`
+  draws the shape: a circle at the icon grows to a rounded card over the
+  fallback space (a centred share of the screen, `tokens.droplet`), follows the
+  window when it maps, then fades.
+- The shell owns the request and the polling timer (`droplet.poll`), snapshots
+  the toplevel addresses before executing, and clears the request after
+  `droplet.fade`. `launchAnimation` (appearance.ini, Appearance → Theme) turns
+  the whole thing off.
+
 ## State and settings
 
 - `~/.local/state/vitrail/launcher.json` (`LauncherStore.qml`, one per shell):

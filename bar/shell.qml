@@ -35,6 +35,8 @@ import "desktop"
 import "desktop/policy.js" as DesktopPolicy
 import "dock"
 import "dock/dock.js" as DockJS
+import "droplet"
+import "droplet/droplet.js" as DropletJS
 import "binds"
 import "media"
 import "launcher/commands.js" as Commands
@@ -334,6 +336,11 @@ ShellRoot {
     // app installed while the shell was running.
     property var launcherScanned: []
     property var launcherScreen: null
+    // The launch droplet: the request one monitor is drawing, the addresses
+    // Hyprland already knew when it began, and the monitor that owns it.
+    property var launchRequest: null
+    property var launchKnown: []
+    property var launchScreen: null
 
     // Left click and Super: the full-screen launcher on that monitor (the
     // focused one without a screen); the popout is the right click.
@@ -1148,18 +1155,103 @@ ShellRoot {
         shell.setDockPinned(DockJS.serializePinned(DockJS.togglePin(shell.dockPinnedList, item)))
     }
 
-    // A pinned app that is not open: run its desktop entry.
-    function launchDockApp(app) {
+    // A pinned app that is not open: run its desktop entry, and grow the drop
+    // from the icon while it starts. The rect is screen-local (the dock adds
+    // where its band sits).
+    function launchDockApp(app, rect, screen) {
         if (!app)
             return
         var entries = DesktopEntries.applications.values
         var wanted = DockJS.keyOf(app.desktop || app.id)
         for (var i = 0; i < entries.length; i++) {
             if (DockJS.keyOf(entries[i].id) === wanted) {
+                shell.beginLaunch(app, rect, screen)
                 entries[i].execute()
                 return
             }
         }
+    }
+
+    // An app chosen in the launcher: the row's rect is already window-local.
+    function launchFromLauncher(item, rect, screen) {
+        shell.beginLaunch(item, rect, screen)
+    }
+
+    Timer {
+        id: launchPoll
+
+        interval: VitrailTokens.droplet.poll
+        repeat: true
+        onTriggered: shell.trackLaunch()
+    }
+
+    // The drop's own fade plus a frame, so the request is cleared only after
+    // the overlay finished fading.
+    Timer {
+        id: launchFade
+
+        interval: VitrailTokens.droplet.fade + VitrailTokens.droplet.settle
+        onTriggered: shell.endLaunch()
+    }
+
+    // The drop starts at the icon/row, holds the fallback space until the
+    // window maps, and follows it then. Focusing an open app never comes here.
+    function beginLaunch(app, rect, screen) {
+        if (!shell.prefBool("launchAnimation", true) || shell.editMode)
+            return
+        var target = screen || shell.focusedScreen
+        if (!target)
+            return
+        var space = DropletJS.fallback(target.width, target.height,
+                                       VitrailTokens.droplet.fallbackWidth,
+                                       VitrailTokens.droplet.fallbackHeight)
+        var origin = rect && rect.width > 0 && rect.height > 0
+                     ? rect
+                     : { x: Math.round(space.x + space.width / 2),
+                         y: Math.round(space.y + space.height / 2), width: 2, height: 2 }
+        var request = DropletJS.request(app, origin, space, Date.now(),
+                                        VitrailTokens.droplet.timeout, target.name)
+        if (!request)
+            return
+        shell.launchKnown = DropletJS.addresses(Hyprland.toplevels.values)
+        shell.launchScreen = target
+        shell.launchRequest = request
+        Hyprland.refreshToplevels()
+        launchFade.stop()
+        launchPoll.restart()
+    }
+
+    // While the drop holds, look for the window that appeared since it began;
+    // when one does (or the timeout passes) fade it from there.
+    function trackLaunch() {
+        var request = shell.launchRequest
+        if (!request) {
+            launchPoll.stop()
+            return
+        }
+        if (request.phase === "fading")
+            return
+        var now = Date.now()
+        var found = DropletJS.arrival(request, Hyprland.toplevels.values, shell.launchKnown,
+                                      shell.launchScreen)
+        if (found) {
+            shell.launchRequest = DropletJS.arrive(request,
+                                                   DropletJS.local(found.rect, shell.launchScreen), now)
+        } else if (DropletJS.expired(request, now)) {
+            shell.launchRequest = DropletJS.timeout(request, now)
+        } else {
+            return
+        }
+        launchPoll.stop()
+        launchFade.restart()
+    }
+
+    function endLaunch() {
+        launchPoll.stop()
+        launchFade.stop()
+        shell.launchRequest = null
+        shell.launchScreen = null
+        shell.launchKnown = []
     }
 
     // An open app: focus the window the dock grouped under it.
@@ -2938,7 +3030,7 @@ ShellRoot {
                     iconProvider: function (name) {
                         return String(name || "") === "" ? "" : Quickshell.iconPath(String(name).toLowerCase(), true)
                     }
-                    onLaunchRequested: function (app) { shell.launchDockApp(app) }
+                    onLaunchRequested: function (app, rect) { shell.launchDockApp(app, rect, monitor.modelData) }
                     onFocusRequested: function (app) { shell.focusDockApp(app) }
                     onReordered: function (text) { shell.setDockPinned(text) }
                     onHovered: function (item, on) { tooltips.hover(item, on) }
@@ -3603,6 +3695,7 @@ ShellRoot {
                         screenWidth: monitor.modelData.width
                         screenHeight: monitor.modelData.height
                         onDone: shell.closePopup()
+                        onLaunched: function (item, rect) { shell.launchFromLauncher(item, rect, monitor.modelData) }
                         onOpenPopup: function (kind) { shell.openPopup(kind, null, monitor.modelData) }
                         onOpenSession: shell.toggleSession(monitor.modelData)
                         onDockPinRequested: function (item) { shell.toggleDockPin(item) }
@@ -3878,10 +3971,18 @@ ShellRoot {
                         store: launcherStore
                         initialMode: shell.launcherMode
                         onDismissed: shell.launcherOpen = false
+                        onLaunched: function (item, rect) { shell.launchFromLauncher(item, rect, monitor.modelData) }
                         onOpenPopup: function (kind) { shell.openPopup(kind, null, monitor.modelData) }
                         onOpenSession: shell.toggleSession(monitor.modelData)
                         onDockPinRequested: function (item) { shell.toggleDockPin(item) }
                     }
+                }
+
+                // The launch droplet: above the launcher while it closes, with
+                // an empty mask and no keyboard, so nothing waits on it.
+                LaunchDropletLayer {
+                    screen: monitor.modelData
+                    request: shell.launchRequest
                 }
 
                 // Session menu: a dimmed full-screen layer that takes the keyboard.

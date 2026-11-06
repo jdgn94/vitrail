@@ -22,6 +22,7 @@ QtObject {
     property alias fontBase: appearanceFile.fontBase
     property alias uiIconFill: appearanceFile.uiIconFill
     property alias cursorThemeSplit: appearanceFile.cursorThemeSplit
+    property alias launchAnimation: appearanceFile.launchAnimation
     property alias barEdge: barFile.barEdge
     property alias barScreens: barFile.barScreens
     property alias barStyle: barFile.barStyle
@@ -164,6 +165,8 @@ QtObject {
         property int fontBase: 13
         property string uiIconFill: "outlined"
         property bool cursorThemeSplit: false
+        // A drop grows from the dock icon / launcher row while an app starts.
+        property bool launchAnimation: true
     }
 
     property Settings barSettings: Settings {

@@ -25,6 +25,18 @@ Item {
         root.next()
     }
 
+    // The launcher starts clean: drop whatever the previous opening asked for
+    // so its answer cannot arrive after the reset.
+    function cancel() {
+        root.waiting = null
+        patience.stop()
+        if (proc.running)
+            proc.running = false
+        root.settled = true
+        root.tag = ""
+        root.output = ""
+    }
+
     function next() {
         if (!root.settled || root.waiting === null)
             return

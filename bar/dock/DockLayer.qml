@@ -45,7 +45,7 @@ PanelWindow {
     readonly property bool active: root.enabled && !root.hidden && dock.count > 0
     readonly property bool shown: dock.shown
 
-    signal launchRequested(var app)
+    signal launchRequested(var app, var rect)
     signal focusRequested(var app)
     signal reordered(string text)
     signal hovered(var item, bool on)
@@ -165,7 +165,13 @@ PanelWindow {
                 hideTimer.restart()
             }
         }
-        onLaunchRequested: function (app) { root.launchRequested(app) }
+        onLaunchRequested: function (app, rect) {
+            // The tile's scene rect is local to the dock's band; the drop
+            // lives on the full-screen layer, so add where the band sits.
+            root.launchRequested(app, rect ? Qt.rect(rect.x + dock.tooltipOriginX,
+                                                    rect.y + dock.tooltipOriginY,
+                                                    rect.width, rect.height) : null)
+        }
         onFocusRequested: function (app) { root.focusRequested(app) }
         onReordered: function (text) { root.reordered(text) }
         onHovered: function (item, on) { root.hovered(item, on) }

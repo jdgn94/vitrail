@@ -75,6 +75,23 @@ Item {
                             onSelected: page.prefs.appearance = key
                         }
                     }
+
+                    VitrailSettingRow {
+                        icon: "water_drop"
+                        label: page.t("appearance.launchAnimation")
+                        description: page.t("appearance.launchAnimation.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            objectName: "appearanceLaunchAnimation"
+
+                            checked: page.prefs.launchAnimation === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: page.prefs.launchAnimation = value
+                        }
+                    }
                 }
 
                 Section {

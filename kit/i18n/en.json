@@ -13,6 +13,8 @@
   "surface.glass": "Glass",
   "surface.opacity": "Opacity",
   "surface.help": "Solid only changes alpha. Glass adds blur and a light edge.",
+  "appearance.launchAnimation": "Animate app launches",
+  "appearance.launchAnimation.help": "A drop grows from the icon into the window's space while the app starts.",
   "windows.radius": "Corner radius",
   "language.label": "System language",
   "language.help": "Changes Vitrail and your next session.",

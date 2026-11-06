@@ -13,6 +13,8 @@
   "surface.glass": "Verre",
   "surface.opacity": "Opacité",
   "surface.help": "Solide ne change que l'alpha. Verre ajoute un flou et un liseré lumineux.",
+  "appearance.launchAnimation": "Animer les lancements",
+  "appearance.launchAnimation.help": "Une goutte grandit depuis l’icône vers l’espace de la fenêtre pendant le démarrage.",
   "windows.radius": "Rayon des coins",
   "language.label": "Langue du système",
   "language.help": "Change Vitrail et votre prochaine session.",

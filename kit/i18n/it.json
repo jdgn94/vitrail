@@ -13,6 +13,8 @@
   "surface.glass": "Vetro",
   "surface.opacity": "Opacità",
   "surface.help": "Solido cambia solo l'alfa. Vetro aggiunge sfocatura e un bordo luminoso.",
+  "appearance.launchAnimation": "Anima l'avvio delle app",
+  "appearance.launchAnimation.help": "Durante l'avvio, una goccia cresce dall'icona verso lo spazio della finestra.",
   "windows.radius": "Raggio degli angoli",
   "language.label": "Lingua del sistema",
   "language.help": "Cambia Vitrail e la prossima sessione.",
