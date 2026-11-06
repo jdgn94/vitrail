@@ -45,8 +45,10 @@ Item {
     readonly property bool hasMedia: (root.mediaPlayer !== null && root.mediaPlayer !== undefined)
                                      || root.mediaPlayers.length > 0
 
-    implicitWidth: 440
-    implicitHeight: body.implicitHeight
+    // One card size for every tab: the popup's implicit size is this card's,
+    // so it must never follow the tab on screen. A taller tab scrolls inside.
+    implicitWidth: VitrailTokens.dashboard.width
+    implicitHeight: VitrailTokens.dashboard.height
 
     function t(key) {
         var value = root.strings[key]
@@ -113,150 +115,163 @@ Item {
             onSelected: function (key) { root.showTab(key) }
         }
 
-        StackLayout {
-            id: pages
+        Flickable {
+            id: scroller
 
-            objectName: "dashboardPages"
+            objectName: "dashboardScroll"
             Layout.fillWidth: true
-            currentIndex: root.tabs.findIndex(function (tab) { return tab.key === root.currentTab })
-            // Only the tab on screen sizes the card. The layout's default is
-            // the tallest child, which padded the shorter tabs (the calendar,
-            // a media tab with nothing playing) with empty space.
-            readonly property var pageFor: [calendarPage, weatherPage, performancePage, focusPage, mediaPage]
-            readonly property var currentPage: pageFor[currentIndex] || null
-            Layout.preferredHeight: currentPage ? currentPage.implicitHeight : 0
+            Layout.fillHeight: true
+            contentWidth: width
+            contentHeight: pages.height
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
 
-            // --- calendar: the month, with today in the accent circle
-            Item {
-                id: calendarPage
-                objectName: "dashboardCalendar"
+            StackLayout {
+                id: pages
 
-                implicitHeight: calendarWidget.implicitHeight
+                objectName: "dashboardPages"
+                width: scroller.width
+                currentIndex: root.tabs.findIndex(function (tab) { return tab.key === root.currentTab })
+                // Only the tab on screen sets the scrollable height. The card
+                // keeps its fixed size, so a taller page scrolls rather than
+                // growing the popup; a shorter one leaves the rest empty
+                // instead of padding it to the tallest sibling.
+                readonly property var pageFor: [calendarPage, weatherPage, performancePage, focusPage, mediaPage]
+                readonly property var currentPage: pageFor[currentIndex] || null
+                height: currentPage ? currentPage.implicitHeight : 0
 
-                DashboardCalendar {
-                    id: calendarWidget
+                // --- calendar: the month, with today in the accent circle
+                Item {
+                    id: calendarPage
+                    objectName: "dashboardCalendar"
 
-                    anchors.fill: parent
-                    now: root.now
-                    shown: root.shown
-                    language: root.language
-                    size: "md"
-                    todayText: root.t("clock.today")
-                    onPageRequested: function (step) { root.page(step) }
-                    onTodayRequested: root.shown = new Date()
-                }
-            }
+                    implicitHeight: calendarWidget.implicitHeight
 
-            // --- weather: the place, now, then the next four days
-            Item {
-                id: weatherPage
-                objectName: "dashboardWeather"
+                    DashboardCalendar {
+                        id: calendarWidget
 
-                implicitHeight: weatherWidget.implicitHeight
-
-                DashboardWeather {
-                    id: weatherWidget
-
-                    anchors.fill: parent
-                    weather: root.weather
-                    strings: root.strings
-                    language: root.language
-                    size: "md"
-                }
-            }
-
-            // --- performance: CPU, memory, temperature, disk and network
-            Item {
-                id: performancePage
-                objectName: "dashboardPerformance"
-
-                implicitHeight: resourcesWidget.implicitHeight
-
-                DashboardResources {
-                    id: resourcesWidget
-
-                    anchors.fill: parent
-                    readings: root.resources
-                    strings: root.strings
-                    size: "md"
-                }
-            }
-
-            // --- focus: the pomodoro and the free timer
-            Item {
-                id: focusPage
-                objectName: "dashboardFocus"
-
-                implicitHeight: focusColumn.implicitHeight
-
-                ColumnLayout {
-                    id: focusColumn
-
-                    anchors.fill: parent
-                    spacing: VitrailTokens.gap("md")
-
-                    DashboardFocus {
-                        objectName: "focusPomodoro"
-                        Layout.fillWidth: true
-                        engine: root.timerEngine
-                        kind: "pomodoro"
-                        strings: root.strings
-                        now: root.now.getTime()
+                        anchors.fill: parent
+                        now: root.now
+                        shown: root.shown
+                        language: root.language
                         size: "md"
+                        todayText: root.t("clock.today")
+                        onPageRequested: function (step) { root.page(step) }
+                        onTodayRequested: root.shown = new Date()
                     }
+                }
 
-                    DashboardFocus {
-                        objectName: "focusTimer"
-                        Layout.fillWidth: true
-                        engine: root.timerEngine
-                        kind: "timer"
+                // --- weather: the place, now, then the next four days
+                Item {
+                    id: weatherPage
+                    objectName: "dashboardWeather"
+
+                    implicitHeight: weatherWidget.implicitHeight
+
+                    DashboardWeather {
+                        id: weatherWidget
+
+                        anchors.fill: parent
+                        weather: root.weather
                         strings: root.strings
-                        now: root.now.getTime()
+                        language: root.language
                         size: "md"
                     }
                 }
-            }
 
-            // --- media: the panel the caller supplies, or nothing playing
-            Item {
-                id: mediaPage
-                objectName: "dashboardMedia"
+                // --- performance: CPU, memory, temperature, disk and network
+                Item {
+                    id: performancePage
+                    objectName: "dashboardPerformance"
 
-                implicitHeight: root.hasMedia ? mediaLoader.implicitHeight : mediaEmpty.implicitHeight
+                    implicitHeight: resourcesWidget.implicitHeight
 
-                ColumnLayout {
-                    id: mediaEmpty
+                    DashboardResources {
+                        id: resourcesWidget
 
-                    anchors.fill: parent
-                    spacing: VitrailTokens.gap("sm")
-                    visible: !root.hasMedia
-
-                    Item { Layout.fillHeight: true }
-
-                    VitrailIcon {
-                        Layout.alignment: Qt.AlignHCenter
-                        icon: "music_note"
-                        size: "xl"
-                        tone: "muted"
+                        anchors.fill: parent
+                        readings: root.resources
+                        strings: root.strings
+                        size: "md"
                     }
-
-                    VitrailText {
-                        objectName: "dashboardMediaEmpty"
-                        Layout.alignment: Qt.AlignHCenter
-                        variant: "content"
-                        text: root.t("dashboard.media.empty")
-                    }
-
-                    Item { Layout.fillHeight: true }
                 }
 
-                Loader {
-                    id: mediaLoader
+                // --- focus: the pomodoro and the free timer
+                Item {
+                    id: focusPage
+                    objectName: "dashboardFocus"
 
-                    width: parent.width
-                    active: root.currentTab === "media" && root.hasMedia && root.mediaPanel !== null
-                    visible: root.hasMedia
-                    sourceComponent: root.mediaPanel
+                    implicitHeight: focusColumn.implicitHeight
+
+                    ColumnLayout {
+                        id: focusColumn
+
+                        anchors.fill: parent
+                        spacing: VitrailTokens.gap("md")
+
+                        DashboardFocus {
+                            objectName: "focusPomodoro"
+                            Layout.fillWidth: true
+                            engine: root.timerEngine
+                            kind: "pomodoro"
+                            strings: root.strings
+                            now: root.now.getTime()
+                            size: "md"
+                        }
+
+                        DashboardFocus {
+                            objectName: "focusTimer"
+                            Layout.fillWidth: true
+                            engine: root.timerEngine
+                            kind: "timer"
+                            strings: root.strings
+                            now: root.now.getTime()
+                            size: "md"
+                        }
+                    }
+                }
+
+                // --- media: the panel the caller supplies, or nothing playing
+                Item {
+                    id: mediaPage
+                    objectName: "dashboardMedia"
+
+                    implicitHeight: root.hasMedia ? mediaLoader.implicitHeight : mediaEmpty.implicitHeight
+
+                    ColumnLayout {
+                        id: mediaEmpty
+
+                        anchors.fill: parent
+                        spacing: VitrailTokens.gap("sm")
+                        visible: !root.hasMedia
+
+                        Item { Layout.fillHeight: true }
+
+                        VitrailIcon {
+                            Layout.alignment: Qt.AlignHCenter
+                            icon: "music_note"
+                            size: "xl"
+                            tone: "muted"
+                        }
+
+                        VitrailText {
+                            objectName: "dashboardMediaEmpty"
+                            Layout.alignment: Qt.AlignHCenter
+                            variant: "content"
+                            text: root.t("dashboard.media.empty")
+                        }
+
+                        Item { Layout.fillHeight: true }
+                    }
+
+                    Loader {
+                        id: mediaLoader
+
+                        width: parent.width
+                        active: root.currentTab === "media" && root.hasMedia && root.mediaPanel !== null
+                        visible: root.hasMedia
+                        sourceComponent: root.mediaPanel
+                    }
                 }
             }
         }

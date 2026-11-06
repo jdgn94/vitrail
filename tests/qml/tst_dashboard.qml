@@ -44,6 +44,15 @@ TestCase {
         }
     }
 
+    Component {
+        id: tallMediaStub
+
+        Rectangle {
+            implicitWidth: 300
+            implicitHeight: 900
+        }
+    }
+
     function initTestCase() {
         VitrailTokens.configure({
             surface: palette.surface,
@@ -284,9 +293,11 @@ TestCase {
         compare(findChild(box, "dashboardValue_temperature").text, "--")
     }
 
-    function test_the_card_sizes_to_the_tab_on_screen() {
+    function test_the_card_keeps_one_size_across_the_tabs() {
         var box = make()
         var pages = findChild(box, "dashboardPages")
+        var scroller = findChild(box, "dashboardScroll")
+        verify(scroller !== null)
         var keys = ["calendar", "weather", "performance", "focus", "media"]
         var names = {
             calendar: "dashboardCalendar",
@@ -295,26 +306,19 @@ TestCase {
             focus: "dashboardFocus",
             media: "dashboardMedia"
         }
-        var cardHeights = []
         for (var i = 0; i < keys.length; i++) {
             box.showTab(keys[i])
             // The layout recalculates on the next polish pass.
             wait(50)
             var page = findChild(box, names[keys[i]])
-            // Not the tallest child: the tab on screen decides.
+            // The page still decides what the scroller shows...
             compare(pages.height, page.implicitHeight)
-            cardHeights.push(box.implicitHeight)
+            compare(scroller.contentHeight, pages.height)
+            // ...but the card keeps the one token size on every tab, so the
+            // popup (whose implicit size is this card's) never resizes.
+            compare(box.implicitWidth, VitrailTokens.dashboard.width)
+            compare(box.implicitHeight, VitrailTokens.dashboard.height)
         }
-        // A shorter tab makes a shorter card, and going back restores it.
-        var shortest = Math.min.apply(Math, cardHeights)
-        var tallest = Math.max.apply(Math, cardHeights)
-        verify(shortest < tallest, "every tab produced the same card height")
-        box.showTab(keys[cardHeights.indexOf(shortest)])
-        wait(50)
-        compare(box.implicitHeight, shortest)
-        box.showTab(keys[cardHeights.indexOf(tallest)])
-        wait(50)
-        compare(box.implicitHeight, tallest)
     }
 
     function test_the_media_tab_follows_what_is_playing() {
@@ -330,7 +334,25 @@ TestCase {
         wait(50)
         compare(pages.height, media.implicitHeight)
         compare(media.implicitHeight, 240)
-        verify(box.implicitHeight !== emptyHeight, "the card kept the empty-media height")
+        // The card keeps its fixed size; the taller page scrolls inside it.
+        compare(box.implicitHeight, emptyHeight)
+        compare(box.implicitHeight, VitrailTokens.dashboard.height)
+    }
+
+    function test_a_tall_tab_scrolls_inside_the_fixed_card() {
+        var box = make()
+        var pages = findChild(box, "dashboardPages")
+        var scroller = findChild(box, "dashboardScroll")
+        box.mediaPlayer = ({})
+        box.mediaPanel = tallMediaStub
+        box.showTab("media")
+        wait(50)
+        compare(pages.height, 900)
+        // The card does not grow: the content is what scrolls.
+        compare(box.implicitHeight, VitrailTokens.dashboard.height)
+        verify(scroller.contentHeight > scroller.height, "the tall page does not scroll")
+        scroller.contentY = 120
+        compare(scroller.contentY, 120)
     }
 
     function test_the_percentage_format() {

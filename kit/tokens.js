@@ -380,6 +380,13 @@ var tray = {
     dot: 6
 }
 
+// The dashboard popup: one card size every tab shares, so switching a tab
+// never moves the popup. A tab taller than this scrolls inside the card.
+var dashboard = {
+    width: 440,
+    height: 440
+}
+
 // The audio visualiser (bar/shell.qml background layer): `bars` is cava's
 // count, `coverage` the bar's share of its cell (the rest is the gap), `floor`
 // the smallest bar as a fraction of the height, `width` / `maxWidth` the strip

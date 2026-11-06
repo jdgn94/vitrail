@@ -88,6 +88,14 @@ TestCase {
         compare(glyph.font.variableAxes["FILL"], 0)
     }
 
+    function test_the_dashboard_has_one_fixed_size() {
+        verify(VitrailTokens.dashboard.width > 0)
+        verify(VitrailTokens.dashboard.height > 0)
+        // At least the current card's width: a size the popup can trust.
+        verify(VitrailTokens.dashboard.width >= 440)
+        verify(VitrailTokens.dashboard.height >= 440)
+    }
+
     function test_the_cursor_range_is_the_token_range() {
         compare(VitrailTokens.ranges.cursor.value, 24)
         compare(VitrailTokens.ranges.cursor.min, 16)
