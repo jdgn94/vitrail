@@ -148,19 +148,22 @@ Window {
         opacity: prefs.surfaceOpacity,
         fontBase: prefs.fontBase,
         fontFamily: app.fontSystemInstalled ? prefs.fontSystem : VitrailTokens.font.family,
-        iconFamily: VitrailTokens.font.iconFamilyOf(prefs.uiIcons),
         frame: prefs.frameSize,
         bar: prefs.barSize,
         panel: prefs.panelSize
     })
 
-    // The Material family is a scalar of its own too: the composite
-    // `tokenValues` object is re-read on every change, but this direct
-    // dependency makes the family change reach every Text even if a page or a
-    // loader keeps an older token object.
-    readonly property string shellIconFamily: VitrailTokens.font.iconFamilyOf(prefs.uiIcons)
+    // The icon family is its own token, bound straight to the preference: a
+    // declarative Binding cannot be missed by a page, a loader or a `var`
+    // token snapshot, so the window (header, tabs, buttons) follows Rounded /
+    // Sharp / Outlined the moment the choice changes.
+    Binding {
+        target: VitrailTokens
+        property: "iconVariant"
+        value: VitrailTokens.font.iconVariantOf(prefs.uiIcons)
+    }
+
     onTokenValuesChanged: app.syncTokens()
-    onShellIconFamilyChanged: app.syncTokens()
     onDarkChanged: app.syncTokens()
     onPaletteDataChanged: app.syncTokens()
 
@@ -511,7 +514,6 @@ Window {
                                 text: app.currentCategory.glyph
                                 color: palette.primary
                                 font.family: VitrailTokens.iconFamily
-                                font.variableAxes: ({ "FILL": 1 })
                                 font.pixelSize: 26
                             }
 

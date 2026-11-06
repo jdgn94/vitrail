@@ -129,7 +129,6 @@ Item {
         VitrailText {
             visible: row.pinned
             variant: "icon"
-            filled: true
             text: "push_pin"
             color: VitrailTokens.color("primary")
         }

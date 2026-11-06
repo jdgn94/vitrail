@@ -4,7 +4,8 @@ import QtQuick.Layouts
 // Horizontal subcategory tabs. One underline marks the current tab and
 // slides to the new one when it changes. A tab is { key, label, icon }: `icon`
 // is an optional Material Symbol before the label, drawn in the label's colour
-// and opacity and filled when the tab is current; the underline spans both.
+// and opacity (accent when the tab is current, never filled); the underline
+// spans both.
 //
 // Keyboard: one stop for the group; Left / Right move the current tab.
 Item {
@@ -80,7 +81,6 @@ Item {
                         text: tab.modelData.icon || ""
                         color: tab.chosen ? root.accent : root.foreground
                         font.family: VitrailTokens.iconFamily
-                        font.variableAxes: ({ "FILL": tab.chosen ? 1 : 0 })
                         font.pixelSize: 18
 
                         Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }

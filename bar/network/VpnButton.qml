@@ -5,8 +5,9 @@ import "../kit/base"
 import "format.js" as Format
 import "vpn.js" as Vpn
 
-// The VPN button: a closed shield when a tunnel is up, an open one when not.
-// The tunnels come from `vitrail-vpn list --json`.
+// The VPN button: a shield with a lock, the accent colour while a tunnel is
+// up and the muted one when not. The tunnels come from `vitrail-vpn list
+// --json`.
 Item {
     id: root
 
@@ -54,8 +55,7 @@ Item {
 
         anchors.centerIn: parent
         variant: "icon"
-        text: root.activeVpn ? "shield_lock" : "shield"
-        filled: root.activeVpn !== null
+        text: "shield_lock"
         color: root.activeVpn ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
         opacity: root.activeVpn ? 1 : 0.45
     }

@@ -498,7 +498,6 @@ Item {
                                 anchors.centerIn: parent
                                 visible: groupIcon.status !== Image.Ready
                                 variant: "icon"
-                                filled: true
                                 text: "info"
                             }
                         }

@@ -5,9 +5,12 @@
 - Text: `tokens.font.family` = Roboto (`VitrailTokens.fontFamily`). Every raw
   `Text`/`TextInput` in kit, bar and settings sets it; `VitrailText` does it
   from the variant.
-- Icons: Material Symbols Rounded (`VitrailTokens.iconFamily`), written as
-  ligature names (`text: "wifi"`), never code points. `VitrailText`
-  `variant: "icon"` + `filled: true` sets the FILL axis (active states).
+- Icons: Material Symbols, the family the user picks in **Fonts & icons → Icons**
+  (`VitrailTokens.iconFamily`, derived from `VitrailTokens.iconVariant`: Rounded,
+  Sharp or Outlined). Written as ligature names (`text: "wifi"`), never code
+  points. Icons are **never filled**: a selected / active icon is drawn in the
+  accent colour and its shape never changes with the state (no `FILL` axis, no
+  `filled` property).
 - New icon name? Check it renders as one glyph: `TextMetrics.advanceWidth`
   under ~1.25 × pixelSize (see SKILL.md verification).
 

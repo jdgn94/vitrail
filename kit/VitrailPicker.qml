@@ -250,9 +250,7 @@ FocusScope {
             anchors.fill: parent
             visible: preview.count === 0 && !!preview.option && !!preview.option.glyph
             variant: "icon"
-            // The chosen cell only changes colour; a filled glyph would read
-            // as a different icon.
-            filled: false
+            // The chosen cell only changes colour; icons are never filled.
             font.pixelSize: Math.min(preview.size, VitrailTokens.size("title"))
             text: visible ? preview.option.glyph : ""
             horizontalAlignment: Text.AlignHCenter

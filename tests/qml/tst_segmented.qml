@@ -88,13 +88,32 @@ TestCase {
         verify(!textOf(iconOnly, false).visible)
     }
 
-    function test_chosen_icon_is_filled() {
+    function sameColor(a, b) {
+        return a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a
+    }
+
+    function test_chosen_icon_uses_the_pill_ink_only() {
         var box = make()
         var icon = textOf(box.currentItem, true)
-        compare(icon.font.variableAxes["FILL"], 1)
+        tryVerify(function () { return sameColor(icon.color, box.onAccent) })
+        // No FILL axis anywhere: the chosen state is the pill and its ink.
+        verify(icon.font.variableAxes["FILL"] === undefined)
         box.current = "c"
-        compare(textOf(box.currentItem, true).font.variableAxes["FILL"], 1)
-        compare(icon.font.variableAxes["FILL"], 0)
+        tryVerify(function () {
+            var next = textOf(box.currentItem, true)
+            return next !== null && sameColor(next.color, box.onAccent)
+        })
+        // The old icon settles on the normal ink.
+        tryVerify(function () { return sameColor(icon.color, box.foreground) })
+        verify(icon.font.variableAxes["FILL"] === undefined)
+    }
+
+    function test_the_icon_family_follows_the_token() {
+        var box = make()
+        VitrailTokens.iconVariant = "outlined"
+        compare(textOf(box.currentItem, true).font.family, "Material Symbols Outlined")
+        VitrailTokens.iconVariant = "rounded"
+        compare(textOf(box.currentItem, true).font.family, VitrailTokens.iconFamily)
     }
 
     function test_click_selects() {

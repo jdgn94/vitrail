@@ -1,4 +1,5 @@
 import QtQuick
+import QtQml
 import QtTest
 import "../../kit"
 import "../../kit/base"
@@ -7,30 +8,33 @@ import "../../kit/base"
 // preferences, and an unknown icon variant falls back instead of inventing a
 // family name the font stack does not have.
 TestCase {
+    id: testCase
+
     name: "Tokens"
 
-    // The path main.qml and the bar use: a preference changes, the token
-    // values change, and the Text items follow without a restart.
+    // The path main.qml and the bar use: the stored key is bound to the token,
+    // the token derives the family, and every Text follows without a restart.
     QtObject {
         id: source
 
         property string uiIcons: "rounded"
     }
 
-    QtObject {
-        id: live
-
-        readonly property var tokenValues: ({
-            iconFamily: VitrailTokens.font.iconFamilyOf(source.uiIcons)
-        })
-        onTokenValuesChanged: VitrailTokens.configure({}, true, "glass", live.tokenValues)
+    Binding {
+        target: VitrailTokens
+        property: "iconVariant"
+        value: VitrailTokens.font.iconVariantOf(source.uiIcons)
     }
 
     VitrailText {
         id: glyph
 
         variant: "icon"
-        text: "interests"
+        text: "settings"
+    }
+
+    function init() {
+        source.uiIcons = "rounded"
     }
 
     function test_every_icon_variant_names_an_installed_family() {
@@ -40,32 +44,41 @@ TestCase {
     }
 
     function test_an_unknown_icon_variant_falls_back_to_rounded() {
+        compare(VitrailTokens.font.iconVariantOf("nope"), "rounded")
+        compare(VitrailTokens.font.iconVariantOf("sharp"), "sharp")
         compare(VitrailTokens.font.iconFamilyOf("nope"), "Material Symbols Rounded")
-        compare(VitrailTokens.font.iconFamilyOf("sharp"), "Material Symbols Sharp")
+        compare(VitrailTokens.font.iconFamilyOf("outlined"), "Material Symbols Outlined")
         // Inherited object members are not variants.
-        compare(VitrailTokens.font.iconFamilyOf("constructor"), "Material Symbols Rounded")
-        compare(VitrailTokens.font.iconFamilyOf("__proto__"), "Material Symbols Rounded")
-        compare(VitrailTokens.font.iconFamilyOf("toString"), "Material Symbols Rounded")
+        compare(VitrailTokens.font.iconVariantOf("constructor"), "rounded")
+        compare(VitrailTokens.font.iconVariantOf("__proto__"), "rounded")
+        compare(VitrailTokens.font.iconVariantOf("toString"), "rounded")
     }
 
-    function test_configure_carries_the_font_and_icon_family() {
-        VitrailTokens.configure({}, true, "glass",
-                                { fontFamily: "Inter", iconFamily: "Material Symbols Sharp" })
-        compare(VitrailTokens.fontFamily, "Inter")
+    function test_the_family_is_derived_from_the_variant() {
+        VitrailTokens.iconVariant = "sharp"
         compare(VitrailTokens.iconFamily, "Material Symbols Sharp")
-        VitrailTokens.configure({}, true, "glass",
-                                { fontFamily: "Roboto", iconFamily: "Material Symbols Rounded" })
-    }
-
-    function test_changing_the_variant_reaches_the_ui() {
-        source.uiIcons = "rounded"
+        VitrailTokens.iconVariant = "outlined"
+        compare(VitrailTokens.iconFamily, "Material Symbols Outlined")
+        VitrailTokens.iconVariant = "rounded"
         compare(VitrailTokens.iconFamily, "Material Symbols Rounded")
+    }
+
+    function test_changing_the_preference_reaches_the_drawn_face() {
+        source.uiIcons = "rounded"
         compare(glyph.font.family, "Material Symbols Rounded")
+        // `fontInfo` is the face Qt resolved and shapes with, not the request.
+        compare(glyph.fontInfo.family, "Material Symbols Rounded")
         source.uiIcons = "sharp"
-        compare(VitrailTokens.iconFamily, "Material Symbols Sharp")
         compare(glyph.font.family, "Material Symbols Sharp")
-        // The glyph stays outlined: the variant changes the shape, not FILL.
-        compare(glyph.font.variableAxes["FILL"], 0)
+        compare(glyph.fontInfo.family, "Material Symbols Sharp")
+        source.uiIcons = "outlined"
+        compare(glyph.fontInfo.family, "Material Symbols Outlined")
+    }
+
+    function test_icons_are_never_filled() {
+        source.uiIcons = "sharp"
+        // The glyph stays outlined: the variant changes the shape, never FILL.
+        verify(glyph.font.variableAxes["FILL"] === undefined)
     }
 
     function test_the_cursor_range_is_the_token_range() {

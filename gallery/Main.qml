@@ -569,7 +569,7 @@ Window {
 
         VitrailText {
             variant: "title"
-            text: "VitrailIcon · size × tone × filled"
+            text: "VitrailIcon · size × tone"
         }
 
         RowLayout {
@@ -605,10 +605,10 @@ Window {
 
             Repeater {
                 model: [
-                    { tone: "foreground", filled: false },
-                    { tone: "primary", filled: true },
-                    { tone: "muted", filled: false },
-                    { tone: "error", filled: true }
+                    { tone: "foreground" },
+                    { tone: "primary" },
+                    { tone: "muted" },
+                    { tone: "error" }
                 ]
 
                 delegate: VitrailIcon {
@@ -619,7 +619,6 @@ Window {
                     icon: "favorite"
                     size: "lg"
                     tone: iconTone.modelData.tone
-                    filled: iconTone.modelData.filled
                 }
             }
         }

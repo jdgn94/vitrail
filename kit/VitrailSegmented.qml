@@ -4,7 +4,7 @@ import QtQuick.Layouts
 // Single-choice segmented control. One pill marks the choice and slides to
 // the new one when it changes. An option is { key, label, icon }: `icon` is an
 // optional Material Symbol before the label (alone when the label is empty),
-// drawn in the label's colour and filled when the option is chosen.
+// drawn in the label's colour — the accent ink on the pill, never filled.
 //
 // When the options do not fit the width the control was given, the row scrolls
 // sideways under the pill (wheel, drag or touch): the pill keeps its size and
@@ -136,7 +136,6 @@ Rectangle {
                             text: segment.modelData.icon || ""
                             color: segment.ink
                             font.family: VitrailTokens.iconFamily
-                            font.variableAxes: ({ "FILL": segment.chosen ? 1 : 0 })
                             font.pixelSize: 18
 
                             Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }

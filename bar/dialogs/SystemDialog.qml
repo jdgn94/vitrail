@@ -79,7 +79,6 @@ Item {
             VitrailText {
                 anchors.centerIn: parent
                 variant: "icon"
-                filled: true
                 font.pixelSize: VitrailTokens.size("display")
                 text: root.icon
                 color: VitrailTokens.color(root.error ? "error" : "primary")

@@ -166,7 +166,6 @@ Item {
                 anchors.centerIn: parent
                 visible: image.status !== Image.Ready
                 variant: "icon"
-                filled: true
                 text: "info"
             }
         }
@@ -184,7 +183,6 @@ Item {
                 VitrailText {
                     visible: root.isUrgent
                     variant: "icon"
-                    filled: true
                     color: VitrailTokens.color("error")
                     text: "priority_high"
                 }

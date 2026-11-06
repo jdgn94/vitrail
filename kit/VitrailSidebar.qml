@@ -128,7 +128,6 @@ Item {
                             text: row.modelData.glyph
                             color: row.active ? root.accent : root.foreground
                             font.family: VitrailTokens.iconFamily
-                            font.variableAxes: ({ "FILL": row.active ? 1 : 0 })
                             font.pixelSize: 22
 
                             Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }

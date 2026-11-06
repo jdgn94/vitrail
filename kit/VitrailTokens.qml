@@ -3,7 +3,9 @@ import QtQuick
 import "tokens.js" as Tokens
 
 // Resolves design tokens for the active theme and the user's scalars.
-// main.qml calls configure() whenever the palette or a preference changes.
+// main.qml calls configure() whenever the palette or a preference changes; the
+// icon variant is bound to its preference instead of being configured, so the
+// family can never be left at a stale value.
 QtObject {
     id: root
 
@@ -18,7 +20,12 @@ QtObject {
     property real opacity: Tokens.ranges.opacity.value
     property real fontBase: Tokens.font.base
     property string fontFamily: Tokens.font.family
-    property string iconFamily: Tokens.font.icons
+    // The Material Symbols variant the shell draws its ligatures from. The
+    // family is derived from it, never assigned: `main.qml` and the bar keep
+    // this key bound to the preference, so a change reaches every Text at once
+    // (see `iconFamily` below).
+    property string iconVariant: "rounded"
+    readonly property string iconFamily: Tokens.font.iconFamilyOf(iconVariant)
     property real frame: Tokens.ranges.frame.value
     property real bar: Tokens.ranges.bar.value
     property real panel: Tokens.ranges.panel.value
@@ -53,8 +60,6 @@ QtObject {
             root.fontBase = source.fontBase
         if (source.fontFamily !== undefined)
             root.fontFamily = source.fontFamily
-        if (source.iconFamily !== undefined)
-            root.iconFamily = source.iconFamily
         if (source.frame !== undefined)
             root.frame = source.frame
         if (source.bar !== undefined)

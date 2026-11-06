@@ -62,14 +62,19 @@ var font = {
     }
 }
 
-// The family for a stored variant key; an unknown key keeps the default so a
-// stale preference never asks for a font that would draw plain text.
-font.iconFamilyOf = function (key) {
-    // Own keys only: "constructor" and "__proto__" exist on every object and
-    // are not variants.
+// The variant key a stored preference names; an unknown key keeps the default
+// so a stale preference never asks for a family that would draw plain text.
+// Own keys only: "constructor" and "__proto__" exist on every object and are
+// not variants.
+font.iconVariantOf = function (key) {
     if (Object.prototype.hasOwnProperty.call(font.iconVariants, key))
-        return font.iconVariants[key]
-    return font.icons
+        return key
+    return "rounded"
+}
+
+// The family for a stored variant key.
+font.iconFamilyOf = function (key) {
+    return font.iconVariants[font.iconVariantOf(key)]
 }
 
 // Motion travels with the variant, not with the component.

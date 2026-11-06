@@ -80,13 +80,32 @@ TestCase {
         compare(second.implicitWidth, textOf(second, false).implicitWidth)
     }
 
-    function test_icon_is_filled_only_when_current() {
+    function sameColor(a, b) {
+        return a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a
+    }
+
+    function test_current_icon_uses_the_accent_colour_only() {
         var box = make()
         var icon = textOf(box.currentItem, true)
-        compare(icon.font.variableAxes["FILL"], 1)
+        tryVerify(function () { return sameColor(icon.color, box.accent) })
+        // No FILL axis anywhere: the active state is the colour.
+        verify(icon.font.variableAxes["FILL"] === undefined)
         box.current = "c"
-        compare(textOf(box.currentItem, true).font.variableAxes["FILL"], 1)
-        compare(icon.font.variableAxes["FILL"], 0)
+        tryVerify(function () {
+            var next = textOf(box.currentItem, true)
+            return next !== null && sameColor(next.color, box.accent)
+        })
+        // The old icon fades back to the normal ink.
+        tryVerify(function () { return sameColor(icon.color, box.foreground) })
+        verify(icon.font.variableAxes["FILL"] === undefined)
+    }
+
+    function test_the_icon_family_follows_the_token() {
+        var box = make()
+        VitrailTokens.iconVariant = "sharp"
+        compare(textOf(box.currentItem, true).font.family, "Material Symbols Sharp")
+        VitrailTokens.iconVariant = "rounded"
+        compare(textOf(box.currentItem, true).font.family, VitrailTokens.iconFamily)
     }
 
     function test_keys_move_the_current_tab() {

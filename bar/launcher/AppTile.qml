@@ -78,7 +78,6 @@ Item {
         anchors.left: art.right
         anchors.leftMargin: -VitrailTokens.gap("sm")
         variant: "icon"
-        filled: true
         text: "push_pin"
         color: VitrailTokens.color("primary")
     }

@@ -192,7 +192,8 @@ TestCase {
         tryCompare(picker, "expanded", true)
         var glyph = findText(picker, "block")
         verify(glyph !== null)
-        compare(glyph.font.variableAxes["FILL"], 0)
+        // Icons are outlined everywhere: no FILL axis is set at all.
+        verify(glyph.font.variableAxes["FILL"] === undefined)
     }
 
     function test_the_large_trigger_is_a_card_with_the_name() {

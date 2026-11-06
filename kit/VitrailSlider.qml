@@ -289,7 +289,6 @@ ColumnLayout {
                     text: root.icon
                     color: onFill ? root.onAccent : root.bandColor(slider.visualPosition)
                     font.family: VitrailTokens.iconFamily
-                    font.variableAxes: ({ "FILL": 1 })
                     font.pixelSize: slider.iconSize
                 }
 
@@ -303,7 +302,6 @@ ColumnLayout {
                     text: root.endIcon
                     color: onFill ? root.onAccent : root.bandColor(1)
                     font.family: VitrailTokens.iconFamily
-                    font.variableAxes: ({ "FILL": 1 })
                     font.pixelSize: slider.iconSize
                 }
             }

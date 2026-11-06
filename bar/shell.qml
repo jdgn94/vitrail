@@ -999,14 +999,18 @@ ShellRoot {
         }
         if (shell.prefs.fontSystem)
             values.fontFamily = shell.prefs.fontSystem
-        values.iconFamily = VitrailTokens.font.iconFamilyOf(shell.prefs.uiIcons)
         return values
     }
 
-    // The Material family follows `uiIcons` directly as well, so the bar
-    // redraws its ligatures the moment the settings window writes fonts.ini.
-    readonly property string shellIconFamily: VitrailTokens.font.iconFamilyOf(shell.prefs.uiIcons)
-    onShellIconFamilyChanged: shell.syncTokens()
+    // The icon family follows `uiIcons` through a binding of its own, so the
+    // bar redraws its ligatures the moment the settings window writes
+    // fonts.ini: no handler and no token snapshot stands in the way.
+    Binding {
+        target: VitrailTokens
+        property: "iconVariant"
+        value: VitrailTokens.font.iconVariantOf(shell.prefs.uiIcons)
+    }
+
     onTokenValuesChanged: shell.syncTokens()
     onDarkChanged: {
         shell.syncTokens()
