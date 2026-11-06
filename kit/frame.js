@@ -454,6 +454,97 @@ function neck(width, height, edge, island, card, bond, radius) {
     return { path: path, sides: [upper, lower], waist: 2 * waist, width: 2 * half, length: to - from }
 }
 
+// The launch drop is one winding-filled outline: a circle at its birth point,
+// a cubic neck along the centres (including diagonals), and a rounded mass
+// whose straight sides bow with surface tension. The subpaths overlap inside
+// the same fill, so there is no translucent seam and no axis-overlap rule.
+function goo(origin, mass, bond, radius, swell) {
+    var o = origin || ({ x: 0, y: 0, width: 0, height: 0 })
+    var m = mass || ({ x: 0, y: 0, width: 0, height: 0 })
+    var k = 0.552284749831
+    function number(value, fallback) {
+        var parsed = Number(value)
+        return isFinite(parsed) ? parsed : fallback
+    }
+    function n(value) { return String(Math.round(value * 100) / 100) }
+    function p(x, y) { return n(x) + " " + n(y) }
+
+    function circle(box) {
+        if (!(box.width > 0) || !(box.height > 0))
+            return ""
+        var rx = box.width / 2, ry = box.height / 2
+        var cx = box.x + rx, cy = box.y + ry
+        return "M" + p(cx, cy - ry)
+               + " C" + p(cx + k * rx, cy - ry) + " " + p(cx + rx, cy - k * ry) + " " + p(cx + rx, cy)
+               + " C" + p(cx + rx, cy + k * ry) + " " + p(cx + k * rx, cy + ry) + " " + p(cx, cy + ry)
+               + " C" + p(cx - k * rx, cy + ry) + " " + p(cx - rx, cy + k * ry) + " " + p(cx - rx, cy)
+               + " C" + p(cx - rx, cy - k * ry) + " " + p(cx - k * rx, cy - ry) + " " + p(cx, cy - ry) + " Z"
+    }
+
+    function blob(box) {
+        if (!(box.width > 0) || !(box.height > 0))
+            return ""
+        var x = box.x, y = box.y, w = box.width, h = box.height
+        var r = Math.max(0, Math.min(number(radius, 0), w / 2, h / 2))
+        var bow = Math.min(w, h) * 0.08 * Math.max(0, number(swell, 1) - 1)
+        var top = w - 2 * r, side = h - 2 * r
+        return "M" + p(x + r, y)
+               + " C" + p(x + r + top / 3, y - bow) + " " + p(x + w - r - top / 3, y - bow) + " " + p(x + w - r, y)
+               + " C" + p(x + w - r + k * r, y) + " " + p(x + w, y + r - k * r) + " " + p(x + w, y + r)
+               + " C" + p(x + w + bow, y + r + side / 3) + " " + p(x + w + bow, y + h - r - side / 3) + " " + p(x + w, y + h - r)
+               + " C" + p(x + w, y + h - r + k * r) + " " + p(x + w - r + k * r, y + h) + " " + p(x + w - r, y + h)
+               + " C" + p(x + w - r - top / 3, y + h + bow) + " " + p(x + r + top / 3, y + h + bow) + " " + p(x + r, y + h)
+               + " C" + p(x + r - k * r, y + h) + " " + p(x, y + h - r + k * r) + " " + p(x, y + h - r)
+               + " C" + p(x - bow, y + h - r - side / 3) + " " + p(x - bow, y + r + side / 3) + " " + p(x, y + r)
+               + " C" + p(x, y + r - k * r) + " " + p(x + r - k * r, y) + " " + p(x + r, y) + " Z"
+    }
+
+    function bridge() {
+        var strength = clamp(number(bond, 0), 0, 1)
+        var ox = o.x + o.width / 2, oy = o.y + o.height / 2
+        var mx = m.x + m.width / 2, my = m.y + m.height / 2
+        var dx = mx - ox, dy = my - oy
+        var distance = Math.sqrt(dx * dx + dy * dy)
+        if (strength <= 0.01 || distance < 0.5 || !(o.width > 0) || !(o.height > 0)
+                || !(m.width > 0) || !(m.height > 0))
+            return null
+        var ux = dx / distance, uy = dy / distance
+        var nx = uy, ny = -ux
+        var r0 = Math.min(o.width, o.height) / 2
+        var tx = Math.abs(ux) > 0.0001 ? (m.width / 2) / Math.abs(ux) : Infinity
+        var ty = Math.abs(uy) > 0.0001 ? (m.height / 2) / Math.abs(uy) : Infinity
+        var edge = Math.min(tx, ty)
+        var startAt = r0 * 0.45
+        var endAt = Math.max(0, edge - Math.min(number(radius, 0), edge) * 0.6)
+        var length = distance - startAt - endAt
+        if (length < 0.5)
+            return null
+        var sx = ox + ux * startAt, sy = oy + uy * startAt
+        var ex = mx - ux * endAt, ey = my - uy * endAt
+        var from = Math.max(0.5, r0 * (0.35 + 0.45 * strength))
+        var to = Math.max(from * 0.5, Math.min(number(radius, 0), Math.min(m.width, m.height) * 0.25)
+                                    * (0.5 + 0.5 * strength))
+        var waist = Math.min(from, to) * strength * 0.55
+        var c1 = length * 0.38, c2 = length * 0.62
+        var path = "M" + p(sx + nx * from, sy + ny * from)
+                   + " C" + p(sx + ux * c1 + nx * waist, sy + uy * c1 + ny * waist)
+                   + " " + p(sx + ux * c2 + nx * waist, sy + uy * c2 + ny * waist)
+                   + " " + p(ex + nx * to, ey + ny * to)
+                   + " L" + p(ex - nx * to, ey - ny * to)
+                   + " C" + p(sx + ux * c2 - nx * waist, sy + uy * c2 - ny * waist)
+                   + " " + p(sx + ux * c1 - nx * waist, sy + uy * c1 - ny * waist)
+                   + " " + p(sx - nx * from, sy - ny * from) + " Z"
+        return { path: path, length: length, waist: 2 * waist,
+                 angle: Math.atan2(dy, dx) }
+    }
+
+    var originPath = circle(o)
+    var massPath = blob(m)
+    var neck = bridge()
+    return { originPath: originPath, massPath: massPath, neck: neck,
+             path: massPath + (neck ? " " + originPath + " " + neck.path : "") }
+}
+
 // The rect nearest to a screen point: the one under it, else the closest.
 function nearestRect(rects, x, y) {
     var best = null, far = Infinity

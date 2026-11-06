@@ -583,4 +583,29 @@ TestCase {
         compare(Frame.tooltipAt("top", Qt.rect(500, 0, 40, 36), 1200, 30, 36, 8, 1000, 800).x, 8)
         compare(Frame.tooltipAt("left", Qt.rect(0, 300, 36, 40), 100, 900, 36, 8, 1000, 800).y, 8)
     }
+
+    function test_goo_bridges_diagonal_rects_without_axis_overlap() {
+        var origin = Qt.rect(20, 300, 40, 40)
+        var mass = Qt.rect(260, 60, 200, 150)
+        var goo = Frame.goo(origin, mass, 1, 14, 1.6)
+        verify(goo.neck !== null)
+        verify(goo.neck.length > 0)
+        verify(goo.neck.waist > 0)
+        verify(goo.neck.path.indexOf("C") >= 0)
+        verify(goo.path.indexOf(goo.originPath) >= 0)
+        verify(goo.path.indexOf(goo.neck.path) >= 0)
+        verify(goo.path.indexOf(goo.massPath) >= 0)
+    }
+
+    function test_goo_thins_its_neck_and_relaxes_to_the_mass() {
+        var origin = Qt.rect(20, 300, 40, 40)
+        var mass = Qt.rect(260, 60, 200, 150)
+        var thick = Frame.goo(origin, mass, 1, 14, 1.6)
+        var thin = Frame.goo(origin, mass, 0.25, 14, 1.2)
+        verify(thin.neck.waist < thick.neck.waist)
+        var settled = Frame.goo(origin, mass, 0, 14, 1)
+        compare(settled.neck, null)
+        compare(settled.path, settled.massPath)
+        verify(settled.massPath.indexOf("C") >= 0)
+    }
 }

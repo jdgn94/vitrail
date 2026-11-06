@@ -209,4 +209,19 @@ TestCase {
         verify(!Droplet.own({}))
     }
 
+    function test_back_to_back_closes_wait_in_fifo_order() {
+        var first = Droplet.closing({ x: 0, y: 0, width: 400, height: 300 }, 1000, "DP-1", 1.12)
+        var second = Droplet.closing({ x: 500, y: 100, width: 300, height: 200 }, 1010, "DP-1", 1.12)
+        var queue = Droplet.enqueueClose([], first)
+        queue = Droplet.enqueueClose(queue, second)
+        compare(queue.length, 2)
+        var next = Droplet.nextClose(queue)
+        compare(next.request, first)
+        compare(next.queue.length, 1)
+        next = Droplet.nextClose(next.queue)
+        compare(next.request, second)
+        compare(next.queue.length, 0)
+        compare(Droplet.nextClose(next.queue).request, null)
+    }
+
 }

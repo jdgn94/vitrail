@@ -119,7 +119,8 @@ class DropletWiringTests(unittest.TestCase):
         self.assertIn("beginClose(", sync)
         self.assertIn("DropletJS.closing(", close)
         self.assertIn("DropletJS.own(", close)
-        self.assertIn("closeFade.restart()", close)
+        self.assertIn("shell.pumpClose()", close)
+        self.assertIn("closeFade.restart()", function_body(shell, "pumpClose"))
 
     def test_the_startup_baseline_ignores_windows_already_open(self) -> None:
         shell = SHELL.read_text(encoding="utf-8")
@@ -141,6 +142,15 @@ class DropletWiringTests(unittest.TestCase):
         burst = (ROOT / "bar" / "droplet" / "burst.js").read_text(encoding="utf-8")
         self.assertIn("function particles(", burst)
         self.assertNotIn("import", burst)
+
+    def test_back_to_back_closes_wait_in_a_fifo_queue(self) -> None:
+        shell = SHELL.read_text(encoding="utf-8")
+        close = function_body(shell, "beginClose")
+        self.assertIn("DropletJS.enqueueClose(", close)
+        self.assertIn("shell.pumpClose()", close)
+        self.assertIn("DropletJS.nextClose(", function_body(shell, "pumpClose"))
+        self.assertIn("shell.pumpClose()", function_body(shell, "endLaunch"))
+        self.assertIn("shell.endClose()", shell)
 
     def test_the_gallery_shows_both_droplet_phases(self) -> None:
         gallery = (ROOT / "gallery" / "Main.qml").read_text(encoding="utf-8")

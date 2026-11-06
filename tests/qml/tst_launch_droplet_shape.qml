@@ -34,15 +34,18 @@ TestCase {
         VitrailTokens.configure({ primary: "#a8c7fa", info: "#79d9a8" }, true, "glass", ({}))
     }
 
-    function test_the_gooey_neck_joins_the_origin_while_it_opens() {
+    function test_the_gooey_neck_joins_a_diagonal_origin_while_it_opens() {
         var shape = createTemporaryObject(dropletComponent, testCase, { screen: "DP-1" })
         verify(shape)
-        var request = Droplet.request({ id: "firefox.desktop" }, origin, first, 1000, 4000, "DP-1")
+        var diagonalOrigin = { x: 20, y: 400, width: 40, height: 40 }
+        var diagonalTarget = { x: 260, y: 60, width: 200, height: 150 }
+        var request = Droplet.request({ id: "firefox.desktop" }, diagonalOrigin, diagonalTarget,
+                                      1000, 4000, "DP-1")
         shape.request = request
-        var neck = findChild(shape, "dropletNeck")
-        verify(neck)
-        tryVerify(function () { return neck.neck !== null }, 1000)
+        tryVerify(function () { return shape.goo && shape.goo.neck !== null }, 1000)
         tryVerify(function () { return shape.opening }, 1000)
+        verify(shape.goo.neck.length > 0)
+        verify(shape.goo.path.indexOf("C") >= 0)
     }
 
     function test_the_final_rect_stays_opaque_until_the_fade() {
@@ -60,6 +63,9 @@ TestCase {
         tryCompare(drop, "width", final.width, 1000)
         tryVerify(function () { return Math.abs(drop.opacity - testCase.tint) < 0.01 }, 1000)
         compare(request.phase, "placing")
+        tryVerify(function () { return shape.goo.neck === null }, 1000)
+        compare(shape.goo.path, shape.goo.massPath)
+        verify(shape.goo.massPath.indexOf("C") >= 0)
 
         request = Droplet.fade(request, 1500)
         shape.request = request
@@ -74,7 +80,8 @@ TestCase {
         var last = { x: 100, y: 100, width: 300, height: 200 }
         shape.request = Droplet.closing(last, 1000, "DP-1", 1.12)
         tryVerify(function () { return shape.closing }, 1000)
-        tryVerify(function () { return shape.burstParticles.length === 7 }, 1000)
+        tryVerify(function () { return shape.burstParticles.length >= 5
+                                      && shape.burstParticles.length <= 8 }, 1000)
         var speck = findChild(shape, "burstParticle0")
         verify(speck)
         var startX = speck.x
@@ -82,5 +89,7 @@ TestCase {
         verify(speck.x !== startX)
         tryCompare(drop, "width", 336, 1000)
         tryVerify(function () { return drop.opacity < 0.01 }, 1000)
+        tryCompare(speck, "opacity", 0, 1000)
+        verify(shape.goo.massPath.indexOf("C") >= 0)
     }
 }

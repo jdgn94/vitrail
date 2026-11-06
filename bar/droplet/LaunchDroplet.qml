@@ -1,6 +1,8 @@
 import QtQuick
+import QtQuick.Shapes
 import "../kit"
 import "../kit/base"
+import "../kit/frame.js" as Frame
 import "burst.js" as Burst
 
 // The drop itself: a gooey mass born at the icon or pointer, stretched toward
@@ -42,17 +44,11 @@ Item {
     }
     readonly property var look: liquid.look
 
-    // The neck leaves the side of the origin that faces the target.
-    readonly property string neckEdge: {
-        if (!root.current)
-            return "left"
-        var o = root.originRect, t = root.current.target
-        var dx = (t.x + t.width / 2) - (o.x + o.width / 2)
-        var dy = (t.y + t.height / 2) - (o.y + o.height / 2)
-        if (Math.abs(dx) >= Math.abs(dy))
-            return dx >= 0 ? "left" : "right"
-        return dy >= 0 ? "top" : "bottom"
-    }
+    // One fused path, not overlapping translucent items: the neck follows the
+    // origin→mass centre line, so diagonal launches keep their liquid bridge.
+    readonly property var goo: Frame.goo(root.originRect, root.massRect,
+                                         root.opening ? root.look.bond : 0,
+                                         drop.radius, root.look.swell)
 
     // The burst is the closing bubble: a deterministic ring from burst.js.
     readonly property var burstParticles: {
@@ -80,8 +76,7 @@ Item {
         drop.height = target.height
         var ending = root.current.phase === "fading" || root.current.phase === "closing"
         drop.radius = root.current.phase === "closing"
-                      ? Math.min(VitrailTokens.radius,
-                                  Math.min(target.width, target.height) / 2)
+                      ? Math.min(target.width, target.height) / 2
                       : Math.min(VitrailTokens.radius * root.look.swell,
                                   Math.min(target.width, target.height) / 2)
         drop.opacity = ending ? 0 : root.opacityLevel
@@ -110,30 +105,16 @@ Item {
         root.reach()
     }
 
-    // The liquid neck between the birth point and the growing mass.
-    VitrailNeck {
-        objectName: "dropletNeck"
-
-        anchors.fill: parent
-        visible: root.opening && root.look.bond > 0.01
-        edge: root.neckEdge
-        island: root.originRect
-        card: root.current ? root.current.target : root.massRect
-        bond: root.look.bond
-        radius: Math.min(VitrailTokens.radius,
-                         Math.min(root.massRect.width, root.massRect.height) / 2)
-        tint: VitrailTokens.color("primary")
-        opacityLevel: root.opacityLevel
-    }
-
-    Rectangle {
+    // The animated item owns the mass rect and opacity; its child draws in
+    // monitor coordinates so the birth circle and diagonal neck can extend
+    // outside that rect. No timer or repaint runs once the geometry settles.
+    Item {
         id: drop
 
         objectName: "dropletMass"
         visible: root.current !== null
-        color: VitrailTokens.color("primary")
         opacity: 0
-        radius: 0
+        property real radius: 0
 
         Behavior on x { NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutCubic } }
         Behavior on y { NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutCubic } }
@@ -141,6 +122,22 @@ Item {
         Behavior on height { NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutCubic } }
         Behavior on radius { NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutCubic } }
         Behavior on opacity { NumberAnimation { duration: VitrailTokens.droplet.fade; easing.type: Easing.OutCubic } }
+
+        Shape {
+            x: -drop.x
+            y: -drop.y
+            width: root.width
+            height: root.height
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                fillColor: VitrailTokens.color("primary")
+                strokeColor: "transparent"
+                fillRule: ShapePath.WindingFill
+
+                PathSvg { path: root.goo.path }
+            }
+        }
     }
 
     // The closing burst: small drops leave the last rect, each on its own angle

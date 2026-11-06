@@ -80,23 +80,28 @@ initial mode starts on that mode's prefix and nowhere else.
 
 ## Launch droplet
 
-A launch from the dock or the launcher grows a drop from the chosen icon/row
-into the space the new window will take (`bar/droplet/`):
+A launch from the dock, launcher or keyboard grows a drop from the chosen
+icon/row or pointer into the window's real space (`bar/droplet/`):
 
 - `droplet.js` is the state machine (`tests/qml/tst_launch_droplet.qml`):
-  `request()` refuses an app that already has a window (that path focuses),
-  `arrival()` picks the first new Hyprland toplevel on the monitor that asked,
-  `arrive()` / `timeout()` start the fade, and `finish()` clears it.
+  `hold → settling → placing → fading`. It reserves the app's last live rect,
+  waits for the mapped window's geometry to settle, holds the final rect opaque,
+  then fades. Focusing an already-open app never starts a drop.
 - `LaunchDropletLayer.qml` is one overlay `PanelWindow` per monitor with an
   empty mask and `WlrKeyboardFocus.None`: it never takes input. It borrows the
-  `vitrail-osd` namespace so the glass rule already covers it. `LaunchDroplet.qml`
-  draws the shape: a circle at the icon grows to a rounded card over the
-  fallback space (a centred share of the screen, `tokens.droplet`), follows the
-  window when it maps, then fades.
-- The shell owns the request and the polling timer (`droplet.poll`), snapshots
-  the toplevel addresses before executing, and clears the request after
-  `droplet.fade`. `launchAnimation` (appearance.ini, Appearance → Theme) turns
-  the whole thing off.
+  `vitrail-osd` namespace so the glass rule already covers it.
+- `LaunchDroplet.qml` and `frame.js goo()` draw one winding-filled cubic path:
+  the birth circle, a centreline neck that works on diagonals, and a swelling
+  mass are fused without a translucent seam. Once the neck snaps, only the
+  settled mass path remains; no animation or repaint runs at rest. The gallery
+  freezes this diagonal opening and the closing burst in `DropletPreview.qml`.
+- A close puffs its last rect into a bubble and emits the deterministic 5–8
+  particle ring from `burst.js`, all gone in `droplet.burst.duration` (250 ms).
+  `enqueueClose()` / `nextClose()` keep back-to-back closes in FIFO order; an
+  active close finishes before a launch takes the overlay.
+- The shell owns request polling and timers (`droplet.poll`, `droplet.fade`).
+  `launchAnimation` (appearance.ini, Appearance → Theme) turns the whole thing
+  off.
 
 ## State and settings
 

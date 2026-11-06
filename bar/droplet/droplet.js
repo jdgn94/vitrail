@@ -305,6 +305,20 @@ function closingDone(request, now, duration) {
     return number(now, 0) >= number(request.started, 0) + number(duration, 0)
 }
 
+// Closes are immutable requests in a FIFO. The shell starts the next one only
+// after the current burst (and any launch ahead of it) has left the overlay.
+function enqueueClose(queue, request) {
+    var out = (queue || []).slice()
+    if (request)
+        out.push(request)
+    return out
+}
+
+function nextClose(queue) {
+    var out = (queue || []).slice()
+    return { request: out.length > 0 ? out.shift() : null, queue: out }
+}
+
 function expired(request, now) {
     return !!request && request.phase === "hold" && number(now, 0) >= request.deadline
 }

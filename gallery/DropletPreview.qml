@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 import "../kit"
 import "../kit/base"
 import "../kit/frame.js" as Frame
@@ -23,8 +24,8 @@ Item {
                                                       : VitrailTokens.motion.smooth
     readonly property var look: VitrailTokens.glass ? Frame.liquid(root.progress, root.tokens)
                                                     : Frame.smooth(root.progress, root.tokens)
-    readonly property var origin: Qt.rect(32, 148, 34, 34)
-    readonly property var target: Qt.rect(84, 36, 244, 176)
+    readonly property var origin: Qt.rect(24, 198, 34, 34)
+    readonly property var target: Qt.rect(116, 32, 220, 150)
     readonly property var mass: {
         var grow = root.phase === "open" ? root.look.grow : 1
         var w = root.origin.width + (root.target.width - root.origin.width) * grow
@@ -32,9 +33,11 @@ Item {
         if (root.phase === "burst") {
             w = root.target.width * VitrailTokens.droplet.burst.puff
             h = root.target.height * VitrailTokens.droplet.burst.puff
+            return Qt.rect(root.target.x + (root.target.width - w) / 2,
+                           root.target.y + (root.target.height - h) / 2, w, h)
         }
-        return Qt.rect(root.target.x + (root.target.width - w) / 2,
-                       root.target.y + (root.target.height - h) / 2, w, h)
+        return Qt.rect(root.origin.x + (root.target.x - root.origin.x) * grow,
+                       root.origin.y + (root.target.y - root.origin.y) * grow, w, h)
     }
     readonly property real level: VitrailTokens.opacity * VitrailTokens.droplet.tint
     readonly property var burst: {
@@ -52,28 +55,27 @@ Item {
                  y: root.target.y + root.target.height / 2 }
     }
 
-    VitrailNeck {
-        anchors.fill: parent
-        visible: root.phase === "open" && root.look.bond > 0.01
-        edge: "left"
-        island: root.origin
-        card: root.target
-        bond: root.look.bond
-        radius: Math.min(VitrailTokens.radius, Math.min(root.mass.width, root.mass.height) / 2)
-        tint: VitrailTokens.color("primary")
-        opacityLevel: root.level
-    }
+    readonly property var goo: Frame.goo(root.origin, root.mass,
+                                         root.phase === "open" ? root.look.bond : 0,
+                                         root.phase === "burst"
+                                         ? Math.min(root.mass.width, root.mass.height) / 2
+                                         : Math.min(VitrailTokens.radius * root.look.swell,
+                                                    Math.min(root.mass.width, root.mass.height) / 2),
+                                         root.look.swell)
 
-    Rectangle {
-        x: root.mass.x
-        y: root.mass.y
-        width: root.mass.width
-        height: root.mass.height
-        radius: Math.min(VitrailTokens.radius * root.look.swell,
-                         Math.min(root.mass.width, root.mass.height) / 2)
-        color: VitrailTokens.color("primary")
+    Shape {
+        anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
         opacity: root.phase === "burst" ? root.level * (1 - root.burstProgress * 0.6)
                                         : root.level * root.look.fade
+
+        ShapePath {
+            fillColor: VitrailTokens.color("primary")
+            strokeColor: "transparent"
+            fillRule: ShapePath.WindingFill
+
+            PathSvg { path: root.goo.path }
+        }
     }
 
     Repeater {

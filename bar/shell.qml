@@ -341,15 +341,16 @@ ShellRoot {
     property var launchRequest: null
     property var launchKnown: []
     property var launchScreen: null
-    // The closing drop, drawn in the same overlay once a window goes away.
+    // Closing drops wait in FIFO order; one active launch does not discard them.
     property var closeRequest: null
+    property var closeQueue: []
     // Every live toplevel by address, kept fresh so a close can animate from
     // the rect the window had while it lived. `liveWarm` ignores the first
     // second, which would look like every open window had just appeared.
     property var liveRects: ({})
     property bool liveWarm: false
-    // The overlay draws the launch drop first; a close waits its turn.
-    readonly property var dropletRequest: shell.launchRequest || shell.closeRequest
+    // An active close finishes before a newer launch takes the overlay.
+    readonly property var dropletRequest: shell.closeRequest || shell.launchRequest
 
     // Left click and Super: the full-screen launcher on that monitor (the
     // focused one without a screen); the popout is the right click.
@@ -1218,13 +1219,13 @@ ShellRoot {
         onTriggered: shell.endLaunch()
     }
 
-    // The close drop shrinks over the slow motion and fades with it; clear it
-    // once both animations are done.
+    // A close owns the overlay for its whole burst, then the next queued close
+    // (or a waiting launch) takes it.
     Timer {
         id: closeFade
 
         interval: VitrailTokens.droplet.burst.duration + VitrailTokens.droplet.settle
-        onTriggered: shell.closeRequest = null
+        onTriggered: shell.endClose()
     }
 
     // Hyprland's model is the source of truth; the slow timer also refreshes
@@ -1283,7 +1284,22 @@ ShellRoot {
         }
     }
 
-    // The closing window's last rect, shrunk and faded on the monitor it was on.
+    function pumpClose() {
+        if (shell.launchRequest || shell.closeRequest || shell.closeQueue.length === 0)
+            return
+        var next = DropletJS.nextClose(shell.closeQueue)
+        shell.closeQueue = next.queue
+        shell.closeRequest = next.request
+        closeFade.restart()
+    }
+
+    function endClose() {
+        closeFade.stop()
+        shell.closeRequest = null
+        shell.pumpClose()
+    }
+
+    // Puff the closing window's last rect; never overwrite a burst in flight.
     function beginClose(window) {
         if (!window || DropletJS.own(window))
             return
@@ -1292,10 +1308,11 @@ ShellRoot {
         var screen = DropletJS.screenFor(centre, Quickshell.screens)
         if (!screen)
             return
-        shell.closeRequest = DropletJS.closing(DropletJS.local(window.rect, screen),
-                                               Date.now(), screen.name,
-                                               VitrailTokens.droplet.burst.puff)
-        closeFade.restart()
+        var request = DropletJS.closing(DropletJS.local(window.rect, screen),
+                                        Date.now(), screen.name,
+                                        VitrailTokens.droplet.burst.puff)
+        shell.closeQueue = DropletJS.enqueueClose(shell.closeQueue, request)
+        shell.pumpClose()
     }
 
     // A keybind opened this window: the drop starts at the pointer and holds
@@ -1410,6 +1427,7 @@ ShellRoot {
         shell.launchRequest = null
         shell.launchScreen = null
         shell.launchKnown = []
+        shell.pumpClose()
     }
 
     // An open app: focus the window the dock grouped under it.
