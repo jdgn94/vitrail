@@ -74,6 +74,16 @@ window's **Cursor** or **App icon pack** picker, and the palette-adaptive layer
 (`vitrail-<pack>` for cursors, `vitrail-icons-<pack>` for icons) is built from
 it when you choose it. That is the same path as a pack imported from a zip.
 
+### Bundled Material Design cursors
+
+`assets/cursors/MaterialDesign-Light/` and
+`assets/cursors/MaterialDesign-Dark/` are converted from the Windows pack in
+`assets/cursors/material-design/source/`. The `material-design` folder itself is
+source material and carries a `.vitrail-source` marker, so the installer skips
+it and only installs the two complete themes. The pack, its Agreement and the
+required credit to Jepri Creations are documented in
+[`assets/cursors/material-design/README.md`](../assets/cursors/material-design/README.md).
+
 ## Licensing
 
 Vitrail is GPL-3.0-only. A third-party pack may be committed under `assets/`

@@ -610,7 +610,7 @@ asset_size() {
     size="$(du -sh -- "$dir" 2>/dev/null | awk '{print $1}')"
     case "$1" in
         cursors | icons)
-            count="$(find "$dir" -mindepth 1 -maxdepth 1 -type d | wc -l)"
+            count="$(find "$dir" -mindepth 2 -maxdepth 2 -type f -name index.theme -not -path '*/.*' | wc -l)"
             printf '%s, %s pack(s)' "${size:-?}" "$count"
             ;;
         *) printf '%s' "${size:-?}" ;;
@@ -766,6 +766,9 @@ import_asset_packs() {
     while IFS= read -r -d '' dir; do
         name="$(basename -- "$dir")"
         case "$name" in .*) continue ;; esac
+        # A folder marked .vitrail-source keeps an archive and its licence; it
+        # is not a theme and must not be copied (or warned about) as one.
+        [[ -f "$dir/.vitrail-source" ]] && continue
         install_asset_pack "$kind" "$dir" || true
     done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
     return 0

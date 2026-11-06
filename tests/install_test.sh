@@ -245,12 +245,20 @@ mkdir -p "$tmp/bin" "$tmp/home" \
     "$tmp/repo/assets/animation-wallpapers" \
     "$tmp/repo/assets/cursors/TestCursors/cursors" \
     "$tmp/repo/assets/cursors/EmptyCursor" \
+    "$tmp/repo/assets/cursors/MaterialDesign-Light/cursors" \
+    "$tmp/repo/assets/cursors/MaterialDesign-Dark/cursors" \
+    "$tmp/repo/assets/cursors/material-design/source" \
     "$tmp/repo/assets/icons/TestIcons/48x48/apps" \
     "$tmp/repo/assets/icons/NoIndex" \
     "$tmp/repo/assets/icons/Empty"
 printf '[Icon Theme]\nName=Vitrail test cursor\n' \
     >"$tmp/repo/assets/cursors/TestCursors/index.theme"
 printf 'Xcur' >"$tmp/repo/assets/cursors/TestCursors/cursors/left_ptr"
+for theme in MaterialDesign-Light MaterialDesign-Dark; do
+    printf '[Icon Theme]\nName=%s\n' "$theme" >"$tmp/repo/assets/cursors/$theme/index.theme"
+    printf 'Xcur' >"$tmp/repo/assets/cursors/$theme/cursors/left_ptr"
+done
+touch "$tmp/repo/assets/cursors/material-design/.vitrail-source"
 printf '[Icon Theme]\nName=No cursors\n' >"$tmp/repo/assets/cursors/EmptyCursor/index.theme"
 printf '[Icon Theme]\nName=Vitrail test icons\nDirectories=48x48/apps\n' \
     >"$tmp/repo/assets/icons/TestIcons/index.theme"
@@ -299,6 +307,18 @@ PATH="$tmp/bin:$PATH" import_assets >/dev/null 2>"$tmp/cursors.err"
     -f "$tmp/home/.local/share/icons/TestCursors/cursors/left_ptr" ]] \
     && ok "a cursor pack is copied with its tree" \
     || not_ok "a cursor pack is copied with its tree" "output: $(cat "$tmp/cursors.err")"
+for theme in MaterialDesign-Light MaterialDesign-Dark; do
+    [[ -f "$tmp/home/.local/share/icons/$theme/index.theme" &&
+        -f "$tmp/home/.local/share/icons/$theme/cursors/left_ptr" ]] \
+        && ok "the $theme cursor theme is installed" \
+        || not_ok "the $theme cursor theme is installed" "output: $(cat "$tmp/cursors.err")"
+done
+[[ ! -e "$tmp/home/.local/share/icons/material-design" ]] \
+    && ok "a .vitrail-source folder is not installed as a theme" \
+    || not_ok "a .vitrail-source folder is not installed as a theme"
+grep -q "material-design" "$tmp/cursors.err" \
+    && not_ok "a .vitrail-source folder is not reported as a bad pack" "output: $(cat "$tmp/cursors.err")" \
+    || ok "a .vitrail-source folder is not reported as a bad pack"
 grep -q "cursor pack EmptyCursor: no cursors/ folder" "$tmp/cursors.err" \
     && ok "a cursor pack without cursors/ is reported" \
     || not_ok "a cursor pack without cursors/ is reported" "output: $(cat "$tmp/cursors.err")"

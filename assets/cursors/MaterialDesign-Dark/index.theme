@@ -1,0 +1,4 @@
+[Icon Theme]
+Name=MaterialDesign-Dark
+Comment=Windows cursor pack converted to Xcursor
+Inherits=Adwaita

@@ -634,8 +634,12 @@ Vitrail is free software under the **GNU General Public License v3.0**
 [illogical-impulse](https://github.com/end-4/dots-hyprland) — and any code
 adapted from them keeps its authors' credit. The wallpaper effects follow the
 set in [JaKooLit/Hyprland-Dots](https://github.com/JaKooLit/Hyprland-Dots)
-(GPL-3.0), reimplemented as `magick` argument lists. The plan that lists what is
-taken lives in `.opencode_plans/inspired-v1.1.md`.
+(GPL-3.0), reimplemented as `magick` argument lists. The optional Material
+Design cursor pack is by [Jepri
+Creations](https://www.deviantart.com/jepricreations), redistributed with
+credit under the author's Agreement; see
+[`assets/cursors/material-design/README.md`](assets/cursors/material-design/README.md).
+The plan that lists what is taken lives in `.opencode_plans/inspired-v1.1.md`.
 
 ## Status
 
