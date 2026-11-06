@@ -600,6 +600,16 @@ asset_dir() {
     esac
 }
 
+asset_pack_count() {
+    local dir
+    dir="$(asset_dir "$1")"
+    if [[ ! -d "$dir" ]]; then
+        printf '0'
+        return 0
+    fi
+    find "$dir" -mindepth 2 -maxdepth 2 -type f -name index.theme -not -path '*/.*' | wc -l
+}
+
 asset_size() {
     local dir size count
     dir="$(asset_dir "$1")"
@@ -610,7 +620,7 @@ asset_size() {
     size="$(du -sh -- "$dir" 2>/dev/null | awk '{print $1}')"
     case "$1" in
         cursors | icons)
-            count="$(find "$dir" -mindepth 2 -maxdepth 2 -type f -name index.theme -not -path '*/.*' | wc -l)"
+            count="$(asset_pack_count "$1")"
             printf '%s, %s pack(s)' "${size:-?}" "$count"
             ;;
         *) printf '%s' "${size:-?}" ;;
@@ -887,13 +897,31 @@ choose_helpers() {
     done
 }
 
+# The selected groups as the comma list `--assets` understands. The join must
+# not trust IFS: `read -a` above may have left it changed.
+assets_value() {
+    local joined="" group
+    for group in "${SELECTED_ASSETS[@]}"; do
+        joined="${joined:+$joined,}$group"
+    done
+    printf '%s' "${joined:-none}"
+}
+
 # The optional assets: one question, with the size of each group and only the
-# wallpapers checked by default.
+# wallpapers checked by default. A pack group with nothing in it (icons, say)
+# is not offered at all, so it cannot be selected by mistake.
 choose_assets() {
     [[ -n "$ASSET_SELECTION" ]] && return 0
     local -a labels=()
+    local -a groups=()
     local group index
     for group in "${ASSET_GROUPS[@]}"; do
+        case "$group" in
+            cursors | icons)
+                [[ "$(asset_pack_count "$group")" -gt 0 ]] || continue
+                ;;
+        esac
+        groups+=("$group")
         labels+=("$(asset_label "$group")")
     done
     if ! multiselect_default "Which optional assets do you want?" "0" "${labels[@]}"; then
@@ -901,9 +929,9 @@ choose_assets() {
     fi
     SELECTED_ASSETS=()
     for index in "${SELECTED_INDEXES[@]}"; do
-        SELECTED_ASSETS+=("${ASSET_GROUPS[$index]}")
+        SELECTED_ASSETS+=("${groups[$index]}")
     done
-    ASSET_SELECTION="${SELECTED_ASSETS[*]:-none}"
+    ASSET_SELECTION="$(assets_value)"
 }
 
 validate_selection() {

@@ -288,6 +288,13 @@ else
         || not_ok "an unknown asset group is rejected" "output: $(cat "$tmp/unknown.err")"
 fi
 
+SELECTED_ASSETS=(animated cursors icons)
+expect_eq "the chosen groups are a comma list" "animated,cursors,icons" "$(assets_value)"
+SELECTED_ASSETS=()
+expect_eq "no chosen groups reads as none" "none" "$(assets_value)"
+expect_eq "a pack group counts its themes" "4" "$(asset_pack_count cursors)"
+expect_eq "an icon group counts its themes too" "2" "$(asset_pack_count icons)"
+
 parse_assets "images"
 PATH="$tmp/bin:$PATH" import_assets >/dev/null
 expect_eq "selected wallpapers go through the CLI" \
