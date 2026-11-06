@@ -52,6 +52,8 @@ QtObject {
     property alias dockAutohide: dockFile.dockAutohide
     property alias dockAttached: dockFile.dockAttached
     property alias dockMagnify: dockFile.dockMagnify
+    property alias dockMagnifyRange: dockFile.dockMagnifyRange
+    property alias dockMagnifyScale: dockFile.dockMagnifyScale
     property alias dockPinned: dockFile.dockPinned
     property alias dockWidgets: dockFile.dockWidgets
     property alias clipboardMax: barFile.clipboardMax
@@ -252,7 +254,11 @@ QtObject {
         property string dockEdge: "bottom"
         property bool dockAutohide: false
         property bool dockAttached: true
-        property string dockMagnify: "scale"
+        // planet (distance falloff), individual (only the hovered icon) or
+        // none; `scale`/`lift` from the previous pair read as planet.
+        property string dockMagnify: "planet"
+        property int dockMagnifyRange: VitrailTokens.ranges.dockMagnifyRange.value
+        property real dockMagnifyScale: VitrailTokens.ranges.dockMagnifyScale.value
         // The pinned apps as one JSON array, in their stored order:
         // [{ id, desktop, name, icon }].
         property string dockPinned: "[]"

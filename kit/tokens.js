@@ -21,6 +21,10 @@ var ranges = {
     osdHot: { min: 0, max: 24, step: 1, value: 5 },
     osdStep: { min: 1, max: 20, step: 1, value: 5 },
     osdBrightnessStep: { min: 1, max: 20, step: 1, value: 5 },
+    // The dock's magnification: how many neighbouring icons the planet falloff
+    // reaches, and the largest scale it gives the icon under the pointer.
+    dockMagnifyRange: { min: 1, max: 5, step: 1, value: 2 },
+    dockMagnifyScale: { min: 1.1, max: 2.0, step: 0.05, value: 1.32 },
     // The percent one wheel notch moves an app's own volume.
     soundStep: { min: 1, max: 20, step: 1, value: 5 },
     // The dashboard's clock widgets: the pomodoro's work and break periods
@@ -392,8 +396,8 @@ var launcher = {
 
 // The dock (bar/dock): the icon's edge, the padding and gap around it, the
 // hot zone that reveals an auto-hidden dock, how long it waits before hiding
-// again, the indicator, and how far hover magnification grows (`scale`) and
-// raises (`lift`) an icon, in whole cells (`reach`).
+// again, the indicator, and the magnification defaults: how many neighbours
+// the planet falloff reaches and how large its nearest icon grows.
 var dock = {
     icon: 40,
     pad: "sm",
@@ -402,7 +406,10 @@ var dock = {
     hide: 450,
     indicator: 4,
     indicatorInset: 4,
-    magnify: { scale: 1.32, lift: 8, reach: 2 }
+    magnify: {
+        range: ranges.dockMagnifyRange.value,
+        scale: ranges.dockMagnifyScale.value
+    }
 }
 
 // The tray (bar/tray): `columns` the most icons per row in the popup style,

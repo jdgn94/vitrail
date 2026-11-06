@@ -311,33 +311,41 @@ function place(edge, bandWidth, bandHeight, width, height, gap, progress) {
     }
 }
 
-// How far a magnified icon moves from the edge: up on the bottom, down on the
-// top, and inward on the sides.
-function liftVector(edge, amount) {
-    if (edge === "bottom")
-        return { x: 0, y: -amount }
-    if (edge === "top")
-        return { x: 0, y: amount }
-    if (edge === "left")
-        return { x: amount, y: 0 }
-    if (edge === "right")
-        return { x: -amount, y: 0 }
-    return { x: 0, y: 0 }
+// The two magnifications, plus off. `scale` and `lift` were the old names:
+// a stored value from before the planet/individual pair reads as planet.
+function magnifyStyle(value) {
+    var style = text(value).trim().toLowerCase()
+    if (style === "none" || style === "individual")
+        return style
+    return "planet"
 }
 
-// `scale` grows the icon; `lift` grows it and raises it from the edge. The
-// falloff is counted in whole cells from the hovered one.
-function magnify(style, distance, spec) {
-    var values = spec || ({ scale: 1.32, lift: 8, reach: 2 })
-    if (style !== "scale" && style !== "lift")
-        return { scale: 1, lift: 0 }
-    if (distance === undefined || distance === null || distance < 0 || distance > values.reach)
-        return { scale: 1, lift: 0 }
-    var falloff = (values.reach - distance + 1) / (values.reach + 1)
+function magnifySpec(spec) {
+    var values = spec || ({})
+    var range = Number(values.range)
+    var scale = Number(values.scale)
     return {
-        scale: 1 + (values.scale - 1) * falloff,
-        lift: style === "lift" ? values.lift * falloff : 0
+        range: isFinite(range) ? Math.max(1, Math.min(5, range)) : 2,
+        scale: isFinite(scale) ? Math.max(1.1, Math.min(2, scale)) : 1.32
     }
+}
+
+// Planet: the icon under the pointer is the largest and its neighbours fall
+// away smoothly until the range, where the falloff stops. Individual: only the
+// hovered icon grows, whatever the range. The result is a scale around 1.
+function magnify(style, distance, spec) {
+    var kind = magnifyStyle(style)
+    if (kind === "none")
+        return { scale: 1 }
+    if (distance === undefined || distance === null || distance < 0)
+        return { scale: 1 }
+    var values = magnifySpec(spec)
+    if (kind === "individual")
+        return { scale: distance < 1 ? values.scale : 1 }
+    if (distance >= values.range)
+        return { scale: 1 }
+    var falloff = 0.5 * (1 + Math.cos(Math.PI * distance / values.range))
+    return { scale: 1 + (values.scale - 1) * falloff }
 }
 
 // A pinned app that is open focuses its window; one that is not launches.

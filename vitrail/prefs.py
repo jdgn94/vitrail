@@ -212,6 +212,23 @@ def _unique(path: Path) -> Path:
     return candidate
 
 
+LEGACY_DOCK_MAGNIFY = {"scale", "lift"}
+
+
+def _normalise_dock_magnify(config: Path) -> bool:
+    """The dock's old scale/lift pair becomes planet, once."""
+    path = config / "dock.ini"
+    text = _read_text(path)
+    if not text:
+        return False
+    changed = False
+    for key, value in _items(text):
+        if key == "dockMagnify" and unquote(value).strip().lower() in LEGACY_DOCK_MAGNIFY:
+            write_pref(config, key, "planet")
+            changed = True
+    return changed
+
+
 def _normalise_positions(config: Path) -> bool:
     """`notificationPosition` is left/right now; old values carried a top/bottom."""
     path = config / "bar.ini"
@@ -238,6 +255,7 @@ def migrate(config: Path) -> bool:
     its backup last. Returns whether there was anything to migrate.
     """
     changed = _normalise_positions(config)
+    changed = _normalise_dock_magnify(config) or changed
     legacy = config / LEGACY
     if not legacy.exists():
         if changed:

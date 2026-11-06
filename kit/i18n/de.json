@@ -916,13 +916,15 @@
   "dock.floating": "Schwebend",
   "dock.magnify": "Vergrößerung",
   "dock.magnify.none": "Keine",
-  "dock.magnify.scale": "Skalieren",
-  "dock.magnify.lift": "Anheben",
   "dock.pinned": "Angeheftete Apps",
   "dock.pinned.empty": "Apps über das Menü des Starters anheften.",
   "dock.widgets": "Dock-Widgets",
   "dock.widgetsNotice": "Widgets folgen in der nächsten Phase.",
   "dock.tooltip.open": "Fenster öffnen",
   "dock.tooltip.launch": "App öffnen",
-  "section.dock": "Dock"
+  "section.dock": "Dock",
+  "dock.magnify.planet": "Planet",
+  "dock.magnify.individual": "Einzeln",
+  "dock.magnifyRange": "Reichweite",
+  "dock.magnifyScale": "Größe"
 }

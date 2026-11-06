@@ -17,7 +17,9 @@ Item {
     property real step: root.cellSize + VitrailTokens.gap("xs")
     property int count: 1
     property string edge: "bottom"
-    property string magnify: "scale"
+    property string magnify: "planet"
+    property int magnifyRange: VitrailTokens.dock.magnify.range
+    property real magnifyScale: VitrailTokens.dock.magnify.scale
     property int hoveredIndex: -1
     property bool pinned: false
     property var strings: ({})
@@ -36,8 +38,7 @@ Item {
     readonly property bool hovered: hover.hovered
     readonly property bool vertical: Dock.vertical(root.edge)
     readonly property var effect: Dock.magnify(root.magnify, Math.abs(root.slot - root.hoveredIndex),
-                                               VitrailTokens.dock.magnify)
-    readonly property var lift: Dock.liftVector(root.edge, root.effect.lift)
+                                               { range: root.magnifyRange, scale: root.magnifyScale })
     property bool dragging: false
     property int dropAt: root.slot
 
@@ -83,7 +84,6 @@ Item {
         width: root.iconSize
         height: root.iconSize
         scale: root.effect.scale
-        transform: Translate { x: root.lift.x; y: root.lift.y }
 
         Behavior on scale { NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
 

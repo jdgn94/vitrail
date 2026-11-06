@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../../kit"
 import "../../kit/base"
+import "../../bar/dock"
 import "../../bar/dock/dock.js" as Dock
 
 // Dock category: the per-monitor dock's own settings. The bar reads dock.ini;
@@ -15,6 +16,13 @@ Item {
     property var strings
 
     readonly property var pinned: Dock.parsePinned(page.prefs.dockPinned || "[]")
+    readonly property string magnifyStyle: Dock.magnifyStyle(page.prefs.dockMagnify)
+    readonly property int magnifyRange: page.prefs.dockMagnifyRange !== undefined
+                                        ? Math.max(1, Math.min(5, Number(page.prefs.dockMagnifyRange)))
+                                        : VitrailTokens.dock.magnify.range
+    readonly property real magnifyScale: page.prefs.dockMagnifyScale !== undefined
+                                         ? Math.max(1.1, Math.min(2, Number(page.prefs.dockMagnifyScale)))
+                                         : VitrailTokens.dock.magnify.scale
 
     function t(key) {
         var value = page.strings[key]
@@ -33,7 +41,7 @@ Item {
     }
 
     function magnifyOptions() {
-        return page.options(["none", "scale", "lift"], "dock.magnify.")
+        return page.options(["none", "planet", "individual"], "dock.magnify.")
     }
 
     function store(list) {
@@ -149,11 +157,63 @@ Item {
                             objectName: "dockPageMagnify"
 
                             options: page.magnifyOptions()
-                            current: page.prefs.dockMagnify || "scale"
+                            current: page.magnifyStyle
                             foreground: page.palette.foreground
                             accent: page.palette.primary
                             onSelected: page.prefs.dockMagnify = key
                         }
+                    }
+
+                    VitrailSettingRow {
+                        objectName: "dockPageMagnifyRangeRow"
+
+                        icon: "straighten"
+                        label: page.t("dock.magnifyRange")
+                        visible: page.magnifyStyle === "planet"
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSlider {
+                            Layout.preferredWidth: 240
+                            from: VitrailTokens.ranges.dockMagnifyRange.min
+                            to: VitrailTokens.ranges.dockMagnifyRange.max
+                            stepSize: VitrailTokens.ranges.dockMagnifyRange.step
+                            value: page.magnifyRange
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onMoved: page.prefs.dockMagnifyRange = value
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        objectName: "dockPageMagnifyScaleRow"
+
+                        icon: "photo_size_select_large"
+                        label: page.t("dock.magnifyScale")
+                        visible: page.magnifyStyle !== "none"
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSlider {
+                            Layout.preferredWidth: 240
+                            from: VitrailTokens.ranges.dockMagnifyScale.min * 100
+                            to: VitrailTokens.ranges.dockMagnifyScale.max * 100
+                            stepSize: VitrailTokens.ranges.dockMagnifyScale.step * 100
+                            value: page.magnifyScale * 100
+                            suffix: "%"
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onMoved: page.prefs.dockMagnifyScale = value / 100
+                        }
+                    }
+
+                    DockMagnifyPreview {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.topMargin: VitrailTokens.gap("xs")
+                        visible: page.magnifyStyle !== "none"
+                        style: page.magnifyStyle
+                        range: page.magnifyRange
+                        factor: page.magnifyScale
                     }
                 }
 

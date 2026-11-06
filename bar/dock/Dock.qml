@@ -16,7 +16,9 @@ Item {
     property bool autohide: false
     property bool revealed: false
     property bool forceShown: false
-    property string magnify: "scale"
+    property string magnify: "planet"
+    property int magnifyRange: VitrailTokens.dock.magnify.range
+    property real magnifyScale: VitrailTokens.dock.magnify.scale
     property var strings: ({})
     property real opacityLevel: VitrailTokens.opacity
     // Maps an app icon name to a theme file; the layer supplies it.
@@ -107,6 +109,8 @@ Item {
                 count: root.count
                 edge: root.edge
                 magnify: root.magnify
+                magnifyRange: root.magnifyRange
+                magnifyScale: root.magnifyScale
                 hoveredIndex: root.hoveredIndex
                 pinned: modelData.kind === "pinned"
                 strings: root.strings

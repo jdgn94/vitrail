@@ -17,7 +17,9 @@ PanelWindow {
     property string edge: "bottom"
     property bool autohide: false
     property bool attached: true
-    property string magnify: "scale"
+    property string magnify: "planet"
+    property int magnifyRange: VitrailTokens.dock.magnify.range
+    property real magnifyScale: VitrailTokens.dock.magnify.scale
     property var pinned: []
     property var windows: []
     property var strings: ({})
@@ -33,8 +35,7 @@ PanelWindow {
     // Floating and magnified, the window keeps room for the growth around the
     // card so the icon is never cut by the layer's edge.
     readonly property real growth: root.magnify === "none" ? 0
-                                 : root.metrics.icon * (root.metrics.magnify.scale - 1)
-                                   + root.metrics.magnify.lift
+                                 : root.metrics.icon * (root.magnifyScale - 1)
     readonly property real band: (root.vertical ? dock.implicitWidth : dock.implicitHeight)
                                  + 2 * root.margin + root.growth
     // The card plus its margin is what the compositor reserves; the room that
@@ -150,6 +151,8 @@ PanelWindow {
         autohide: root.autohide
         revealed: root.revealed
         magnify: root.magnify
+        magnifyRange: root.magnifyRange
+        magnifyScale: root.magnifyScale
         strings: root.strings
         opacityLevel: root.opacityLevel
         iconProvider: root.iconProvider

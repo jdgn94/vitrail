@@ -86,7 +86,12 @@ dock dockEnabled
 dock dockEdge
 dock dockAutohide
 dock dockAttached
+# `planet` (distance falloff), `individual` (only the hovered icon) or `none`;
+# `scale`/`lift` from before the pair read as planet.
 dock dockMagnify
+# How many neighbours the planet falloff reaches, and its largest factor.
+dock dockMagnifyRange
+dock dockMagnifyScale
 dock dockPinned
 dock dockWidgets
 

@@ -4,6 +4,7 @@ import "../kit"
 import "../kit/base"
 import "../layouts.js" as Layouts
 import "../widgets.js" as Registry
+import "../dock"
 import "../dock/dock.js" as Dock
 import "desktopEditor.js" as Editor
 
@@ -28,7 +29,10 @@ Item {
     property real screenHeight: 1080
     // The dock's preferences (dock.ini), edited by the Dock tab.
     property var dock: ({ enabled: false, edge: "bottom", autohide: false,
-                          attached: true, magnify: "scale", pinned: "[]" })
+                          attached: true, magnify: "planet",
+                          magnifyRange: VitrailTokens.dock.magnify.range,
+                          magnifyScale: VitrailTokens.dock.magnify.scale,
+                          pinned: "[]" })
 
     // Which tab is up: the desktop is the default and the middle one.
     property string tab: "desktop"
@@ -195,7 +199,14 @@ Item {
 
     readonly property var dockPinnedList: Dock.parsePinned(root.dock.pinned || "")
     readonly property var dockEdges: ["bottom", "top", "left", "right"]
-    readonly property var dockMagnifyModes: ["none", "scale", "lift"]
+    readonly property var dockMagnifyModes: ["none", "planet", "individual"]
+    readonly property string dockMagnifyStyle: Dock.magnifyStyle(root.dock.magnify)
+    readonly property int dockMagnifyRange: root.dock.magnifyRange !== undefined
+                                            ? Math.max(1, Math.min(5, Number(root.dock.magnifyRange)))
+                                            : VitrailTokens.dock.magnify.range
+    readonly property real dockMagnifyScale: root.dock.magnifyScale !== undefined
+                                             ? Math.max(1.1, Math.min(2, Number(root.dock.magnifyScale)))
+                                             : VitrailTokens.dock.magnify.scale
 
     function setDock(key, value) {
         root.prefChanged(key, value)
@@ -591,11 +602,67 @@ Item {
                             objectName: "dockMagnify"
 
                             options: root.dockMagnifyOptions()
-                            current: root.dock.magnify
+                            current: root.dockMagnifyStyle
                             foreground: VitrailTokens.color("foreground", "#e2e2e9")
                             accent: VitrailTokens.color("primary", "#a8c7fa")
                             onSelected: root.setDock("dockMagnify", key)
                         }
+                    }
+
+                    VitrailSettingRow {
+                        objectName: "dockMagnifyRangeRow"
+
+                        icon: "straighten"
+                        label: root.t("dock.magnifyRange")
+                        // The range is the planet falloff's; individual has no
+                        // neighbours to reach.
+                        visible: root.dockMagnifyStyle === "planet"
+
+                        VitrailSlider {
+                            objectName: "dockMagnifyRange"
+
+                            Layout.preferredWidth: 240
+                            from: VitrailTokens.ranges.dockMagnifyRange.min
+                            to: VitrailTokens.ranges.dockMagnifyRange.max
+                            stepSize: VitrailTokens.ranges.dockMagnifyRange.step
+                            value: root.dockMagnifyRange
+                            foreground: VitrailTokens.color("foreground", "#e2e2e9")
+                            accent: VitrailTokens.color("primary", "#a8c7fa")
+                            onMoved: root.setDock("dockMagnifyRange", value)
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        objectName: "dockMagnifyScaleRow"
+
+                        icon: "photo_size_select_large"
+                        label: root.t("dock.magnifyScale")
+                        visible: root.dockMagnifyStyle !== "none"
+
+                        VitrailSlider {
+                            objectName: "dockMagnifyScale"
+
+                            Layout.preferredWidth: 240
+                            from: VitrailTokens.ranges.dockMagnifyScale.min * 100
+                            to: VitrailTokens.ranges.dockMagnifyScale.max * 100
+                            stepSize: VitrailTokens.ranges.dockMagnifyScale.step * 100
+                            value: root.dockMagnifyScale * 100
+                            suffix: "%"
+                            foreground: VitrailTokens.color("foreground", "#e2e2e9")
+                            accent: VitrailTokens.color("primary", "#a8c7fa")
+                            onMoved: root.setDock("dockMagnifyScale", value / 100)
+                        }
+                    }
+
+                    DockMagnifyPreview {
+                        objectName: "dockMagnifyPreview"
+
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.topMargin: VitrailTokens.gap("xs")
+                        visible: root.dockMagnifyStyle !== "none"
+                        style: root.dockMagnifyStyle
+                        range: root.dockMagnifyRange
+                        factor: root.dockMagnifyScale
                     }
 
                     VitrailText {

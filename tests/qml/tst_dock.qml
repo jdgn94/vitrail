@@ -102,17 +102,45 @@ TestCase {
 
     // --- magnification ------------------------------------------------------
 
-    function test_magnification_styles() {
-        var spec = { scale: 1.3, lift: 8, reach: 2 }
+    function test_planet_puts_the_largest_icon_nearest_the_pointer() {
+        var spec = { range: 3, scale: 1.5 }
+        var nearest = DockJS.magnify("planet", 0, spec)
+        var next = DockJS.magnify("planet", 1, spec)
+        var third = DockJS.magnify("planet", 2, spec)
+        compare(nearest.scale, 1.5)
+        verify(next.scale < nearest.scale)
+        verify(third.scale < next.scale)
+        verify(third.scale > 1)
+        // The falloff stops at the range: the next icon is its own size.
+        compare(DockJS.magnify("planet", 3, spec).scale, 1)
+        compare(DockJS.magnify("planet", 9, spec).scale, 1)
+    }
+
+    function test_individual_only_magnifies_the_hovered_icon() {
+        var spec = { range: 4, scale: 1.7 }
+        compare(DockJS.magnify("individual", 0, spec).scale, 1.7)
+        compare(DockJS.magnify("individual", 1, spec).scale, 1)
+        compare(DockJS.magnify("individual", 2, spec).scale, 1)
         compare(DockJS.magnify("none", 0, spec).scale, 1)
-        compare(DockJS.magnify("none", 0, spec).lift, 0)
-        compare(DockJS.magnify("scale", 0, spec).lift, 0)
-        compare(DockJS.magnify("scale", 0, spec).scale, 1.3)
-        compare(DockJS.magnify("lift", 0, spec).lift, 8)
-        compare(DockJS.magnify("lift", 0, spec).scale, 1.3)
-        var neighbor = DockJS.magnify("scale", 1, spec)
-        verify(neighbor.scale > 1 && neighbor.scale < 1.3)
-        compare(DockJS.magnify("lift", 3, spec).scale, 1)
+    }
+
+    function test_old_magnification_values_migrate_to_planet() {
+        compare(DockJS.magnifyStyle("scale"), "planet")
+        compare(DockJS.magnifyStyle("lift"), "planet")
+        compare(DockJS.magnifyStyle(""), "planet")
+        compare(DockJS.magnifyStyle("planet"), "planet")
+        compare(DockJS.magnifyStyle("individual"), "individual")
+        compare(DockJS.magnifyStyle("none"), "none")
+        compare(DockJS.magnifyStyle("other"), "planet")
+        compare(DockJS.magnify("scale", 0, { range: 2, scale: 1.4 }).scale, 1.4)
+    }
+
+    function test_a_larger_factor_and_range_change_the_falloff() {
+        var small = DockJS.magnify("planet", 1, { range: 2, scale: 1.2 })
+        var large = DockJS.magnify("planet", 1, { range: 4, scale: 1.8 })
+        verify(large.scale > small.scale)
+        compare(DockJS.magnify("planet", 2, { range: 4, scale: 1.8 }).scale > 1, true)
+        compare(DockJS.magnify("planet", 4, { range: 4, scale: 1.8 }).scale, 1)
     }
 
     // --- pinned order -------------------------------------------------------
@@ -224,10 +252,11 @@ TestCase {
                         "dock.widgetsNotice": "Widgets arrive in the next phase.",
                         "dock.edge.bottom": "Bottom", "dock.edge.top": "Top",
                         "dock.edge.left": "Left", "dock.edge.right": "Right",
-                        "dock.magnify.none": "None", "dock.magnify.scale": "Scale",
-                        "dock.magnify.lift": "Lift" })
+                        "dock.magnify.none": "None", "dock.magnify.planet": "Planet",
+                        "dock.magnify.individual": "Individual",
+                        "dock.magnifyRange": "Reach", "dock.magnifyScale": "Size" })
             dock: ({ enabled: false, edge: "bottom", autohide: false, attached: true,
-                     magnify: "scale", pinned: "[]" })
+                     magnify: "planet", magnifyRange: 2, magnifyScale: 1.32, pinned: "[]" })
         }
     }
 
@@ -239,9 +268,11 @@ TestCase {
         wait(20)
         verify(findChild(editor, "desktopEditDock").visible)
         for (var i = 0; i < ["dockEnabled", "dockEdge", "dockAutohide", "dockAttached",
-                             "dockMagnify", "dockWidgetArea"].length; i++) {
+                             "dockMagnify", "dockMagnifyRange", "dockMagnifyScale",
+                             "dockMagnifyPreview", "dockWidgetArea"].length; i++) {
             var name = ["dockEnabled", "dockEdge", "dockAutohide", "dockAttached",
-                        "dockMagnify", "dockWidgetArea"][i]
+                        "dockMagnify", "dockMagnifyRange", "dockMagnifyScale",
+                        "dockMagnifyPreview", "dockWidgetArea"][i]
             verify(findChild(editor, name) !== null, name)
         }
     }
@@ -258,15 +289,46 @@ TestCase {
         compare(spy.signalArguments[1][1], "left")
         editor.setDock("dockAttached", false)
         compare(spy.signalArguments[2][1], false)
-        editor.setDock("dockMagnify", "lift")
-        compare(spy.signalArguments[3][1], "lift")
+        editor.setDock("dockMagnify", "planet")
+        compare(spy.signalArguments[3][1], "planet")
+        editor.setDock("dockMagnifyRange", 4)
+        compare(spy.signalArguments[4][1], 4)
+        editor.setDock("dockMagnifyScale", 1.6)
+        compare(spy.signalArguments[5][1], 1.6)
+    }
+
+    function test_the_range_shows_only_for_planet_and_the_preview_follows() {
+        var editor = createTemporaryObject(editorComponent, testCase, { active: true })
+        wait(20)
+        editor.tab = "dock"
+        wait(20)
+        var preview = findChild(editor, "dockMagnifyPreview")
+        verify(preview !== null)
+        compare(preview.style, "planet")
+        compare(preview.range, 2)
+        compare(preview.factor, 1.32)
+        verify(findChild(editor, "dockMagnifyRangeRow").visible)
+
+        editor.dock = ({ enabled: true, edge: "bottom", autohide: false, attached: true,
+                         magnify: "individual", magnifyRange: 3, magnifyScale: 1.5, pinned: "[]" })
+        wait(20)
+        verify(!findChild(editor, "dockMagnifyRangeRow").visible)
+        verify(findChild(editor, "dockMagnifyScaleRow").visible)
+        compare(preview.style, "individual")
+        compare(preview.factor, 1.5)
+
+        editor.dock = ({ enabled: true, edge: "bottom", autohide: false, attached: true,
+                         magnify: "none", magnifyRange: 3, magnifyScale: 1.5, pinned: "[]" })
+        wait(20)
+        verify(!findChild(editor, "dockMagnifyScaleRow").visible)
     }
 
     function test_the_editor_reorders_and_removes_pinned_apps() {
         var editor = createTemporaryObject(editorComponent, testCase, {
             active: true,
             dock: ({ enabled: true, edge: "bottom", autohide: false, attached: true,
-                     magnify: "scale", pinned: DockJS.serializePinned(pinnedList()) })
+                     magnify: "planet", magnifyRange: 2, magnifyScale: 1.32,
+                     pinned: DockJS.serializePinned(pinnedList()) })
         })
         var spy = watch(editor, "prefChanged")
         wait(20)

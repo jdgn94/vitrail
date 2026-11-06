@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import QtQuick
+import "../kit"
 
 // The in-place editor's full-screen layer. It keeps the editor (a plain Item,
 // tested offscreen) in a Wayland overlay on the monitor it was opened on, and
@@ -19,7 +20,10 @@ PanelWindow {
     property var fontFamilies: []
     // The dock's preferences, edited in the Dock tab of the editor.
     property var dock: ({ enabled: false, edge: "bottom", autohide: false,
-                          attached: true, magnify: "scale", pinned: "[]" })
+                          attached: true, magnify: "planet",
+                          magnifyRange: VitrailTokens.dock.magnify.range,
+                          magnifyScale: VitrailTokens.dock.magnify.scale,
+                          pinned: "[]" })
 
     signal layoutChanged(string text)
     signal prefChanged(string key, var value)

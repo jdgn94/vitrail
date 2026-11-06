@@ -2926,7 +2926,11 @@ ShellRoot {
                     edge: shell.prefs.dockEdge || "bottom"
                     autohide: shell.prefBool("dockAutohide", false)
                     attached: shell.prefBool("dockAttached", true)
-                    magnify: shell.prefs.dockMagnify || "scale"
+                    magnify: DockJS.magnifyStyle(shell.prefs.dockMagnify)
+                    magnifyRange: shell.prefNumber("dockMagnifyRange",
+                                                      VitrailTokens.ranges.dockMagnifyRange.value)
+                    magnifyScale: shell.prefNumber("dockMagnifyScale",
+                                                   VitrailTokens.ranges.dockMagnifyScale.value)
                     pinned: shell.dockPinnedList
                     windows: shell.dockWindows
                     strings: shell.strings
@@ -2958,7 +2962,11 @@ ShellRoot {
                         edge: shell.prefs.dockEdge || "bottom",
                         autohide: shell.prefBool("dockAutohide", false),
                         attached: shell.prefBool("dockAttached", true),
-                        magnify: shell.prefs.dockMagnify || "scale",
+                        magnify: DockJS.magnifyStyle(shell.prefs.dockMagnify),
+                        magnifyRange: shell.prefNumber("dockMagnifyRange",
+                                                        VitrailTokens.ranges.dockMagnifyRange.value),
+                        magnifyScale: shell.prefNumber("dockMagnifyScale",
+                                                       VitrailTokens.ranges.dockMagnifyScale.value),
                         pinned: shell.prefs.dockPinned || "[]"
                     })
                     onLayoutChanged: function (text) {

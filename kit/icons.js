@@ -164,6 +164,7 @@ var names = {
     person: "person",
     pets: "pets",
     photo_library: "photo_library",
+    photo_size_select_large: "photo_size_select_large",
     place: "place",
     play_arrow: "play_arrow",
     play_circle: "play_circle",

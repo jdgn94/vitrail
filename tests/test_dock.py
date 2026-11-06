@@ -16,6 +16,8 @@ DOCK_KEYS = {
     "dockAutohide",
     "dockAttached",
     "dockMagnify",
+    "dockMagnifyRange",
+    "dockMagnifyScale",
     "dockPinned",
     "dockWidgets",
 }
@@ -24,7 +26,9 @@ DEFAULTS = {
     "dockEdge": "bottom",
     "dockAutohide": "false",
     "dockAttached": "true",
-    "dockMagnify": "scale",
+    "dockMagnify": "planet",
+    "dockMagnifyRange": "2",
+    "dockMagnifyScale": "1.32",
     "dockPinned": "[]",
     "dockWidgets": "[]",
 }
@@ -80,7 +84,9 @@ class DockRoundTripTests(unittest.TestCase):
                     "dockEdge": "left",
                     "dockAutohide": "true",
                     "dockAttached": "false",
-                    "dockMagnify": "lift",
+                    "dockMagnify": "individual",
+                    "dockMagnifyRange": "4",
+                    "dockMagnifyScale": "1.75",
                     "dockPinned": pinned,
                 }
             )
@@ -91,6 +97,16 @@ class DockRoundTripTests(unittest.TestCase):
             self.assertEqual({key: read[key] for key in DOCK_KEYS}, values)
             self.assertEqual(json.loads(read["dockPinned"])[1]["name"], "Kitty")
             self.assertEqual(prefs.validate(config), [])
+
+    def test_old_magnification_values_are_migrated_to_planet(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config = Path(tmp)
+            for old in ("scale", "lift"):
+                with self.subTest(old=old):
+                    prefs.write_pref(config, "dockMagnify", old)
+                    self.assertTrue(prefs.migrate(config))
+                    self.assertEqual(prefs.read_prefs(config)["dockMagnify"], "planet")
+            self.assertFalse(prefs.migrate(config))
 
     def test_a_dock_document_survives_a_qsettings_quoted_value(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
