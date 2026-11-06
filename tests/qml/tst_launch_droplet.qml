@@ -48,23 +48,53 @@ TestCase {
         verify(Droplet.request(app({ open: false }), icon(), fallback, 1000, 4000, "DP-1") !== null)
     }
 
-    function test_the_mapping_window_replaces_the_fallback() {
+    function test_the_mapping_window_replaces_the_fallback_once_it_settles() {
         var request = Droplet.request(app(), icon(), fallback, 1000, 4000, "DP-1")
-        var found = Droplet.arrival(request,
-                                   [windowOf("0xabc", "firefox", 2200, 300, 900, 600)],
-                                   ["0x111"], screen)
+        var floating = windowOf("0xabc", "firefox", 2200, 300, 900, 600)
+        var found = Droplet.arrival(request, [floating], ["0x111"], screen)
         compare(found.address, "0xabc")
-        compare(found.rect.x, 2200)
-        compare(found.rect.width, 900)
 
-        var local = Droplet.local(found.rect, screen)
-        compare(local.x, 280)
-        compare(local.y, 300)
+        request = Droplet.watch(request, found, 1000, 250)
+        compare(request.phase, "settling")
+        // The drop keeps the fallback while Hyprland is still placing it.
+        compare(request.target.x, fallback.x)
+        compare(request.pending.x, 2200)
+
+        var tiled = [windowOf("0xabc", "firefox", 1920, 0, 960, 1080)]
+        request = Droplet.settle(request, tiled, 1060)
+        compare(request.phase, "settling")
+        compare(request.pending.x, 1920)
+
+        request = Droplet.settle(request, tiled, 1120)
+        compare(request.phase, "settled")
+        compare(request.final.x, 1920)
+        compare(request.final.width, 960)
+
+        var local = Droplet.local(request.final, screen)
+        compare(local.x, 0)
+        compare(local.y, 0)
 
         request = Droplet.arrive(request, local, 1500)
         compare(request.phase, "fading")
-        compare(request.target.x, 280)
-        compare(request.target.width, 900)
+        compare(request.target.x, 0)
+        compare(request.target.width, 960)
+    }
+
+    function test_the_settle_window_takes_the_last_rect_while_it_moves() {
+        var request = Droplet.request(app(), icon(), fallback, 1000, 4000, "DP-1")
+        var found = Droplet.arrival(request,
+                                   [windowOf("0xabc", "firefox", 2200, 300, 900, 600)],
+                                   [], screen)
+        request = Droplet.watch(request, found, 1000, 250)
+        request = Droplet.settle(request,
+                                 [windowOf("0xabc", "firefox", 1920, 0, 960, 1080)],
+                                 1100)
+        compare(request.phase, "settling")
+        request = Droplet.settle(request,
+                                 [windowOf("0xabc", "firefox", 1920, 0, 1280, 1080)],
+                                 1250)
+        compare(request.phase, "settled")
+        compare(request.final.width, 1280)
     }
 
     function test_an_old_window_is_not_mistaken_for_the_new_one() {
@@ -101,6 +131,62 @@ TestCase {
         var request = Droplet.request(app(), icon(), fallback, 1000, 4000, "DP-1")
         compare(Droplet.finish(request), null)
         verify(!Droplet.active(null))
+    }
+
+    function test_a_keyboard_launch_starts_at_the_pointer() {
+        var pointer = { x: 2000, y: 400 }
+        var origin = Droplet.pointerOrigin(pointer, screen)
+        compare(origin.x, 80)
+        compare(origin.y, 400)
+        compare(origin.width, 2)
+        compare(origin.height, 2)
+        var request = Droplet.request(app(), origin, fallback, 1000, 4000, "DP-1")
+        compare(request.origin.x, 80)
+        compare(request.origin.y, 400)
+    }
+
+    function test_the_pointer_picks_the_monitor_that_holds_it() {
+        var screens = [screen, { x: 0, y: 0, width: 1920, height: 1080 }]
+        compare(Droplet.screenFor({ x: 2500, y: 500 }, screens).x, 1920)
+        compare(Droplet.screenFor({ x: 500, y: 500 }, screens).x, 0)
+        compare(Droplet.screenFor({ x: -10, y: 500 }, screens), null)
+    }
+
+    function test_a_closing_window_shrinks_from_its_last_rect() {
+        var last = { x: 200, y: 100, width: 800, height: 600 }
+        var close = Droplet.closing(last, 2000, "DP-1")
+        compare(close.phase, "closing")
+        compare(close.screen, "DP-1")
+        compare(close.origin.x, 200)
+        compare(close.origin.width, 800)
+        compare(close.target.x, 600)
+        compare(close.target.y, 400)
+        compare(close.target.width, 2)
+        compare(close.target.height, 2)
+        verify(!Droplet.closingDone(close, 2199, 240))
+        verify(Droplet.closingDone(close, 2240, 240))
+    }
+
+    function test_the_live_map_reports_open_and_closed_windows() {
+        var first = Droplet.sync({}, [windowOf("0x1", "kitty", 0, 0, 400, 300)])
+        compare(first.added.length, 1)
+        compare(first.closed.length, 0)
+        compare(first.rects["0x1"].rect.width, 400)
+
+        var second = Droplet.sync(first.rects,
+                                  [windowOf("0x2", "firefox", 100, 100, 800, 600)])
+        compare(second.added.length, 1)
+        compare(second.added[0].address, "0x2")
+        compare(second.closed.length, 1)
+        compare(second.closed[0].address, "0x1")
+        compare(second.closed[0].rect.width, 400)
+    }
+
+    function test_vitrail_windows_are_not_closed_with_a_drop() {
+        verify(Droplet.own({ class: "vitrail-settings" }))
+        verify(Droplet.own({ class: "vitrail" }))
+        verify(!Droplet.own({ class: "firefox" }))
+        verify(!Droplet.own({}))
     }
 
     function test_the_fallback_is_centred_on_the_screen() {

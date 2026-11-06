@@ -3,8 +3,9 @@ import "../kit"
 
 // The drop itself: a circle at the icon that grows into a rounded card over
 // the space the launching window will take, then fades when the window maps
-// (or when the request times out). It is a plain Item so the state can be
-// tested offscreen; the layer supplies the request.
+// (or when the request times out). A closing window gets the reverse: its last
+// rect shrinks to a point while it fades. It is a plain Item so the state can
+// be tested offscreen; the layer supplies the request.
 Item {
     id: root
 
@@ -28,9 +29,12 @@ Item {
         drop.y = target.y
         drop.width = target.width
         drop.height = target.height
-        drop.radius = VitrailTokens.radius
-        drop.opacity = root.current.phase === "fading" ? 0
-                                                       : VitrailTokens.opacity * VitrailTokens.droplet.tint
+        drop.radius = root.current.phase === "closing"
+                      ? Math.min(target.width, target.height) / 2
+                      : VitrailTokens.radius
+        drop.opacity = root.current.phase === "fading"
+                       || root.current.phase === "closing"
+                       ? 0 : VitrailTokens.opacity * VitrailTokens.droplet.tint
     }
 
     onCurrentChanged: {

@@ -414,13 +414,17 @@ var dock = {
 
 // The launch droplet (bar/droplet): how long a launching app gets to map
 // before the drop gives up, how long it takes to fade once it does (ms), how
-// often the shell looks for the new window, the share of the screen the space
-// it holds takes while the window is unknown, and the tint of the shape.
+// often the shell looks for the new window, how long a mapped window may keep
+// moving before its rect is taken anyway, how often the live rect map refreshes
+// (ms), the share of the screen the space it holds takes while the window is
+// unknown, and the tint of the shape.
 var droplet = {
     timeout: 4000,
     fade: 240,
     settle: 60,
     poll: 60,
+    stabilize: 250,
+    refresh: 1000,
     fallbackWidth: 0.5,
     fallbackHeight: 0.55,
     tint: 0.7

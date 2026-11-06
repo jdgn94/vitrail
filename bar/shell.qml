@@ -341,6 +341,15 @@ ShellRoot {
     property var launchRequest: null
     property var launchKnown: []
     property var launchScreen: null
+    // The closing drop, drawn in the same overlay once a window goes away.
+    property var closeRequest: null
+    // Every live toplevel by address, kept fresh so a close can animate from
+    // the rect the window had while it lived. `liveReady` skips the first read,
+    // which would look like every open window had just appeared.
+    property var liveRects: ({})
+    property bool liveReady: false
+    // The overlay draws the launch drop first; a close waits its turn.
+    readonly property var dropletRequest: shell.launchRequest || shell.closeRequest
 
     // Left click and Super: the full-screen launcher on that monitor (the
     // focused one without a screen); the popout is the right click.
@@ -1194,6 +1203,107 @@ ShellRoot {
         onTriggered: shell.endLaunch()
     }
 
+    // The close drop shrinks over the slow motion and fades with it; clear it
+    // once both animations are done.
+    Timer {
+        id: closeFade
+
+        interval: VitrailTokens.duration("slow") + VitrailTokens.droplet.settle
+        onTriggered: shell.closeRequest = null
+    }
+
+    // Hyprland's model is the source of truth; the slow timer also refreshes
+    // the rects of windows that move without adding or removing a toplevel.
+    Timer {
+        interval: VitrailTokens.droplet.refresh
+        running: true
+        repeat: true
+        onTriggered: shell.syncToplevels()
+    }
+
+    Connections {
+        target: Hyprland.toplevels
+
+        function onValuesChanged() { shell.syncToplevels() }
+    }
+
+    // A window appeared or vanished since the last read. New windows from the
+    // dock/launcher belong to their own request; anything else was opened by a
+    // keybind, so the drop comes from the pointer. A close keeps its rect.
+    function syncToplevels() {
+        var result = DropletJS.sync(shell.liveRects, Hyprland.toplevels.values)
+        if (!shell.liveReady) {
+            shell.liveRects = result.rects
+            shell.liveReady = true
+            return
+        }
+        shell.liveRects = result.rects
+        var animate = shell.prefBool("launchAnimation", true)
+        if (shell.editMode)
+            return
+        if (animate) {
+            for (var c = 0; c < result.closed.length; c++)
+                shell.beginClose(result.closed[c])
+        }
+        if (!animate || shell.launchRequest)
+            return
+        for (var a = 0; a < result.added.length; a++) {
+            // Several windows can map in the same tick; the newest answer wins
+            // in the pointer read, so start with the first one.
+            pointerRun.run(["hyprctl", "cursorpos"], result.added[a].address)
+            break
+        }
+    }
+
+    // The closing window's last rect, shrunk and faded on the monitor it was on.
+    function beginClose(window) {
+        if (!window || DropletJS.own(window))
+            return
+        var centre = { x: window.rect.x + window.rect.width / 2,
+                       y: window.rect.y + window.rect.height / 2 }
+        var screen = DropletJS.screenFor(centre, Quickshell.screens)
+        if (!screen)
+            return
+        shell.closeRequest = DropletJS.closing(DropletJS.local(window.rect, screen),
+                                               Date.now(), screen.name)
+        closeFade.restart()
+    }
+
+    // A keybind opened this window: the drop starts at the pointer and holds
+    // the space until its geometry settles on the final (tiled) rect.
+    function keyboardPointer(tag, output) {
+        var window = shell.liveRects[String(tag || "")]
+        if (!window || shell.editMode || shell.launchRequest)
+            return
+        var parts = String(output || "").trim().split(",")
+        if (parts.length !== 2)
+            return
+        var pointer = { x: Number(parts[0]), y: Number(parts[1]) }
+        if (!isFinite(pointer.x) || !isFinite(pointer.y))
+            return
+        var centre = { x: window.rect.x + window.rect.width / 2,
+                       y: window.rect.y + window.rect.height / 2 }
+        var screen = DropletJS.screenFor(centre, Quickshell.screens)
+        if (!screen)
+            return
+        var space = DropletJS.fallback(screen.width, screen.height,
+                                       VitrailTokens.droplet.fallbackWidth,
+                                       VitrailTokens.droplet.fallbackHeight)
+        var request = DropletJS.request(window, DropletJS.pointerOrigin(pointer, screen),
+                                        space, Date.now(),
+                                        VitrailTokens.droplet.timeout, screen.name)
+        if (!request)
+            return
+        request = DropletJS.watch(request, window, Date.now(),
+                                  VitrailTokens.droplet.stabilize)
+        shell.launchKnown = []
+        shell.launchScreen = screen
+        shell.launchRequest = request
+        Hyprland.refreshToplevels()
+        launchFade.stop()
+        launchPoll.restart()
+    }
+
     // The drop starts at the icon/row, holds the fallback space until the
     // window maps, and follows it then. Focusing an open app never comes here.
     function beginLaunch(app, rect, screen) {
@@ -1222,26 +1332,39 @@ ShellRoot {
     }
 
     // While the drop holds, look for the window that appeared since it began;
-    // when one does (or the timeout passes) fade it from there.
+    // wait for its geometry to stop moving, then fade from its final rect.
     function trackLaunch() {
         var request = shell.launchRequest
         if (!request) {
             launchPoll.stop()
             return
         }
-        if (request.phase === "fading")
+        if (request.phase === "fading" || request.phase === "closing")
             return
         var now = Date.now()
+        if (request.phase === "settling") {
+            request = DropletJS.settle(request, Hyprland.toplevels.values, now)
+            if (request.phase === "settled") {
+                shell.launchRequest = DropletJS.arrive(
+                    request, DropletJS.local(request.final, shell.launchScreen), now)
+                launchPoll.stop()
+                launchFade.restart()
+            } else {
+                shell.launchRequest = request
+            }
+            return
+        }
         var found = DropletJS.arrival(request, Hyprland.toplevels.values, shell.launchKnown,
                                       shell.launchScreen)
         if (found) {
-            shell.launchRequest = DropletJS.arrive(request,
-                                                   DropletJS.local(found.rect, shell.launchScreen), now)
-        } else if (DropletJS.expired(request, now)) {
-            shell.launchRequest = DropletJS.timeout(request, now)
-        } else {
+            shell.launchRequest = DropletJS.watch(request, found, now,
+                                                  VitrailTokens.droplet.stabilize)
             return
         }
+        if (DropletJS.expired(request, now))
+            shell.launchRequest = DropletJS.timeout(request, now)
+        else
+            return
         launchPoll.stop()
         launchFade.restart()
     }
@@ -1443,6 +1566,13 @@ ShellRoot {
             shell.clipboardX = Number(parts[0])
             shell.clipboardY = Number(parts[1])
         }
+    }
+
+    // The pointer of a keybind launch: `tag` names the window that appeared.
+    AsyncRun {
+        id: pointerRun
+
+        onFinished: function (tag, output) { shell.keyboardPointer(tag, output) }
     }
 
     AsyncRun {
@@ -3978,11 +4108,11 @@ ShellRoot {
                     }
                 }
 
-                // The launch droplet: above the launcher while it closes, with
-                // an empty mask and no keyboard, so nothing waits on it.
+                // The launch and closing drops: above the launcher while it
+                // closes, with an empty mask and no keyboard, so nothing waits.
                 LaunchDropletLayer {
                     screen: monitor.modelData
-                    request: shell.launchRequest
+                    request: shell.dropletRequest
                 }
 
                 // Session menu: a dimmed full-screen layer that takes the keyboard.
