@@ -5,12 +5,14 @@ import "base"
 
 // A field that shows what is chosen and opens a mosaic of everything else.
 //
-// It is the three pickers of the Fonts page in one component: an option may
-// carry a set of pictures (`icons`, an icon pack's or a cursor's) or a font
-// family (`family`, drawn as "Aa" in that family). The trigger shows four at
-// 24 px; the dialog shows them all at 84 px with the name underneath, like
-// KDE's theme pickers. The dialog is sized by its content and cannot be
-// resized.
+// It is the pickers of the Fonts page in one component: an option may carry a
+// set of pictures (`icons`, an icon pack's or a cursor's) or a font family
+// (`family`, drawn as "Aa" in that family). The compact trigger is a field
+// with four pictures at 24 px. `large` turns it into the approved preview
+// card: the whole mosaic over the name, a real radius and the accent ring on
+// focus; clicking it still opens the same dialog. The dialog shows every
+// picture with the name underneath, like KDE's theme pickers, and is sized by
+// its content.
 FocusScope {
     id: root
 
@@ -36,6 +38,8 @@ FocusScope {
     property int cellColumns: 3
     property int cellWidth: 148
     property int cellHeight: 148
+    // The big card used by the application-icon and cursor pickers.
+    property bool large: false
     property string variant: ""
     property color foreground: VitrailTokens.color("foreground")
     property color accent: VitrailTokens.color("primary")
@@ -50,7 +54,10 @@ FocusScope {
                                      || VitrailVariants.surface.glass
     readonly property int duration: VitrailTokens.duration(root.style.motion)
     readonly property real boxHeight: VitrailTokens.field.height.md
-    readonly property real radius: Math.min(VitrailTokens.radius, root.boxHeight / 2)
+    readonly property real largeHeight: root.cellPreview + VitrailTokens.size("subtitle")
+                                        + 3 * VitrailTokens.gap("md")
+    readonly property real radius: root.large ? VitrailTokens.radius
+                                               : Math.min(VitrailTokens.radius, root.boxHeight / 2)
 
     // The size comes from the full list so searching does not resize it.
     readonly property int maxColumns: 5
@@ -131,8 +138,15 @@ FocusScope {
     function open() {
         if (root.options.length === 0)
             return
-        if (root.tabs.length > 0 && root.currentTab === "")
-            root.currentTab = root.tabs[0].key
+        if (root.tabs.length > 0) {
+            if (root.currentTab === "")
+                root.currentTab = root.tabs[0].key
+            var chosen = root.options.find(function (row) {
+                return row.key === root.current && row.tab
+            })
+            if (chosen)
+                root.currentTab = chosen.tab
+        }
         root.filter = ""
         root.pendingAction = ""
         root.highlighted = Math.max(0, root.matchedIndexOfKey(root.current))
@@ -167,8 +181,10 @@ FocusScope {
         root.actionTriggered(key, root.currentTab)
     }
 
-    implicitWidth: VitrailTokens.size("display") * 9
-    implicitHeight: root.boxHeight
+    implicitWidth: root.large ? Math.max(root.cellPreview + 2 * VitrailTokens.gap("md"),
+                                         VitrailTokens.size("display") * 7)
+                              : VitrailTokens.size("display") * 9
+    implicitHeight: root.large ? root.largeHeight : root.boxHeight
     activeFocusOnTab: true
     opacity: root.enabled ? 1 : 0.45
 
@@ -261,7 +277,8 @@ FocusScope {
 
         anchors.fill: parent
         radius: root.radius
-        color: Qt.rgba(root.panel.r, root.panel.g, root.panel.b, root.style.fill)
+        color: Qt.rgba(root.panel.r, root.panel.g, root.panel.b,
+                       root.large ? root.surface.raised : root.style.fill)
         border.width: root.activeFocus ? root.style.focus : root.style.border
         border.color: root.activeFocus ? root.accent : Qt.rgba(root.foreground.r, root.foreground.g,
                                                                root.foreground.b, root.surface.edge)
@@ -270,6 +287,7 @@ FocusScope {
             anchors.fill: parent
             anchors.leftMargin: VitrailTokens.gap("md")
             anchors.rightMargin: VitrailTokens.gap("sm")
+            visible: !root.large
             spacing: VitrailTokens.gap("sm")
 
             Preview {
@@ -299,7 +317,44 @@ FocusScope {
             }
         }
 
-        HoverHandler { id: hover }
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: VitrailTokens.gap("md")
+            visible: root.large
+            spacing: VitrailTokens.gap("sm")
+
+            Preview {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: root.cellPreview
+                Layout.preferredHeight: root.cellPreview
+                option: root.currentOption
+                size: root.cellPreview
+                columns: root.cellColumns
+                maxShown: 0
+            }
+
+            VitrailText {
+                Layout.fillWidth: true
+                variant: "body"
+                text: root.currentLabel
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+            }
+        }
+
+        VitrailText {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: VitrailTokens.gap("sm")
+            visible: root.large
+            variant: "icon"
+            font.pixelSize: VitrailTokens.size("subtitle")
+            text: "expand_more"
+            color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.7)
+            rotation: root.expanded ? 180 : 0
+
+            Behavior on rotation { NumberAnimation { duration: root.duration; easing.type: Easing.OutCubic } }
+        }
 
         TapHandler {
             onTapped: {

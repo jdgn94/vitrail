@@ -68,6 +68,23 @@ TestCase {
     }
 
     Component {
+        id: largeComponent
+
+        VitrailPicker {
+            width: 220
+            large: true
+            cellPreview: 120
+            cellColumns: 4
+            label: "Packs"
+            current: "a"
+            options: [
+                { key: "a", label: "Alpha" },
+                { key: "b", label: "Beta" }
+            ]
+        }
+    }
+
+    Component {
         id: actionComponent
 
         VitrailPicker {
@@ -176,6 +193,27 @@ TestCase {
         var glyph = findText(picker, "block")
         verify(glyph !== null)
         compare(glyph.font.variableAxes["FILL"], 0)
+    }
+
+    function test_the_large_trigger_is_a_card_with_the_name() {
+        var picker = createTemporaryObject(largeComponent, testCase)
+        compare(picker.large, true)
+        verify(picker.implicitHeight > picker.boxHeight)
+        verify(findText(picker, "Alpha") !== null)
+    }
+
+    function test_the_large_trigger_still_opens_the_dialog() {
+        var picker = createTemporaryObject(largeComponent, testCase)
+        mouseClick(picker, picker.width / 2, picker.height / 2)
+        tryCompare(picker, "expanded", true)
+    }
+
+    function test_the_dialog_opens_on_the_tab_of_the_chosen_row() {
+        var picker = createTemporaryObject(tabbedComponent, testCase)
+        picker.current = "c"
+        picker.open()
+        tryCompare(picker, "expanded", true)
+        compare(picker.currentTab, "adaptive")
     }
 
     function test_deleting_asks_for_a_second_click() {

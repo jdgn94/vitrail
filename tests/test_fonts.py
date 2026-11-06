@@ -390,12 +390,29 @@ class ApplyTests(unittest.TestCase):
             "cursorTheme": "Adwaita",
             "cursorThemeLight": "Papirus",
             "cursorThemeDark": "Adwaita",
+            "cursorThemeSplit": "true",
             "cursorSize": 24,
         }
         self.apply(values, mode="light")
         env = (self.config / "environment.d" / "20-vitrail-cursor.conf").read_text(encoding="utf-8")
         self.assertIn("XCURSOR_THEME=Papirus", env)
         self.apply(values, mode="dark")
+        env = (self.config / "environment.d" / "20-vitrail-cursor.conf").read_text(encoding="utf-8")
+        self.assertIn("XCURSOR_THEME=Adwaita", env)
+
+    def test_without_the_split_the_shared_cursor_wins(self) -> None:
+        self.apply(
+            {
+                "fontSystem": "Roboto",
+                "iconTheme": "Adwaita",
+                "cursorTheme": "Adwaita",
+                "cursorThemeLight": "Papirus",
+                "cursorThemeDark": "Papirus",
+                "cursorThemeSplit": "false",
+                "cursorSize": 24,
+            },
+            mode="light",
+        )
         env = (self.config / "environment.d" / "20-vitrail-cursor.conf").read_text(encoding="utf-8")
         self.assertIn("XCURSOR_THEME=Adwaita", env)
 
@@ -406,6 +423,7 @@ class ApplyTests(unittest.TestCase):
             "cursorTheme": "Adwaita",
             "cursorThemeLight": "",
             "cursorThemeDark": "",
+            "cursorThemeSplit": "true",
             "cursorSize": 24,
         }
         for mode in ("light", "dark"):
@@ -421,6 +439,7 @@ class ApplyTests(unittest.TestCase):
                 "iconTheme": "Adwaita",
                 "cursorTheme": "Adwaita",
                 "cursorThemeLight": "vitrail-Adwaita",
+                "cursorThemeSplit": "true",
                 "cursorSize": 24,
             },
             self.config,
@@ -448,6 +467,7 @@ class ApplyTests(unittest.TestCase):
                 "iconTheme": "Adwaita",
                 "cursorTheme": "Adwaita",
                 "cursorThemeLight": "Papirus",
+                "cursorThemeSplit": "true",
                 "cursorSize": 24,
             },
             run=self.recording(FACES, calls),

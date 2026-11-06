@@ -17,6 +17,8 @@ appearance radius
 appearance blurStrength
 appearance spacing
 appearance fontBase
+# One cursor pack for both themes, or one per theme (see the Cursor tab).
+appearance cursorThemeSplit
 
 colors colorScheme
 colors colorContrast

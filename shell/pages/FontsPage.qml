@@ -22,6 +22,7 @@ Item {
     property string tab: "text"
     // The two tabs of the one app-icon picker, and the import/delete feedback.
     property string iconTab: "normal"
+    property string cursorTab: "normal"
     property string iconMessage: ""
     property string iconState: "idle"
     property var iconNonce: 0
@@ -209,25 +210,16 @@ Item {
         }
     }
 
-    // The pack a mode ends up with: its own choice, else the shared one.
-    function cursorEffective(theme) {
-        return (theme === "light" ? page.prefs.cursorThemeLight : page.prefs.cursorThemeDark)
-                || page.prefs.cursorTheme || "Adwaita"
-    }
-
-    // One row for "same as the shared pack", every installed cursor (the
-    // generated vitrail-* layers included) and one target per adaptive design.
-    function cursorOptions(current) {
+    // Cursor rows split exactly like the icon pack: installed packs are
+    // Normal, the generated `vitrail-*` layers (and the targets that build
+    // them) are Adaptive. The first row is the shared pack, only when a split
+    // asks for a per-theme override.
+    function cursorOptions(current, inherit) {
         var previews = page.fonts.cursorPreviews || {}
         var shared = page.prefs.cursorTheme || "Adwaita"
-        var rows = [{
-            key: "",
-            label: page.t("fonts.cursor.inherit").replace("%1", page.cursorLabel(shared)),
-            icons: previews[shared] || [],
-            glyph: (previews[shared] || []).length === 0 ? "mouse" : ""
-        }]
+        var rows = []
         var seen = Object.create(null)
-        function add(name, icons) {
+        function add(name, icons, tab) {
             if (seen[name])
                 return
             seen[name] = true
@@ -236,18 +228,27 @@ Item {
                 key: name,
                 label: page.cursorLabel(name),
                 icons: pictures,
-                glyph: pictures.length === 0 ? "mouse" : ""
+                glyph: pictures.length === 0 ? "mouse" : "",
+                tab: tab
             })
         }
+        if (inherit)
+            rows.push({
+                key: "",
+                label: page.t("fonts.cursor.inherit").replace("%1", page.cursorLabel(shared)),
+                icons: previews[shared] || [],
+                glyph: (previews[shared] || []).length === 0 ? "mouse" : "",
+                tab: "normal"
+            })
         ;(page.fonts.cursorThemes || []).forEach(function (name) {
-            add(name, previews[name])
+            add(name, previews[name], name.indexOf("vitrail-") === 0 ? "adaptive" : "normal")
         })
         ;(page.fonts.cursorDesigns || []).forEach(function (pack) {
             var name = "vitrail-" + pack
-            add(name, previews[name] || previews[pack])
+            add(name, previews[name] || previews[pack], "adaptive")
         })
         if (current)
-            add(current, previews[current])
+            add(current, previews[current], current.indexOf("vitrail-") === 0 ? "adaptive" : "normal")
         rows.sort(function (a, b) {
             return a.key === "" ? -1 : b.key === "" ? 1 : a.label.localeCompare(b.label)
         })
@@ -402,12 +403,10 @@ Item {
 
                         VitrailPicker {
                             objectName: "iconThemePicker"
-                            Layout.preferredWidth: 320
+                            Layout.preferredWidth: 240
+                            large: true
                             label: page.t("fonts.iconTheme")
                             searchHint: page.t("fonts.search")
-                            triggerShown: 8
-                            triggerColumns: 4
-                            triggerSize: 40
                             cellPreview: 120
                             cellColumns: 4
                             cellWidth: 176
@@ -456,6 +455,57 @@ Item {
                     accent: page.palette.primary
 
                     VitrailSettingRow {
+                        icon: "contrast"
+                        label: page.t("fonts.cursor.split")
+                        description: page.t("fonts.cursor.split.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.cursorThemeSplit
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.cursorThemeSplit = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        visible: !page.prefs.cursorThemeSplit
+                        icon: "mouse"
+                        label: page.t("fonts.cursor")
+                        description: page.t("fonts.cursor.shared.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailPicker {
+                            objectName: "cursorThemePicker"
+                            Layout.preferredWidth: 240
+                            large: true
+                            label: page.t("fonts.cursor")
+                            searchHint: page.t("fonts.search")
+                            cellPreview: 120
+                            cellColumns: 4
+                            cellWidth: 176
+                            cellHeight: 184
+                            tabs: [
+                                { key: "normal", icon: "apps", label: page.t("fonts.cursor.normal") },
+                                { key: "adaptive", icon: "palette",
+                                  label: page.t("fonts.cursor.adaptive") }
+                            ]
+                            currentTab: page.cursorTab
+                            emptyText: page.t("fonts.cursor.empty")
+                            current: page.prefs.cursorTheme
+                            options: page.cursorOptions(page.prefs.cursorTheme, false)
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            panel: page.palette.surfaceHigh
+                            onCurrentTabChanged: page.cursorTab = currentTab
+                            onSelected: page.prefs.cursorTheme = key
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        visible: page.prefs.cursorThemeSplit
                         icon: "light_mode"
                         label: page.t("fonts.cursor.light")
                         description: page.t("fonts.cursor.light.help")
@@ -464,26 +514,33 @@ Item {
 
                         VitrailPicker {
                             objectName: "cursorLightPicker"
-                            Layout.preferredWidth: 320
+                            Layout.preferredWidth: 240
+                            large: true
                             label: page.t("fonts.cursor.light")
                             searchHint: page.t("fonts.search")
-                            triggerShown: 8
-                            triggerColumns: 4
-                            triggerSize: 40
                             cellPreview: 120
                             cellColumns: 4
                             cellWidth: 176
                             cellHeight: 184
+                            tabs: [
+                                { key: "normal", icon: "apps", label: page.t("fonts.cursor.normal") },
+                                { key: "adaptive", icon: "palette",
+                                  label: page.t("fonts.cursor.adaptive") }
+                            ]
+                            currentTab: page.cursorTab
+                            emptyText: page.t("fonts.cursor.empty")
                             current: page.prefs.cursorThemeLight
-                            options: page.cursorOptions(page.prefs.cursorThemeLight)
+                            options: page.cursorOptions(page.prefs.cursorThemeLight, true)
                             foreground: page.palette.foreground
                             accent: page.palette.primary
                             panel: page.palette.surfaceHigh
+                            onCurrentTabChanged: page.cursorTab = currentTab
                             onSelected: page.prefs.cursorThemeLight = key
                         }
                     }
 
                     VitrailSettingRow {
+                        visible: page.prefs.cursorThemeSplit
                         icon: "dark_mode"
                         label: page.t("fonts.cursor.dark")
                         description: page.t("fonts.cursor.dark.help")
@@ -492,35 +549,29 @@ Item {
 
                         VitrailPicker {
                             objectName: "cursorDarkPicker"
-                            Layout.preferredWidth: 320
+                            Layout.preferredWidth: 240
+                            large: true
                             label: page.t("fonts.cursor.dark")
                             searchHint: page.t("fonts.search")
-                            triggerShown: 8
-                            triggerColumns: 4
-                            triggerSize: 40
                             cellPreview: 120
                             cellColumns: 4
                             cellWidth: 176
                             cellHeight: 184
+                            tabs: [
+                                { key: "normal", icon: "apps", label: page.t("fonts.cursor.normal") },
+                                { key: "adaptive", icon: "palette",
+                                  label: page.t("fonts.cursor.adaptive") }
+                            ]
+                            currentTab: page.cursorTab
+                            emptyText: page.t("fonts.cursor.empty")
                             current: page.prefs.cursorThemeDark
-                            options: page.cursorOptions(page.prefs.cursorThemeDark)
+                            options: page.cursorOptions(page.prefs.cursorThemeDark, true)
                             foreground: page.palette.foreground
                             accent: page.palette.primary
                             panel: page.palette.surfaceHigh
+                            onCurrentTabChanged: page.cursorTab = currentTab
                             onSelected: page.prefs.cursorThemeDark = key
                         }
-                    }
-
-                    VitrailText {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: VitrailTokens.gap("md")
-                        Layout.rightMargin: VitrailTokens.gap("md")
-                        variant: "label"
-                        text: page.t("fonts.cursor.mapping")
-                                  .replace("%1", page.cursorLabel(page.cursorEffective("light")))
-                                  .replace("%2", page.cursorLabel(page.cursorEffective("dark")))
-                        color: page.palette.muted
-                        wrapMode: Text.WordWrap
                     }
 
                     VitrailSlider {

@@ -419,6 +419,11 @@ def console_family(name: str, run: Runner = run_text) -> str:
     return ""
 
 
+def _truthy(value: object) -> bool:
+    """A stored boolean, which arrives as a string from the INI files."""
+    return str(value if value is not None else "").strip().lower() in ("true", "1", "yes", "on")
+
+
 def active_mode(appearance: str | None = None) -> str:
     """The session's light/dark mode: the choice or the clock's guess."""
     if appearance is None:
@@ -631,11 +636,13 @@ def apply(
     designs = [cursor_engine.design_name(name) for name in live.get("cursorDesigns", [])]
     if live["cursorThemes"] or designs:
         active = active_mode() if mode not in ("light", "dark") else mode
-        per_theme = values.get("cursorThemeLight" if active == "light" else "cursorThemeDark")
-        # An empty per-theme value means "use the shared pack", and the active
-        # mode decides which row of the page is in force.
+        requested = values.get("cursorTheme")
+        if _truthy(values.get("cursorThemeSplit")):
+            # The split can leave one mode empty: that mode follows the shared
+            # pack again, and the active mode decides which row is in force.
+            requested = values.get("cursorThemeLight" if active == "light" else "cursorThemeDark") or requested
         cursor = pick(
-            per_theme or values.get("cursorTheme"),
+            requested,
             live["cursorThemes"] + designs,
             DEFAULT_CURSOR,
             f"cursor theme ({active})",

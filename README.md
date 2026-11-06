@@ -297,7 +297,7 @@ the window declares it in another file, or the path unit watches another set.
 
 | File | Keys |
 |------|------|
-| `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase` |
+| `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase`, `cursorThemeSplit` |
 | `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barMonitors`, `barLayout`, `panelLayout`, `desktopLayout`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle`, `barBatteryChip`, `barBluetoothChip`, `barKeyboard`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep`, `pomodoroWork`, `pomodoroRest`, `pomodoroCycles`, `timerMinutes` |
 | `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `wallpaperEffect`, `wallpaperMonitors`, `systemColor` (`wallpaperSeed`: legacy) |
 | `background.ini` | `visualiserEnabled`, `visualiserVariant`, `visualiserHeight` |
@@ -359,10 +359,13 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   mosaic of everything installed — "Aa" in each family, eight icons per pack,
   eight real cursors per theme — with a search box and the name under every
   cell (`kit/VitrailPicker.qml`); the dialog is sized by its content and the
-  trigger shows the chosen one. The cursor has a light and a dark picker; an
-  empty choice follows the shared pack, and a **Vitrail · pack** row rebuilds
-  that pack in `~/.local/share/icons/vitrail-<pack>` with the wallpaper's
-  `on_surface` and `primary` for that mode (`vitrail/cursor.py`). The authoring guide —
+  trigger shows the chosen one. The application-icon and cursor triggers are
+  large preview cards (the mosaic and the name) that open the same dialog. A
+  cursor-per-theme switch turns the cursor into one shared picker or two large
+  light/dark pickers; an empty choice follows the shared pack, and a
+  **Vitrail · pack** row rebuilds that pack in
+  `~/.local/share/icons/vitrail-<pack>` with the wallpaper's `on_surface` and
+  `primary` for that mode (`vitrail/cursor.py`). The authoring guide —
   what makes a pack tint well, the Xcursor layout, and what each part of the
   session picks up live (X11 included) — is `docs/cursors.md`.
   On the Icons tab one picker lists both the installed packs (**Normal**) and

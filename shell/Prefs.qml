@@ -20,6 +20,7 @@ QtObject {
     property alias blurStrength: appearanceFile.blurStrength
     property alias spacing: appearanceFile.spacing
     property alias fontBase: appearanceFile.fontBase
+    property alias cursorThemeSplit: appearanceFile.cursorThemeSplit
     property alias barEdge: barFile.barEdge
     property alias barScreens: barFile.barScreens
     property alias barStyle: barFile.barStyle
@@ -149,6 +150,7 @@ QtObject {
         property int blurStrength: 6
         property int spacing: 12
         property int fontBase: 13
+        property bool cursorThemeSplit: false
     }
 
     property Settings barSettings: Settings {

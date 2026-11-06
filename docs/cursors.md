@@ -107,11 +107,14 @@ today.
 
 ## A pack per theme
 
-The Cursor tab offers a light pack and a dark pack. `fonts.ini` stores them as
-`cursorThemeLight` / `cursorThemeDark`; an empty value follows the shared
-`cursorTheme`, so a machine that never uses the two new keys keeps one pack for
-both modes. A picker's first row is exactly that: **Same as the shared pack**,
-with the shared pack's name in the label.
+**Use a cursor per theme** (`appearance.ini` `cursorThemeSplit`, off by
+default) switches between one shared picker and two large light/dark pickers
+(`fonts.ini` `cursorThemeLight` / `cursorThemeDark`). An empty per-theme value
+follows the shared `cursorTheme`, so a machine that never uses the split keeps
+one pack for both modes; while split on, a picker's first row is exactly that:
+**Same as the shared pack**, with the shared pack's name in the label. The
+cursor dialog has the same **Normal** / **Adaptive** tabs as the icon picker:
+only `vitrail-*` layers are adaptive.
 
 `fonts apply` resolves the mode from `appearance` (falling back to the clock
 between 07:00 and 19:00), picks that mode's pack, and builds the generated
