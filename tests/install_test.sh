@@ -232,26 +232,132 @@ else
     not_ok "dangling header.conf symlink is replaced"
 fi
 
-# --------------------------------------------------------------- wallpapers
+# ------------------------------------------------------------ optional assets
 
-# The bundled wallpapers go through `vitrail wallpaper import`; none, no call.
+# The repository carries optional assets and the user chooses which groups to
+# install. Wallpapers go through `vitrail wallpaper import`; a cursor or icon
+# pack is validated and copied into ~/.local/share/icons, with a backup when a
+# theme of the same name is already there.
 tmp="$(sandbox)"
-mkdir -p "$tmp/bin" "$tmp/repo/assets/wallpapers" "$tmp/repo/assets/animation-wallpapers" "$tmp/repo/empty"
+mkdir -p "$tmp/bin" "$tmp/home" \
+    "$tmp/repo/assets/wallpapers" \
+    "$tmp/repo/assets/adaptive-wallpapers" \
+    "$tmp/repo/assets/animation-wallpapers" \
+    "$tmp/repo/assets/cursors/TestCursors/cursors" \
+    "$tmp/repo/assets/cursors/EmptyCursor" \
+    "$tmp/repo/assets/icons/TestIcons/48x48/apps" \
+    "$tmp/repo/assets/icons/NoIndex" \
+    "$tmp/repo/assets/icons/Empty"
+printf '[Icon Theme]\nName=Vitrail test cursor\n' \
+    >"$tmp/repo/assets/cursors/TestCursors/index.theme"
+printf 'Xcur' >"$tmp/repo/assets/cursors/TestCursors/cursors/left_ptr"
+printf '[Icon Theme]\nName=No cursors\n' >"$tmp/repo/assets/cursors/EmptyCursor/index.theme"
+printf '[Icon Theme]\nName=Vitrail test icons\nDirectories=48x48/apps\n' \
+    >"$tmp/repo/assets/icons/TestIcons/index.theme"
+printf '<svg/>' >"$tmp/repo/assets/icons/TestIcons/48x48/apps/app.svg"
+printf '[Icon Theme]\nName=No icons\n' >"$tmp/repo/assets/icons/Empty/index.theme"
 printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$XDG_CONFIG_HOME|$*" >>"%s/calls"\n' "$tmp" >"$tmp/bin/python3"
 chmod +x "$tmp/bin/python3"
 ROOT_DIR="$tmp/repo"
 HOME_DIR="$tmp/home"
-PATH="$tmp/bin:$PATH" import_wallpapers >/dev/null
-expect_eq "import_wallpapers hands the asset folders to the CLI" \
-    "$tmp/home/.config|-m vitrail.cli wallpaper import $tmp/repo/assets/wallpapers $tmp/repo/assets/animation-wallpapers" \
+
+ASSET_SELECTION=""
+parse_assets "$ASSET_SELECTION"
+expect_eq "no --assets keeps the wallpaper folders" "images animated adaptive" "${SELECTED_ASSETS[*]}"
+
+parse_assets "images,animated,adaptive,cursors,icons"
+expect_eq "--assets selects every group in order" "images animated adaptive cursors icons" \
+    "${SELECTED_ASSETS[*]}"
+parse_assets "cursors,icons,images,cursors"
+expect_eq "--assets deduplicates groups" "cursors icons images" "${SELECTED_ASSETS[*]}"
+parse_assets "none"
+expect_eq "--assets=none selects nothing" "0" "${#SELECTED_ASSETS[@]}"
+if (parse_assets "fonts" 2>"$tmp/unknown.err") >/dev/null; then
+    not_ok "an unknown asset group is rejected"
+else
+    grep -q "unknown asset group: fonts" "$tmp/unknown.err" \
+        && ok "an unknown asset group is rejected" \
+        || not_ok "an unknown asset group is rejected" "output: $(cat "$tmp/unknown.err")"
+fi
+
+parse_assets "images"
+PATH="$tmp/bin:$PATH" import_assets >/dev/null
+expect_eq "selected wallpapers go through the CLI" \
+    "$tmp/home/.config|-m vitrail.cli wallpaper import $tmp/repo/assets/wallpapers" \
     "$(cat "$tmp/calls")"
 rm -f "$tmp/calls"
-ROOT_DIR="$tmp/repo/empty"
-PATH="$tmp/bin:$PATH" import_wallpapers >/dev/null
-[[ ! -e "$tmp/calls" ]] && ok "import_wallpapers skips quietly without assets" \
-    || not_ok "import_wallpapers skips quietly without assets"
+parse_assets "adaptive,animated"
+PATH="$tmp/bin:$PATH" import_assets >/dev/null
+expect_eq "only the selected wallpaper groups are imported" \
+    "$tmp/home/.config|-m vitrail.cli wallpaper import $tmp/repo/assets/adaptive-wallpapers $tmp/repo/assets/animation-wallpapers" \
+    "$(cat "$tmp/calls")"
+rm -f "$tmp/calls"
+
+parse_assets "cursors"
+PATH="$tmp/bin:$PATH" import_assets >/dev/null 2>"$tmp/cursors.err"
+[[ -f "$tmp/home/.local/share/icons/TestCursors/index.theme" &&
+    -f "$tmp/home/.local/share/icons/TestCursors/cursors/left_ptr" ]] \
+    && ok "a cursor pack is copied with its tree" \
+    || not_ok "a cursor pack is copied with its tree" "output: $(cat "$tmp/cursors.err")"
+grep -q "cursor pack EmptyCursor: no cursors/ folder" "$tmp/cursors.err" \
+    && ok "a cursor pack without cursors/ is reported" \
+    || not_ok "a cursor pack without cursors/ is reported" "output: $(cat "$tmp/cursors.err")"
+[[ ! -e "$tmp/home/.local/share/icons/EmptyCursor" ]] \
+    && ok "an invalid cursor pack is not installed" \
+    || not_ok "an invalid cursor pack is not installed"
+[[ ! -e "$tmp/home/.local/share/icons/TestIcons" && ! -e "$tmp/calls" ]] \
+    && ok "unselected cursor imports leave the icons and wallpapers alone" \
+    || not_ok "unselected cursor imports leave the icons and wallpapers alone"
+
+parse_assets "icons"
+PATH="$tmp/bin:$PATH" import_assets >/dev/null 2>"$tmp/icons.err"
+[[ -f "$tmp/home/.local/share/icons/TestIcons/48x48/apps/app.svg" ]] \
+    && ok "an icon pack is copied with its tree" \
+    || not_ok "an icon pack is copied with its tree" "output: $(cat "$tmp/icons.err")"
+grep -q "icon pack NoIndex: no index.theme" "$tmp/icons.err" \
+    && ok "a pack without index.theme is reported" \
+    || not_ok "a pack without index.theme is reported" "output: $(cat "$tmp/icons.err")"
+grep -q "icon pack Empty: no icon files" "$tmp/icons.err" \
+    && ok "a pack without icons is reported" \
+    || not_ok "a pack without icons is reported" "output: $(cat "$tmp/icons.err")"
+[[ ! -e "$tmp/home/.local/share/icons/NoIndex" && ! -e "$tmp/home/.local/share/icons/Empty" ]] \
+    && ok "invalid packs are not installed" \
+    || not_ok "invalid packs are not installed"
+
+printf 'user copy\n' >"$tmp/home/.local/share/icons/TestCursors/local-note"
+parse_assets "cursors"
+PATH="$tmp/bin:$PATH" import_assets >/dev/null 2>&1
+backup="$(find "$tmp/home/.local/share/icons/.vitrail-backups" -type f -name local-note 2>/dev/null | head -1)"
+if [[ -n "$backup" ]] && grep -q "user copy" "$backup" \
+    && [[ -f "$tmp/home/.local/share/icons/TestCursors/index.theme" ]]; then
+    ok "an existing theme is backed up instead of being overwritten"
+else
+    not_ok "an existing theme is backed up instead of being overwritten"
+fi
+
+rm -rf "$tmp/home/.local/share/icons"
+rm -f "$tmp/calls"
+parse_assets "images,cursors"
+plan="$(DRY_RUN=1 import_assets)"
+DRY_RUN=0
+if [[ ! -e "$tmp/home/.local/share/icons" && ! -e "$tmp/calls" ]] \
+    && [[ "$plan" == *"vitrail wallpaper import"* && "$plan" == *"cp -a"* ]]; then
+    ok "--dry-run prints the asset plan and copies nothing"
+else
+    not_ok "--dry-run prints the asset plan and copies nothing" "output: $plan"
+fi
+
+rm -rf "$tmp/home/.local/share/icons"
+rm -f "$tmp/calls"
+parse_assets "none"
+PATH="$tmp/bin:$PATH" import_assets >/dev/null 2>&1
+[[ ! -e "$tmp/home/.local/share/icons" && ! -e "$tmp/calls" ]] \
+    && ok "--assets=none copies no assets" \
+    || not_ok "--assets=none copies no assets"
+
 ROOT_DIR="$REPO"
 HOME_DIR="$tmp/home"
+rm -rf "$tmp"
 
 # ------------------------------------------------------------ locale helper
 

@@ -53,6 +53,22 @@ It asks for the AUR helpers (`yay`, `paru`, `pikaur`; several are fine), shows a
 full summary, and only writes after you confirm. Hyprland is the only desktop,
 so it is not a question.
 
+The optional assets are a checklist: wallpapers, animated wallpapers, adaptive
+wallpapers, cursor themes and app icon packs, each with its size and only the
+wallpapers checked. Without a terminal, the same choice is a flag:
+
+```sh
+./install.sh --yes --assets=images,animated,adaptive,cursors,icons
+./install.sh --yes --assets=cursors,icons
+./install.sh --yes --assets=none
+```
+
+Omitting `--assets` keeps the old unattended behaviour: every wallpaper folder,
+no cursor or icon packs. Cursor and icon packs are validated and copied to
+`~/.local/share/icons`, never to the system's `/usr/share/icons`; an existing
+theme of the same name moves to `.vitrail-backups/` first. The folders, the
+pack layout and the licence rule are in [`docs/assets.md`](docs/assets.md).
+
 niri is not part of Vitrail: the project needs compositor-side rounding, blur
 and per-focus opacity, which niri does not provide.
 
@@ -65,7 +81,10 @@ What it does:
 3. Installs the chosen AUR helpers, bootstrapping them with `git` + `makepkg`
    when no helper exists yet, then installs the packages listed in `aur.txt`.
 4. Links `dots/**` into `$HOME`, one file at a time.
-5. Moves anything it is about to overwrite into `.backup/<timestamp>/`.
+5. Imports the chosen optional assets: wallpapers through the wallpaper
+   importer, cursor and icon packs after validating their `index.theme` and
+   content.
+6. Moves anything it is about to overwrite into `.backup/<timestamp>/`.
 
 It never deletes: if a directory is in the way, it stops and says so.
 
@@ -601,6 +620,7 @@ login/       SDDM theme
 lock/        lock screen UI
 scripts/     apply-settings.sh (Hyprland + locale)
 packages/    manifests: base, hyprland, aur
+assets/      optional wallpapers, cursor packs and icon packs
 dots/        what gets linked into $HOME (empty for now)
 vitrail/     colors.py (theme engine) and cli.py (commands)
 tests/       installer, QML smoke test, colors and translation tests

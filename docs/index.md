@@ -5,6 +5,7 @@ Start here.
 | Document | What it answers |
 |---|---|
 | [`install.md`](install.md) | how to install (bootstrap or package), update, uninstall |
+| [`assets.md`](assets.md) | the optional wallpapers, cursor packs and icon packs, and how to choose them |
 | [`features.md`](features.md) | what the desktop does: bar, panel, launcher, capture… |
 | [`theming.md`](theming.md) | the palette and how it reaches GTK, Qt, kitty, Flatpak and Firefox |
 | [`cursors.md`](cursors.md) | how a cursor pack becomes palette-adaptive |

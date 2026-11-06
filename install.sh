@@ -23,6 +23,15 @@ SELECTED_COMPOSITORS=()
 SELECTED_HELPERS=()
 VPN_MODE=""
 SELECTED=()
+SELECTED_INDEXES=()
+
+# The optional assets the repository carries. Without a flag the installer
+# keeps importing every wallpaper folder (and nothing else), so an unattended
+# run behaves exactly as before the asset step existed.
+ASSET_GROUPS=(images animated adaptive cursors icons)
+DEFAULT_ASSETS="images,animated,adaptive"
+ASSET_SELECTION=""
+SELECTED_ASSETS=()
 
 if [[ -t 1 ]]; then
     BOLD=$'\e[1m' DIM=$'\e[2m' RESET=$'\e[0m' ACCENT=$'\e[38;5;110m' RED=$'\e[31m'
@@ -53,6 +62,9 @@ Options:
   --repair            re-link and re-enable a broken install (no packages)
   --gpu VENDOR        graphics stack: auto, amd, nvidia or intel (default: auto)
   --vpn MODE          vpn traffic mode: split, full or none (default: ask)
+  --assets LIST       optional assets to install: images, animated,
+                      adaptive, cursors, icons or none (default: every
+                      wallpaper folder, no cursors or icon packs)
   --root DIR          repository root (default: this script's directory)
   --home DIR          target HOME (default: $HOME)
   -h, --help          show this help
@@ -168,13 +180,21 @@ detect_compositor() {
 # ---------------------------------------------------------------------- TUI
 
 multiselect() {
-    local title="$1"
-    shift
+    multiselect_default "$1" "" "${@:2}"
+}
+
+# `defaults` is a comma-separated list of item indexes checked on entry.
+multiselect_default() {
+    local title="$1" defaults="$2"
+    shift 2
     local -a items=("$@")
     local -a state=()
     local cursor=0 index key rest mark eof=0
     for index in "${!items[@]}"; do
         state[index]=0
+        case ",${defaults}," in
+            *",${index},"*) state[index]=1 ;;
+        esac
     done
 
     printf '\e[?25l' >/dev/tty
@@ -225,9 +245,11 @@ multiselect() {
 
     VPN_MODE=""
     SELECTED=()
+    SELECTED_INDEXES=()
     for index in "${!items[@]}"; do
         if [[ ${state[index]} -eq 1 ]]; then
             SELECTED+=("${items[index]}")
+            SELECTED_INDEXES+=("$index")
         fi
     done
 }
@@ -565,24 +587,220 @@ setup_display_control() {
     info "  Brightness of external monitors: log out and back in so the i2c access applies."
 }
 
-# Copies the bundled wallpapers into the user's library. `vitrail wallpaper
-# import` verifies and optimizes them, converts SVGs, never overwrites and skips
-# what is already there, so running the installer again adds nothing.
-import_wallpapers() {
-    local assets="${ROOT_DIR}/assets" kind
-    local -a paths=()
-    for kind in wallpapers adaptive-wallpapers animation-wallpapers; do
-        [[ -d "${assets}/${kind}" ]] && paths+=("${assets}/${kind}")
-    done
-    [[ ${#paths[@]} -gt 0 ]] || return 0
-    if [[ $DRY_RUN -eq 1 ]]; then
-        printf '  %s$ vitrail wallpaper import %s%s\n' "$DIM" "${paths[*]}" "$RESET"
+# ------------------------------------------------------------ optional assets
+
+# Where a group's files live in the repository. `cursors` and `icons` point at
+# the folder that holds one directory per pack.
+asset_dir() {
+    case "$1" in
+        images) printf '%s/assets/wallpapers' "$ROOT_DIR" ;;
+        animated) printf '%s/assets/animation-wallpapers' "$ROOT_DIR" ;;
+        adaptive) printf '%s/assets/adaptive-wallpapers' "$ROOT_DIR" ;;
+        cursors | icons) printf '%s/assets/%s' "$ROOT_DIR" "$1" ;;
+    esac
+}
+
+asset_size() {
+    local dir size count
+    dir="$(asset_dir "$1")"
+    if [[ ! -d "$dir" ]]; then
+        printf 'not bundled'
         return 0
     fi
-    info "Importing wallpapers (videos are re-encoded, this can take a while)..."
-    PYTHONPATH="$ROOT_DIR" XDG_CONFIG_HOME="${HOME_DIR}/.config" \
-        python3 -m vitrail.cli wallpaper import "${paths[@]}" \
-        || warn "could not import the bundled wallpapers; add them from the settings window"
+    size="$(du -sh -- "$dir" 2>/dev/null | awk '{print $1}')"
+    case "$1" in
+        cursors | icons)
+            count="$(find "$dir" -mindepth 1 -maxdepth 1 -type d | wc -l)"
+            printf '%s, %s pack(s)' "${size:-?}" "$count"
+            ;;
+        *) printf '%s' "${size:-?}" ;;
+    esac
+}
+
+asset_label() {
+    local name
+    case "$1" in
+        images) name='Wallpapers' ;;
+        animated) name='Animated wallpapers' ;;
+        adaptive) name='Adaptive wallpapers' ;;
+        cursors) name='Cursor themes' ;;
+        icons) name='App icon packs' ;;
+    esac
+    printf '%s (%s)' "$name" "$(asset_size "$1")"
+}
+
+asset_selected() {
+    case " ${SELECTED_ASSETS[*]} " in
+        *" $1 "*) return 0 ;;
+    esac
+    return 1
+}
+
+# Turns `--assets` (or the default) into SELECTED_ASSETS. `none` clears it, an
+# unknown group stops the run before anything is written.
+parse_assets() {
+    local value="${1:-$DEFAULT_ASSETS}" group
+    local -a groups=()
+    SELECTED_ASSETS=()
+    [[ "$value" == "none" ]] && return 0
+    IFS=',' read -r -a groups <<<"$value"
+    for group in "${groups[@]}"; do
+        group="${group//[[:space:]]/}"
+        [[ -n "$group" ]] || continue
+        case " ${ASSET_GROUPS[*]} " in
+            *" ${group} "*) ;;
+            *) die "unknown asset group: ${group} (images, animated, adaptive, cursors, icons, none)" ;;
+        esac
+        if ! asset_selected "$group"; then
+            SELECTED_ASSETS+=("$group")
+        fi
+    done
+}
+
+# A cursor or icon pack is a complete theme: index.theme plus its cursors or
+# its size folders. A pack that fails here is reported and skipped as a whole.
+validate_asset_pack() {
+    local kind="$1" pack="$2" label name
+    label="${kind%s}"
+    name="$(basename -- "$pack")"
+    if [[ ! -f "$pack/index.theme" ]]; then
+        warn "${label} pack ${name}: no index.theme"
+        return 1
+    fi
+    if ! grep -q '\[Icon Theme\]' "$pack/index.theme"; then
+        warn "${label} pack ${name}: index.theme has no [Icon Theme] section"
+        return 1
+    fi
+    case "$kind" in
+        cursors)
+            if [[ ! -d "$pack/cursors" ]]; then
+                warn "${label} pack ${name}: no cursors/ folder"
+                return 1
+            fi
+            if [[ -z "$(find "$pack/cursors" -type f -print -quit)" ]]; then
+                warn "${label} pack ${name}: the cursors/ folder is empty"
+                return 1
+            fi
+            ;;
+        icons)
+            if [[ -z "$(find "$pack" -mindepth 2 -type f \( -name '*.svg' -o -name '*.png' -o -name '*.xpm' \
+                -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.webp' \) -print -quit)" ]]; then
+                warn "${label} pack ${name}: no icon files in a size folder (.svg, .png, .xpm, .jpg, .webp)"
+                return 1
+            fi
+            ;;
+    esac
+    return 0
+}
+
+# Copies one validated pack into ~/.local/share/icons/<pack>. An earlier theme
+# of the same name moves to .vitrail-backups first, so replacing is never
+# destructive; /usr/share/icons is never a target.
+install_asset_pack() {
+    local kind="$1" source="$2" label name theme_root target stage backup stamp suffix=1 resolved
+    label="${kind%s}"
+    name="$(basename -- "$source")"
+    validate_asset_pack "$kind" "$source" || return 1
+    theme_root="${HOME_DIR}/.local/share/icons"
+    target="${theme_root}/${name}"
+
+    if [[ $DRY_RUN -eq 1 ]]; then
+        printf '  %s$ cp -a %s %s%s\n' "$DIM" "$source" "$target" "$RESET"
+        return 0
+    fi
+    if ! mkdir -p -- "$theme_root"; then
+        warn "could not create ${theme_root}; ${label} pack ${name} was not installed"
+        return 1
+    fi
+    # A symlinked icons folder must never route the copy into the system themes.
+    resolved="$(readlink -f -- "$theme_root" 2>/dev/null || true)"
+    case "$resolved" in
+        /usr/*)
+            warn "refusing to install ${label} pack ${name}: ${theme_root} resolves to the system folder ${resolved}"
+            return 1
+            ;;
+    esac
+    if ! stage="$(mktemp -d "${theme_root}/.vitrail-assets-XXXXXX")"; then
+        warn "could not create a staging folder in ${theme_root}; ${label} pack ${name} was not installed"
+        return 1
+    fi
+    if ! cp -a -- "${source}/." "${stage}/"; then
+        rm -rf -- "$stage"
+        warn "could not copy ${label} pack ${name} into ${theme_root}"
+        return 1
+    fi
+
+    backup=''
+    if [[ -e "$target" || -L "$target" ]]; then
+        mkdir -p -- "${theme_root}/.vitrail-backups"
+        stamp="$(date +%Y%m%d-%H%M%S)"
+        backup="${theme_root}/.vitrail-backups/${name}-${stamp}"
+        while [[ -e "$backup" || -L "$backup" ]]; do
+            backup="${theme_root}/.vitrail-backups/${name}-${stamp}-${suffix}"
+            suffix=$((suffix + 1))
+        done
+        if ! mv -- "$target" "$backup"; then
+            rm -rf -- "$stage"
+            warn "could not move the previous ${name} theme to ${backup}; nothing was replaced"
+            return 1
+        fi
+        info "  backed up ${name} to ${backup}"
+    fi
+
+    if ! mv -- "$stage" "$target"; then
+        rm -rf -- "$stage"
+        if [[ -n "$backup" && -e "$backup" ]]; then
+            mv -- "$backup" "$target" || true
+        fi
+        warn "could not install ${label} pack ${name} in ${target}"
+        return 1
+    fi
+    info "  installed ${label} pack ${name} in ${target}"
+    return 0
+}
+
+import_asset_packs() {
+    local kind="$1" root dir name
+    root="$(asset_dir "$kind")"
+    [[ -d "$root" ]] || return 0
+    while IFS= read -r -d '' dir; do
+        name="$(basename -- "$dir")"
+        case "$name" in .*) continue ;; esac
+        install_asset_pack "$kind" "$dir" || true
+    done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
+    return 0
+}
+
+# The asset step: the chosen wallpaper folders go through `vitrail wallpaper
+# import`; the chosen cursor and icon packs are validated and copied. Bad packs
+# warn and are skipped so a single broken theme never aborts the install.
+import_assets() {
+    local -a paths=()
+    local group dir
+    for group in images adaptive animated; do
+        if asset_selected "$group"; then
+            dir="$(asset_dir "$group")"
+            if [[ -d "$dir" ]]; then
+                paths+=("$dir")
+            fi
+        fi
+    done
+    if [[ ${#paths[@]} -gt 0 ]]; then
+        if [[ $DRY_RUN -eq 1 ]]; then
+            printf '  %s$ vitrail wallpaper import %s%s\n' "$DIM" "${paths[*]}" "$RESET"
+        else
+            info "Importing wallpapers (videos are re-encoded, this can take a while)..."
+            PYTHONPATH="$ROOT_DIR" XDG_CONFIG_HOME="${HOME_DIR}/.config" \
+                python3 -m vitrail.cli wallpaper import "${paths[@]}" \
+                || warn "could not import the bundled wallpapers; add them from the settings window"
+        fi
+    fi
+    for group in cursors icons; do
+        if asset_selected "$group"; then
+            import_asset_packs "$group"
+        fi
+    done
+    return 0
 }
 
 # The launcher's file mode (`/`) reads plocate's database; its timer keeps it
@@ -666,6 +884,25 @@ choose_helpers() {
     done
 }
 
+# The optional assets: one question, with the size of each group and only the
+# wallpapers checked by default.
+choose_assets() {
+    [[ -n "$ASSET_SELECTION" ]] && return 0
+    local -a labels=()
+    local group index
+    for group in "${ASSET_GROUPS[@]}"; do
+        labels+=("$(asset_label "$group")")
+    done
+    if ! multiselect_default "Which optional assets do you want?" "0" "${labels[@]}"; then
+        die "no terminal input; use --yes with --assets"
+    fi
+    SELECTED_ASSETS=()
+    for index in "${SELECTED_INDEXES[@]}"; do
+        SELECTED_ASSETS+=("${ASSET_GROUPS[$index]}")
+    done
+    ASSET_SELECTION="${SELECTED_ASSETS[*]:-none}"
+}
+
 validate_selection() {
     local name
     for name in "${SELECTED_COMPOSITORS[@]}"; do
@@ -707,6 +944,7 @@ show_summary() {
     fi
     info "AUR helpers: ${SELECTED_HELPERS[*]:-none}"
     info "VPN: ${VPN_MODE}"
+    info "Assets: ${SELECTED_ASSETS[*]:-none}"
     if [[ ${#aur[@]} -gt 0 ]]; then
         info "AUR packages: ${aur[*]}"
     fi
@@ -764,6 +1002,15 @@ main() {
                 esac
                 shift 2
                 ;;
+            --assets=*)
+                ASSET_SELECTION="${1#*=}"
+                [[ -n "$ASSET_SELECTION" ]] || die "--assets needs a value (images, animated, adaptive, cursors, icons, none)"
+                shift
+                ;;
+            --assets)
+                ASSET_SELECTION="${2:?--assets needs a value (images, animated, adaptive, cursors, icons, none)}"
+                shift 2
+                ;;
             --root)
                 ROOT_DIR="${2:?--root needs a value}"
                 shift 2
@@ -790,13 +1037,16 @@ main() {
         choose_compositors
         choose_helpers
         choose_vpn
+        choose_assets
     elif [[ ${#SELECTED_COMPOSITORS[@]} -eq 0 ]]; then
         SELECTED_COMPOSITORS=("$(detect_compositor)")
         [[ -n "${SELECTED_COMPOSITORS[0]}" ]] || SELECTED_COMPOSITORS=(hyprland)
     fi
 
     [[ -z "$VPN_MODE" ]] && VPN_MODE="none"
+    [[ -z "$ASSET_SELECTION" ]] && ASSET_SELECTION="$DEFAULT_ASSETS"
 
+    parse_assets "$ASSET_SELECTION"
     validate_selection
 
     show_summary
@@ -824,7 +1074,7 @@ main() {
     # never leave `vitrail update` without a record to replay.
     write_install_state
     install_locale_helper
-    import_wallpapers
+    import_assets
     enable_file_index
     setup_display_control
     enable_settings_watch

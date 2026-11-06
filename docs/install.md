@@ -23,8 +23,8 @@ cd vitrail
 ./install.sh
 ```
 
-The interactive flow picks the AUR helper, the compositor and the VPN mode, shows
-a summary and only writes after you confirm. Non-interactive:
+The interactive flow picks the AUR helper, the compositor, the VPN mode and the
+optional assets, shows a summary and only writes after you confirm. Non-interactive:
 
 ```sh
 ./install.sh --yes --compositor hyprland --aur yay --vpn split
@@ -32,7 +32,13 @@ a summary and only writes after you confirm. Non-interactive:
 
 Useful flags: `--dry-run` (the plan, no changes), `--skip-packages` (only link
 the dotfiles), `--repair` (re-link and re-enable what is missing), `--gpu
-auto|amd|nvidia|intel`, `--root DIR`, `--home DIR`.
+auto|amd|nvidia|intel`, `--assets images,animated,adaptive,cursors,icons|none`,
+`--root DIR`, `--home DIR`.
+
+`--assets` picks the optional content the repository carries. The interactive
+installer asks with a checklist (only wallpapers checked); without the flag,
+unattended runs install every wallpaper folder and no cursors or icon packs.
+See [`assets.md`](assets.md) for the folders and the licence rule.
 
 ## From the AUR
 
