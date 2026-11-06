@@ -47,6 +47,13 @@ QtObject {
     property alias notificationUrgentApps: barFile.notificationUrgentApps
     property alias notificationUrgentBypass: barFile.notificationUrgentBypass
     property alias notificationSnoozes: barFile.notificationSnoozes
+    property alias dockEnabled: dockFile.dockEnabled
+    property alias dockEdge: dockFile.dockEdge
+    property alias dockAutohide: dockFile.dockAutohide
+    property alias dockAttached: dockFile.dockAttached
+    property alias dockMagnify: dockFile.dockMagnify
+    property alias dockPinned: dockFile.dockPinned
+    property alias dockWidgets: dockFile.dockWidgets
     property alias clipboardMax: barFile.clipboardMax
     property alias clipboardPaste: barFile.clipboardPaste
     property alias mediaStyle: barFile.mediaStyle
@@ -230,6 +237,27 @@ QtObject {
         property int pomodoroRest: VitrailTokens.ranges.pomodoroRest.value
         property int pomodoroCycles: VitrailTokens.ranges.pomodoroCycles.value
         property int timerMinutes: VitrailTokens.ranges.timerMinutes.value
+    }
+
+    property Settings dockSettings: Settings {
+        id: dockFile
+
+        fileName: root.directory + "/dock.ini"
+        category: "dock"
+
+        // The dock of every monitor: shown or not, its edge, whether it hides
+        // until the pointer reaches the edge, whether it is flush or floating,
+        // and how its icons answer the pointer.
+        property bool dockEnabled: false
+        property string dockEdge: "bottom"
+        property bool dockAutohide: false
+        property bool dockAttached: true
+        property string dockMagnify: "scale"
+        // The pinned apps as one JSON array, in their stored order:
+        // [{ id, desktop, name, icon }].
+        property string dockPinned: "[]"
+        // Reserved for the dock's widgets (next phase): one JSON array.
+        property string dockWidgets: "[]"
     }
 
     property Settings wallpaperSettings: Settings {

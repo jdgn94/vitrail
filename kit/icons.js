@@ -81,6 +81,7 @@ var names = {
     density_small: "density_small",
     design_services: "design_services",
     desktop_windows: "desktop_windows",
+    dock: "dock",
     devices: "devices",
     dialpad: "dialpad",
     do_not_disturb_on: "do_not_disturb_on",

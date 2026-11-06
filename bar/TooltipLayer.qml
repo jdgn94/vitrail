@@ -24,6 +24,10 @@ PanelWindow {
     // Clicked, or something opened or closed, since the pointer entered: the
     // tooltip stays quiet until the pointer leaves and comes back.
     property bool dismissed: false
+    // An element outside the bar (the dock) says where its own surface sits;
+    // the host keeps one tooltip per monitor.
+    readonly property string atEdge: root.target && root.target.tooltipEdge ? root.target.tooltipEdge : root.edge
+    readonly property real atOffset: root.target && root.target.tooltipEdge ? 0 : root.offset
 
     onPopupOpenChanged: {
         if (root.target !== null)
@@ -45,7 +49,11 @@ PanelWindow {
         if (!root.target)
             return
         var rect = root.target.mapToItem(null, Qt.rect(0, 0, root.target.width, root.target.height))
-        var at = Frame.tooltipAt(root.edge, rect, tip.width, tip.height, root.offset,
+        // A target on its own edge band (the dock) is not on this full-screen
+        // layer: it says where its band starts.
+        rect.x += root.target.tooltipOriginX || 0
+        rect.y += root.target.tooltipOriginY || 0
+        var at = Frame.tooltipAt(root.atEdge, rect, tip.width, tip.height, root.atOffset,
                                  VitrailTokens.gap("sm"), root.width, root.height)
         tip.x = at.x
         tip.y = at.y

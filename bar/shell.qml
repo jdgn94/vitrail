@@ -33,6 +33,8 @@ import "clipboard"
 import "dashboard"
 import "desktop"
 import "desktop/policy.js" as DesktopPolicy
+import "dock"
+import "dock/dock.js" as DockJS
 import "binds"
 import "media"
 import "launcher/commands.js" as Commands
@@ -1125,6 +1127,45 @@ ShellRoot {
 
     function syncTokens() {
         VitrailTokens.configure(wallpaper, shell.dark, shell.prefs.surfaceStyle, shell.tokenValues)
+    }
+
+    // --- the dock -------------------------------------------------------------
+    // The pinned apps, in their stored order, and the windows Hyprland has
+    // open. The dock shows both; the editor and the launcher only write the
+    // first. The dock's own layer reads these as the preference files change.
+    readonly property var dockPinnedList: DockJS.parsePinned(shell.prefs.dockPinned || "")
+    readonly property var dockWindows: DockJS.windowsOf(
+        Hyprland.toplevels.values,
+        Hyprland.activeToplevel ? Hyprland.activeToplevel.address : "")
+
+    function setDockPinned(text) {
+        if (String(text) !== String(shell.prefs.dockPinned || ""))
+            shell.setPref("dockPinned", String(text))
+    }
+
+    // The launcher's menu pins or unpins one app, keeping the rest in order.
+    function toggleDockPin(item) {
+        shell.setDockPinned(DockJS.serializePinned(DockJS.togglePin(shell.dockPinnedList, item)))
+    }
+
+    // A pinned app that is not open: run its desktop entry.
+    function launchDockApp(app) {
+        if (!app)
+            return
+        var entries = DesktopEntries.applications.values
+        var wanted = DockJS.keyOf(app.desktop || app.id)
+        for (var i = 0; i < entries.length; i++) {
+            if (DockJS.keyOf(entries[i].id) === wanted) {
+                entries[i].execute()
+                return
+            }
+        }
+    }
+
+    // An open app: focus the window the dock grouped under it.
+    function focusDockApp(app) {
+        if (app && String(app.address || "") !== "")
+            Hyprland.dispatch("focuswindow address:0x" + String(app.address).replace(/^0x/, ""))
     }
 
     function setPrefPart(name, values) {
@@ -2873,6 +2914,32 @@ ShellRoot {
                     }
                 }
 
+                // The dock of this monitor. It follows the bar into a
+                // fullscreen window and the editor, and takes no space unless
+                // it is attached, visible and switched on.
+                DockLayer {
+                    id: dockLayer
+
+                    screen: monitor.modelData
+                    enabled: shell.prefBool("dockEnabled", false)
+                    hidden: monitor.hiddenFullscreen || shell.editMode
+                    edge: shell.prefs.dockEdge || "bottom"
+                    autohide: shell.prefBool("dockAutohide", false)
+                    attached: shell.prefBool("dockAttached", true)
+                    magnify: shell.prefs.dockMagnify || "scale"
+                    pinned: shell.dockPinnedList
+                    windows: shell.dockWindows
+                    strings: shell.strings
+                    opacityLevel: shell.barOpacity
+                    iconProvider: function (name) {
+                        return String(name || "") === "" ? "" : Quickshell.iconPath(String(name).toLowerCase(), true)
+                    }
+                    onLaunchRequested: function (app) { shell.launchDockApp(app) }
+                    onFocusRequested: function (app) { shell.focusDockApp(app) }
+                    onReordered: function (text) { shell.setDockPinned(text) }
+                    onHovered: function (item, on) { tooltips.hover(item, on) }
+                }
+
                 // The in-place editor: an overlay above the bar, under the
                 // OSD (created next), so the volume OSD keeps working while
                 // the desktop is being edited.
@@ -2886,10 +2953,19 @@ ShellRoot {
                     strings: shell.strings
                     screenWidth: monitor.modelData.width
                     screenHeight: monitor.modelData.height
+                    dock: ({
+                        enabled: shell.prefBool("dockEnabled", false),
+                        edge: shell.prefs.dockEdge || "bottom",
+                        autohide: shell.prefBool("dockAutohide", false),
+                        attached: shell.prefBool("dockAttached", true),
+                        magnify: shell.prefs.dockMagnify || "scale",
+                        pinned: shell.prefs.dockPinned || "[]"
+                    })
                     onLayoutChanged: function (text) {
                         shell.desktopEditLayout = text
                         shell.setPref("desktopLayout", text)
                     }
+                    onPrefChanged: function (key, value) { shell.setPref(key, String(value)) }
                     onFinished: shell.stopDesktopEdit()
                 }
 
@@ -3521,6 +3597,7 @@ ShellRoot {
                         onDone: shell.closePopup()
                         onOpenPopup: function (kind) { shell.openPopup(kind, null, monitor.modelData) }
                         onOpenSession: shell.toggleSession(monitor.modelData)
+                        onDockPinRequested: function (item) { shell.toggleDockPin(item) }
                     }
                 }
 
@@ -3795,6 +3872,7 @@ ShellRoot {
                         onDismissed: shell.launcherOpen = false
                         onOpenPopup: function (kind) { shell.openPopup(kind, null, monitor.modelData) }
                         onOpenSession: shell.toggleSession(monitor.modelData)
+                        onDockPinRequested: function (item) { shell.toggleDockPin(item) }
                     }
                 }
 

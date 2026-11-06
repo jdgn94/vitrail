@@ -390,6 +390,21 @@ var launcher = {
     }
 }
 
+// The dock (bar/dock): the icon's edge, the padding and gap around it, the
+// hot zone that reveals an auto-hidden dock, how long it waits before hiding
+// again, the indicator, and how far hover magnification grows (`scale`) and
+// raises (`lift`) an icon, in whole cells (`reach`).
+var dock = {
+    icon: 40,
+    pad: "sm",
+    gap: "xs",
+    hot: 4,
+    hide: 450,
+    indicator: 4,
+    indicatorInset: 4,
+    magnify: { scale: 1.32, lift: 8, reach: 2 }
+}
+
 // The tray (bar/tray): `columns` the most icons per row in the popup style,
 // `menu` the width of an app's menu card, `dot` the attention dot, px.
 var tray = {

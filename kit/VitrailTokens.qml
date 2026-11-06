@@ -44,6 +44,7 @@ QtObject {
     readonly property var field: Tokens.field
     readonly property var launcher: Tokens.launcher
     readonly property var media: Tokens.media
+    readonly property var dock: Tokens.dock
     readonly property var tray: Tokens.tray
     readonly property var dashboard: Tokens.dashboard
     readonly property var visualiser: Tokens.visualiser

@@ -20,6 +20,7 @@ Item {
     signal dismissed()
     signal openPopup(string kind)
     signal openSession()
+    signal dockPinRequested(var item)
 
     focus: true
     opacity: root.open ? 1 : 0
@@ -71,6 +72,7 @@ Item {
             onDone: root.dismissed()
             onOpenPopup: function (kind) { root.openPopup(kind) }
             onOpenSession: root.openSession()
+            onDockPinRequested: function (item) { root.dockPinRequested(item) }
         }
     }
 }

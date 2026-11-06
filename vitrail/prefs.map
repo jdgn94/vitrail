@@ -78,6 +78,18 @@ bar pomodoroRest
 bar pomodoroCycles
 bar timerMinutes
 
+# The dock: whether it is shown, which edge it takes, whether it hides until
+# the pointer reaches the edge, whether it is flush or floating, how its icons
+# magnify, the pinned apps (one JSON array, in order) and the widgets reserved
+# for the next phase (one JSON array).
+dock dockEnabled
+dock dockEdge
+dock dockAutohide
+dock dockAttached
+dock dockMagnify
+dock dockPinned
+dock dockWidgets
+
 wallpaper wallpaper
 wallpaper wallpaperMode
 wallpaper wallpaperDir

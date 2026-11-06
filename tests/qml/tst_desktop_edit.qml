@@ -153,7 +153,7 @@ TestCase {
     function test_the_three_tabs_put_the_desktop_in_the_middle() {
         var mode = makeMode({ active: true })
         wait(20)
-        compare(mode.tabs.map(function (tab) { return tab.key }), ["bar", "desktop", "panel"])
+        compare(mode.tabs.map(function (tab) { return tab.key }), ["bar", "desktop", "dock", "panel"])
         compare(mode.tab, "desktop")
         var tabs = findChild(mode, "desktopEditTabs")
         verify(tabs !== null)

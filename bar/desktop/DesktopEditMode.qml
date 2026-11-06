@@ -4,6 +4,7 @@ import "../kit"
 import "../kit/base"
 import "../layouts.js" as Layouts
 import "../widgets.js" as Registry
+import "../dock/dock.js" as Dock
 import "desktopEditor.js" as Editor
 
 // The in-place desktop editor. The desktop itself shrinks to 85% inside this
@@ -25,6 +26,9 @@ Item {
     property var fonts: []
     property real screenWidth: 1920
     property real screenHeight: 1080
+    // The dock's preferences (dock.ini), edited by the Dock tab.
+    property var dock: ({ enabled: false, edge: "bottom", autohide: false,
+                          attached: true, magnify: "scale", pinned: "[]" })
 
     // Which tab is up: the desktop is the default and the middle one.
     property string tab: "desktop"
@@ -34,6 +38,7 @@ Item {
     property string selection: ""
 
     signal layoutChanged(string text)
+    signal prefChanged(string key, var value)
     signal finished()
 
     readonly property var document: Layouts.effective(root.layoutText, root.monitor, null, "desktop")
@@ -186,6 +191,36 @@ Item {
         root.commit(Layouts.desktopConfigure(root.placed, id, { italic: italic }))
     }
 
+    // --- the dock -------------------------------------------------------------
+
+    readonly property var dockPinnedList: Dock.parsePinned(root.dock.pinned || "")
+    readonly property var dockEdges: ["bottom", "top", "left", "right"]
+    readonly property var dockMagnifyModes: ["none", "scale", "lift"]
+
+    function setDock(key, value) {
+        root.prefChanged(key, value)
+    }
+
+    function dockEdgeOptions() {
+        return root.dockEdges.map(function (key) {
+            return { key: key, label: root.t("dock.edge." + key) }
+        })
+    }
+
+    function dockMagnifyOptions() {
+        return root.dockMagnifyModes.map(function (key) {
+            return { key: key, label: root.t("dock.magnify." + key) }
+        })
+    }
+
+    function removeDockPin(entry) {
+        root.setDock("dockPinned", Dock.serializePinned(Dock.togglePin(root.dockPinnedList, entry)))
+    }
+
+    function moveDockPin(index, delta) {
+        root.setDock("dockPinned", Dock.serializePinned(Dock.move(root.dockPinnedList, index, index + delta)))
+    }
+
     function finish() {
         root.finished()
     }
@@ -194,6 +229,7 @@ Item {
     readonly property var tabs: [
         { key: "bar", icon: "toolbar", label: root.t("desktop.edit.tab.bar") },
         { key: "desktop", icon: "desktop_windows", label: root.t("desktop.edit.tab.desktop") },
+        { key: "dock", icon: "dock", label: root.t("desktop.edit.tab.dock") },
         { key: "panel", icon: "view_sidebar", label: root.t("desktop.edit.tab.panel") }
     ]
 
@@ -463,12 +499,223 @@ Item {
             }
         }
 
+        // The dock tab: every dock.ini option, the pinned list, and the place
+        // the dock's widgets will take in the next phase.
+        VitrailSurface {
+            objectName: "desktopEditDock"
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.tab === "dock"
+            radius: VitrailTokens.radius
+            tint: VitrailTokens.color("surfaceHigh", "#282a2f")
+            opacityLevel: VitrailTokens.opacity * 0.39
+
+            Flickable {
+                anchors.fill: parent
+                anchors.margins: VitrailTokens.gap("md")
+                contentHeight: dockColumn.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
+
+                ColumnLayout {
+                    id: dockColumn
+
+                    width: parent.width
+                    spacing: VitrailTokens.gap("sm")
+
+                    VitrailSettingRow {
+                        icon: "dock"
+                        label: root.t("dock.enabled")
+
+                        VitrailSwitch {
+                            objectName: "dockEnabled"
+
+                            checked: root.dock.enabled === true
+                            foreground: VitrailTokens.color("foreground", "#e2e2e9")
+                            accent: VitrailTokens.color("primary", "#a8c7fa")
+                            onToggled: root.setDock("dockEnabled", value)
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "vertical_align_bottom"
+                        label: root.t("dock.edge")
+
+                        VitrailSegmented {
+                            objectName: "dockEdge"
+
+                            options: root.dockEdgeOptions()
+                            current: root.dock.edge
+                            foreground: VitrailTokens.color("foreground", "#e2e2e9")
+                            accent: VitrailTokens.color("primary", "#a8c7fa")
+                            onSelected: root.setDock("dockEdge", key)
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "visibility_off"
+                        label: root.t("dock.autohide")
+
+                        VitrailSwitch {
+                            objectName: "dockAutohide"
+
+                            checked: root.dock.autohide === true
+                            foreground: VitrailTokens.color("foreground", "#e2e2e9")
+                            accent: VitrailTokens.color("primary", "#a8c7fa")
+                            onToggled: root.setDock("dockAutohide", value)
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "space_dashboard"
+                        label: root.t("dock.attach")
+
+                        VitrailSegmented {
+                            objectName: "dockAttached"
+
+                            options: [{ key: "attached", label: root.t("dock.attached") },
+                                      { key: "floating", label: root.t("dock.floating") }]
+                            current: root.dock.attached !== false ? "attached" : "floating"
+                            foreground: VitrailTokens.color("foreground", "#e2e2e9")
+                            accent: VitrailTokens.color("primary", "#a8c7fa")
+                            onSelected: root.setDock("dockAttached", key === "attached")
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "open_in_full"
+                        label: root.t("dock.magnify")
+
+                        VitrailSegmented {
+                            objectName: "dockMagnify"
+
+                            options: root.dockMagnifyOptions()
+                            current: root.dock.magnify
+                            foreground: VitrailTokens.color("foreground", "#e2e2e9")
+                            accent: VitrailTokens.color("primary", "#a8c7fa")
+                            onSelected: root.setDock("dockMagnify", key)
+                        }
+                    }
+
+                    VitrailText {
+                        Layout.topMargin: VitrailTokens.gap("sm")
+                        variant: "label"
+                        font.weight: Font.DemiBold
+                        text: root.t("dock.pinned")
+                    }
+
+                    VitrailText {
+                        visible: root.dockPinnedList.length === 0
+                        variant: "label"
+                        color: VitrailTokens.color("muted", "#9aa0a6")
+                        text: root.t("dock.pinned.empty")
+                    }
+
+                    Repeater {
+                        model: root.dockPinnedList
+
+                        delegate: RowLayout {
+                            id: pinnedRow
+
+                            required property var modelData
+                            required property int index
+
+                            Layout.fillWidth: true
+                            spacing: VitrailTokens.gap("xs")
+
+                            VitrailIcon {
+                                icon: "apps"
+                                size: "sm"
+                            }
+
+                            VitrailText {
+                                Layout.fillWidth: true
+                                variant: "body"
+                                elide: Text.ElideRight
+                                text: pinnedRow.modelData.name
+                            }
+
+                            VitrailButton {
+                                objectName: "dockPinUp." + pinnedRow.index
+
+                                variant: "plain"
+                                size: "sm"
+                                icon: "arrow_upward"
+                                enabled: pinnedRow.index > 0
+                                onClicked: root.moveDockPin(pinnedRow.index, -1)
+                            }
+
+                            VitrailButton {
+                                objectName: "dockPinDown." + pinnedRow.index
+
+                                variant: "plain"
+                                size: "sm"
+                                icon: "arrow_downward"
+                                enabled: pinnedRow.index < root.dockPinnedList.length - 1
+                                onClicked: root.moveDockPin(pinnedRow.index, 1)
+                            }
+
+                            VitrailButton {
+                                objectName: "dockPinRemove." + pinnedRow.index
+
+                                variant: "text"
+                                tone: "error"
+                                size: "sm"
+                                icon: "delete"
+                                onClicked: root.removeDockPin(pinnedRow.modelData)
+                            }
+                        }
+                    }
+
+                    // The widgets' place: prepared here, edited in the next phase.
+                    VitrailSurface {
+                        objectName: "dockWidgetArea"
+
+                        Layout.fillWidth: true
+                        Layout.topMargin: VitrailTokens.gap("sm")
+                        implicitHeight: widgetNotice.implicitHeight + 2 * VitrailTokens.gap("md")
+                        radius: VitrailTokens.radius * 0.85
+                        tint: VitrailTokens.color("surface", "#1d2024")
+                        opacityLevel: VitrailTokens.opacity * 0.83
+
+                        Column {
+                            id: widgetNotice
+
+                            anchors.centerIn: parent
+                            spacing: VitrailTokens.gap("xs")
+
+                            VitrailIcon {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                icon: "widgets"
+                                size: "lg"
+                                tone: "muted"
+                            }
+
+                            VitrailText {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                variant: "label"
+                                text: root.t("dock.widgets")
+                            }
+
+                            VitrailText {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                variant: "label"
+                                color: VitrailTokens.color("muted", "#9aa0a6")
+                                text: root.t("dock.widgetsNotice")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // The bar and the panel tabs: the same editor chrome, with the notice
         // this phase leaves them.
         VitrailSurface {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: root.tab !== "desktop"
+            visible: root.tab === "bar" || root.tab === "panel"
             radius: VitrailTokens.radius
             tint: VitrailTokens.color("surfaceHigh", "#282a2f")
             opacityLevel: VitrailTokens.opacity * 0.39

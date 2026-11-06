@@ -17,8 +17,12 @@ PanelWindow {
     property real screenWidth: 1920
     property real screenHeight: 1080
     property var fontFamilies: []
+    // The dock's preferences, edited in the Dock tab of the editor.
+    property var dock: ({ enabled: false, edge: "bottom", autohide: false,
+                          attached: true, magnify: "scale", pinned: "[]" })
 
     signal layoutChanged(string text)
+    signal prefChanged(string key, var value)
     signal finished()
 
     visible: root.active || editor.progress > 0
@@ -48,7 +52,9 @@ PanelWindow {
         screenWidth: root.screenWidth
         screenHeight: root.screenHeight
         fonts: root.fontFamilies
+        dock: root.dock
         onLayoutChanged: function (text) { root.layoutChanged(text) }
+        onPrefChanged: function (key, value) { root.prefChanged(key, value) }
         onFinished: root.finished()
     }
 

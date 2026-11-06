@@ -15,6 +15,7 @@ import "actions.js" as Actions
 import "commands.js" as Commands
 import "desktop.js" as Desktop
 import "wallpapers.js" as Wallpapers
+import "../dock/dock.js" as Dock
 
 // Vitrail's application launcher, the content of the "launcher" popout.
 // Empty query: favourites, recent apps and every app by category. Typing: a
@@ -56,6 +57,7 @@ FocusScope {
     signal done()
     signal openPopup(string kind)
     signal openSession()
+    signal dockPinRequested(var item)
 
     readonly property var style: VitrailStyle.resolve("launcher", root.variant)
     readonly property var metrics: VitrailTokens.launcher[root.style.metrics]
@@ -261,6 +263,10 @@ FocusScope {
             root.store.togglePin(run.id)
             root.menu = null
             return
+        case "dockPin":
+            root.dockPinRequested(run.item)
+            root.menu = null
+            return
         case "hide":
             root.store.hide(run.id)
             root.menu = null
@@ -298,6 +304,10 @@ FocusScope {
         })
         rows.push({ title: root.t(pinned ? "launcher.unpin" : "launcher.pin"), glyph: pinned ? "keep_off" : "keep",
                     run: { kind: "pin", id: item.id } })
+        rows.push(Dock.menuRow(root.prefs.dockPinned || "", item, {
+            pin: root.t("launcher.pinDock"),
+            unpin: root.t("launcher.unpinDock")
+        }))
         rows.push({ title: root.t("launcher.hide"), glyph: "visibility_off", run: { kind: "hide", id: item.id } })
         rows.push({ title: root.t("launcher.openFolder"), glyph: "folder_open", run: { kind: "folder", exec: item.exec } })
         root.menuCurrent = 0

@@ -122,6 +122,7 @@ Window {
         { key: "colors", group: "look", glyph: "palette", label: app.t("section.colors"), badge: "" },
         { key: "design", group: "look", glyph: "design_services", label: app.t("section.design"), badge: app.t("badge.live") },
         { key: "bar", group: "desktop", glyph: "toolbar", label: app.t("section.bar"), badge: app.t("badge.live") },
+        { key: "dock", group: "desktop", glyph: "dock", label: app.t("section.dock"), badge: app.t("badge.live") },
         { key: "windows", group: "desktop", glyph: "view_quilt", label: app.t("section.windows"), badge: app.t("badge.live") },
         { key: "monitors", group: "desktop", glyph: "monitor", label: app.t("section.monitors"), badge: app.t("badge.live") },
         { key: "terminal", group: "desktop", glyph: "terminal", label: app.t("section.terminal"), badge: app.t("badge.live") },
@@ -646,6 +647,16 @@ Window {
                                         monitors: app.monitors
                                         fonts: app.fonts
                                         tab: Args.value("--tab", "layout")
+                                    }
+                                }
+
+                                LazyPage {
+                                    shown: app.category === "dock"
+
+                                    DockPage {
+                                        palette: app.theme
+                                        prefs: app.store
+                                        strings: app.strings
                                     }
                                 }
 

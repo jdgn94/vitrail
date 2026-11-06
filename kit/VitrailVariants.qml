@@ -89,6 +89,13 @@ QtObject {
         overlay: { attached: false, gap: "md", motion: "slow" }
     })
 
+    // The dock: flush against the screen edge (square outer corners, no
+    // margin) or floating above it (round corners and a margin).
+    readonly property var dock: ({
+        attached: { attached: true, radius: 0, margin: 0, motion: "base" },
+        floating: { attached: false, radius: 1, margin: "md", motion: "base" }
+    })
+
     // Application launcher: one content component, two presentations. Sizes
     // come from tokens.launcher[`metrics`]; `field` is the search field's size,
     // `gap` the spacing step between blocks, `label` the text variant of an app
