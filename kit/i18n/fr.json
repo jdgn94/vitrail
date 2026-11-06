@@ -78,6 +78,8 @@
   "fonts.uiIcons.rounded": "Arrondies",
   "fonts.uiIcons.sharp": "Anguleuses",
   "fonts.uiIcons.outlined": "Contour",
+  "fonts.uiIcons.outline": "Contour",
+  "fonts.uiIcons.container": "Conteneur",
   "fonts.iconTheme": "Pack d'icônes des applications",
   "fonts.iconTheme.help": "Le thème d'icônes d'où les applications GTK prennent leurs icônes.",
   "fonts.iconTheme.normal": "Normaux",

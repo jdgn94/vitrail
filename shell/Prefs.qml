@@ -20,6 +20,7 @@ QtObject {
     property alias blurStrength: appearanceFile.blurStrength
     property alias spacing: appearanceFile.spacing
     property alias fontBase: appearanceFile.fontBase
+    property alias uiIconFill: appearanceFile.uiIconFill
     property alias cursorThemeSplit: appearanceFile.cursorThemeSplit
     property alias barEdge: barFile.barEdge
     property alias barScreens: barFile.barScreens
@@ -150,6 +151,7 @@ QtObject {
         property int blurStrength: 6
         property int spacing: 12
         property int fontBase: 13
+        property string uiIconFill: "outlined"
         property bool cursorThemeSplit: false
     }
 

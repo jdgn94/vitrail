@@ -78,6 +78,8 @@
   "fonts.uiIcons.rounded": "Rounded",
   "fonts.uiIcons.sharp": "Sharp",
   "fonts.uiIcons.outlined": "Outlined",
+  "fonts.uiIcons.outline": "Outline",
+  "fonts.uiIcons.container": "Container",
   "fonts.iconTheme": "App icon pack",
   "fonts.iconTheme.help": "The icon theme GTK apps take their application icons from.",
   "fonts.iconTheme.normal": "Normal",

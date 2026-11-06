@@ -1,9 +1,9 @@
-"""Icons are never filled: the active state is the colour, not a FILL axis.
+"""Icons take one user style, never a selected/active fill.
 
 Material Symbols can fill a glyph through the `FILL` variable axis. Vitrail
-does not use it: a selected / active icon is drawn in the accent colour, so
-the shape never changes with the state (and no Text can get stuck on a
-variable-font instance).
+uses it only for the system's outline/container choice (`VitrailTokens.iconFill`
+in `VitrailText`); a selected or active icon is drawn in the accent colour, so
+state never changes the shape.
 """
 
 from __future__ import annotations
@@ -36,16 +36,21 @@ def code_of(path: Path) -> str:
 
 
 class IconFillTest(unittest.TestCase):
-    def test_no_fill_axis_anywhere(self) -> None:
+    def test_only_icon_text_reads_the_style_axis(self) -> None:
+        icon_text = ROOT / "kit" / "base" / "VitrailText.qml"
         for path in ui_sources():
             body = code_of(path)
-            self.assertIsNone(
-                FILL_AXIS.search(body),
-                f"{path.relative_to(ROOT)} sets the FILL axis; the active state is the colour",
-            )
+            if path == icon_text:
+                self.assertIsNotNone(FILL_AXIS.search(body))
+                self.assertIn("VitrailTokens.iconFill", body)
+            else:
+                self.assertIsNone(
+                    FILL_AXIS.search(body),
+                    f"{path.relative_to(ROOT)} sets the FILL axis outside icon text",
+                )
             self.assertIsNone(
                 FILLED_PROPERTY.search(body),
-                f"{path.relative_to(ROOT)} fills an icon; the active state is the colour",
+                f"{path.relative_to(ROOT)} fills an icon from its state",
             )
 
     def test_the_vpn_icon_is_a_coloured_shield_with_a_lock(self) -> None:

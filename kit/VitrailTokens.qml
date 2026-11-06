@@ -26,6 +26,8 @@ QtObject {
     // (see `iconFamily` below).
     property string iconVariant: "rounded"
     readonly property string iconFamily: Tokens.font.iconFamilyOf(iconVariant)
+    // Material Symbols' FILL axis: 0 draws the outline, 1 the container.
+    property int iconFill: 0
     property real frame: Tokens.ranges.frame.value
     property real bar: Tokens.ranges.bar.value
     property real panel: Tokens.ranges.panel.value
@@ -60,6 +62,8 @@ QtObject {
             root.fontBase = source.fontBase
         if (source.fontFamily !== undefined)
             root.fontFamily = source.fontFamily
+        if (source.iconFill !== undefined)
+            root.iconFill = source.iconFill
         if (source.frame !== undefined)
             root.frame = source.frame
         if (source.bar !== undefined)

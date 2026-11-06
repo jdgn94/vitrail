@@ -297,7 +297,7 @@ the window declares it in another file, or the path unit watches another set.
 
 | File | Keys |
 |------|------|
-| `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase`, `cursorThemeSplit` |
+| `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase`, `uiIconFill`, `cursorThemeSplit` |
 | `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barMonitors`, `barLayout`, `panelLayout`, `desktopLayout`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle`, `barBatteryChip`, `barBluetoothChip`, `barKeyboard`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep`, `pomodoroWork`, `pomodoroRest`, `pomodoroCycles`, `timerMinutes` |
 | `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `wallpaperEffect`, `wallpaperMonitors`, `systemColor` (`wallpaperSeed`: legacy) |
 | `background.ini` | `visualiserEnabled`, `visualiserVariant`, `visualiserHeight` |
@@ -354,8 +354,9 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
 - **Appearance:** theme and surface material.
 - **Fonts & icons:** three tabs (Text, Icons, Cursor) over the lists this
   machine has (`fc-list`, `/usr/share/icons`): one system font for the apps
-  and the shell, the console font, the shell's Material Symbols family, the
-  GTK/Qt icon pack, and the cursor pack with its size. Each choice opens a
+  and the shell, the console font, the shell's Material Symbols family
+  (outlined or container), the GTK/Qt icon pack, and the cursor pack with its
+  size. Each choice opens a
   mosaic of everything installed — "Aa" in each family, eight icons per pack,
   eight real cursors per theme — with a search box and the name under every
   cell (`kit/VitrailPicker.qml`); the dialog is sized by its content and the

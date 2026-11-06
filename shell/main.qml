@@ -148,6 +148,7 @@ Window {
         opacity: prefs.surfaceOpacity,
         fontBase: prefs.fontBase,
         fontFamily: app.fontSystemInstalled ? prefs.fontSystem : VitrailTokens.font.family,
+        iconFill: prefs.uiIconFill === "container" ? 1 : 0,
         frame: prefs.frameSize,
         bar: prefs.barSize,
         panel: prefs.panelSize

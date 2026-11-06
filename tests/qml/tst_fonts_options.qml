@@ -129,6 +129,18 @@ TestCase {
         return null
     }
 
+    function test_the_single_cursor_card_is_centred() {
+        prefs.cursorThemeSplit = false
+        page.item.tab = "cursor"
+        wait(50)
+        var card = findObject(page.item, "cursorSharedCard")
+        verify(card !== null)
+        verify(card.visible)
+        var row = card.parent
+        var place = card.mapToItem(row, 0, 0)
+        verify(Math.abs(place.x + card.width / 2 - row.width / 2) < 4)
+    }
+
     function test_split_cursors_sit_side_by_side_in_equal_columns() {
         prefs.cursorThemeSplit = true
         page.item.tab = "cursor"

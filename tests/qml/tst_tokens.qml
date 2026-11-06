@@ -35,6 +35,7 @@ TestCase {
 
     function init() {
         source.uiIcons = "rounded"
+        VitrailTokens.iconFill = 0
     }
 
     function test_every_icon_variant_names_an_installed_family() {
@@ -75,10 +76,15 @@ TestCase {
         compare(glyph.fontInfo.family, "Material Symbols Outlined")
     }
 
-    function test_icons_are_never_filled() {
+    function test_the_style_fill_comes_from_the_token() {
         source.uiIcons = "sharp"
-        // The glyph stays outlined: the variant changes the shape, never FILL.
-        verify(glyph.font.variableAxes["FILL"] === undefined)
+        compare(glyph.font.variableAxes["FILL"], 0)
+        VitrailTokens.iconFill = 1
+        compare(glyph.font.variableAxes["FILL"], 1)
+        VitrailTokens.iconFill = 0
+        // The family and the style are independent: FILL never follows the
+        // selected tab, only the outline/container preference.
+        compare(glyph.font.variableAxes["FILL"], 0)
     }
 
     function test_the_cursor_range_is_the_token_range() {
