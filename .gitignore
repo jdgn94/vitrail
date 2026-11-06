@@ -70,7 +70,6 @@ desktop.ini
 # but a clone stays small. assets/emoji.json IS tracked: the clipboard's emoji
 # tab reads it at runtime.
 assets/wallpapers/
-assets/adaptive-wallpapers/
 assets/animation-wallpapers/
 
 # --- Review screenshots ---

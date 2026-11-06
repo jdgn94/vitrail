@@ -10,8 +10,8 @@ import "../reorder.js" as Reorder
 
 // Wallpaper category: the settings shared by every kind (fit, rotation, the
 // colour of the system) on top, then the library with one folder per kind
-// (images, adaptive SVGs, videos). The selection holds one kind only: several
-// of it take turns, in the order of the strip; picking another kind starts over.
+// (images, videos). The selection holds one kind only: several of it take
+// turns, in the order of the strip; picking another kind starts over.
 //
 // The library is Vitrail's own folder in ~/.config, apart from the user's
 // pictures. This window cannot copy or delete files: it writes a request
@@ -30,15 +30,20 @@ Item {
     readonly property string library: page.prefs.wallpaperDir || page.configDir + "/wallpapers"
     readonly property var kinds: [
         { key: "image", folder: "images", icon: "image", filters: ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp"] },
-        { key: "svg", folder: "svg", icon: "draw", filters: ["*.svg"] },
         { key: "video", folder: "videos", icon: "movie", filters: ["*.mp4", "*.webm", "*.mkv", "*.mov", "*.m4v", "*.avi"] }
     ]
     readonly property var browsed: page.kinds.find(function (kind) { return kind.key === page.browse }) || page.kinds[0]
-    // The kind on screen; an older single wallpaper still counts as one.
-    readonly property string activeKind: page.prefs.wallpaperType || page.kindOf(page.prefs.wallpaper)
+    // The kind on screen; an older single wallpaper still counts as one, and an
+    // unknown kind (an old SVG type) reads as none.
+    readonly property string activeKind: {
+        var kind = page.prefs.wallpaperType || page.kindOf(page.prefs.wallpaper)
+        return page.kinds.some(function (entry) { return entry.key === kind }) ? kind : ""
+    }
     readonly property var selection: {
-        var list = (page.prefs.wallpaperSelection || "").split("|").filter(function (path) { return path !== "" })
-        return list.length === 0 && page.prefs.wallpaper ? [page.prefs.wallpaper] : list
+        // An old selection may still name an SVG: the strip never shows it.
+        var list = (page.prefs.wallpaperSelection || "").split("|").filter(function (path) { return path !== "" && !/\.svg$/i.test(path) })
+        return list.length === 0 && page.prefs.wallpaper && !/\.svg$/i.test(page.prefs.wallpaper)
+               ? [page.prefs.wallpaper] : list
     }
     // Colour presets for the system, besides the automatic one.
     readonly property var seeds: ["#6750a4", "#0061a4", "#006a6a", "#386a20", "#8b5000", "#b3261e"]
@@ -57,23 +62,6 @@ Item {
     function t(key) {
         var value = page.strings[key]
         return value === undefined ? key : value
-    }
-
-    // An adaptive SVG with its {{role}} placeholders filled from the current
-    // palette, as a data URL the preview can show.
-    function adaptive(path, done) {
-        var request = new XMLHttpRequest()
-        request.onreadystatechange = function () {
-            if (request.readyState !== XMLHttpRequest.DONE)
-                return
-            var data = page.palette.data || ({})
-            var filled = request.responseText.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, function (match, role) {
-                return data[role] || String(page.palette.foreground)
-            })
-            done("data:image/svg+xml;utf8," + encodeURIComponent(filled))
-        }
-        request.open("GET", "file://" + path)
-        request.send()
     }
 
     function duration(minutes) {
@@ -97,8 +85,6 @@ Item {
     }
 
     function kindOf(path) {
-        if (/\.svg$/i.test(path || ""))
-            return "svg"
         if (/\.(mp4|webm|mkv|mov|m4v|avi)$/i.test(path || ""))
             return "video"
         return path ? "image" : ""
@@ -114,11 +100,6 @@ Item {
         readonly property string kind: page.kindOf(thumb.path)
         readonly property real corner: VitrailTokens.radius * 0.75
         property string preview: thumb.kind === "image" ? "file://" + thumb.path : ""
-
-        Component.onCompleted: {
-            if (thumb.kind === "svg")
-                page.adaptive(thumb.path, function (url) { thumb.preview = url })
-        }
 
         Item {
             id: art

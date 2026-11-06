@@ -16,17 +16,9 @@ Item {
     property string variant: ""
     // Absolute path to an image or a video file.
     property string source: ""
-    // Bump it when the file at `source` was rewritten (an adaptive SVG
-    // recoloured): the image is loaded again from disk.
-    property int revision: 0
     // Hole insets and corner radius, usually from frame.js layout().
     property var hole: ({ left: 0, top: 0, right: 0, bottom: 0 })
     property real radius: 0
-
-    onRevisionChanged: {
-        picture.source = ""
-        picture.source = Qt.binding(function () { return root.video ? "" : root.url })
-    }
 
     readonly property var style: VitrailStyle.resolve("wallpaper", root.variant)
     readonly property var surface: VitrailStyle.resolve("surface", VitrailTokens.surfaceMode)
@@ -71,8 +63,6 @@ Item {
             anchors.fill: parent
             visible: !root.video
             source: root.video ? "" : root.url
-            // Vector art is drawn at the size it fills, never scaled up.
-            sourceSize: /\.svg$/i.test(root.source) ? Qt.size(width, height) : undefined
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             cache: false

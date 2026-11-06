@@ -28,8 +28,8 @@ SELECTED_INDEXES=()
 # The optional assets the repository carries. Without a flag the installer
 # keeps importing every wallpaper folder (and nothing else), so an unattended
 # run behaves exactly as before the asset step existed.
-ASSET_GROUPS=(images animated adaptive cursors icons)
-DEFAULT_ASSETS="images,animated,adaptive"
+ASSET_GROUPS=(images animated cursors icons)
+DEFAULT_ASSETS="images,animated"
 ASSET_SELECTION=""
 SELECTED_ASSETS=()
 
@@ -63,8 +63,8 @@ Options:
   --gpu VENDOR        graphics stack: auto, amd, nvidia or intel (default: auto)
   --vpn MODE          vpn traffic mode: split, full or none (default: ask)
   --assets LIST       optional assets to install: images, animated,
-                      adaptive, cursors, icons or none (default: every
-                      wallpaper folder, no cursors or icon packs)
+                      cursors, icons or none (default: every wallpaper
+                      folder, no cursors or icon packs)
   --root DIR          repository root (default: this script's directory)
   --home DIR          target HOME (default: $HOME)
   -h, --help          show this help
@@ -595,7 +595,6 @@ asset_dir() {
     case "$1" in
         images) printf '%s/assets/wallpapers' "$ROOT_DIR" ;;
         animated) printf '%s/assets/animation-wallpapers' "$ROOT_DIR" ;;
-        adaptive) printf '%s/assets/adaptive-wallpapers' "$ROOT_DIR" ;;
         cursors | icons) printf '%s/assets/%s' "$ROOT_DIR" "$1" ;;
     esac
 }
@@ -632,7 +631,6 @@ asset_label() {
     case "$1" in
         images) name='Wallpapers' ;;
         animated) name='Animated wallpapers' ;;
-        adaptive) name='Adaptive wallpapers' ;;
         cursors) name='Cursor themes' ;;
         icons) name='App icon packs' ;;
     esac
@@ -659,7 +657,7 @@ parse_assets() {
         [[ -n "$group" ]] || continue
         case " ${ASSET_GROUPS[*]} " in
             *" ${group} "*) ;;
-            *) die "unknown asset group: ${group} (images, animated, adaptive, cursors, icons, none)" ;;
+            *) die "unknown asset group: ${group} (images, animated, cursors, icons, none)" ;;
         esac
         if ! asset_selected "$group"; then
             SELECTED_ASSETS+=("$group")
@@ -790,7 +788,7 @@ import_asset_packs() {
 import_assets() {
     local -a paths=()
     local group dir
-    for group in images adaptive animated; do
+    for group in images animated; do
         if asset_selected "$group"; then
             dir="$(asset_dir "$group")"
             if [[ -d "$dir" ]]; then
@@ -1035,11 +1033,11 @@ main() {
                 ;;
             --assets=*)
                 ASSET_SELECTION="${1#*=}"
-                [[ -n "$ASSET_SELECTION" ]] || die "--assets needs a value (images, animated, adaptive, cursors, icons, none)"
+                [[ -n "$ASSET_SELECTION" ]] || die "--assets needs a value (images, animated, cursors, icons, none)"
                 shift
                 ;;
             --assets)
-                ASSET_SELECTION="${2:?--assets needs a value (images, animated, adaptive, cursors, icons, none)}"
+                ASSET_SELECTION="${2:?--assets needs a value (images, animated, cursors, icons, none)}"
                 shift 2
                 ;;
             --root)

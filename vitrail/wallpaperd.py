@@ -31,9 +31,9 @@ __all__ = [
     "write_state",
 ]
 
-ENGINES = {"image": "awww", "svg": "awww", "video": "mpvpaper"}
+ENGINES = {"image": "awww", "video": "mpvpaper"}
 # The kinds awww can put on one output; a video override stays on the global one.
-STILL_KINDS = ("image", "svg")
+STILL_KINDS = ("image",)
 STATE = "wallpaper.state"
 AWWW_OPTIONS = ("--transition-type", "center", "--transition-duration", "1")
 MPV_OPTIONS = "no-audio loop hwdec=vaapi"

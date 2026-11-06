@@ -20,8 +20,7 @@ TestCase {
             "launcher.wallpaper.effect": "Efecto para toda la pantalla",
             "launcher.wallpaper.current": "En pantalla ahora",
             "launcher.wallpaper.image": "Imagen",
-            "launcher.wallpaper.video": "Vídeo",
-            "launcher.wallpaper.svg": "SVG adaptativo"
+            "launcher.wallpaper.video": "Vídeo"
         }[key] || key
     }
 
@@ -35,8 +34,8 @@ TestCase {
 
     function test_the_listing_keeps_wallpapers_only() {
         var list = files()
-        compare(list.length, 4)
-        compare(names(list), "blue-mountain.png,rain.webm,red-fox.png,waves.svg")
+        compare(list.length, 3)
+        compare(names(list), "blue-mountain.png,rain.webm,red-fox.png")
     }
 
     function test_each_picture_knows_its_kind() {
@@ -44,7 +43,7 @@ TestCase {
         files().forEach(function (file) { kinds[file.name] = file.kind })
         compare(kinds["red-fox.png"], "image")
         compare(kinds["rain.webm"], "video")
-        compare(kinds["waves.svg"], "svg")
+        compare(kinds["waves.svg"], undefined)
     }
 
     function test_the_filter_matches_a_name() {
@@ -65,7 +64,7 @@ TestCase {
 
     function test_nothing_typed_lists_everything() {
         var found = Wallpapers.filter(files(), "", t)
-        compare(found.wallpapers.length, 4)
+        compare(found.wallpapers.length, 3)
         compare(found.effects.length, 18)
     }
 
@@ -111,7 +110,7 @@ TestCase {
         var groups = shown.list.map(function (result) { return result.group })
         compare(groups[0], "effect")
         compare(groups[groups.length - 1], "wallpaper")
-        compare(shown.list.filter(function (r) { return r.group === "wallpaper" }).length, 4)
+        compare(shown.list.filter(function (r) { return r.group === "wallpaper" }).length, 3)
     }
 
     function test_an_effect_row_applies_it_to_the_whole_screen() {

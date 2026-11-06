@@ -10,7 +10,6 @@ the same choice is available without a terminal.
 |---|---|---|
 | `images` | `assets/wallpapers/` | the wallpaper library (`vitrail wallpaper import`) |
 | `animated` | `assets/animation-wallpapers/` | the wallpaper library, as videos |
-| `adaptive` | `assets/adaptive-wallpapers/` | the wallpaper library, one picture per palette |
 | `cursors` | `assets/cursors/<pack>/` | `~/.local/share/icons/<pack>/` |
 | `icons` | `assets/icons/<pack>/` | `~/.local/share/icons/<pack>/` |
 
@@ -26,7 +25,6 @@ question, with the size of each group:
 ```
 [x] Wallpapers (24M)
 [ ] Animated wallpapers (81M)
-[ ] Adaptive wallpapers (6.2M)
 [ ] Cursor themes (4.1M, 2 pack(s))
 [ ] App icon packs (38M, 1 pack(s))
 ```
@@ -34,7 +32,7 @@ question, with the size of each group:
 Only **Wallpapers** starts checked. Without a terminal:
 
 ```sh
-./install.sh --yes --assets=images,animated,adaptive,cursors,icons
+./install.sh --yes --assets=images,animated,cursors,icons
 ./install.sh --yes --assets=cursors,icons
 ./install.sh --yes --assets=none
 ```

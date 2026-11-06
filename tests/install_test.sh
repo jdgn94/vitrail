@@ -241,7 +241,6 @@ fi
 tmp="$(sandbox)"
 mkdir -p "$tmp/bin" "$tmp/home" \
     "$tmp/repo/assets/wallpapers" \
-    "$tmp/repo/assets/adaptive-wallpapers" \
     "$tmp/repo/assets/animation-wallpapers" \
     "$tmp/repo/assets/cursors/TestCursors/cursors" \
     "$tmp/repo/assets/cursors/EmptyCursor" \
@@ -271,10 +270,10 @@ HOME_DIR="$tmp/home"
 
 ASSET_SELECTION=""
 parse_assets "$ASSET_SELECTION"
-expect_eq "no --assets keeps the wallpaper folders" "images animated adaptive" "${SELECTED_ASSETS[*]}"
+expect_eq "no --assets keeps the wallpaper folders" "images animated" "${SELECTED_ASSETS[*]}"
 
-parse_assets "images,animated,adaptive,cursors,icons"
-expect_eq "--assets selects every group in order" "images animated adaptive cursors icons" \
+parse_assets "images,animated,cursors,icons"
+expect_eq "--assets selects every group in order" "images animated cursors icons" \
     "${SELECTED_ASSETS[*]}"
 parse_assets "cursors,icons,images,cursors"
 expect_eq "--assets deduplicates groups" "cursors icons images" "${SELECTED_ASSETS[*]}"
@@ -286,6 +285,13 @@ else
     grep -q "unknown asset group: fonts" "$tmp/unknown.err" \
         && ok "an unknown asset group is rejected" \
         || not_ok "an unknown asset group is rejected" "output: $(cat "$tmp/unknown.err")"
+fi
+if (parse_assets "adaptive" 2>"$tmp/adaptive.err") >/dev/null; then
+    not_ok "the removed adaptive group is rejected"
+else
+    grep -q "unknown asset group: adaptive" "$tmp/adaptive.err" \
+        && ok "the removed adaptive group is rejected" \
+        || not_ok "the removed adaptive group is rejected" "output: $(cat "$tmp/adaptive.err")"
 fi
 
 SELECTED_ASSETS=(animated cursors icons)
@@ -301,10 +307,10 @@ expect_eq "selected wallpapers go through the CLI" \
     "$tmp/home/.config|-m vitrail.cli wallpaper import $tmp/repo/assets/wallpapers" \
     "$(cat "$tmp/calls")"
 rm -f "$tmp/calls"
-parse_assets "adaptive,animated"
+parse_assets "animated"
 PATH="$tmp/bin:$PATH" import_assets >/dev/null
 expect_eq "only the selected wallpaper groups are imported" \
-    "$tmp/home/.config|-m vitrail.cli wallpaper import $tmp/repo/assets/adaptive-wallpapers $tmp/repo/assets/animation-wallpapers" \
+    "$tmp/home/.config|-m vitrail.cli wallpaper import $tmp/repo/assets/animation-wallpapers" \
     "$(cat "$tmp/calls")"
 rm -f "$tmp/calls"
 

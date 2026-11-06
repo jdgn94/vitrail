@@ -32,7 +32,7 @@ def palette(base: Path) -> dict[str, dict[str, str]]:
             colors = json.loads((base / f"theme-{mode}.json").read_text())["colors"]
         except (OSError, ValueError, KeyError):
             continue
-        # Every Material role: adaptive SVG previews may name any of them.
+        # Every Material role, as matugen wrote them.
         out[mode] = colors
     return out
 

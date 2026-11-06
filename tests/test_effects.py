@@ -68,7 +68,7 @@ class RecipeTests(unittest.TestCase):
     def test_only_images_take_an_effect(self) -> None:
         for name in ("a.PNG", "a.jpg", "a.jpeg", "a.webp", "a.bmp"):
             self.assertTrue(effects.is_image(name), name)
-        for name in ("a.svg", "a.mp4", "a.webm", "notes.txt"):
+        for name in ("a.mp4", "a.webm", "notes.txt"):
             self.assertFalse(effects.is_image(name), name)
 
     def test_the_bar_draws_a_stable_copy_per_screen(self) -> None:
@@ -152,13 +152,10 @@ class DeriveTests(unittest.TestCase):
     def test_other_kinds_are_left_alone(self) -> None:
         video = self.source.with_suffix(".mp4")
         video.write_bytes(b"loop")
-        svg = self.source.with_suffix(".svg")
-        svg.write_text("<svg/>")
         said: list[str] = []
-        for path in (video, svg):
-            self.assertEqual(effects.derive(path, "blur", self.cache, run=self.fake_run, say=said.append), path)
+        self.assertEqual(effects.derive(video, "blur", self.cache, run=self.fake_run, say=said.append), video)
         self.assertEqual(self.calls, [])
-        self.assertEqual(len(said), 2)
+        self.assertEqual(len(said), 1)
 
 
 class WallpaperApplyTests(unittest.TestCase):
@@ -201,9 +198,9 @@ class WallpaperApplyTests(unittest.TestCase):
         self.assertIsNotNone(self.apply("wallpaperEffect=sepia\n"))
 
     def test_an_effect_on_a_kind_that_cannot_take_it_is_skipped_with_a_notice(self) -> None:
-        svg = self.root / "w.svg"
-        svg.write_text('<svg fill="{{primary}}"/>')
-        put(self.config, f"[wallpaper]\nwallpaper={svg}\nwallpaperEffect=blur\n")
+        video = self.root / "w.webm"
+        video.write_bytes(b"loop")
+        put(self.config, f"[wallpaper]\nwallpaper={video}\nwallpaperEffect=blur\n")
         self.commands.clear()
         self.assertIsNotNone(wallpaper.apply(self.config, self.cache, self.fake_run, say=self.said.append))
         self.assertEqual([command for command in self.commands if command[0] == "magick"], [])

@@ -25,7 +25,7 @@ layer contract.
    - `references/notifications.md` — toast stack, queue, positions, actions.
    - `references/components.md` — type, icons, button variants, indicators,
      slider, settings window layout, popup rows.
-   - `references/wallpapers.md` — library, adaptive SVG, colour pipeline.
+   - `references/wallpapers.md` — library, wallpaper kinds, colour pipeline.
    - `references/dialogs.md` — polkit and Hyprland dialogs in the bar.
    - `references/datetime.md` — time zone world map, NTP, system language.
    - `references/session.md` — power button, session menu and popout.

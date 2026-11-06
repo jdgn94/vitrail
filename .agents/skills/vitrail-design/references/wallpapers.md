@@ -2,7 +2,7 @@
 
 ## Library
 
-`~/.config/vitrail/wallpapers/{images,svg,videos}` (Vitrail's own copies,
+`~/.config/vitrail/wallpapers/{images,videos}` (Vitrail's own copies,
 apart from the user's pictures; `wallpaperDir` overrides it). Prefs:
 `wallpaperType` (one kind at a time), `wallpaperSelection` ("|"-joined, same
 kind), `wallpaper` (on screen), `wallpaperInterval` (min), `wallpaperOrder`
@@ -18,12 +18,12 @@ clears the key. The window updates the selection itself before asking for a
 removal. Delete on a tile is two clicks (arm, confirm).
 
 Entering the library (`sync` requests, `vitrail wallpaper import <files|dirs>`,
-install.sh with assets/): SVGs go through `adapt_svg`; images and videos
-through `vitrail/media.py` (verify, then optimize; a broken file is rejected,
-never copied). Imports never overwrite, skip identical content, and remember
-each source's hash in `<library>/.sources`, so re-running adds nothing and
-re-encodes nothing. `sync` also drops dead paths from `wallpaperSelection`
-and moves `wallpaper` to the first remaining.
+install.sh with assets/): images and videos go through `vitrail/media.py`
+(verify, then optimize; a broken file is rejected, never copied). Imports never
+overwrite, skip identical content, and remember each source's hash in
+`<library>/.sources`, so re-running adds nothing and re-encodes nothing.
+`sync` also drops dead paths from `wallpaperSelection` and moves `wallpaper` to
+the first remaining.
 
 - Picking another kind replaces the selection; same kind toggles (one stays).
 - Settings page: settings first (fit, order, interval select, rotation-order
@@ -35,29 +35,12 @@ and moves `wallpaper` to the first remaining.
 - The bar rotates (`vitrail wallpaper next` rewrites `wallpaper=`) when more
   than one is selected.
 
-## Adaptive SVG
-
-Placeholders `{{role}}` (any matugen role: surface, primary,
-primary_container…), unknown roles → on_surface. `adapt_svg` turns an ordinary
-SVG into one: every hex / rgb() colour becomes a role, neutrals up the surface
-ladder (lowest … on_surface) by distance from the art's own background
-(dark art ascends in lightness, light art flips), saturated colours into up
-to three hue families (largest = primary) as on_X / X_container / X /
-on_X_container by the same distance; `<!-- vitrail-seed: #hex -->` keeps the
-dominant colour of the primary family and `svg_seed` prefers it. Layer
-opacity is not modelled (fog-heavy art such as forest-night brightens in
-dark mode). Palette from the seed via `matugen color hex` (the fixed
-`systemColor` when set); `generated/wallpaper-{dark,light}.svg` are the filled
-copies the bar shows (`?v=` busts the cache). Settings previews fill them in
-QML (XHR + `data:` URL; needs `QML_XHR_ALLOW_FILE_READ=1`, set by
-bin/vitrail-settings). Example: `examples/wallpapers/waves.svg`.
-
 ## Pipeline
 
 wallpaper.ini change → systemd path unit → scripts/apply-settings.sh →
 `vitrail wallpaper sync` → `vitrail wallpaper apply [--force]` (stamp: wallpaper
 + systemColor; fixed colour → `matugen color hex` for every kind, automatic →
-image / video frame, SVG's own seed) → `vitrail theme apply --mode dark|light`
+image / video frame) → `vitrail theme apply --mode dark|light`
 (vitrail/system_theme.py): gtk-{3,4}.0/gtk.css, gtk-3.0 prefer-dark, gsettings
 color-scheme, qt5ct/qt6ct `colors/vitrail.conf` + conf keys,
 environment.d QT_QPA_PLATFORMTHEME=qt6ct, Hyprland active border. The bar

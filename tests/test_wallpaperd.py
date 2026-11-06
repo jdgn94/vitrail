@@ -41,8 +41,8 @@ class Fake:
 class EngineTests(unittest.TestCase):
     def test_kinds_pick_their_engine(self) -> None:
         self.assertEqual(wallpaperd.engine_for("image"), "awww")
-        self.assertEqual(wallpaperd.engine_for("svg"), "awww")
         self.assertEqual(wallpaperd.engine_for("video"), "mpvpaper")
+        self.assertIsNone(wallpaperd.engine_for("svg"))
         self.assertIsNone(wallpaperd.engine_for("pdf"))
 
 

@@ -252,7 +252,7 @@ QtObject {
         // An empty field follows the global wallpaper and effect.
         property string wallpaperMonitors: "{}"
         // Colour of the whole system ("" = from the wallpaper): palette seed
-        // for every kind of wallpaper, and the colour adaptive SVGs take.
+        // for every kind of wallpaper.
         property string systemColor: ""
     }
 

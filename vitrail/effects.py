@@ -3,8 +3,8 @@
 Every recipe is an argument list handed straight to `magick` — never a shell
 string and never `eval`. The result is cached by the picture's content and the
 effect name, so a rotation back to the same art costs nothing. Only pictures
-take an effect: an SVG is drawn adaptively and a video is decoded by its own
-engine, so both are shown as they are (with a notice).
+take an effect: a video is decoded by its own engine, so it is shown as it is
+(with a notice).
 """
 
 from __future__ import annotations

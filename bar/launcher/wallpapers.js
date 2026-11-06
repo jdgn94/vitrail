@@ -6,16 +6,11 @@
 .import "../effects.js" as Effects
 .import "search.js" as Search
 
-var WALLPAPER = /\.(png|jpe?g|webp|bmp|svg|mp4|webm|mkv|mov|m4v|avi)$/i
+var WALLPAPER = /\.(png|jpe?g|webp|bmp|mp4|webm|mkv|mov|m4v|avi)$/i
 var VIDEO = /\.(mp4|webm|mkv|mov|m4v|avi)$/i
-var SVG = /\.svg$/i
 
 function kindOf(path) {
-    if (SVG.test(path))
-        return "svg"
-    if (VIDEO.test(path))
-        return "video"
-    return "image"
+    return VIDEO.test(path) ? "video" : "image"
 }
 
 function nameOf(path) {

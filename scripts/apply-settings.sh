@@ -216,9 +216,9 @@ printf 'Terminal: tabs=%s icons=%s numbers=%s scheme=%s font=%s padding=%s\n' \
 printf 'Language: %s (%s, next session)\n' "$language" "$locale"
 
 # --- wallpaper and system theme ---------------------------------------------
-# The bar draws the wallpaper; the palette follows it (a video lends one frame,
-# an adaptive SVG its seed colour), and only a new wallpaper or seed extracts
-# again. Then light or dark, with that palette, reaches GTK, Qt and Hyprland.
+# The bar draws the wallpaper; the palette follows it (a video lends one
+# frame), and only a new wallpaper or seed extracts again. Then light or dark,
+# with that palette, reaches GTK, Qt and Hyprland.
 vitrail_cli wallpaper sync || true
 vitrail_cli wallpaper apply || true
 vitrail_cli theme apply --mode "$system_mode" || true

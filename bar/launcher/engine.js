@@ -161,7 +161,7 @@ function build(parsed, ctx) {
             out.push({
                 id: "wallpaper:" + file.path, group: "wallpaper", title: file.name,
                 subtitle: now ? ctx.t("launcher.wallpaper.current") : ctx.t("launcher.wallpaper." + file.kind),
-                icon: file.kind === "video" ? "movie" : file.kind === "svg" ? "draw" : "image",
+                icon: file.kind === "video" ? "movie" : "image",
                 thumbnail: file.kind === "image" ? file.path : "",
                 run: { kind: "wallpaper", path: file.path }
             })

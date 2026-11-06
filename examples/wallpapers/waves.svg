@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
-  <!-- Vitrail adaptive wallpaper: every {{role}} takes the palette colour of
-       that Material role, so the art follows the theme in light and dark. -->
-  <rect width="1920" height="1080" fill="{{surface}}"/>
-  <circle cx="1500" cy="260" r="180" fill="{{tertiary_container}}"/>
-  <path d="M0 640 C 320 540 640 760 960 660 S 1600 520 1920 620 V1080 H0 Z" fill="{{primary_container}}"/>
-  <path d="M0 780 C 360 700 700 880 1040 790 S 1640 680 1920 760 V1080 H0 Z" fill="{{secondary_container}}"/>
-  <path d="M0 900 C 400 840 760 980 1120 910 S 1700 830 1920 880 V1080 H0 Z" fill="{{primary}}"/>
-</svg>

@@ -113,7 +113,7 @@ fi
 # `exec` below skips the EXIT trap.
 rm -rf -- "${work}"
 
-# Adaptive SVG previews read the files to fill their {{role}} placeholders.
+# The settings pages read local files through XHR (world map, fonts, monitors).
 export QML_XHR_ALLOW_FILE_READ=1
 
 # The VPN page opens a file dialog for a .ovpn. Under `qt6ct` Qt draws its own

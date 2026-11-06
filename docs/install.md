@@ -32,7 +32,7 @@ optional assets, shows a summary and only writes after you confirm. Non-interact
 
 Useful flags: `--dry-run` (the plan, no changes), `--skip-packages` (only link
 the dotfiles), `--repair` (re-link and re-enable what is missing), `--gpu
-auto|amd|nvidia|intel`, `--assets images,animated,adaptive,cursors,icons|none`,
+auto|amd|nvidia|intel`, `--assets images,animated,cursors,icons|none`,
 `--root DIR`, `--home DIR`.
 
 `--assets` picks the optional content the repository carries. The interactive

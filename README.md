@@ -53,12 +53,12 @@ It asks for the AUR helpers (`yay`, `paru`, `pikaur`; several are fine), shows a
 full summary, and only writes after you confirm. Hyprland is the only desktop,
 so it is not a question.
 
-The optional assets are a checklist: wallpapers, animated wallpapers, adaptive
-wallpapers, cursor themes and app icon packs, each with its size and only the
-wallpapers checked. Without a terminal, the same choice is a flag:
+The optional assets are a checklist: wallpapers, animated wallpapers, cursor
+themes and app icon packs, each with its size and only the wallpapers checked.
+Without a terminal, the same choice is a flag:
 
 ```sh
-./install.sh --yes --assets=images,animated,adaptive,cursors,icons
+./install.sh --yes --assets=images,animated,cursors,icons
 ./install.sh --yes --assets=cursors,icons
 ./install.sh --yes --assets=none
 ```
@@ -704,7 +704,7 @@ it is drawn and before its palette is taken: `none`, `b&w`, `blur`, `charcoal`,
 `sepia`, `solarize`, `sharpen`, `vignette`, `vignette-black`, `zoomed`. The
 derived file is cached in `~/.cache/vitrail/effects/<hash>-<effect>.png`, so
 returning to the same picture and effect costs nothing. Only images take an
-effect: an SVG and a video are shown as they are, with a notice.
+effect: a video is shown as it is, with a notice.
 
 **Settings → Monitors** may give one output its own picture and effect
 (`wallpaperMonitors`: `{"DP-1": {"wallpaper": "/path", "effect": "blur"}}`).

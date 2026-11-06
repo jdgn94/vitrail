@@ -880,28 +880,21 @@ ShellRoot {
     // `vitrail colors` (`vitrail/colors.py`). Reading it is one small file
     // instead of a Python spawn.
     readonly property string paletteStore: shell.generatedDir + "/palette.json"
-    // Bumped on every new palette: a regenerated SVG of the same name reloads.
-    property int paletteVersion: 0
-    // An adaptive SVG is shown recoloured for the current mode.
     readonly property string wallpaperEffect: Effects.of(shell.prefs.wallpaperEffect)
     // The picture one output draws: its own override (and effect) when it has
     // one, otherwise the global wallpaper.
     function wallpaperFor(name) {
-        var global = shell.prefs.wallpaper || ""
-        var path = global
+        var path = shell.prefs.wallpaper || ""
         var effect = shell.wallpaperEffect
         var entry = WallpaperMonitors.of(shell.prefs.wallpaperMonitors || "", name)
-        // An adaptive SVG is drawn from the generated copy of the global one.
-        if (entry.wallpaper !== "" && !/\.svg$/i.test(entry.wallpaper))
+        if (entry.wallpaper !== "")
             path = entry.wallpaper
         if (entry.effect !== "")
             effect = Effects.of(entry.effect)
         // The effect is baked into a stable file apply-settings writes.
         if (effect !== "none" && Effects.isImage(path))
             return shell.cacheDir + "/" + Effects.shown(name)
-        if (!/\.svg$/i.test(path))
-            return path
-        return shell.generatedDir + "/wallpaper-" + (shell.dark ? "dark" : "light") + ".svg"
+        return path
     }
     readonly property string wallpaperSource: shell.wallpaperFor("")
     readonly property int rotationCount: (shell.prefs.wallpaperSelection || "").split("|").filter(function (path) {
@@ -1559,7 +1552,6 @@ ShellRoot {
         } catch (error) {
             shell.palettes = ({})
         }
-        shell.paletteVersion++
         shell.startupMark("palette ready")
     }
 
@@ -2521,7 +2513,6 @@ ShellRoot {
                         anchors.fill: parent
                         variant: shell.prefs.wallpaperMode || ""
                         source: shell.wallpaperFor(monitor.modelData.name)
-                        revision: shell.paletteVersion
                         hole: bar.layout.hole
                         radius: bar.layout.radius
                     }
