@@ -2,6 +2,7 @@ import QtQuick
 import QtTest
 import "../../kit"
 import "../../kit/wheel.js" as Wheel
+import "../../kit/slider.js" as SliderShape
 
 // VitrailSlider: horizontal by default, vertical on request (minimum at the
 // bottom, maximum at the top).
@@ -96,6 +97,50 @@ TestCase {
         compare(item.gap, 0)
         compare(item.track, VitrailTokens.slider.thin)
         verify(make({ width: 200 }).gap > 0)
+    }
+
+    // --- interaction: the handle is the feedback (no focus ring) ---------------
+
+    function test_the_handle_grows_while_pressed() {
+        var item = make({ width: 200 })
+        var rest = item.handleScale
+        mousePress(item, 100, item.height / 2)
+        compare(item.pressed, true)
+        verify(item.handleScale > rest)
+        compare(item.liveHandleHeight, Math.round(item.handleHeight * item.handleScale))
+        mouseRelease(item, 100, item.height / 2)
+        compare(item.pressed, false)
+        compare(item.handleScale, rest)
+    }
+
+    function test_the_wheel_pulses_the_handle_and_settles_back() {
+        var item = make({ width: 200, wheelStep: 5 })
+        var rest = item.handleScale
+        mouseWheel(item, 100, item.height / 2, 0, 120)
+        compare(item.wheelActive, true)
+        verify(item.handleScale > rest)
+        tryVerify(function () { return !item.wheelActive }, 2000)
+        tryCompare(item, "handleScale", rest)
+    }
+
+    function test_keyboard_focus_thickens_the_accent_handle() {
+        var item = make({ width: 200 })
+        compare(item.handleWidth, VitrailTokens.slider.handle)
+        item.requestFocus()
+        tryVerify(function () { return item.focused })
+        verify(item.handleWidth > VitrailTokens.slider.handle)
+        compare(item.handleWidth, VitrailTokens.slider.handle * VitrailTokens.slider.focusWidth)
+        // Focus does not leave the handle taller after a click.
+        compare(item.handleScale, 1)
+    }
+
+    // --- the pure handle scale ---------------------------------------------------
+
+    function test_the_pure_scale_follows_pressed_and_wheel() {
+        compare(SliderShape.handleScale(false, false, 1.4), 1)
+        compare(SliderShape.handleScale(true, false, 1.4), 1.4)
+        compare(SliderShape.handleScale(false, true, 1.4), 1.4)
+        compare(SliderShape.handleScale(true, true, 1.4), 1.4)
     }
 
     // --- mouse wheel (opt-in) ----------------------------------------------------

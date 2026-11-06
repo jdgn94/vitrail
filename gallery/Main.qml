@@ -201,7 +201,7 @@ Window {
                 id: wheelSlider
 
                 Layout.preferredWidth: 320
-                label: "mouse wheel · 5% a notch"
+                label: "mouse wheel · 5% a notch, the handle pulses"
                 suffix: "%"
                 from: 0
                 to: 100
@@ -210,6 +210,20 @@ Window {
                 icon: "volume_up"
                 wheelStep: 5
                 onMoved: function (value) { wheelSlider.value = value }
+            }
+
+            VitrailSlider {
+                id: focusSlider
+
+                Layout.preferredWidth: 320
+                label: "keyboard focus · thicker accent handle"
+                suffix: "%"
+                from: 0
+                to: 100
+                value: 45
+                size: "md"
+                // The field below focuses itself on load; ask once more after.
+                Component.onCompleted: Qt.callLater(focusSlider.requestFocus)
             }
 
             VitrailSlider {

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "wheel.js" as Wheel
+import "slider.js" as SliderShape
 
 // Labelled slider with a live value readout, in the Material 3 expressive
 // shape: a thick track split by a vertical handle, with a gap on each side.
@@ -60,10 +61,20 @@ ColumnLayout {
                                                      : (VitrailTokens.slider[root.size] || VitrailTokens.slider.md)
     readonly property real gap: root.continuous ? 0 : VitrailTokens.slider.gap
     readonly property bool vertical: root.orientation === Qt.Vertical
-    // The pointer holds the handle.
+    // The pointer holds the handle; the keyboard is on it; the wheel just
+    // turned (a short pulse).
     readonly property bool pressed: slider.pressed
+    readonly property bool focused: slider.activeFocus
+    readonly property bool wheelActive: wheelPulse.running
     readonly property real activeEnd: slider.activeEnd
     readonly property real handleHeight: root.track + 4 * root.gap
+    // The keyboard thickens the handle; the pointer and the wheel make it
+    // taller, then the style's motion settles it back.
+    readonly property real handleWidth: root.readOnly ? 0
+                                        : VitrailTokens.slider.handle * (root.focused ? VitrailTokens.slider.focusWidth : 1)
+    readonly property real handleScale: SliderShape.handleScale(root.pressed, root.wheelActive,
+                                                                VitrailTokens.slider.grow)
+    readonly property real liveHandleHeight: Math.round(root.handleHeight * root.handleScale)
     readonly property var bands: {
         var list = root.segments && root.segments.length ? root.segments : [{ to: 1, color: root.accent }]
         var from = 0
@@ -78,6 +89,12 @@ ColumnLayout {
     // of a notch not applied yet.
     property real wheelValue: 0
     property real wheelRest: 0
+
+    // Keyboard focus for the gallery and the tests: the arrows belong to the
+    // inner Slider, not to this layout.
+    function requestFocus() {
+        slider.forceActiveFocus()
+    }
 
     function bandColor(fraction) {
         for (var i = 0; i < root.bands.length; i++) {
@@ -128,6 +145,7 @@ ColumnLayout {
             enabled: root.wheelStep > 0 && !root.readOnly
             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
             onWheel: function (event) {
+                wheelPulse.restart()
                 var angle = event.angleDelta.y !== 0 ? event.angleDelta.y : -event.angleDelta.x
                 var pixels = event.pixelDelta.y !== 0 ? event.pixelDelta.y : -event.pixelDelta.x
                 var turned = Wheel.notches(angle, pixels, VitrailTokens.slider.wheelAngle, VitrailTokens.slider.wheelPixels)
@@ -151,13 +169,20 @@ ColumnLayout {
             interval: VitrailTokens.duration("slow")
         }
 
+        // One short pulse per wheel event: the handle stays up while the wheel
+        // turns and settles back a style step after the last notch.
+        Timer {
+            id: wheelPulse
+
+            interval: VitrailTokens.duration("base")
+        }
+
         Slider {
             id: slider
 
             // Handle centre and the two track ends either side of it.
             readonly property real span: slider.availableWidth
-            property real handleWidth: root.readOnly ? 0
-                                                : VitrailTokens.slider.handle / (slider.pressed ? 2 : 1)
+            property real handleWidth: root.handleWidth
             readonly property real centre: Math.max(slider.handleWidth / 2,
                                                     Math.min(slider.span - slider.handleWidth / 2,
                                                              slider.visualPosition * slider.span))
@@ -181,7 +206,7 @@ ColumnLayout {
             value: root.value
             onMoved: root.moved(slider.value)
 
-            Behavior on handleWidth { NumberAnimation { duration: VitrailTokens.duration("fast") } }
+            Behavior on handleWidth { NumberAnimation { duration: VitrailTokens.duration("fast"); easing.type: Easing.OutCubic } }
 
             background: Item {
                 x: slider.leftPadding
@@ -287,22 +312,16 @@ ColumnLayout {
                 x: slider.leftPadding + slider.centre - width / 2
                 y: slider.topPadding + (slider.availableHeight - height) / 2
                 implicitWidth: slider.handleWidth
-                implicitHeight: root.handleHeight
+                implicitHeight: root.liveHandleHeight
                 width: slider.handleWidth
+                height: root.liveHandleHeight
                 radius: width / 2
                 visible: !root.readOnly
-                color: root.bandColor(slider.visualPosition)
-            }
-        }
+                // The keyboard's handle is the accent one; there is no ring.
+                color: root.focused ? root.accent : root.bandColor(slider.visualPosition)
 
-        // Where the keyboard is.
-        Rectangle {
-            anchors.fill: parent
-            radius: height / 2
-            color: "transparent"
-            border.width: slider.activeFocus ? 2 : 0
-            border.color: root.accent
-            visible: slider.activeFocus
+                Behavior on height { NumberAnimation { duration: VitrailTokens.duration("fast"); easing.type: Easing.OutCubic } }
+            }
         }
     }
 }

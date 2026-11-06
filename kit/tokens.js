@@ -150,6 +150,11 @@ var slider = {
     md: 16,
     lg: 28,
     handle: 4,
+    // The handle grows taller while the pointer holds it or the wheel turns;
+    // the keyboard makes it thicker and accent-coloured: focus is never a
+    // ring around the track.
+    grow: 1.4,
+    focusWidth: 1.75,
     gap: 4,
     // How tall a vertical slider is when nothing sizes it.
     length: 160,

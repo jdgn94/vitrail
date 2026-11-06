@@ -34,7 +34,12 @@ Material 3 expressive: thick track split by a 4 px vertical handle with a
 gap each side (`tokens.slider`: `sm 8 / md 16 / lg 28`, `handle`, `gap`).
 
 - `size` or `thickness` (px) sets the track; the handle is track + 4 × gap
-  tall and halves its width while pressed.
+  tall. Pressing the pointer or turning the wheel makes it `grow` taller and
+  it settles back with the style's motion (no focus ring, no fill change).
+- Keyboard focus keeps the handle visible instead: `focusWidth` thicker in
+  the accent colour (never taller, so a click still settles back). Pointer,
+  wheel and focus stay one pure state (`kit/slider.js`, tested in
+  `tests/qml/tst_slider.qml`).
 - `segments: [{ to: 0.8, color }, { to: 1, color }]` colours by level
   (fractions of the range): filled piece full colour, empty piece 28 % (both
   opaque, `VitrailTokens.solid`).
