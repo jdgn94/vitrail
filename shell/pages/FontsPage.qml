@@ -296,7 +296,7 @@ Item {
 
             VitrailText {
                 variant: "icon"
-                text: card.icon
+                icon: card.icon
                 color: page.palette.muted
             }
 
@@ -457,7 +457,7 @@ Item {
                                 variant: "icon"
                                 font.pixelSize: VitrailTokens.size("title")
                                 family: VitrailTokens.font.iconFamilyOf(page.prefs.uiIcons)
-                                text: "interests"
+                                icon: "interests"
                                 color: page.palette.primary
                             }
 
@@ -597,7 +597,7 @@ Item {
                                 Layout.preferredWidth: 24
                                 variant: "icon"
                                 font.pixelSize: VitrailTokens.size("title")
-                                text: "mouse"
+                                icon: "mouse"
                                 color: page.palette.muted
                             }
 

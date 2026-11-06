@@ -133,7 +133,7 @@ StackView {
                         visible: row.modelData.buttonType !== QsMenuButtonType.None
                         variant: "icon"
                         font.pixelSize: VitrailTokens.size("body") + 2
-                        text: row.modelData.buttonType === QsMenuButtonType.RadioButton
+                        icon: row.modelData.buttonType === QsMenuButtonType.RadioButton
                               ? (row.modelData.checkState === Qt.Checked ? "radio_button_checked" : "radio_button_unchecked")
                               : (row.modelData.checkState === Qt.Checked ? "check_box" : "check_box_outline_blank")
                         color: row.checked ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
@@ -150,7 +150,7 @@ StackView {
                         visible: row.modelData.hasChildren
                         variant: "icon"
                         font.pixelSize: VitrailTokens.size("body") + 4
-                        text: "chevron_right"
+                        icon: "chevron_right"
                     }
                 }
 

@@ -252,7 +252,7 @@ FocusScope {
             variant: "icon"
             // The chosen cell only changes colour; icons are never filled.
             font.pixelSize: Math.min(preview.size, VitrailTokens.size("title"))
-            text: visible ? preview.option.glyph : ""
+            icon: visible ? preview.option.glyph : ""
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }

@@ -1,4 +1,5 @@
 singleton VitrailTokens 1.0 VitrailTokens.qml
+singleton VitrailIcons 1.0 VitrailIcons.qml
 singleton VitrailVariants 1.0 VitrailVariants.qml
 singleton VitrailStyle 1.0 VitrailStyle.qml
 AuthScreen 1.0 AuthScreen.qml

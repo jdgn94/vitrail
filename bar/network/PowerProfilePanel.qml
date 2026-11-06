@@ -46,7 +46,7 @@ Item {
 
             VitrailText {
                 variant: "icon"
-                text: root.mode.icon
+                icon: root.mode.icon
                 color: VitrailTokens.color(root.mode.tone)
             }
 

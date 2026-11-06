@@ -99,7 +99,7 @@ Item {
 
         anchors.centerIn: parent
         variant: "icon"
-        text: root.glyph
+        icon: root.glyph
         color: root.connected ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
         opacity: root.connected ? 1 : 0.45
     }

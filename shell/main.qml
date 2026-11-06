@@ -419,7 +419,7 @@ Window {
                                     VitrailText {
                                         variant: "icon"
                                         font.pixelSize: VitrailTokens.size("subtitle")
-                                        text: app.categoryOf(result.modelData.category).glyph
+                                        icon: app.categoryOf(result.modelData.category).glyph
                                         color: result.highlighted ? app.theme.primary : app.theme.muted
                                     }
 

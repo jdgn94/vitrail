@@ -80,7 +80,7 @@ Item {
                 anchors.centerIn: parent
                 variant: "icon"
                 font.pixelSize: VitrailTokens.size("display")
-                text: root.icon
+                icon: root.icon
                 color: VitrailTokens.color(root.error ? "error" : "primary")
             }
         }

@@ -615,7 +615,7 @@ FocusScope {
                     VitrailText {
                         anchors.verticalCenter: parent.verticalCenter
                         variant: "icon"
-                        text: chip.glyphs[root.parsed.mode]
+                        icon: chip.glyphs[root.parsed.mode]
                         color: VitrailTokens.color("primary")
                     }
 

@@ -1,0 +1,292 @@
+// The Material Symbols the shell draws, by ligature name.
+//
+// A Material Symbols font turns a ligature name into a glyph; a name the font
+// does not know is drawn as the word itself. `names` is therefore the
+// allow-list `VitrailIcons.resolve` checks before drawing: anything missing
+// from it becomes `question_mark`, so a typo shows a question mark instead of
+// a stray word.
+//
+// The table is derived from the QML that draws icons. `tests/test_icon_resolver.py`
+// fails when a name used there is missing here, so add the name in both places
+// (and only if Material Symbols really has that glyph).
+.pragma library
+
+// The glyph every unresolvable name renders as.
+var fallback = "question_mark"
+
+// name -> the glyph the font draws for it.
+var names = {
+    add: "add",
+    add_photo_alternate: "add_photo_alternate",
+    admin_panel_settings: "admin_panel_settings",
+    ads_click: "ads_click",
+    airplanemode_active: "airplanemode_active",
+    airplanemode_inactive: "airplanemode_inactive",
+    album: "album",
+    align_horizontal_center: "align_horizontal_center",
+    align_horizontal_left: "align_horizontal_left",
+    align_horizontal_right: "align_horizontal_right",
+    alt_route: "alt_route",
+    apps: "apps",
+    arrow_back: "arrow_back",
+    arrow_downward: "arrow_downward",
+    arrow_upward: "arrow_upward",
+    aspect_ratio: "aspect_ratio",
+    auto_awesome: "auto_awesome",
+    backspace: "backspace",
+    balance: "balance",
+    bar_chart: "bar_chart",
+    battery_full: "battery_full",
+    bedtime: "bedtime",
+    bluetooth: "bluetooth",
+    bluetooth_connected: "bluetooth_connected",
+    bluetooth_disabled: "bluetooth_disabled",
+    bluetooth_searching: "bluetooth_searching",
+    blur_on: "blur_on",
+    bolt: "bolt",
+    border_clear: "border_clear",
+    border_outer: "border_outer",
+    border_style: "border_style",
+    bottom_navigation: "bottom_navigation",
+    bottom_panel_open: "bottom_panel_open",
+    brightness_high: "brightness_high",
+    brightness_low: "brightness_low",
+    brightness_medium: "brightness_medium",
+    calculate: "calculate",
+    calendar_month: "calendar_month",
+    call_split: "call_split",
+    center_focus_strong: "center_focus_strong",
+    check: "check",
+    check_box: "check_box",
+    check_box_outline_blank: "check_box_outline_blank",
+    chevron_left: "chevron_left",
+    chevron_right: "chevron_right",
+    clear_all: "clear_all",
+    close: "close",
+    close_fullscreen: "close_fullscreen",
+    colorize: "colorize",
+    compress: "compress",
+    computer: "computer",
+    content_copy: "content_copy",
+    content_paste: "content_paste",
+    content_paste_off: "content_paste_off",
+    contrast: "contrast",
+    crop_16_9: "crop_16_9",
+    crop_free: "crop_free",
+    dark_mode: "dark_mode",
+    delete: "delete",
+    delete_forever: "delete_forever",
+    delete_sweep: "delete_sweep",
+    density_medium: "density_medium",
+    density_small: "density_small",
+    design_services: "design_services",
+    desktop_windows: "desktop_windows",
+    devices: "devices",
+    dialpad: "dialpad",
+    do_not_disturb_on: "do_not_disturb_on",
+    dock_to_bottom: "dock_to_bottom",
+    dock_to_left: "dock_to_left",
+    done_all: "done_all",
+    download: "download",
+    downloading: "downloading",
+    drag_indicator: "drag_indicator",
+    draw: "draw",
+    drive_file_move: "drive_file_move",
+    edit: "edit",
+    emoji_symbols: "emoji_symbols",
+    energy_savings_leaf: "energy_savings_leaf",
+    expand_less: "expand_less",
+    expand_more: "expand_more",
+    extension: "extension",
+    extension_off: "extension_off",
+    favorite: "favorite",
+    filter_center_focus: "filter_center_focus",
+    filter_frames: "filter_frames",
+    first_page: "first_page",
+    fit_screen: "fit_screen",
+    flag: "flag",
+    flight: "flight",
+    flip: "flip",
+    folder: "folder",
+    folder_open: "folder_open",
+    font_download: "font_download",
+    format_color_text: "format_color_text",
+    format_list_numbered: "format_list_numbered",
+    fullscreen: "fullscreen",
+    graphic_eq: "graphic_eq",
+    grid_view: "grid_view",
+    history: "history",
+    hourglass_top: "hourglass_top",
+    image: "image",
+    info: "info",
+    interests: "interests",
+    keep: "keep",
+    keep_off: "keep_off",
+    key: "key",
+    keyboard: "keyboard",
+    keyboard_return: "keyboard_return",
+    keyboard_tab: "keyboard_tab",
+    lan: "lan",
+    language: "language",
+    last_page: "last_page",
+    layers: "layers",
+    left_panel_open: "left_panel_open",
+    light_mode: "light_mode",
+    lightbulb: "lightbulb",
+    lock: "lock",
+    logout: "logout",
+    memory: "memory",
+    menu: "menu",
+    menu_open: "menu_open",
+    mic: "mic",
+    mic_off: "mic_off",
+    minimize: "minimize",
+    monitor: "monitor",
+    monitoring: "monitoring",
+    mouse: "mouse",
+    movie: "movie",
+    music_note: "music_note",
+    my_location: "my_location",
+    notifications: "notifications",
+    notifications_active: "notifications_active",
+    notifications_off: "notifications_off",
+    opacity: "opacity",
+    open_in_full: "open_in_full",
+    open_with: "open_with",
+    palette: "palette",
+    partly_cloudy_day: "partly_cloudy_day",
+    pause: "pause",
+    pending_actions: "pending_actions",
+    person: "person",
+    pets: "pets",
+    photo_library: "photo_library",
+    place: "place",
+    play_arrow: "play_arrow",
+    play_circle: "play_circle",
+    power_settings_new: "power_settings_new",
+    priority_high: "priority_high",
+    public: "public",
+    push_pin: "push_pin",
+    question_mark: "question_mark",
+    radio_button_checked: "radio_button_checked",
+    radio_button_unchecked: "radio_button_unchecked",
+    refresh: "refresh",
+    remove: "remove",
+    repeat: "repeat",
+    reply: "reply",
+    restart_alt: "restart_alt",
+    restaurant: "restaurant",
+    right_panel_open: "right_panel_open",
+    rounded_corner: "rounded_corner",
+    save: "save",
+    schedule: "schedule",
+    screen_record: "screen_record",
+    screenshot_monitor: "screenshot_monitor",
+    search: "search",
+    send: "send",
+    sentiment_satisfied: "sentiment_satisfied",
+    settings: "settings",
+    settings_ethernet: "settings_ethernet",
+    settings_suggest: "settings_suggest",
+    share: "share",
+    shield: "shield",
+    shield_lock: "shield_lock",
+    shift: "shift",
+    shuffle: "shuffle",
+    signal_cellular_1_bar: "signal_cellular_1_bar",
+    signal_cellular_2_bar: "signal_cellular_2_bar",
+    signal_cellular_4_bar: "signal_cellular_4_bar",
+    signal_cellular_off: "signal_cellular_off",
+    signal_wifi_off: "signal_wifi_off",
+    skip_next: "skip_next",
+    skip_previous: "skip_previous",
+    snooze: "snooze",
+    space_bar: "space_bar",
+    space_dashboard: "space_dashboard",
+    speaker: "speaker",
+    speed: "speed",
+    splitscreen: "splitscreen",
+    sports_soccer: "sports_soccer",
+    square: "square",
+    stacks: "stacks",
+    stop_circle: "stop_circle",
+    storage: "storage",
+    straighten: "straighten",
+    style: "style",
+    swap_horiz: "swap_horiz",
+    swap_vert: "swap_vert",
+    sync: "sync",
+    tab: "tab",
+    task_alt: "task_alt",
+    terminal: "terminal",
+    text_fields: "text_fields",
+    thermostat: "thermostat",
+    timer: "timer",
+    tonality: "tonality",
+    toolbar: "toolbar",
+    top_panel_open: "top_panel_open",
+    translate: "translate",
+    travel_explore: "travel_explore",
+    tune: "tune",
+    update: "update",
+    upload_file: "upload_file",
+    vertical_align_bottom: "vertical_align_bottom",
+    vertical_align_center: "vertical_align_center",
+    vertical_align_top: "vertical_align_top",
+    view_agenda: "view_agenda",
+    view_carousel: "view_carousel",
+    view_column: "view_column",
+    view_list: "view_list",
+    view_quilt: "view_quilt",
+    view_sidebar: "view_sidebar",
+    visibility: "visibility",
+    visibility_off: "visibility_off",
+    volume_down: "volume_down",
+    volume_mute: "volume_mute",
+    volume_off: "volume_off",
+    volume_up: "volume_up",
+    vpn_key: "vpn_key",
+    wallpaper: "wallpaper",
+    warning: "warning",
+    widgets: "widgets",
+    wifi: "wifi",
+    wifi_off: "wifi_off",
+}
+
+// Names the app spells differently: alias -> key of `names`.
+var aliases = {}
+
+// A caller's spelling, without surrounding space and case.
+function normalize(name) {
+    if (typeof name !== "string")
+        return ""
+    return name.trim().toLowerCase()
+}
+
+// Whether `table` owns `key`: "constructor" or "__proto__" exist on every
+// object and are not icons.
+function own(table, key) {
+    return key !== "" && Object.prototype.hasOwnProperty.call(table, key)
+}
+
+// The `names` key `name` resolves to, or "" when it is not an icon.
+function canonical(name) {
+    var key = normalize(name)
+    if (own(names, key))
+        return key
+    if (own(aliases, key) && own(names, aliases[key]))
+        return aliases[key]
+    return ""
+}
+
+// Whether `name` is an icon the font can draw.
+function available(name) {
+    return canonical(name) !== ""
+}
+
+// The glyph to draw: the name itself when it is a known icon, and the
+// question mark when it is empty, unknown or misspelt.
+function glyph(name) {
+    var key = canonical(name)
+    return key === "" ? fallback : (names[key] || fallback)
+}

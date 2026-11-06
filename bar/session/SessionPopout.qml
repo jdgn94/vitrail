@@ -67,7 +67,7 @@ ColumnLayout {
                 VitrailText {
                     variant: "icon"
                     font.pixelSize: VitrailTokens.size("body") + 2
-                    text: row.modelData.icon
+                    icon: row.modelData.icon
                     color: row.ink
                 }
 

@@ -7,12 +7,17 @@
   from the variant.
 - Icons: Material Symbols, the family the user picks in **Fonts & icons → Icons**
   (`VitrailTokens.iconFamily`, derived from `VitrailTokens.iconVariant`: Rounded,
-  Sharp or Outlined). Written as ligature names (`text: "wifi"`), never code
-  points. Icons are **never filled**: a selected / active icon is drawn in the
-  accent colour and its shape never changes with the state (no `FILL` axis, no
+  Sharp or Outlined). Written as a ligature name on `icon:` (`VitrailIcon`, or
+  `VitrailText` with `variant: "icon"`), never as `text` and never as code
+  points: `VitrailIcons.resolve` checks the name against `kit/icons.js` and draws
+  `question_mark` for anything it does not know (empty means "no icon").
+  Icons are **never filled**: a selected / active icon is drawn in the accent
+  colour and its shape never changes with the state (no `FILL` axis, no
   `filled` property).
-- New icon name? Check it renders as one glyph: `TextMetrics.advanceWidth`
-  under ~1.25 × pixelSize (see SKILL.md verification).
+- New icon name? Add it to `kit/icons.js` (and check it renders as one glyph:
+  `TextMetrics.advanceWidth` under ~1.25 × pixelSize, see SKILL.md verification).
+  `tests/test_icon_resolver.py` fails on a name the QML draws but the table
+  lacks.
 
 ## Fills on glass are opaque
 

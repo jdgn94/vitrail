@@ -166,7 +166,7 @@ Item {
                 anchors.centerIn: parent
                 visible: image.status !== Image.Ready
                 variant: "icon"
-                text: "info"
+                icon: "info"
             }
         }
 
@@ -184,7 +184,7 @@ Item {
                     visible: root.isUrgent
                     variant: "icon"
                     color: VitrailTokens.color("error")
-                    text: "priority_high"
+                    icon: "priority_high"
                 }
 
                 // Takes what it needs; the age follows it and the

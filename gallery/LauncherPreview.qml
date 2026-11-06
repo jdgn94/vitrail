@@ -103,7 +103,7 @@ Item {
                                 anchors.centerIn: parent
                                 variant: "icon"
                                 font.pixelSize: art.width * 0.6
-                                text: cell.modelData.icon
+                                icon: cell.modelData.icon
                                 color: VitrailTokens.color("primary")
                             }
                         }

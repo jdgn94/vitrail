@@ -38,7 +38,7 @@ Item {
 
             VitrailText {
                 variant: "icon"
-                text: "keyboard"
+                icon: "keyboard"
                 color: VitrailTokens.color("primary")
             }
 

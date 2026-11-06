@@ -68,7 +68,7 @@ Item {
         visible: !art.visible
         variant: "icon"
         font.pixelSize: art.width * 0.8
-        text: "apps"
+        icon: "apps"
         color: VitrailTokens.color("muted")
     }
 
@@ -78,7 +78,7 @@ Item {
         anchors.left: art.right
         anchors.leftMargin: -VitrailTokens.gap("sm")
         variant: "icon"
-        text: "push_pin"
+        icon: "push_pin"
         color: VitrailTokens.color("primary")
     }
 

@@ -79,7 +79,7 @@ Item {
                 anchors.centerIn: parent
                 visible: !root.muteable
                 variant: "icon"
-                text: root.icon
+                icon: root.icon
                 color: VitrailTokens.color("foreground")
             }
         }

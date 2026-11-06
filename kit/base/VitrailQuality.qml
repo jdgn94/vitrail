@@ -24,7 +24,7 @@ RowLayout {
 
     VitrailText {
         variant: "icon"
-        text: root.icons[root.level] || root.icons.unknown
+        icon: root.icons[root.level] || root.icons.unknown
         color: root.tint
         font.pixelSize: VitrailTokens.size("subtitle")
     }

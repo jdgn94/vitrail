@@ -118,7 +118,7 @@ Item {
                     anchors.centerIn: parent
                     variant: "icon"
                     font.pixelSize: VitrailTokens.size("display")
-                    text: root.phase === "problem" ? "pending_actions" : (root.entry ? root.entry.icon : "power_settings_new")
+                    icon: root.phase === "problem" ? "pending_actions" : (root.entry ? root.entry.icon : "power_settings_new")
                     color: VitrailTokens.color(root.phase === "problem" ? "error" : root.tone)
                 }
             }
@@ -181,7 +181,7 @@ Item {
                         VitrailText {
                             variant: "icon"
                             color: VitrailTokens.color("primary")
-                            text: root.iconFor(modelData.kind)
+                            icon: root.iconFor(modelData.kind)
                         }
 
                         VitrailText {

@@ -62,8 +62,12 @@ layer contract.
   properties otherwise (`atBottom`, `begin`, `stop`).
 - A `Behavior` cannot target a `readonly` property.
 - `qml6` swallows load errors here: run with `QT_FORCE_STDERR_LOGGING=1`.
-- Icons are Material Symbols ligature names; no Nerd Font code points.
-  `tests/test_icons.py` checks every `icon:` / `glyph:` value renders.
+- Icons are Material Symbols ligature names; no Nerd Font code points. An icon
+  is declared with `icon:` (`VitrailIcon` or `VitrailText variant: "icon"`) and
+  resolves through `VitrailIcons`: a name missing from `kit/icons.js` draws
+  `question_mark`. `tests/test_icon_resolver.py` fails on a name the QML uses
+  but the table lacks; `tests/test_icons.py` checks every value renders as one
+  glyph.
 - `pkill -f <pattern>` inside a Bash call matches the call itself: anchor
   it (`pkill -f "^qml6 -I .*main[.]qml"`).
 - ListView `add` transitions cut short by the next insert leave the item

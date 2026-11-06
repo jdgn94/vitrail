@@ -63,7 +63,7 @@ TestCase {
             width: 320
             label: "Packs"
             current: "a"
-            options: [{ key: "a", label: "Alpha", glyph: "block" }]
+            options: [{ key: "a", label: "Alpha", glyph: "apps" }]
         }
     }
 
@@ -191,7 +191,7 @@ TestCase {
         var picker = createTemporaryObject(glyphComponent, testCase)
         picker.open()
         tryCompare(picker, "expanded", true)
-        var glyph = findText(picker, "block")
+        var glyph = findText(picker, "apps")
         verify(glyph !== null)
         // Choosing a cell changes its colour, never the FILL axis.
         compare(glyph.font.variableAxes["FILL"], 0)

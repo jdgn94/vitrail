@@ -31,6 +31,14 @@ CONTINUATION = re.compile(r"^\s*:\s*(.*)")
 NAME = re.compile(r'"([a-z][a-z0-9_]*)"')
 # Size tables reuse the `icon` key for a text variant.
 NOT_ICONS = {"body", "subtitle", "title", "label", "content", "display"}
+# A quoted string on the right of a comparison (`phase === "problem"`) is a
+# value the component compares, not an icon name.
+COMPARISON = re.compile(r'(?:===|!==|==|!=)\s*"([a-z][a-z0-9_]*)"')
+
+
+def literals(fragment: str) -> set[str]:
+    """The icon names quoted in `fragment`, without comparison operands."""
+    return set(NAME.findall(fragment)) - set(COMPARISON.findall(fragment))
 
 
 def icon_names() -> set[str]:
@@ -46,21 +54,21 @@ def icon_names() -> set[str]:
             in_map = False
             for line in path.read_text(encoding="utf-8").splitlines():
                 if in_map or ICON_MAP.search(line):
-                    names |= set(NAME.findall(line.split("({", 1)[-1]))
+                    names |= literals(line.split("({", 1)[-1])
                     in_map = "})" not in line
                     continue
                 match = ICON_VALUE.search(line) or GLYPH_LIST.search(line)
                 if match:
-                    names |= set(NAME.findall(match.group(1)))
+                    names |= literals(match.group(1))
                     open_value = line.rstrip().endswith(("?", ":")) or "?" in match.group(1)
                 elif open_value and (match := CONTINUATION.match(line)):
-                    names |= set(NAME.findall(match.group(1)))
+                    names |= literals(match.group(1))
                 else:
                     open_value = False
     # The OSD's icon table returns its names.
     for line in (ROOT / "bar" / "osd" / "icons.js").read_text(encoding="utf-8").splitlines():
         if "return" in line:
-            names |= set(NAME.findall(line))
+            names |= literals(line)
     return names - NOT_ICONS
 
 

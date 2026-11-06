@@ -30,7 +30,7 @@ TestCase {
         id: glyph
 
         variant: "icon"
-        text: "settings"
+        icon: "settings"
     }
 
     function init() {

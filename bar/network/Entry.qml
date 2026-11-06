@@ -75,7 +75,7 @@ Item {
             Layout.preferredWidth: VitrailTokens.size("display")
             horizontalAlignment: Text.AlignHCenter
             variant: "icon"
-            text: entry.icon
+            icon: entry.icon
             color: entry.active ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
         }
 

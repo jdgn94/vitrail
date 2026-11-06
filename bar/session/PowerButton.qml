@@ -42,7 +42,7 @@ Item {
 
         anchors.centerIn: parent
         variant: "icon"
-        text: "power_settings_new"
+        icon: "power_settings_new"
         color: root.opened || root.hovered ? VitrailTokens.color("error") : VitrailTokens.color("foreground")
 
         Behavior on color { ColorAnimation { duration: VitrailTokens.duration("fast") } }

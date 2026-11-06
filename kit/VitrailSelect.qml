@@ -242,7 +242,7 @@ FocusScope {
             anchors.verticalCenter: parent.verticalCenter
             variant: "icon"
             font.pixelSize: root.iconPx
-            text: root.currentOption && root.currentOption.icon ? root.currentOption.icon : ""
+            icon: root.currentOption && root.currentOption.icon ? root.currentOption.icon : ""
             color: root.ink
         }
 
@@ -286,7 +286,7 @@ FocusScope {
             anchors.verticalCenter: parent.verticalCenter
             variant: "icon"
             font.pixelSize: root.iconPx
-            text: "expand_more"
+            icon: "expand_more"
             color: root.active ? root.accent : VitrailTokens.color("muted")
             rotation: root.expanded ? 180 : 0
 
@@ -366,7 +366,7 @@ FocusScope {
                         visible: !!row.modelData.icon
                         variant: "icon"
                         font.pixelSize: root.iconPx
-                        text: row.modelData.icon || ""
+                        icon: row.modelData.icon || ""
                         color: row.chosen ? root.accent : root.ink
                     }
 
@@ -382,7 +382,7 @@ FocusScope {
                         visible: row.chosen
                         variant: "icon"
                         font.pixelSize: root.iconPx
-                        text: "check"
+                        icon: "check"
                         color: root.accent
                     }
                 }

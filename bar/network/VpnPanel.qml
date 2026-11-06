@@ -82,7 +82,7 @@ Item {
                 VitrailText {
                     anchors.centerIn: parent
                     variant: "icon"
-                    text: "shield_lock"
+                    icon: "shield_lock"
                     color: root.activeVpn ? VitrailTokens.color("primary") : VitrailTokens.color("muted")
                 }
             }

@@ -101,7 +101,7 @@ Item {
                 VitrailText {
                     anchors.centerIn: parent
                     variant: "icon"
-                    text: root.wiredDevice ? "lan"
+                    icon: root.wiredDevice ? "lan"
                           : root.wifiNetwork ? Network.wifiGlyph(root.wifiNetwork.signalStrength)
                           : root.online ? "lan" : "signal_wifi_off"
                     color: root.online ? VitrailTokens.color("primary") : VitrailTokens.color("muted")

@@ -56,7 +56,7 @@ class IconFillTest(unittest.TestCase):
     def test_the_vpn_icon_is_a_coloured_shield_with_a_lock(self) -> None:
         for name in ("bar/network/VpnButton.qml", "bar/network/VpnPanel.qml"):
             body = (ROOT / name).read_text(encoding="utf-8")
-            self.assertIn('text: "shield_lock"', body, f"{name} draws shield_lock")
+            self.assertIn('icon: "shield_lock"', body, f"{name} draws shield_lock")
         # The button never swaps the glyph with the state: the colour says it.
         button = (ROOT / "bar/network/VpnButton.qml").read_text(encoding="utf-8")
         self.assertNotIn('activeVpn ? "shield_lock" : "shield"', button)

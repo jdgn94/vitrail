@@ -10,6 +10,10 @@ Text {
     property string variant: ""
     // A family from outside the kit (the Fonts page's preview).
     property string family: ""
+    // An icon ligature name. It goes through the resolver, so a name the table
+    // does not know draws `question_mark` instead of the word itself; an empty
+    // value is "no icon" and draws nothing.
+    property string icon: ""
 
     readonly property var style: VitrailStyle.resolve("text", root.variant)
     // Icons follow the shell's chosen Material Symbols family, text the
@@ -20,6 +24,7 @@ Text {
                                                 ? VitrailTokens.iconFamily
                                                 : VitrailTokens.fontFamily)
 
+    text: root.icon !== "" ? VitrailIcons.resolve(root.icon) : ""
     color: VitrailTokens.color(root.style.role)
     opacity: root.style.opacity
     font.pixelSize: VitrailTokens.size(root.style.size)
