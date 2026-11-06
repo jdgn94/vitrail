@@ -101,6 +101,13 @@ zones="$(answer zones '[]')"
 network="$(answer network '{}')"
 monitors="$(answer monitors '{"available":false,"monitors":[]}')"
 fonts_file="${CACHE_DIR}/fonts-state.json"
+# The window watches the palette as a file: a scheme or contrast change
+# rewrites it and the window recolours without a restart.
+palette_file="${CACHE_DIR}/generated/palette.json"
+if [[ ! -f "${palette_file}" && "${palette}" != "{}" ]]; then
+    mkdir -p -- "${CACHE_DIR}/generated"
+    printf '%s\n' "${palette}" >"${palette_file}"
+fi
 # `exec` below skips the EXIT trap.
 rm -rf -- "${work}"
 
@@ -117,6 +124,7 @@ export QT_QPA_PLATFORMTHEME=xdgdesktopportal
 exec qml6 -I "${HERE}/.." "${SHELL_DIR}/main.qml" -- \
     --config "${CONFIG}" \
     --palette "${palette}" \
+    --palette-file "${palette_file}" \
     --i18n-file "${i18n_file}" \
     --plugins "${plugins}" \
     --zones "${zones}" \

@@ -5,6 +5,7 @@ import "../kit"
 import "../kit/base"
 import "../kit/args.js" as Args
 import "search.js" as Search
+import "palette.js" as Palette
 import "pages"
 
 // Vitrail settings window: category rail on the left, category screens on the
@@ -30,7 +31,12 @@ Window {
                                               ({ languages: [], strings: {} }))
     readonly property var languages: app.i18n.languages || []
     readonly property var strings: (app.i18n.strings || {})[prefs.language] || ({})
-    readonly property var palettes: Args.json("--palette", ({}))
+    // The palette both modes use, watched in `--palette-file`: a scheme or
+    // contrast change rewrites it and the window recolours without a restart.
+    // `--palette` stays the fallback for a caller with a small bundle.
+    property var palettes: Args.jsonFile("--palette-file", "--palette", ({}))
+    readonly property string paletteFile: Args.value("--palette-file", "")
+    property bool readingPalette: false
     readonly property var plugins: Args.json("--plugins", ([]))
     // Read once at startup (the window cannot run commands): every time zone,
     // the system's zone, and whether it syncs its clock over the network.
@@ -156,9 +162,30 @@ Window {
     onTokenValuesChanged: app.syncTokens()
     onShellIconFamilyChanged: app.syncTokens()
     onDarkChanged: app.syncTokens()
+    onPaletteDataChanged: app.syncTokens()
 
     function syncTokens() {
         VitrailTokens.configure(palette, app.dark, prefs.surfaceStyle, app.tokenValues)
+    }
+
+    // Re-reads the watched palette file. A file caught mid-write parses to
+    // null, and a poll that finds the same document changes nothing: the
+    // window only repaints when the colours really moved.
+    function reloadPalette() {
+        if (app.readingPalette)
+            return
+        app.readingPalette = true
+        var request = new XMLHttpRequest()
+        request.onreadystatechange = function () {
+            if (request.readyState !== XMLHttpRequest.DONE)
+                return
+            app.readingPalette = false
+            if (!Palette.changed(app.palettes, request.responseText))
+                return
+            app.palettes = Palette.read(request.responseText)
+        }
+        request.open("GET", "file://" + app.paletteFile + "?_=" + Date.now())
+        request.send()
     }
 
     function t(key) {
@@ -224,6 +251,16 @@ Window {
                 Qt.quit()
             })
         }
+    }
+
+    // Only while the window is open, and only when a file was injected.
+    Timer {
+        id: paletteTimer
+
+        interval: 1200
+        repeat: true
+        running: app.paletteFile !== "" && app.visible
+        onTriggered: app.reloadPalette()
     }
 
     VitrailSurface {
