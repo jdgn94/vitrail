@@ -1000,6 +1000,25 @@ Window {
                 }
             }
         }
+
+        VitrailText {
+            variant: "title"
+            text: "Launch droplet · gooey open, bursting close"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("lg")
+
+            DropletPreview {
+                phase: "open"
+                Layout.alignment: Qt.AlignTop
+            }
+
+            DropletPreview {
+                phase: "burst"
+                Layout.alignment: Qt.AlignTop
+            }
+        }
     }
 
     // One scaled-down screen: wallpaper, frame, bar and, optionally, a panel.

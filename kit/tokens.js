@@ -424,7 +424,18 @@ var droplet = {
     poll: 60,
     stabilize: 250,
     refresh: 1000,
-    tint: 0.7
+    tint: 0.7,
+    // Closing: the main shape puffs by this factor and the ring of droplets
+    // reaches `reach` of the last rect's longer side (at least `reachMin` px),
+    // each at `size` px, all gone within `duration` ms.
+    burst: {
+        count: 7,
+        duration: 250,
+        puff: 1.12,
+        reach: 0.18,
+        reachMin: 28,
+        size: 7
+    }
 }
 
 // The tray (bar/tray): `columns` the most icons per row in the popup style,

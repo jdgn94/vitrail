@@ -129,6 +129,26 @@ class DropletWiringTests(unittest.TestCase):
         self.assertIn("DropletJS.sync(({}), Hyprland.toplevels.values)", shell)
         self.assertIn("Hyprland.refreshToplevels()", sync)
 
+    def test_the_close_burst_uses_the_burst_tokens(self) -> None:
+        shell = SHELL.read_text(encoding="utf-8")
+        close = function_body(shell, "beginClose")
+        self.assertIn("VitrailTokens.droplet.burst.puff", close)
+        self.assertIn("VitrailTokens.droplet.burst.duration", shell)
+        tokens = (ROOT / "kit" / "tokens.js").read_text(encoding="utf-8")
+        self.assertIn("burst: {", tokens)
+        self.assertIn("count: 7", tokens)
+        self.assertIn("duration: 250", tokens)
+        burst = (ROOT / "bar" / "droplet" / "burst.js").read_text(encoding="utf-8")
+        self.assertIn("function particles(", burst)
+        self.assertNotIn("import", burst)
+
+    def test_the_gallery_shows_both_droplet_phases(self) -> None:
+        gallery = (ROOT / "gallery" / "Main.qml").read_text(encoding="utf-8")
+        self.assertIn("Launch droplet", gallery)
+        self.assertIn('phase: "open"', gallery)
+        self.assertIn('phase: "burst"', gallery)
+        self.assertTrue((ROOT / "gallery" / "DropletPreview.qml").exists())
+
     def test_the_droplet_ignores_edit_mode(self) -> None:
         shell = SHELL.read_text(encoding="utf-8")
         self.assertIn("shell.editMode", function_body(shell, "syncToplevels"))

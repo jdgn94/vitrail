@@ -1223,7 +1223,7 @@ ShellRoot {
     Timer {
         id: closeFade
 
-        interval: VitrailTokens.duration("slow") + VitrailTokens.droplet.settle
+        interval: VitrailTokens.droplet.burst.duration + VitrailTokens.droplet.settle
         onTriggered: shell.closeRequest = null
     }
 
@@ -1293,7 +1293,8 @@ ShellRoot {
         if (!screen)
             return
         shell.closeRequest = DropletJS.closing(DropletJS.local(window.rect, screen),
-                                               Date.now(), screen.name)
+                                               Date.now(), screen.name,
+                                               VitrailTokens.droplet.burst.puff)
         closeFade.restart()
     }
 

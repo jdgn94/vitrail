@@ -172,19 +172,19 @@ TestCase {
         compare(Droplet.screenFor({ x: -10, y: 500 }, screens), null)
     }
 
-    function test_a_closing_window_shrinks_from_its_last_rect() {
+    function test_a_closing_window_puffs_from_its_last_rect() {
         var last = { x: 200, y: 100, width: 800, height: 600 }
-        var close = Droplet.closing(last, 2000, "DP-1")
+        var close = Droplet.closing(last, 2000, "DP-1", 1.12)
         compare(close.phase, "closing")
         compare(close.screen, "DP-1")
         compare(close.origin.x, 200)
         compare(close.origin.width, 800)
-        compare(close.target.x, 600)
-        compare(close.target.y, 400)
-        compare(close.target.width, 2)
-        compare(close.target.height, 2)
-        verify(!Droplet.closingDone(close, 2199, 240))
-        verify(Droplet.closingDone(close, 2240, 240))
+        compare(close.target.x, 152)
+        compare(close.target.y, 64)
+        compare(close.target.width, 896)
+        compare(close.target.height, 672)
+        verify(!Droplet.closingDone(close, 2199, 250))
+        verify(Droplet.closingDone(close, 2250, 250))
     }
 
     function test_the_live_map_reports_open_and_closed_windows() {

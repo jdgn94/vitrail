@@ -270,20 +270,26 @@ function own(window) {
     return keyOf(window && window.class).indexOf("vitrail") >= 0
 }
 
-// A window disappeared: shrink its last rect to a point and fade. `box` is
-// already local to the monitor that will draw it.
-function closing(box, now, screen) {
+// A window disappeared: puff its last rect a little and fade. `box` is already
+// local to the monitor that will draw it; the burst particles are computed from
+// the same rect by burst.js.
+function closing(box, now, screen, puff) {
     var source = rect(box)
     var at = number(now, 0)
+    var grow = number(puff, 1)
+    if (!(grow > 0))
+        grow = 1
+    var width = source.width * grow
+    var height = source.height * grow
     return {
         id: "close",
         app: ({}),
         origin: source,
         target: {
-            x: Math.round(source.x + source.width / 2),
-            y: Math.round(source.y + source.height / 2),
-            width: 2,
-            height: 2
+            x: Math.round(source.x - (width - source.width) / 2),
+            y: Math.round(source.y - (height - source.height) / 2),
+            width: Math.round(width),
+            height: Math.round(height)
         },
         phase: "closing",
         started: at,

@@ -1,11 +1,14 @@
 import QtQuick
 import "../kit"
+import "../kit/base"
+import "burst.js" as Burst
 
-// The drop itself: a circle at the icon that grows into a rounded card over
-// the space the launching window will take, then fades when the window maps
-// (or when the request times out). A closing window gets the reverse: its last
-// rect shrinks to a point while it fades. It is a plain Item so the state can
-// be tested offscreen; the layer supplies the request.
+// The drop itself: a gooey mass born at the icon or pointer, stretched toward
+// the space the window will take by a liquid neck, then expanded over its final
+// rect. It stays opaque on that space, fades when the window maps, and a closing
+// window gets the reverse: a quick puff and a ring of droplets bursting out.
+// It is a plain Item so the state can be tested offscreen; the layer supplies
+// the request.
 Item {
     id: root
 
@@ -21,6 +24,51 @@ Item {
     property bool grown: false
     property real started: -1
     readonly property bool fading: root.current !== null && root.current.phase === "fading"
+    readonly property bool closing: root.current !== null && root.current.phase === "closing"
+    readonly property bool opening: root.current !== null
+                                  && (root.current.phase === "hold"
+                                      || root.current.phase === "settling"
+                                      || root.current.phase === "placing")
+    readonly property real opacityLevel: VitrailTokens.opacity * VitrailTokens.droplet.tint
+    readonly property var originRect: root.current ? root.current.origin : Qt.rect(0, 0, 0, 0)
+    readonly property var massRect: Qt.rect(drop.x, drop.y, drop.width, drop.height)
+
+    // The popup's liquid timeline (frame.js liquid / smooth). It runs only while
+    // the drop is opening or holding, so its neck cannot grow back while fading.
+    VitrailLiquid {
+        id: liquid
+
+        open: root.opening
+    }
+    readonly property var look: liquid.look
+
+    // The neck leaves the side of the origin that faces the target.
+    readonly property string neckEdge: {
+        if (!root.current)
+            return "left"
+        var o = root.originRect, t = root.current.target
+        var dx = (t.x + t.width / 2) - (o.x + o.width / 2)
+        var dy = (t.y + t.height / 2) - (o.y + o.height / 2)
+        if (Math.abs(dx) >= Math.abs(dy))
+            return dx >= 0 ? "left" : "right"
+        return dy >= 0 ? "top" : "bottom"
+    }
+
+    // The burst is the closing bubble: a deterministic ring from burst.js.
+    readonly property var burstParticles: {
+        if (!root.closing)
+            return []
+        var reach = Math.max(VitrailTokens.droplet.burst.reachMin,
+                             Math.max(root.originRect.width, root.originRect.height)
+                             * VitrailTokens.droplet.burst.reach)
+        return Burst.particles(VitrailTokens.droplet.burst.count, reach,
+                               VitrailTokens.droplet.burst.duration,
+                               VitrailTokens.droplet.burst.size)
+    }
+    readonly property var burstCentre: {
+        var o = root.originRect
+        return { x: o.x + o.width / 2, y: o.y + o.height / 2 }
+    }
 
     function reach() {
         if (!root.current)
@@ -30,12 +78,13 @@ Item {
         drop.y = target.y
         drop.width = target.width
         drop.height = target.height
+        var ending = root.current.phase === "fading" || root.current.phase === "closing"
         drop.radius = root.current.phase === "closing"
-                      ? Math.min(target.width, target.height) / 2
-                      : VitrailTokens.radius
-        drop.opacity = root.current.phase === "fading"
-                       || root.current.phase === "closing"
-                       ? 0 : VitrailTokens.opacity * VitrailTokens.droplet.tint
+                      ? Math.min(VitrailTokens.radius,
+                                  Math.min(target.width, target.height) / 2)
+                      : Math.min(VitrailTokens.radius * root.look.swell,
+                                  Math.min(target.width, target.height) / 2)
+        drop.opacity = ending ? 0 : root.opacityLevel
     }
 
     onCurrentChanged: {
@@ -54,16 +103,33 @@ Item {
             drop.width = origin.width
             drop.height = origin.height
             drop.radius = Math.min(origin.width, origin.height) / 2
-            drop.opacity = VitrailTokens.opacity * VitrailTokens.droplet.tint
+            drop.opacity = root.opacityLevel
             Qt.callLater(root.reach)
             return
         }
         root.reach()
     }
 
+    // The liquid neck between the birth point and the growing mass.
+    VitrailNeck {
+        objectName: "dropletNeck"
+
+        anchors.fill: parent
+        visible: root.opening && root.look.bond > 0.01
+        edge: root.neckEdge
+        island: root.originRect
+        card: root.current ? root.current.target : root.massRect
+        bond: root.look.bond
+        radius: Math.min(VitrailTokens.radius,
+                         Math.min(root.massRect.width, root.massRect.height) / 2)
+        tint: VitrailTokens.color("primary")
+        opacityLevel: root.opacityLevel
+    }
+
     Rectangle {
         id: drop
 
+        objectName: "dropletMass"
         visible: root.current !== null
         color: VitrailTokens.color("primary")
         opacity: 0
@@ -75,5 +141,63 @@ Item {
         Behavior on height { NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutCubic } }
         Behavior on radius { NumberAnimation { duration: VitrailTokens.duration("slow"); easing.type: Easing.OutCubic } }
         Behavior on opacity { NumberAnimation { duration: VitrailTokens.droplet.fade; easing.type: Easing.OutCubic } }
+    }
+
+    // The closing burst: small drops leave the last rect, each on its own angle
+    // and delay, and fade before `droplet.burst.duration`.
+    Repeater {
+        model: root.burstParticles
+
+        delegate: VitrailShape {
+            id: speck
+
+            required property var modelData
+            required property int index
+
+            objectName: "burstParticle" + index
+            width: modelData.size
+            height: modelData.size
+            kind: "circle"
+            fill: index % 2 === 0 ? VitrailTokens.color("primary")
+                                  : VitrailTokens.color("info")
+            x: root.burstCentre.x - width / 2
+            y: root.burstCentre.y - height / 2
+            opacity: 0
+
+            SequentialAnimation {
+                running: true
+
+                PauseAnimation { duration: speck.modelData.delay }
+
+                ParallelAnimation {
+                    NumberAnimation {
+                        target: speck
+                        property: "x"
+                        to: root.burstCentre.x
+                            + Math.cos(speck.modelData.angle) * speck.modelData.distance
+                            - speck.width / 2
+                        duration: speck.modelData.duration
+                        easing.type: Easing.OutCubic
+                    }
+                    NumberAnimation {
+                        target: speck
+                        property: "y"
+                        to: root.burstCentre.y
+                            + Math.sin(speck.modelData.angle) * speck.modelData.distance
+                            - speck.height / 2
+                        duration: speck.modelData.duration
+                        easing.type: Easing.OutCubic
+                    }
+                    NumberAnimation {
+                        target: speck
+                        property: "opacity"
+                        from: 1
+                        to: 0
+                        duration: speck.modelData.duration
+                        easing.type: Easing.OutCubic
+                    }
+                }
+            }
+        }
     }
 }
