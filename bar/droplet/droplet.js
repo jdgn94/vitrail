@@ -74,6 +74,24 @@ function request(app, origin, target, now, timeout, screen) {
     }
 }
 
+function schedule(request, entry, launchAt) {
+    if (!request)
+        return request
+    return copy(request, {
+        entry: entry || null,
+        launchAt: number(launchAt, request.started),
+        launched: !entry
+    })
+}
+
+function launch(request, now) {
+    if (!request || request.launched || !request.entry
+            || number(now, 0) < number(request.launchAt, request.started))
+        return request
+    request.entry.execute()
+    return copy(request, { launched: true, launchedAt: number(now, 0) })
+}
+
 function addresses(toplevels) {
     var out = []
     var list = toplevels || []

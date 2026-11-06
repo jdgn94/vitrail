@@ -73,6 +73,29 @@ TestCase {
         compare(drop.width, final.width)
     }
 
+    function test_the_loader_runs_only_while_waiting_for_the_window() {
+        var shape = createTemporaryObject(dropletComponent, testCase, { screen: "DP-1" })
+        verify(shape)
+        var request = Droplet.request({ id: "firefox.desktop" }, origin, first, 1000, 4000, "DP-1")
+        shape.request = request
+        var loader = findChild(shape, "dropletLoader")
+        verify(loader)
+        tryCompare(loader, "running", true, 1000)
+        tryVerify(function () { return loader.ticking }, 1000)
+
+        request = Droplet.watch(request, { address: "0xabc", rect: first }, 1100, 250)
+        shape.request = request
+        compare(request.phase, "settling")
+        compare(loader.running, true)
+
+        request = Droplet.arrive(request, final, 1300)
+        shape.request = request
+        compare(loader.running, false)
+        request = Droplet.fade(request, 1500)
+        shape.request = request
+        compare(loader.running, false)
+    }
+
     function test_a_closing_window_bursts_its_droplets() {
         var shape = createTemporaryObject(dropletComponent, testCase, { screen: "DP-1" })
         verify(shape)

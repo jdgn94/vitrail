@@ -52,11 +52,25 @@ class DropletWiringTests(unittest.TestCase):
     def test_launching_starts_the_drop_and_focusing_does_not(self) -> None:
         shell = SHELL.read_text(encoding="utf-8")
         launch = function_body(shell, "launchDockApp")
-        self.assertIn("beginLaunch", launch)
-        self.assertIn("entries[i].execute()", launch)
+        self.assertIn("beginLaunch(app, rect, screen, entries[i])", launch)
+        self.assertNotIn("entries[i].execute()", launch)
         focus = function_body(shell, "focusDockApp")
         self.assertNotIn("beginLaunch", focus)
         self.assertIn("focuswindow", focus)
+
+    def test_dock_and_launcher_defer_the_entry_to_the_shell(self) -> None:
+        shell = SHELL.read_text(encoding="utf-8")
+        begin = function_body(shell, "beginLaunch")
+        track = function_body(shell, "trackLaunch")
+        self.assertIn("DropletJS.schedule(", begin)
+        self.assertIn("launchAt", begin)
+        self.assertIn('VitrailTokens.duration("slow")', begin)
+        self.assertIn("DropletJS.launch(request, now)", track)
+        launcher = function_body(LAUNCHER.read_text(encoding="utf-8"), "launchApp")
+        self.assertIn("root.launched(item", launcher)
+        self.assertNotIn(".execute()", launcher)
+        self.assertNotIn("root.detach(", launcher)
+        self.assertIn("item.entry", function_body(shell, "launchFromLauncher"))
 
     def test_the_layer_takes_no_input_and_tracks_a_window(self) -> None:
         text = LAYER.read_text(encoding="utf-8")

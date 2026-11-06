@@ -224,4 +224,28 @@ TestCase {
         compare(Droplet.nextClose(next.queue).request, null)
     }
 
+    function test_the_desktop_entry_runs_only_after_the_opening_animation() {
+        var request = Droplet.request(app(), icon(), space, 1000, 4000, "DP-1")
+        var calls = []
+        var entry = { execute: function () { calls.push(Date.now()) } }
+        request = Droplet.schedule(request, entry, 1260)
+        compare(request.launchAt, 1260)
+        verify(!request.launched)
+        request = Droplet.launch(request, 1259)
+        compare(calls.length, 0)
+        verify(!request.launched)
+        request = Droplet.launch(request, 1260)
+        compare(calls.length, 1)
+        verify(request.launched)
+        request = Droplet.launch(request, 1400)
+        compare(calls.length, 1)
+    }
+
+    function test_a_launch_without_an_entry_keeps_the_existing_behavior() {
+        var request = Droplet.request(app(), icon(), space, 1000, 4000, "DP-1")
+        request = Droplet.schedule(request, null, 1260)
+        verify(request.launched)
+        compare(Droplet.launch(request, 1000), request)
+    }
+
 }

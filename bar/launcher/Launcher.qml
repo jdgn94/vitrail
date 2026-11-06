@@ -237,12 +237,7 @@ FocusScope {
     }
 
     function launchApp(item, anchor) {
-        // The shell hears first, so the drop starts before the window can map.
         root.launched(item, root.anchorRect(anchor))
-        if (item.entry && typeof item.entry.execute === "function")
-            item.entry.execute()
-        else
-            root.detach(["sh", "-c", Desktop.command(item.entry.execString)])
         if (root.store)
             root.store.record(item.id)
         root.done()

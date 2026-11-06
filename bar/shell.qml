@@ -1165,9 +1165,8 @@ ShellRoot {
         shell.setDockPinned(DockJS.serializePinned(DockJS.togglePin(shell.dockPinnedList, item)))
     }
 
-    // A pinned app that is not open: run its desktop entry, and grow the drop
-    // from the icon while it starts. The rect is screen-local (the dock adds
-    // where its band sits).
+    // A pinned app that is not open: reserve its space and grow the drop from
+    // the icon. The shell runs its desktop entry after the opening animation.
     function launchDockApp(app, rect, screen) {
         if (!app)
             return
@@ -1175,8 +1174,7 @@ ShellRoot {
         var wanted = DockJS.keyOf(app.desktop || app.id)
         for (var i = 0; i < entries.length; i++) {
             if (DockJS.keyOf(entries[i].id) === wanted) {
-                shell.beginLaunch(app, rect, screen)
-                entries[i].execute()
+                shell.beginLaunch(app, rect, screen, entries[i])
                 return
             }
         }
@@ -1184,7 +1182,7 @@ ShellRoot {
 
     // An app chosen in the launcher: the row's rect is already window-local.
     function launchFromLauncher(item, rect, screen) {
-        shell.beginLaunch(item, rect, screen)
+        shell.beginLaunch(item, rect, screen, item.entry)
     }
 
     Timer {
@@ -1350,15 +1348,20 @@ ShellRoot {
         launchPoll.restart()
     }
 
-    // The drop starts at the icon/row and reserves the app's last real rect (or
-    // only the icon when there is none), then follows the window. Focusing an
-    // open app never comes here.
-    function beginLaunch(app, rect, screen) {
-        if (!shell.prefBool("launchAnimation", true) || shell.editMode)
+    // Reserve the real space and grow the drop before running the desktop entry.
+    // With the animation disabled there is no opening to wait for.
+    function beginLaunch(app, rect, screen, entry) {
+        if (!shell.prefBool("launchAnimation", true) || shell.editMode) {
+            if (entry)
+                entry.execute()
             return
+        }
         var target = screen || shell.focusedScreen
-        if (!target)
+        if (!target) {
+            if (entry)
+                entry.execute()
             return
+        }
         var origin = rect && rect.width > 0 && rect.height > 0
                      ? rect
                      : { x: Math.round(target.width / 2),
@@ -1366,31 +1369,38 @@ ShellRoot {
         var last = DropletJS.lastRect(app, shell.liveRects)
         var space = last && DropletJS.onScreen(last, target)
                     ? DropletJS.local(last, target) : origin
-        var request = DropletJS.request(app, origin, space, Date.now(),
+        var started = Date.now()
+        var request = DropletJS.request(app, origin, space, started,
                                         VitrailTokens.droplet.timeout, target.name)
-        if (!request)
+        if (!request) {
+            if (entry)
+                entry.execute()
             return
+        }
         shell.launchKnown = DropletJS.addresses(Hyprland.toplevels.values)
         shell.launchScreen = target
-        shell.launchRequest = request
+        var launchAt = started + VitrailTokens.duration("slow")
+        shell.launchRequest = DropletJS.schedule(request, entry || null, launchAt)
         Hyprland.refreshToplevels()
         launchHold.stop()
         launchFade.stop()
         launchPoll.restart()
     }
 
-    // While the drop holds, look for the window that appeared since it began;
-    // wait for its geometry to stop moving, then fade from its final rect.
+    // Launch only after the opening animation, then wait for the window to map
+    // and settle before fading from its final rect.
     function trackLaunch() {
         var request = shell.launchRequest
         if (!request) {
             launchPoll.stop()
             return
         }
+        var now = Date.now()
+        request = DropletJS.launch(request, now)
+        shell.launchRequest = request
         if (request.phase === "fading" || request.phase === "placing"
                 || request.phase === "closing")
             return
-        var now = Date.now()
         if (request.phase === "settling") {
             request = DropletJS.settle(request, Hyprland.toplevels.values, now)
             if (request.phase === "settled") {

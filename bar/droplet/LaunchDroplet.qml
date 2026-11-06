@@ -140,6 +140,15 @@ Item {
         }
     }
 
+    VitrailBusy {
+        objectName: "dropletLoader"
+        running: root.current !== null
+                 && (root.current.phase === "hold" || root.current.phase === "settling")
+        color: VitrailTokens.color("accentForeground", VitrailTokens.color("primary"))
+        x: root.massRect.x + root.massRect.width / 2 - width / 2
+        y: root.massRect.y + root.massRect.height / 2 - height / 2
+    }
+
     // The closing burst: small drops leave the last rect, each on its own angle
     // and delay, and fade before `droplet.burst.duration`.
     Repeater {

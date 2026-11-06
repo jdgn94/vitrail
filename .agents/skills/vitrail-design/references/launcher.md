@@ -85,8 +85,10 @@ icon/row or pointer into the window's real space (`bar/droplet/`):
 
 - `droplet.js` is the state machine (`tests/qml/tst_launch_droplet.qml`):
   `hold → settling → placing → fading`. It reserves the app's last live rect,
-  waits for the mapped window's geometry to settle, holds the final rect opaque,
-  then fades. Focusing an already-open app never starts a drop.
+  runs the desktop entry only when the opening animation reaches `launchAt`,
+  shows a `VitrailBusy` while the window maps, waits for its geometry to settle,
+  holds the final rect opaque, then fades. Focusing an already-open app never
+  starts a drop. The shell is the only executor for dock and launcher apps.
 - `LaunchDropletLayer.qml` is one overlay `PanelWindow` per monitor with an
   empty mask and `WlrKeyboardFocus.None`: it never takes input. It borrows the
   `vitrail-osd` namespace so the glass rule already covers it.
