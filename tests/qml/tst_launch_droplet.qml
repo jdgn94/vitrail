@@ -9,7 +9,7 @@ TestCase {
     name: "LaunchDroplet"
 
     readonly property var screen: ({ x: 1920, y: 0, width: 1920, height: 1080 })
-    readonly property var fallback: ({ x: 480, y: 270, width: 960, height: 540 })
+    readonly property var space: ({ x: 480, y: 270, width: 960, height: 540 })
 
     function app(extra) {
         var base = { id: "firefox.desktop", name: "Firefox", icon: "firefox" }
@@ -30,8 +30,8 @@ TestCase {
         }
     }
 
-    function test_a_launch_starts_at_the_icon_and_holds_the_fallback_space() {
-        var request = Droplet.request(app(), icon(), fallback, 1000, 4000, "DP-1")
+    function test_a_launch_starts_at_the_icon_and_holds_the_requested_space() {
+        var request = Droplet.request(app(), icon(), space, 1000, 4000, "DP-1")
         compare(request.phase, "hold")
         compare(request.origin.x, 40)
         compare(request.origin.width, 40)
@@ -44,20 +44,20 @@ TestCase {
     }
 
     function test_focusing_an_open_app_never_starts_a_drop() {
-        compare(Droplet.request(app({ open: true, address: "0xabc" }), icon(), fallback, 1000, 4000, "DP-1"), null)
-        verify(Droplet.request(app({ open: false }), icon(), fallback, 1000, 4000, "DP-1") !== null)
+        compare(Droplet.request(app({ open: true, address: "0xabc" }), icon(), space, 1000, 4000, "DP-1"), null)
+        verify(Droplet.request(app({ open: false }), icon(), space, 1000, 4000, "DP-1") !== null)
     }
 
-    function test_the_mapping_window_replaces_the_fallback_once_it_settles() {
-        var request = Droplet.request(app(), icon(), fallback, 1000, 4000, "DP-1")
+    function test_the_mapping_window_places_the_final_rect_before_fading() {
+        var request = Droplet.request(app(), icon(), space, 1000, 4000, "DP-1")
         var floating = windowOf("0xabc", "firefox", 2200, 300, 900, 600)
         var found = Droplet.arrival(request, [floating], ["0x111"], screen)
         compare(found.address, "0xabc")
 
         request = Droplet.watch(request, found, 1000, 250)
         compare(request.phase, "settling")
-        // The drop keeps the fallback while Hyprland is still placing it.
-        compare(request.target.x, fallback.x)
+        // The drop keeps the space while Hyprland is still placing it.
+        compare(request.target.x, space.x)
         compare(request.pending.x, 2200)
 
         var tiled = [windowOf("0xabc", "firefox", 1920, 0, 960, 1080)]
@@ -75,13 +75,33 @@ TestCase {
         compare(local.y, 0)
 
         request = Droplet.arrive(request, local, 1500)
-        compare(request.phase, "fading")
+        compare(request.phase, "placing")
         compare(request.target.x, 0)
+        compare(request.target.width, 960)
+
+        request = Droplet.fade(request, 1800)
+        compare(request.phase, "fading")
         compare(request.target.width, 960)
     }
 
+    function test_an_app_reserves_its_last_known_rect() {
+        var rects = {
+            "0x1": { address: "0x1", class: "Google-chrome",
+                     rect: { x: 981, y: 16, width: 923, height: 1048 } },
+            "0x2": { address: "0x2", class: "kitty",
+                     rect: { x: 0, y: 0, width: 400, height: 300 } }
+        }
+        var last = Droplet.lastRect(app({ id: "google-chrome.desktop" }), rects)
+        compare(last.x, 981)
+        compare(last.y, 16)
+        compare(last.width, 923)
+        compare(last.height, 1048)
+        compare(Droplet.lastRect(app({ id: "spotify.desktop" }), rects), null)
+        compare(Droplet.lastRect(app(), {}), null)
+    }
+
     function test_the_settle_window_takes_the_last_rect_while_it_moves() {
-        var request = Droplet.request(app(), icon(), fallback, 1000, 4000, "DP-1")
+        var request = Droplet.request(app(), icon(), space, 1000, 4000, "DP-1")
         var found = Droplet.arrival(request,
                                    [windowOf("0xabc", "firefox", 2200, 300, 900, 600)],
                                    [], screen)
@@ -98,19 +118,19 @@ TestCase {
     }
 
     function test_an_old_window_is_not_mistaken_for_the_new_one() {
-        var request = Droplet.request(app(), icon(), fallback, 1000, 4000, "DP-1")
+        var request = Droplet.request(app(), icon(), space, 1000, 4000, "DP-1")
         compare(Droplet.arrival(request, [windowOf("0x111", "firefox", 2200, 300, 900, 600)],
                                 ["0x111"], screen), null)
     }
 
     function test_a_window_on_another_screen_is_not_taken() {
-        var request = Droplet.request(app(), icon(), fallback, 1000, 4000, "DP-1")
+        var request = Droplet.request(app(), icon(), space, 1000, 4000, "DP-1")
         compare(Droplet.arrival(request, [windowOf("0xabc", "firefox", 100, 300, 900, 600)],
                                 [], screen), null)
     }
 
     function test_a_matching_class_wins_over_the_first_new_window() {
-        var request = Droplet.request(app(), icon(), fallback, 1000, 4000, "DP-1")
+        var request = Droplet.request(app(), icon(), space, 1000, 4000, "DP-1")
         var found = Droplet.arrival(request, [
             windowOf("0x1", "kitty", 2000, 100, 400, 300),
             windowOf("0x2", "firefox", 2000, 500, 800, 500)
@@ -119,7 +139,7 @@ TestCase {
     }
 
     function test_the_timeout_fades_when_no_window_appears() {
-        var request = Droplet.request(app(), icon(), fallback, 1000, 4000, "DP-1")
+        var request = Droplet.request(app(), icon(), space, 1000, 4000, "DP-1")
         verify(!Droplet.expired(request, 4999))
         verify(Droplet.expired(request, 5000))
         var faded = Droplet.timeout(request, 5000)
@@ -128,7 +148,7 @@ TestCase {
     }
 
     function test_ending_clears_the_drop() {
-        var request = Droplet.request(app(), icon(), fallback, 1000, 4000, "DP-1")
+        var request = Droplet.request(app(), icon(), space, 1000, 4000, "DP-1")
         compare(Droplet.finish(request), null)
         verify(!Droplet.active(null))
     }
@@ -140,7 +160,7 @@ TestCase {
         compare(origin.y, 400)
         compare(origin.width, 2)
         compare(origin.height, 2)
-        var request = Droplet.request(app(), origin, fallback, 1000, 4000, "DP-1")
+        var request = Droplet.request(app(), origin, space, 1000, 4000, "DP-1")
         compare(request.origin.x, 80)
         compare(request.origin.y, 400)
     }
@@ -189,11 +209,4 @@ TestCase {
         verify(!Droplet.own({}))
     }
 
-    function test_the_fallback_is_centred_on_the_screen() {
-        var centred = Droplet.fallback(1920, 1080, 0.5, 0.5)
-        compare(centred.x, 480)
-        compare(centred.y, 270)
-        compare(centred.width, 960)
-        compare(centred.height, 540)
-    }
 }

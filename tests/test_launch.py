@@ -75,6 +75,32 @@ class DropletWiringTests(unittest.TestCase):
         self.assertIn("DropletJS.settle(", track)
         self.assertIn("request.final", track)
 
+    def test_a_dock_launch_reserves_its_last_rect_or_the_icon(self) -> None:
+        shell = SHELL.read_text(encoding="utf-8")
+        begin = function_body(shell, "beginLaunch")
+        self.assertIn("DropletJS.lastRect(", begin)
+        self.assertIn("DropletJS.local(last", begin)
+        self.assertNotIn("DropletJS.fallback(", begin)
+        droplet = (ROOT / "bar" / "droplet" / "droplet.js").read_text(encoding="utf-8")
+        tokens = (ROOT / "kit" / "tokens.js").read_text(encoding="utf-8")
+        self.assertNotIn("function fallback(", droplet)
+        self.assertNotIn("fallbackWidth", tokens)
+
+    def test_a_keyboard_launch_reserves_the_window_rect(self) -> None:
+        shell = SHELL.read_text(encoding="utf-8")
+        keyboard = function_body(shell, "keyboardPointer")
+        self.assertIn("DropletJS.local(window.rect, screen)", keyboard)
+        self.assertNotIn("DropletJS.fallback(", keyboard)
+
+    def test_the_final_rect_is_held_before_fading(self) -> None:
+        shell = SHELL.read_text(encoding="utf-8")
+        track = function_body(shell, "trackLaunch")
+        self.assertIn("launchHold.restart()", track)
+        self.assertIn("launchFade.stop()", track)
+        self.assertIn("DropletJS.fade(request, Date.now())", shell)
+        self.assertIn('2 * VitrailTokens.duration("slow")', shell)
+        self.assertIn("launchHold.stop()", function_body(shell, "endLaunch"))
+
     def test_a_keyboard_launch_starts_at_the_pointer(self) -> None:
         shell = SHELL.read_text(encoding="utf-8")
         sync = function_body(shell, "syncToplevels")
@@ -94,6 +120,14 @@ class DropletWiringTests(unittest.TestCase):
         self.assertIn("DropletJS.closing(", close)
         self.assertIn("DropletJS.own(", close)
         self.assertIn("closeFade.restart()", close)
+
+    def test_the_startup_baseline_ignores_windows_already_open(self) -> None:
+        shell = SHELL.read_text(encoding="utf-8")
+        sync = function_body(shell, "syncToplevels")
+        self.assertIn("!shell.liveWarm", sync)
+        self.assertNotIn("liveReady", shell)
+        self.assertIn("DropletJS.sync(({}), Hyprland.toplevels.values)", shell)
+        self.assertIn("Hyprland.refreshToplevels()", sync)
 
     def test_the_droplet_ignores_edit_mode(self) -> None:
         shell = SHELL.read_text(encoding="utf-8")

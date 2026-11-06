@@ -37,17 +37,17 @@ function rect(value) {
     }
 }
 
-// The space the drop holds when the window is not known yet: a centred block
-// whose shares of the screen come from the tokens.
-function fallback(width, height, shareWidth, shareHeight) {
-    var w = Math.round(Math.max(0, number(width, 0)) * number(shareWidth, 0.5))
-    var h = Math.round(Math.max(0, number(height, 0)) * number(shareHeight, 0.55))
-    return {
-        x: Math.round((number(width, 0) - w) / 2),
-        y: Math.round((number(height, 0) - h) / 2),
-        width: w,
-        height: h
+// The last rect a window of this app/class had, or null. A dock/launcher launch
+// reserves that real space instead of inventing a centred block.
+function lastRect(app, rects) {
+    var wanted = text(app && (app.id || app.desktop || app.name))
+    var map = rects || ({})
+    for (var address in map) {
+        var window = map[address]
+        if (window && matchesClass(window.class, wanted))
+            return rect(window.rect)
     }
+    return null
 }
 
 // An app that already has a window only takes the focus: no drop.
@@ -169,7 +169,7 @@ function arrival(request, toplevels, known, screen) {
 
 // The window mapped, but Hyprland may still be placing it: watch its rect until
 // two reads agree (or `wait` passes) before the drop takes the space. The
-// fallback target is kept meanwhile, so the drop never grows into a floating
+// current target is kept meanwhile, so the drop never grows into a floating
 // rect it will lose a frame later.
 function watch(request, found, now, wait) {
     if (!request || !found)
@@ -312,11 +312,19 @@ function copy(source, changes) {
     return out
 }
 
-// The window mapped: the drop takes its space and begins to fade.
+// The window settled: move to its final space while still opaque. The shell
+// holds it for a beat before calling fade().
 function arrive(request, target, now) {
     if (!request)
         return null
-    return copy(request, { target: rect(target), phase: "fading", fadedAt: number(now, 0) })
+    return copy(request, { target: rect(target), phase: "placing", placedAt: number(now, 0) })
+}
+
+// The final space has been held: now the drop fades away from it.
+function fade(request, now) {
+    if (!request)
+        return null
+    return copy(request, { phase: "fading", fadedAt: number(now, 0) })
 }
 
 // No window in time: give up and fade from the space already held.

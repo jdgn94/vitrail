@@ -16,7 +16,8 @@ Item {
                                      ? root.request : null
 
     // The first request grows from its origin; a later one (the window mapped
-    // or the timeout fired) moves straight to its new target and fades.
+    // or the timeout fired) moves straight to its new target. `placing` keeps
+    // the drop opaque over the final rect; only `fading` lets it fade away.
     property bool grown: false
     property real started: -1
     readonly property bool fading: root.current !== null && root.current.phase === "fading"

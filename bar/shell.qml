@@ -344,10 +344,10 @@ ShellRoot {
     // The closing drop, drawn in the same overlay once a window goes away.
     property var closeRequest: null
     // Every live toplevel by address, kept fresh so a close can animate from
-    // the rect the window had while it lived. `liveReady` skips the first read,
-    // which would look like every open window had just appeared.
+    // the rect the window had while it lived. `liveWarm` ignores the first
+    // second, which would look like every open window had just appeared.
     property var liveRects: ({})
-    property bool liveReady: false
+    property bool liveWarm: false
     // The overlay draws the launch drop first; a close waits its turn.
     readonly property var dropletRequest: shell.launchRequest || shell.closeRequest
 
@@ -1194,6 +1194,21 @@ ShellRoot {
         onTriggered: shell.trackLaunch()
     }
 
+    // Move to the final rect while opaque, keep it for a beat, then fade: the
+    // slow motion twice (travel + hold) plus a frame.
+    Timer {
+        id: launchHold
+
+        interval: 2 * VitrailTokens.duration("slow") + VitrailTokens.droplet.settle
+        onTriggered: {
+            var request = shell.launchRequest
+            if (!request || request.phase !== "placing")
+                return
+            shell.launchRequest = DropletJS.fade(request, Date.now())
+            launchFade.restart()
+        }
+    }
+
     // The drop's own fade plus a frame, so the request is cleared only after
     // the overlay finished fading.
     Timer {
@@ -1221,6 +1236,17 @@ ShellRoot {
         onTriggered: shell.syncToplevels()
     }
 
+    // Hyprland's first lists can arrive in pieces: take a baseline for one
+    // second before treating a window as new.
+    Timer {
+        interval: VitrailTokens.droplet.refresh
+        running: !shell.liveWarm
+        onTriggered: {
+            shell.liveRects = DropletJS.sync(({}), Hyprland.toplevels.values).rects
+            shell.liveWarm = true
+        }
+    }
+
     Connections {
         target: Hyprland.toplevels
 
@@ -1231,13 +1257,15 @@ ShellRoot {
     // dock/launcher belong to their own request; anything else was opened by a
     // keybind, so the drop comes from the pointer. A close keeps its rect.
     function syncToplevels() {
-        var result = DropletJS.sync(shell.liveRects, Hyprland.toplevels.values)
-        if (!shell.liveReady) {
-            shell.liveRects = result.rects
-            shell.liveReady = true
-            return
-        }
+        var values = Hyprland.toplevels.values
+        var result = DropletJS.sync(shell.liveRects, values)
+        // A newcomer can be in the model before its IPC object carries at/size:
+        // ask Hyprland for the fresh list instead of waiting for the next tick.
+        if (values.length > Object.keys(result.rects).length)
+            Hyprland.refreshToplevels()
         shell.liveRects = result.rects
+        if (!shell.liveWarm)
+            return
         var animate = shell.prefBool("launchAnimation", true)
         if (shell.editMode)
             return
@@ -1286,9 +1314,8 @@ ShellRoot {
         var screen = DropletJS.screenFor(centre, Quickshell.screens)
         if (!screen)
             return
-        var space = DropletJS.fallback(screen.width, screen.height,
-                                       VitrailTokens.droplet.fallbackWidth,
-                                       VitrailTokens.droplet.fallbackHeight)
+        // The window already exists: reserve its own rect from the start.
+        var space = DropletJS.local(window.rect, screen)
         var request = DropletJS.request(window, DropletJS.pointerOrigin(pointer, screen),
                                         space, Date.now(),
                                         VitrailTokens.droplet.timeout, screen.name)
@@ -1300,25 +1327,27 @@ ShellRoot {
         shell.launchScreen = screen
         shell.launchRequest = request
         Hyprland.refreshToplevels()
+        launchHold.stop()
         launchFade.stop()
         launchPoll.restart()
     }
 
-    // The drop starts at the icon/row, holds the fallback space until the
-    // window maps, and follows it then. Focusing an open app never comes here.
+    // The drop starts at the icon/row and reserves the app's last real rect (or
+    // only the icon when there is none), then follows the window. Focusing an
+    // open app never comes here.
     function beginLaunch(app, rect, screen) {
         if (!shell.prefBool("launchAnimation", true) || shell.editMode)
             return
         var target = screen || shell.focusedScreen
         if (!target)
             return
-        var space = DropletJS.fallback(target.width, target.height,
-                                       VitrailTokens.droplet.fallbackWidth,
-                                       VitrailTokens.droplet.fallbackHeight)
         var origin = rect && rect.width > 0 && rect.height > 0
                      ? rect
-                     : { x: Math.round(space.x + space.width / 2),
-                         y: Math.round(space.y + space.height / 2), width: 2, height: 2 }
+                     : { x: Math.round(target.width / 2),
+                         y: Math.round(target.height / 2), width: 2, height: 2 }
+        var last = DropletJS.lastRect(app, shell.liveRects)
+        var space = last && DropletJS.onScreen(last, target)
+                    ? DropletJS.local(last, target) : origin
         var request = DropletJS.request(app, origin, space, Date.now(),
                                         VitrailTokens.droplet.timeout, target.name)
         if (!request)
@@ -1327,6 +1356,7 @@ ShellRoot {
         shell.launchScreen = target
         shell.launchRequest = request
         Hyprland.refreshToplevels()
+        launchHold.stop()
         launchFade.stop()
         launchPoll.restart()
     }
@@ -1339,7 +1369,8 @@ ShellRoot {
             launchPoll.stop()
             return
         }
-        if (request.phase === "fading" || request.phase === "closing")
+        if (request.phase === "fading" || request.phase === "placing"
+                || request.phase === "closing")
             return
         var now = Date.now()
         if (request.phase === "settling") {
@@ -1348,7 +1379,8 @@ ShellRoot {
                 shell.launchRequest = DropletJS.arrive(
                     request, DropletJS.local(request.final, shell.launchScreen), now)
                 launchPoll.stop()
-                launchFade.restart()
+                launchFade.stop()
+                launchHold.restart()
             } else {
                 shell.launchRequest = request
             }
@@ -1366,11 +1398,13 @@ ShellRoot {
         else
             return
         launchPoll.stop()
+        launchHold.stop()
         launchFade.restart()
     }
 
     function endLaunch() {
         launchPoll.stop()
+        launchHold.stop()
         launchFade.stop()
         shell.launchRequest = null
         shell.launchScreen = null
