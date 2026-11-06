@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import "../../kit"
 import "../../kit/base"
 import "../fontsview.js" as FontsView
@@ -16,25 +17,23 @@ Item {
     property var prefs
     property var strings
     property var fonts: ({ fonts: [], monospace: [], iconThemes: [], cursorThemes: [],
-                           cursorDesigns: [], iconPreviews: {}, cursorPreviews: {} })
+                           cursorDesigns: [], iconDesigns: [], iconUser: [],
+                           iconPreviews: {}, cursorPreviews: {} })
     property string tab: "text"
+    // The two tabs of the one app-icon picker, and the import/delete feedback.
+    property string iconTab: "normal"
+    property string iconMessage: ""
+    property string iconState: "idle"
+    property var iconNonce: 0
+    property int iconPolls: 0
+    // The state file the launcher injected, and the result beside it.
+    property string fontsFile: ""
 
     onTabChanged: scroller.contentY = 0
 
     function t(key) {
         var value = page.strings[key]
         return value === undefined ? key : value
-    }
-
-    // The installed list as picker rows; `kind` adds the preview the mosaic
-    // and the trigger draw (a family's own letters, a pack's icons, a cursor).
-    // Only packs with a real preview are offered: a cursor-only theme that
-    // declares itself an icon theme would be a blank cell.
-    function iconOptions(names, current) {
-        var withPreview = (names || []).filter(function (name) {
-            return ((page.fonts.iconPreviews || {})[name] || []).length > 0
-        })
-        return page.options(withPreview, current, "icons")
     }
 
     // A generated cursor is "Vitrail · <pack>"; an installed one keeps its
@@ -52,33 +51,168 @@ Item {
         return name.indexOf("vitrail-") === 0 ? name.substring(8) : ""
     }
 
-    // The Vitrail icon layer active now ("" when a plain pack is chosen).
-    function iconDesign() {
-        var name = page.prefs.iconTheme || ""
-        return name.indexOf("vitrail-icons-") === 0 ? name.substring(14) : ""
+    // One icon-pack row: the eight previews the mosaic draws, its name, and
+    // the tab it belongs to. A pack without previews still gets a glyph, so
+    // every installed name can be chosen.
+    function iconRow(name, label, icons, tab) {
+        var pictures = icons || []
+        return {
+            key: name,
+            label: label,
+            icons: pictures,
+            glyph: pictures.length === 0 ? "apps" : "",
+            tab: tab
+        }
     }
 
-    function iconDesignOptions(names, current) {
-        var rows = [{ key: "", label: page.t("fonts.design.off"), icons: [], glyph: "block" }]
-        var packs = FontsView.options(names || [], "", undefined)
-        for (var i = 0; i < packs.length; i++) {
-            var pack = packs[i].key
-            rows.push({
-                key: pack,
-                label: page.t("fonts.vitrail") + " · " + pack.replace(/-/g, " "),
-                icons: (page.fonts.iconPreviews || {})[pack] || []
-            })
-        }
-        if (current && (names || []).indexOf(current) < 0)
-            rows.splice(1, 0, { key: current, label: page.t("fonts.vitrail") + " · " + current,
-                                icons: (page.fonts.iconPreviews || {})[current] || [] })
+    function iconLabel(name) {
+        var pack = name.indexOf("vitrail-icons-") === 0 ? name.substring(14) : name
+        return name.indexOf("vitrail-icons-") === 0
+                ? page.t("fonts.vitrail") + " · " + pack.replace(/-/g, " ")
+                : name
+    }
+
+    // The installed packs, one row each; the stored value stays selectable.
+    function normalIconOptions(current) {
+        var names = (page.fonts.iconThemes || []).filter(function (name) {
+            return name.indexOf("vitrail-icons-") !== 0
+        }).sort(function (a, b) { return a.localeCompare(b) })
+        var rows = names.map(function (name) {
+            return page.iconRow(name, page.iconLabel(name),
+                                (page.fonts.iconPreviews || {})[name] || [], "normal")
+        })
+        if (current && rows.every(function (row) { return row.key !== current; })
+                && current.indexOf("vitrail-icons-") !== 0)
+            rows.unshift(page.iconRow(current, page.iconLabel(current),
+                                      (page.fonts.iconPreviews || {})[current] || [], "normal"))
         return rows
     }
 
-    function chooseIconDesign(design) {
-        var name = page.prefs.iconTheme || ""
-        var pack = name.indexOf("vitrail-icons-") === 0 ? name.substring(14) : name
-        page.prefs.iconTheme = design === "" ? (pack || "Adwaita") : "vitrail-icons-" + design
+    // The generated Vitrail layers plus one row per pack they can be built
+    // from: choosing that row writes `vitrail-icons-<pack>` and apply builds it.
+    function adaptiveIconOptions(current) {
+        var rows = []
+        var seen = Object.create(null)
+        var previews = page.fonts.iconPreviews || {}
+        ;(page.fonts.iconThemes || []).forEach(function (name) {
+            if (name.indexOf("vitrail-icons-") !== 0 || seen[name])
+                return
+            seen[name] = true
+            var pack = name.substring(14)
+            rows.push(page.iconRow(name, page.iconLabel(name),
+                                   previews[name] || previews[pack] || [], "adaptive"))
+        })
+        ;(page.fonts.iconDesigns || []).forEach(function (pack) {
+            var name = "vitrail-icons-" + pack
+            if (seen[name])
+                return
+            seen[name] = true
+            rows.push(page.iconRow(name, page.iconLabel(name), previews[pack] || [], "adaptive"))
+        })
+        if (current && current.indexOf("vitrail-icons-") === 0 && !seen[current])
+            rows.push(page.iconRow(current, page.iconLabel(current), previews[current] || [], "adaptive"))
+        rows.sort(function (a, b) { return a.label.localeCompare(b.label) })
+        return rows
+    }
+
+    function iconInTab(name, tab) {
+        return tab === "adaptive" ? name.indexOf("vitrail-icons-") === 0
+                                  : name.indexOf("vitrail-icons-") !== 0
+    }
+
+    readonly property bool iconDeletable: page.iconInTab(page.prefs.iconTheme || "", page.iconTab)
+                                          && (page.fonts.iconUser || []).indexOf(page.prefs.iconTheme) >= 0
+    readonly property var iconActions: [
+        { key: "import", label: page.t("fonts.iconTheme.import"), icon: "upload_file",
+          variant: "tonal", tone: "secondary" },
+        { key: "delete", label: page.t("fonts.iconTheme.delete"),
+          confirm: page.t("fonts.iconTheme.deleteConfirm"), icon: "delete",
+          variant: "outlined", tone: "error", enabled: page.iconDeletable }
+    ]
+
+    // The window cannot run commands: the request key is picked up by
+    // apply-settings.sh, which runs `vitrail fonts apply`; the result and the
+    // refreshed pack list are two cache files this page polls meanwhile.
+    function request(paths, nonce) {
+        return [nonce || Date.now()].concat(paths).join("|")
+    }
+
+    function dirname(path) {
+        return String(path || "").replace(/\/[^\/]*$/, "")
+    }
+
+    function readJson(path, done) {
+        if (!path) {
+            done(null)
+            return
+        }
+        var request = new XMLHttpRequest()
+        request.onreadystatechange = function () {
+            if (request.readyState !== XMLHttpRequest.DONE)
+                return
+            try {
+                done(JSON.parse(request.responseText))
+            } catch (error) {
+                done(null)
+            }
+        }
+        request.open("GET", "file://" + path + "?_=" + Date.now())
+        request.send()
+    }
+
+    function beginIconRequest(nonce) {
+        page.iconMessage = ""
+        page.iconState = "pending"
+        page.iconNonce = nonce || Date.now()
+        page.iconPolls = 0
+        iconPoll.start()
+    }
+
+    function finishIconRequest(result) {
+        iconPoll.stop()
+        page.iconState = "done"
+        if (!result.ok) {
+            page.iconMessage = page.t("fonts.iconTheme.failed") + " " + (result.message || "")
+            return
+        }
+        page.iconMessage = result.action === "remove"
+                          ? page.t("fonts.iconTheme.removed") : page.t("fonts.iconTheme.imported")
+        if (result.action === "remove" && page.prefs.iconTheme === result.name)
+            page.prefs.iconTheme = "Adwaita"
+        if (result.action === "import")
+            page.iconTab = String(result.name || "").indexOf("vitrail-icons-") === 0
+                         ? "adaptive" : "normal"
+        page.readJson(page.fontsFile, function (state) {
+            if (state && state.iconThemes)
+                page.fonts = state
+        })
+    }
+
+    function pollIconRequest() {
+        page.iconPolls += 1
+        if (page.iconPolls > 20) {
+            iconPoll.stop()
+            page.iconMessage = page.t("fonts.iconTheme.failed")
+            return
+        }
+        page.readJson(page.dirname(page.fontsFile) + "/icons-result.json", function (result) {
+            if (!result || String(result.nonce) !== String(page.iconNonce))
+                return
+            page.finishIconRequest(result)
+        })
+    }
+
+    function onIconAction(key, tab) {
+        page.iconTab = tab || page.iconTab
+        if (key === "import") {
+            importDialog.open()
+            return
+        }
+        if (key === "delete" && page.iconDeletable) {
+            var nonce = Date.now()
+            page.prefs.iconRemove = page.request([page.prefs.iconTheme], nonce)
+            page.beginIconRequest(nonce)
+        }
     }
 
     // "Off" plus one Vitrail design per installed pack.
@@ -127,8 +261,6 @@ Item {
             var row = rows[i]
             if (kind === "font")
                 row.family = row.key
-            else if (kind === "icons")
-                row.icons = (page.fonts.iconPreviews || {})[row.key] || []
             else if (kind === "cursor") {
                 row.icons = (page.fonts.cursorPreviews || {})[row.key] || []
                 row.label = page.cursorLabel(row.key)
@@ -270,30 +402,6 @@ Item {
                     }
 
                     VitrailSettingRow {
-                        icon: "palette"
-                        label: page.t("fonts.design")
-                        description: page.t("fonts.iconsTint.help")
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailPicker {
-                            objectName: "iconDesignPicker"
-                            Layout.preferredWidth: 320
-                            label: page.t("fonts.design")
-                            searchHint: page.t("fonts.search")
-                            triggerShown: 4
-                            triggerColumns: 2
-                            current: page.iconDesign()
-                            options: page.iconDesignOptions(page.fonts.iconDesigns,
-                                                            page.iconDesign())
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            panel: page.palette.surfaceHigh
-                            onSelected: page.chooseIconDesign(key)
-                        }
-                    }
-
-                    VitrailSettingRow {
                         icon: "widgets"
                         label: page.t("fonts.iconTheme")
                         description: page.t("fonts.iconTheme.help")
@@ -305,13 +413,45 @@ Item {
                             Layout.preferredWidth: 320
                             label: page.t("fonts.iconTheme")
                             searchHint: page.t("fonts.search")
+                            triggerShown: 8
+                            triggerColumns: 4
+                            triggerSize: 40
+                            cellPreview: 120
+                            cellColumns: 4
+                            cellWidth: 176
+                            cellHeight: 184
                             current: page.prefs.iconTheme
-                            options: page.iconOptions(page.fonts.iconThemes, page.prefs.iconTheme)
+                            options: page.normalIconOptions(page.prefs.iconTheme)
+                                            .concat(page.adaptiveIconOptions(page.prefs.iconTheme))
+                            tabs: [
+                                { key: "normal", icon: "apps", label: page.t("fonts.iconTheme.normal") },
+                                { key: "adaptive", icon: "palette",
+                                  label: page.t("fonts.iconTheme.adaptive") }
+                            ]
+                            currentTab: page.iconTab
+                            actions: page.iconActions
+                            emptyText: page.t("fonts.iconTheme.empty")
                             foreground: page.palette.foreground
                             accent: page.palette.primary
                             panel: page.palette.surfaceHigh
+                            onCurrentTabChanged: page.iconTab = currentTab
+                            onActionTriggered: function (key, tab) { page.onIconAction(key, tab) }
                             onSelected: page.prefs.iconTheme = key
                         }
+                    }
+
+                    VitrailText {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: VitrailTokens.gap("md")
+                        Layout.rightMargin: VitrailTokens.gap("md")
+                        visible: page.iconMessage !== ""
+                        variant: "label"
+                        text: page.iconMessage
+                        color: page.iconState === "done" && page.iconMessage.indexOf(
+                                   page.t("fonts.iconTheme.failed")) === 0
+                               ? (page.palette.error || page.palette.foreground)
+                               : page.palette.muted
+                        wrapMode: Text.WordWrap
                     }
                 }
 
@@ -400,6 +540,28 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    Timer {
+        id: iconPoll
+
+        interval: 700
+        repeat: true
+        onTriggered: page.pollIconRequest()
+    }
+
+    FileDialog {
+        id: importDialog
+
+        title: page.t("fonts.iconTheme.import")
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Icon packs (*.zip)"]
+        onAccepted: {
+            var path = decodeURIComponent(String(importDialog.selectedFile).replace(/^file:\/\//, ""))
+            var nonce = Date.now()
+            page.prefs.iconImport = page.request([path], nonce)
+            page.beginIconRequest(nonce)
         }
     }
 }

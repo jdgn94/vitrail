@@ -1003,6 +1003,10 @@ ShellRoot {
         return values
     }
 
+    // The Material family follows `uiIcons` directly as well, so the bar
+    // redraws its ligatures the moment the settings window writes fonts.ini.
+    readonly property string shellIconFamily: VitrailTokens.font.iconFamilyOf(shell.prefs.uiIcons)
+    onShellIconFamilyChanged: shell.syncTokens()
     onTokenValuesChanged: shell.syncTokens()
     onDarkChanged: {
         shell.syncTokens()

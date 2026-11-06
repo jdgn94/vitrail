@@ -1,12 +1,37 @@
 import QtQuick
 import QtTest
 import "../../kit"
+import "../../kit/base"
 
 // The user-tunable tokens: the font family and the icon family travel with the
 // preferences, and an unknown icon variant falls back instead of inventing a
 // family name the font stack does not have.
 TestCase {
     name: "Tokens"
+
+    // The path main.qml and the bar use: a preference changes, the token
+    // values change, and the Text items follow without a restart.
+    QtObject {
+        id: source
+
+        property string uiIcons: "rounded"
+    }
+
+    QtObject {
+        id: live
+
+        readonly property var tokenValues: ({
+            iconFamily: VitrailTokens.font.iconFamilyOf(source.uiIcons)
+        })
+        onTokenValuesChanged: VitrailTokens.configure({}, true, "glass", live.tokenValues)
+    }
+
+    VitrailText {
+        id: glyph
+
+        variant: "icon"
+        text: "interests"
+    }
 
     function test_every_icon_variant_names_an_installed_family() {
         compare(VitrailTokens.font.iconVariants.rounded, "Material Symbols Rounded")
@@ -30,6 +55,17 @@ TestCase {
         compare(VitrailTokens.iconFamily, "Material Symbols Sharp")
         VitrailTokens.configure({}, true, "glass",
                                 { fontFamily: "Roboto", iconFamily: "Material Symbols Rounded" })
+    }
+
+    function test_changing_the_variant_reaches_the_ui() {
+        source.uiIcons = "rounded"
+        compare(VitrailTokens.iconFamily, "Material Symbols Rounded")
+        compare(glyph.font.family, "Material Symbols Rounded")
+        source.uiIcons = "sharp"
+        compare(VitrailTokens.iconFamily, "Material Symbols Sharp")
+        compare(glyph.font.family, "Material Symbols Sharp")
+        // The glyph stays outlined: the variant changes the shape, not FILL.
+        compare(glyph.font.variableAxes["FILL"], 0)
     }
 
     function test_the_cursor_range_is_the_token_range() {

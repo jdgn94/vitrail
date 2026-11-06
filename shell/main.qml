@@ -148,7 +148,13 @@ Window {
         panel: prefs.panelSize
     })
 
+    // The Material family is a scalar of its own too: the composite
+    // `tokenValues` object is re-read on every change, but this direct
+    // dependency makes the family change reach every Text even if a page or a
+    // loader keeps an older token object.
+    readonly property string shellIconFamily: VitrailTokens.font.iconFamilyOf(prefs.uiIcons)
     onTokenValuesChanged: app.syncTokens()
+    onShellIconFamilyChanged: app.syncTokens()
     onDarkChanged: app.syncTokens()
 
     function syncTokens() {
@@ -524,6 +530,7 @@ Window {
                                         prefs: app.store
                                         strings: app.strings
                                         fonts: app.fonts
+                                        fontsFile: Args.value("--fonts-file", "")
                                         tab: Args.value("--tab", "text")
                                     }
                                 }

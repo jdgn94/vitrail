@@ -36,10 +36,73 @@ TestCase {
         }
     }
 
+    Component {
+        id: tabbedComponent
+
+        VitrailPicker {
+            width: 320
+            label: "Packs"
+            current: "a"
+            currentTab: "normal"
+            tabs: [
+                { key: "normal", label: "Normal" },
+                { key: "adaptive", label: "Adaptive" }
+            ]
+            options: [
+                { key: "a", label: "Alpha", tab: "normal" },
+                { key: "b", label: "Beta", tab: "normal" },
+                { key: "c", label: "Vitrail · Alpha", tab: "adaptive" }
+            ]
+        }
+    }
+
+    Component {
+        id: glyphComponent
+
+        VitrailPicker {
+            width: 320
+            label: "Packs"
+            current: "a"
+            options: [{ key: "a", label: "Alpha", glyph: "block" }]
+        }
+    }
+
+    Component {
+        id: actionComponent
+
+        VitrailPicker {
+            width: 320
+            label: "Packs"
+            current: "a"
+            options: [{ key: "a", label: "Alpha" }]
+            actions: [{ key: "delete", label: "Delete pack", confirm: "Confirm delete" }]
+        }
+    }
+
     SignalSpy {
         id: selected
 
         signalName: "selected"
+    }
+
+    SignalSpy {
+        id: actionSpy
+
+        signalName: "actionTriggered"
+    }
+
+    function findText(item, value) {
+        for (var i = 0; i < item.children.length; i++) {
+            var child = item.children[i]
+            if (child.text !== undefined && child.text === value)
+                return child
+            if (child.children) {
+                var found = findText(child, value)
+                if (found)
+                    return found
+            }
+        }
+        return null
     }
 
     function test_it_shows_the_chosen_option() {
@@ -94,5 +157,38 @@ TestCase {
         picker.open()
         compare(picker.expanded, false)
         compare(picker.currentLabel, "b")
+    }
+
+    function test_tabs_split_the_rows() {
+        var picker = createTemporaryObject(tabbedComponent, testCase)
+        compare(picker.matched.length, 2)
+        picker.currentTab = "adaptive"
+        compare(picker.matched.length, 1)
+        compare(picker.matched[0].key, "c")
+        picker.currentTab = "normal"
+        compare(picker.matched.length, 2)
+    }
+
+    function test_a_chosen_glyph_is_not_filled() {
+        var picker = createTemporaryObject(glyphComponent, testCase)
+        picker.open()
+        tryCompare(picker, "expanded", true)
+        var glyph = findText(picker, "block")
+        verify(glyph !== null)
+        compare(glyph.font.variableAxes["FILL"], 0)
+    }
+
+    function test_deleting_asks_for_a_second_click() {
+        var picker = createTemporaryObject(actionComponent, testCase)
+        actionSpy.target = picker
+        actionSpy.clear()
+        picker.open()
+        tryCompare(picker, "expanded", true)
+        picker.activateAction("delete")
+        compare(picker.pendingAction, "delete")
+        compare(actionSpy.count, 0)
+        picker.activateAction("delete")
+        compare(actionSpy.count, 1)
+        compare(actionSpy.signalArguments[0][0], "delete")
     }
 }

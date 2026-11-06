@@ -307,7 +307,7 @@ the window declares it in another file, or the path unit watches another set.
 | `terminal.ini` | `terminalScheme`, `terminalPadding`, `fontSize`, `tabStyle`, `tabIcons`, `tabNumbers` |
 | `sound.ini` | `soundOutputApps`, `soundInputApps`, `soundFocusApps`, `soundStep` |
 | `colors.ini` | `colorScheme`, `colorContrast` |
-| `fonts.ini` | `fontSystem`, `fontConsole`, `uiIcons`, `iconTheme`, `cursorTheme`, `cursorSize`, `cursorSpinner` |
+| `fonts.ini` | `fontSystem`, `fontConsole`, `uiIcons`, `iconTheme`, `iconImport`, `iconRemove`, `cursorTheme`, `cursorSize`, `cursorSpinner` |
 | `capture.ini` | `captureDir`, `captureCopy`, `captureAnnotate`, `captureRecordDir`, `captureRecordAudio`, `captureRecordRegion` |
 | `launcher.ini` | `launcherEngine`, `launcherBangs`, `launcherModes`, `launcherView`, `launcherClear` |
 | `language.ini` | `language`, `languageSystem` |
@@ -365,9 +365,13 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   in the cursor list and follows every palette change. The authoring guide —
   what makes a pack tint well, the Xcursor layout, and what each part of the
   session picks up live (X11 included) — is `docs/cursors.md`.
-  The same **Palette tint** on the Icons tab recolours only the folders of an
-  installed pack, keeping its shading and inheriting every other icon
-  (`vitrail/icons.py`); `docs/icons.md` is the authoring guide.
+  On the Icons tab one picker lists both the installed packs (**Normal**) and
+  the palette-tinted Vitrail layers (**Adaptive**): the adaptive tab offers a
+  `Vitrail · <pack>` row for each installed pack and rebuilds only its folders,
+  keeping the shading and inheriting every other icon (`vitrail/icons.py`).
+  Each tab can import a validated `.zip` into `~/.local/share/icons` (with a
+  backup when it replaces an existing pack) or delete a pack that lives in the
+  user's own folders; `docs/icons.md` is the authoring guide.
   **Flatpak and Firefox** get the same palette: `vitrail/apps.py` grants the
   sandbox read access to the theme folders and writes Firefox's `user.js` and
   `chrome/userChrome.css`; see `docs/apps.md`.

@@ -13,7 +13,10 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
+
+from vitrail import icons
 
 ROOT = Path(__file__).resolve().parent.parent
 QML_DIRS = ("bar", "kit", "shell", "gallery")
@@ -104,6 +107,151 @@ TestCase {{
                 env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
             )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
+class IconZipTests(unittest.TestCase):
+    """Importing an icon pack from a .zip and removing a user pack."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.mkdtemp()
+        self.root = Path(self.tmp)
+        self.data_home = self.root / "data"
+        self.home = self.root / "home"
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def make_zip(self, entries: dict[str, bytes | str], name: str = "pack.zip") -> Path:
+        path = self.root / name
+        with zipfile.ZipFile(path, "w") as archive:
+            for member, content in entries.items():
+                archive.writestr(member, content)
+        return path
+
+    def valid_zip(self, name: str = "Acme") -> Path:
+        return self.make_zip(
+            {
+                f"{name}/index.theme": f"[Icon Theme]\nName={name}\nDirectories=48x48/apps\n",
+                f"{name}/48x48/apps/editor.svg": "<svg/>",
+                f"{name}/48x48/apps/folder.png": b"png",
+            }
+        )
+
+    def test_a_valid_zip_installs_under_the_data_home(self) -> None:
+        target = icons.import_zip(self.valid_zip(), data_home=self.data_home)
+        self.assertEqual(target, self.data_home / "icons" / "Acme")
+        self.assertTrue((target / "index.theme").is_file())
+        self.assertTrue((target / "48x48" / "apps" / "editor.svg").is_file())
+        self.assertEqual((target / "48x48" / "apps" / "folder.png").read_bytes(), b"png")
+
+    def test_a_zip_without_index_theme_is_refused(self) -> None:
+        path = self.make_zip({"Acme/48x48/apps/editor.svg": "<svg/>"})
+        with self.assertRaisesRegex(ValueError, "index.theme"):
+            icons.import_zip(path, data_home=self.data_home)
+        self.assertFalse((self.data_home / "icons" / "Acme").exists())
+
+    def test_a_zip_without_icons_is_refused(self) -> None:
+        path = self.make_zip({"Acme/index.theme": "[Icon Theme]\n"})
+        with self.assertRaisesRegex(ValueError, "icon"):
+            icons.import_zip(path, data_home=self.data_home)
+
+    def test_a_traversal_entry_is_refused_without_writing_outside(self) -> None:
+        path = self.make_zip(
+            {
+                "Acme/index.theme": "[Icon Theme]\n",
+                "Acme/48x48/apps/editor.svg": "<svg/>",
+                "Acme/../../escaped.svg": "<svg/>",
+            }
+        )
+        with self.assertRaisesRegex(ValueError, "path"):
+            icons.import_zip(path, data_home=self.data_home)
+        self.assertFalse((self.root / "escaped.svg").exists())
+
+    def test_an_absolute_entry_is_refused(self) -> None:
+        path = self.make_zip(
+            {
+                "Acme/index.theme": "[Icon Theme]\n",
+                "Acme/48x48/apps/editor.svg": "<svg/>",
+                "/tmp/escaped.svg": "<svg/>",
+            }
+        )
+        with self.assertRaisesRegex(ValueError, "path"):
+            icons.import_zip(path, data_home=self.data_home)
+
+    def test_a_zip_over_the_size_limit_is_refused(self) -> None:
+        path = self.make_zip(
+            {
+                "Acme/index.theme": "[Icon Theme]\n",
+                "Acme/48x48/apps/editor.svg": "<svg/>",
+                "Acme/48x48/apps/large.png": b"x" * 4096,
+            }
+        )
+        with self.assertRaisesRegex(ValueError, "large"):
+            icons.import_zip(path, data_home=self.data_home, max_bytes=1024)
+        self.assertFalse((self.data_home / "icons" / "Acme").exists())
+
+    def test_replacing_a_pack_keeps_a_backup(self) -> None:
+        first = icons.import_zip(self.valid_zip(), data_home=self.data_home)
+        (first / "48x48" / "apps" / "old.svg").write_text("<svg/>", encoding="utf-8")
+        icons.import_zip(self.valid_zip(), data_home=self.data_home)
+        self.assertFalse((first / "48x48" / "apps" / "old.svg").exists())
+        backups = list((self.data_home / "icons" / icons.BACKUP_DIR).iterdir())
+        self.assertEqual(len(backups), 1)
+        self.assertTrue((backups[0] / "48x48" / "apps" / "old.svg").is_file())
+
+    def test_remove_deletes_only_a_user_pack(self) -> None:
+        target = self.data_home / "icons" / "Acme"
+        (target / "48x48").mkdir(parents=True)
+        (target / "index.theme").write_text("[Icon Theme]\n", encoding="utf-8")
+        removed = icons.remove_pack("Acme", data_home=self.data_home, home=self.home)
+        self.assertEqual(removed, target)
+        self.assertFalse(target.exists())
+
+    def test_remove_reads_the_legacy_home_icons_folder(self) -> None:
+        target = self.home / ".icons" / "Acme"
+        (target / "48x48").mkdir(parents=True)
+        (target / "index.theme").write_text("[Icon Theme]\n", encoding="utf-8")
+        self.assertEqual(icons.remove_pack("Acme", data_home=self.data_home, home=self.home), target)
+        self.assertFalse(target.exists())
+
+    def test_remove_refuses_a_pack_outside_the_user_roots(self) -> None:
+        system = self.root / "usr" / "share" / "icons" / "Adwaita"
+        (system / "48x48").mkdir(parents=True)
+        (system / "index.theme").write_text("[Icon Theme]\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "user"):
+            icons.remove_pack("Adwaita", data_home=self.data_home, home=self.home)
+        self.assertTrue(system.exists())
+
+    def test_remove_refuses_a_traversal_name(self) -> None:
+        with self.assertRaisesRegex(ValueError, "name"):
+            icons.remove_pack("../usr/share/icons/Adwaita", data_home=self.data_home, home=self.home)
+
+    def test_apply_runs_an_import_request_and_refreshes_the_state(self) -> None:
+        import json
+
+        from vitrail import fonts
+
+        config = self.root / "config"
+        cache = self.root / "cache" / "fonts"
+        pack = self.valid_zip()
+        code = fonts.apply(
+            {"fontSystem": "Roboto", "iconTheme": "Acme", "iconImport": f"123|{pack}"},
+            config,
+            run=lambda argv: "Roboto\t80\n",
+            roots=[self.data_home / "icons"],
+            hyprland=False,
+            x11=False,
+            data_home=self.data_home,
+            cache=cache,
+        )
+        self.assertEqual(code, 0)
+        self.assertTrue((self.data_home / "icons" / "Acme" / "index.theme").is_file())
+        self.assertIn("iconImport=\n", (config / "vitrail" / "fonts.ini").read_text(encoding="utf-8"))
+        result = json.loads((cache.parent / "icons-result.json").read_text(encoding="utf-8"))
+        self.assertEqual((result["action"], result["ok"], result["nonce"]), ("import", True, "123"))
+        state = json.loads((cache.parent / "fonts-state.json").read_text(encoding="utf-8"))
+        self.assertIn("Acme", state["iconThemes"])
+        self.assertIn("Acme", state["iconUser"])
 
 
 if __name__ == "__main__":

@@ -17,10 +17,20 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
+import time
+import zipfile
 from pathlib import Path
 
 PREFIX = "vitrail-icons-"
+# A pack imported from a zip lands here, in the user's own icon folder; an
+# earlier copy moves to BACKUP_DIR first, so replacing is never destructive.
+BACKUP_DIR = ".vitrail-backups"
+MAX_ZIP_BYTES = 64 * 1024 * 1024
+MAX_ZIP_FILES = 10_000
+ICON_SUFFIXES = (".svg", ".png", ".xpm", ".jpg", ".jpeg", ".webp")
 # How far a colour may sit from the body hue and still be considered part of
 # the folder (degrees).
 HUE_WINDOW = 42
@@ -59,8 +69,198 @@ def source_of(name: str) -> str:
 
 
 def output_root() -> Path:
-    base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
-    return Path(base) / "icons"
+    return _writable_root()
+
+
+def _data_home(data_home: Path | None = None) -> Path:
+    if data_home is not None:
+        return Path(data_home)
+    return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+
+
+def _writable_root(data_home: Path | None = None) -> Path:
+    return _data_home(data_home) / "icons"
+
+
+def user_roots(data_home: Path | None = None, home: Path | None = None) -> list[Path]:
+    """The folders whose packs Vitrail may remove; never /usr/share/icons."""
+    home = Path(home) if home is not None else Path.home()
+    return [_writable_root(data_home), home / ".icons"]
+
+
+def _safe_name(name: str, what: str = "name") -> str:
+    """A single folder name: no separators, no traversal, no control chars."""
+    name = str(name).strip()
+    if (
+        not name
+        or name in (".", "..")
+        or "/" in name
+        or "\\" in name
+        or "\0" in name
+        or any(ord(char) < 32 for char in name)
+        or len(name) > 128
+    ):
+        raise ValueError(f"invalid icon pack {what}: {name!r}")
+    return name
+
+
+def _member(name: str) -> str:
+    """A zip member as a safe relative path, or ValueError."""
+    raw = name.rstrip("/")
+    if not raw or raw.startswith("/") or "\\" in raw or "\0" in raw or re.match(r"^[A-Za-z]:", raw):
+        raise ValueError(f"unsafe path in zip: {name!r}")
+    parts = raw.split("/")
+    if any(part in ("", ".", "..") for part in parts):
+        raise ValueError(f"unsafe path in zip: {name!r}")
+    return "/".join(parts)
+
+
+def _check_archive(path: Path, max_bytes: int) -> list[zipfile.ZipInfo]:
+    """The members of a zip, after checking every path and its total size."""
+    try:
+        archive = zipfile.ZipFile(path)
+    except (OSError, zipfile.BadZipFile) as error:
+        raise ValueError(f"not a readable .zip: {error}") from None
+    with archive:
+        infos = archive.infolist()
+        if len(infos) > MAX_ZIP_FILES:
+            raise ValueError(f"zip has too many files (max {MAX_ZIP_FILES})")
+        total = 0
+        for info in infos:
+            _member(info.filename)
+            if info.flag_bits & 1:
+                raise ValueError("encrypted zips are not supported")
+            if (info.external_attr >> 16) & 0o170000 == 0o120000:
+                raise ValueError(f"unsafe path in zip: {info.filename!r} is a symbolic link")
+            total += info.file_size
+            if total > max_bytes:
+                raise ValueError(f"zip is too large (max {max_bytes // (1024 * 1024)} MiB uncompressed)")
+    return infos
+
+
+def _layout(infos: list[zipfile.ZipInfo], fallback: str) -> tuple[str, str, str]:
+    """(theme folder in the zip, install name, index.theme path)."""
+    files = [_member(info.filename) for info in infos if not info.is_dir()]
+    names = set(files)
+    if "index.theme" in names:
+        prefix = ""
+        name = _safe_name(fallback)
+        index = "index.theme"
+    else:
+        tops = {name.split("/", 1)[0] for name in files if "/" in name}
+        candidates = sorted(top for top in tops if f"{top}/index.theme" in names)
+        if len(candidates) != 1:
+            raise ValueError("the zip needs <theme>/index.theme (one theme) or index.theme at its root")
+        prefix = candidates[0]
+        name = _safe_name(prefix)
+        index = f"{prefix}/index.theme"
+        outside = [name for name in files if not name.startswith(prefix + "/")]
+        if outside:
+            raise ValueError(f"the zip holds files outside {prefix}/: {outside[0]}")
+    base = f"{prefix}/" if prefix else ""
+    icons = [
+        name[len(base) :]
+        for name in files
+        if name != index and name.startswith(base) and Path(name).suffix.lower() in ICON_SUFFIXES
+    ]
+    # A pack is found by its subfolders (48x48/apps…), so an icon at the theme
+    # root alone would install a theme the machine never lists.
+    if not any("/" in relative for relative in icons):
+        raise ValueError("the zip has index.theme but no icon files in a size folder (.svg, .png, .xpm, .jpg, .webp)")
+    return prefix, name, index
+
+
+def _index_theme(archive: zipfile.ZipFile, index: str) -> None:
+    try:
+        text = archive.read(index).decode("utf-8", errors="replace")
+    except (KeyError, OSError) as error:
+        raise ValueError(f"could not read {index}: {error}") from None
+    if "[Icon Theme]" not in text:
+        raise ValueError(f"{index} has no [Icon Theme] section")
+
+
+def _backup(target: Path) -> Path:
+    root = target.parent / BACKUP_DIR
+    root.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    candidate = root / f"{target.name}-{stamp}"
+    counter = 1
+    while candidate.exists():
+        candidate = root / f"{target.name}-{stamp}-{counter}"
+        counter += 1
+    shutil.move(str(target), str(candidate))
+    return candidate
+
+
+def import_zip(
+    path: Path | str,
+    data_home: Path | None = None,
+    name: str | None = None,
+    max_bytes: int = MAX_ZIP_BYTES,
+) -> Path:
+    """Installs one validated icon pack from `path`; returns where it landed.
+
+    The zip must hold `<theme>/index.theme` (or a root `index.theme`) and at
+    least one icon. Paths are checked before anything is written, the archive
+    is unpacked into a staging folder inside the icon root, and an earlier copy
+    of the same theme moves to BACKUP_DIR before the new one takes its place.
+    """
+    path = Path(path)
+    infos = _check_archive(path, max_bytes)
+    prefix, theme, index = _layout(infos, path.stem)
+    target = _writable_root(data_home) / theme
+    with zipfile.ZipFile(path) as archive:
+        _index_theme(archive, index)
+        root = _writable_root(data_home)
+        root.mkdir(parents=True, exist_ok=True)
+        staging = Path(tempfile.mkdtemp(prefix=".vitrail-import-", dir=root))
+        backup: Path | None = None
+        try:
+            total = 0
+            for info in infos:
+                relative = _member(info.filename)
+                if info.is_dir():
+                    continue
+                if prefix:
+                    relative = relative[len(prefix) + 1 :]
+                if not relative:
+                    continue
+                destination = staging / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                with archive.open(info) as source, destination.open("wb") as output:
+                    while chunk := source.read(64 * 1024):
+                        total += len(chunk)
+                        if total > max_bytes:
+                            raise ValueError(f"zip is too large (max {max_bytes // (1024 * 1024)} MiB uncompressed)")
+                        output.write(chunk)
+            if target.exists():
+                backup = _backup(target)
+            shutil.move(str(staging), str(target))
+            staging = None
+        except BaseException:
+            if staging is not None:
+                shutil.rmtree(staging, ignore_errors=True)
+            if backup is not None and not target.exists():
+                shutil.move(str(backup), str(target))
+            raise
+    return target
+
+
+def remove_pack(name: str, data_home: Path | None = None, home: Path | None = None) -> Path:
+    """Deletes one pack from the user's folders; never from /usr/share/icons."""
+    theme = _safe_name(name)
+    for root in user_roots(data_home, home):
+        candidate = root / theme
+        if not candidate.is_dir() or not (candidate / "index.theme").is_file():
+            continue
+        # A symlink into the system themes is a view, not the user's copy.
+        try:
+            candidate.resolve().relative_to(root.resolve())
+        except ValueError:
+            continue
+        shutil.rmtree(candidate)
+        return candidate
+    raise ValueError(f"{theme!r} is not a user-installed icon pack")
 
 
 def _rgb(value: str) -> tuple[float, float, float]:

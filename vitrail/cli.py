@@ -135,6 +135,13 @@ def _parser() -> argparse.ArgumentParser:
 
     binds_parser = sub.add_parser("binds", help="the keyboard shortcuts Hyprland reports, as JSON")
     binds_parser.add_argument("action", choices=("state",))
+
+    icons_parser = sub.add_parser("icons", help="import or remove an application icon pack")
+    icons_actions = icons_parser.add_subparsers(dest="icons_action")
+    icons_import = icons_actions.add_parser("import", help="install a validated .zip")
+    icons_import.add_argument("path", help="the .zip to install")
+    icons_remove = icons_actions.add_parser("remove", help="delete one of the user's packs")
+    icons_remove.add_argument("name", help="the pack folder in ~/.local/share/icons or ~/.icons")
     return parser
 
 
@@ -380,6 +387,29 @@ def _binds(args: argparse.Namespace) -> int:
     return 0
 
 
+def _icons(args: argparse.Namespace) -> int:
+    from vitrail import icons
+
+    if args.icons_action == "import":
+        try:
+            target = icons.import_zip(args.path)
+        except (OSError, ValueError) as error:
+            _say(f"Icon pack: {error}")
+            return 1
+        _say(f"Icon pack installed: {target}")
+        return 0
+    if args.icons_action == "remove":
+        try:
+            target = icons.remove_pack(args.name)
+        except (OSError, ValueError) as error:
+            _say(f"Icon pack: {error}")
+            return 1
+        _say(f"Icon pack removed: {target}")
+        return 0
+    _say("usage: vitrail icons import <zip> | remove <name>")
+    return 2
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
@@ -424,6 +454,8 @@ def main(argv: list[str] | None = None) -> int:
         return _resources(args)
     if args.command == "binds":
         return _binds(args)
+    if args.command == "icons":
+        return _icons(args)
     parser.print_help()
     return 0
 

@@ -70,6 +70,8 @@ QtObject {
     property alias fontConsole: fontsFile.fontConsole
     property alias uiIcons: fontsFile.uiIcons
     property alias iconTheme: fontsFile.iconTheme
+    property alias iconImport: fontsFile.iconImport
+    property alias iconRemove: fontsFile.iconRemove
     property alias cursorTheme: fontsFile.cursorTheme
     property alias cursorSize: fontsFile.cursorSize
     property alias cursorSpinner: fontsFile.cursorSpinner
@@ -346,6 +348,8 @@ QtObject {
         property string fontConsole: "JetBrainsMono Nerd Font"
         property string uiIcons: "rounded"
         property string iconTheme: "Adwaita"
+        property string iconImport: ""
+        property string iconRemove: ""
         property string cursorTheme: "Adwaita"
         property int cursorSize: VitrailTokens.ranges.cursor.value
         property bool cursorSpinner: false

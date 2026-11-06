@@ -120,6 +120,10 @@ fonts fontSystem
 fonts fontConsole
 fonts uiIcons
 fonts iconTheme
+# The Icons page asks for a .zip import or a user-pack removal; apply-settings
+# runs it once and clears the key ("<nonce>|path" / "<nonce>|name").
+fonts iconImport
+fonts iconRemove
 fonts cursorTheme
 fonts cursorSize
 fonts cursorSpinner

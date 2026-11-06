@@ -340,12 +340,18 @@ def cursor_previews(theme: Path, cache: Path) -> list[str]:
     return found
 
 
-def state(run: Runner = run_text, roots: list[Path] | None = None, cache: Path | None = None) -> dict:
+def state(
+    run: Runner = run_text,
+    roots: list[Path] | None = None,
+    cache: Path | None = None,
+    user_roots: list[Path] | None = None,
+) -> dict:
     """The lists the settings window offers: fonts, packs and cursors."""
     roots = list(roots) if roots is not None else DEFAULT_ROOTS
     cache = cache or preview_cache()
     text = run(font_query()) or ""
     icons, cursors = themes(roots)
+    writable = list(user_roots) if user_roots is not None else icon_engine.user_roots()
     icon_files: dict[str, list[str]] = {}
     for name in icons:
         directory = theme_dir(name, roots)
@@ -372,6 +378,7 @@ def state(run: Runner = run_text, roots: list[Path] | None = None, cache: Path |
         "cursorThemes": cursors,
         "cursorDesigns": designs,
         "iconDesigns": icon_designs,
+        "iconUser": [name for name in icons if any((root / name / "index.theme").is_file() for root in writable)],
         "iconPreviews": icon_files,
         "cursorPreviews": cursor_files,
     }
@@ -455,6 +462,97 @@ def _cursor_size(value: object) -> tuple[int, bool]:
     return value, False
 
 
+def _request_parts(value: object) -> tuple[str, str]:
+    """(nonce, path or name) of a request written as "<nonce>|value"."""
+    nonce, _bar, rest = str(value or "").partition("|")
+    return nonce.strip(), rest.strip()
+
+
+def _write_icons_result(cache: Path, result: dict) -> None:
+    path = cache.parent / "icons-result.json"
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(result, separators=(",", ":")), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _write_fonts_state(run: Runner, roots: list[Path], cache: Path, data_home: Path | None) -> None:
+    """Refreshes the file the settings window reads after an icon change."""
+    live = state(
+        run=run,
+        roots=roots,
+        cache=cache,
+        user_roots=icon_engine.user_roots(data_home),
+    )
+    try:
+        path = cache.parent / "fonts-state.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(live, separators=(",", ":")), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _apply_icon_requests(
+    values: dict,
+    config: Path,
+    run: Runner,
+    roots: list[Path],
+    cache: Path,
+    data_home: Path | None,
+) -> tuple[bool, bool]:
+    """(handled, failed): imports or deletes what the window asked for."""
+    import_nonce, imports = _request_parts(values.get("iconImport"))
+    remove_nonce, removals = _request_parts(values.get("iconRemove"))
+    if not imports and not removals:
+        return False, False
+    handled = True
+    failed = False
+    prefs_dir = config / "vitrail"
+    if imports:
+        try:
+            target = icon_engine.import_zip(imports, data_home=data_home)
+        except (OSError, ValueError) as error:
+            failed = True
+            log(f"icon import failed: {error}")
+            _write_icons_result(
+                cache,
+                {"action": "import", "ok": False, "nonce": import_nonce, "message": str(error)},
+            )
+        else:
+            log(f"icon import installed {target.name}")
+            _write_icons_result(
+                cache,
+                {"action": "import", "ok": True, "nonce": import_nonce, "name": target.name, "message": ""},
+            )
+        try:
+            prefs.write_pref(prefs_dir, "iconImport", "")
+        except OSError:
+            pass
+    if removals:
+        try:
+            target = icon_engine.remove_pack(removals, data_home=data_home)
+        except (OSError, ValueError) as error:
+            failed = True
+            log(f"icon removal failed: {error}")
+            _write_icons_result(
+                cache,
+                {"action": "remove", "ok": False, "nonce": remove_nonce, "message": str(error)},
+            )
+        else:
+            log(f"icon pack removed: {target.name}")
+            _write_icons_result(
+                cache,
+                {"action": "remove", "ok": True, "nonce": remove_nonce, "name": target.name, "message": ""},
+            )
+        try:
+            prefs.write_pref(prefs_dir, "iconRemove", "")
+        except OSError:
+            pass
+    _write_fonts_state(run, roots, cache, data_home)
+    return handled, failed
+
+
 def apply(
     values: dict,
     config: Path,
@@ -474,12 +572,25 @@ def apply(
     written then: defaults would overwrite a working configuration).
     """
     cache = cache or preview_cache()
+    explicit_roots = roots is not None
+    roots = list(roots) if explicit_roots else list(DEFAULT_ROOTS)
+    # The default list does not carry a custom XDG data folder; add it so an
+    # imported pack is selectable in the same apply that installed it.
+    if not explicit_roots:
+        data_root = (
+            data_home / "icons"
+            if data_home is not None
+            else Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "icons"
+        )
+        if data_root not in roots:
+            roots = [*roots, data_root]
+    _requests, request_failed = _apply_icon_requests(values, config, run, roots, cache, data_home)
     live = state(run=run, roots=roots, cache=cache)
     if not live["fonts"]:
         log("refused: fc-list listed no families; nothing was applied")
         return 2
 
-    replaced = False
+    replaced = request_failed
 
     def pick(value: object, allowed: list[str], default: str, what: str) -> str:
         nonlocal replaced
@@ -597,7 +708,21 @@ def main(argv: list[str] | None = None, run: Runner = run_text, cache: Path | No
         if family:
             print(family)
         return 0
-    print("usage: fonts state | apply | console-family", file=sys.stderr)
+    if len(args) == 2 and args[0] == "import":
+        try:
+            print(icon_engine.import_zip(args[1]))
+        except (OSError, ValueError) as error:
+            log(str(error))
+            return 1
+        return 0
+    if len(args) == 2 and args[0] == "remove":
+        try:
+            print(icon_engine.remove_pack(args[1]))
+        except (OSError, ValueError) as error:
+            log(str(error))
+            return 1
+        return 0
+    print("usage: fonts state | apply | console-family | import <zip> | remove <theme>", file=sys.stderr)
     return 2
 
 

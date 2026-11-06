@@ -15,20 +15,35 @@ FocusScope {
     id: root
 
     property string label: ""
-    // { key, label, icons?, family? }
+    // { key, label, icons?, family?, glyph?, tab? }
     property var options: []
     property string current: ""
+    // Tabs split the dialog's options; a row without `tab` belongs to the
+    // first one. `actions` are buttons under the grid, each shown on its own
+    // tab (or on every tab when `tab` is empty).
+    property var tabs: []
+    property string currentTab: ""
+    property var actions: []
+    property string emptyText: ""
     // A search box appears in the dialog when this has text.
     property string searchHint: ""
     // What the trigger draws; a cursor reads better alone at 24 px.
     property int triggerShown: 4
     property int triggerColumns: 2
+    property int triggerSize: 24
+    // The dialog's cells: a font needs only "Aa", an icon pack a large mosaic.
+    property int cellPreview: 84
+    property int cellColumns: 3
+    property int cellWidth: 148
+    property int cellHeight: 148
     property string variant: ""
     property color foreground: VitrailTokens.color("foreground")
     property color accent: VitrailTokens.color("primary")
     property color panel: VitrailTokens.color("surfaceHigh")
 
     signal selected(string key)
+    // `tab` is the tab the button was shown on (empty without tabs).
+    signal actionTriggered(string key, string tab)
 
     readonly property var style: VitrailStyle.resolve("field", root.variant)
     readonly property var surface: VitrailVariants.surface[VitrailTokens.surfaceMode]
@@ -37,10 +52,7 @@ FocusScope {
     readonly property real boxHeight: VitrailTokens.field.height.md
     readonly property real radius: Math.min(VitrailTokens.radius, root.boxHeight / 2)
 
-    // The dialog: a cell holds 84 px of pictures over the name, and the size
-    // comes from the full list so searching does not resize it.
-    readonly property int cellWidth: 148
-    readonly property int cellHeight: 148
+    // The size comes from the full list so searching does not resize it.
     readonly property int maxColumns: 5
     readonly property real availableWidth: root.Window.window ? root.Window.window.width : 1000
     readonly property real availableHeight: root.Window.window ? root.Window.window.height : 680
@@ -62,23 +74,50 @@ FocusScope {
     readonly property var currentOption: root.currentIndex >= 0 ? root.options[root.currentIndex] : null
     readonly property string currentLabel: root.currentOption ? root.currentOption.label : root.current
 
-    // The row the dialog has highlighted.
+    // The row the dialog has highlighted and the action asking to confirm.
     property int highlighted: 0
     property string filter: ""
+    property string pendingAction: ""
     readonly property bool expanded: popup.visible
-    // The rows the dialog shows: everything, or what the field keeps.
+    // The rows on the current tab: everything, or what the search keeps.
     readonly property var matched: {
+        var rows = root.options
+        if (root.tabs.length > 0) {
+            var tab = root.currentTab || root.tabs[0].key
+            rows = rows.filter(function (row) {
+                return (row.tab === undefined || row.tab === "") ? tab === root.tabs[0].key
+                                                                 : row.tab === tab
+            })
+        }
         var needle = root.filter.trim().toLowerCase()
         if (needle === "")
-            return root.options
-        return root.options.filter(function (row) {
+            return rows
+        return rows.filter(function (row) {
             return String(row.label).toLowerCase().indexOf(needle) >= 0
         })
     }
+    readonly property var visibleActions: root.actions.filter(function (action) {
+        return action.tab === undefined || action.tab === "" || action.tab === root.currentTab
+    })
 
     onFilterChanged: {
         root.highlighted = 0
         grid.currentIndex = 0
+    }
+
+    onCurrentTabChanged: {
+        root.filter = ""
+        root.pendingAction = ""
+        root.highlighted = Math.max(0, root.matchedIndexOfKey(root.current))
+        grid.currentIndex = root.highlighted
+    }
+
+    function matchedIndexOfKey(key) {
+        for (var i = 0; i < root.matched.length; i++) {
+            if (root.matched[i].key === key)
+                return i
+        }
+        return -1
     }
 
     function indexOfKey(key) {
@@ -92,8 +131,11 @@ FocusScope {
     function open() {
         if (root.options.length === 0)
             return
+        if (root.tabs.length > 0 && root.currentTab === "")
+            root.currentTab = root.tabs[0].key
         root.filter = ""
-        root.highlighted = Math.max(0, root.currentIndex)
+        root.pendingAction = ""
+        root.highlighted = Math.max(0, root.matchedIndexOfKey(root.current))
         grid.currentIndex = root.highlighted
         popup.open()
     }
@@ -108,6 +150,21 @@ FocusScope {
             return
         root.selected(rows[index].key)
         root.close()
+    }
+
+    // One click asks for confirmation (`confirm`); the next one acts.
+    function activateAction(key) {
+        var action = root.visibleActions.find(function (row) {
+            return row.key === key
+        })
+        if (!action || action.enabled === false)
+            return
+        if (action.confirm && root.pendingAction !== key) {
+            root.pendingAction = key
+            return
+        }
+        root.pendingAction = ""
+        root.actionTriggered(key, root.currentTab)
     }
 
     implicitWidth: VitrailTokens.size("display") * 9
@@ -177,6 +234,9 @@ FocusScope {
             anchors.fill: parent
             visible: preview.count === 0 && !!preview.option && !!preview.option.glyph
             variant: "icon"
+            // The chosen cell only changes colour; a filled glyph would read
+            // as a different icon.
+            filled: false
             font.pixelSize: Math.min(preview.size, VitrailTokens.size("title"))
             text: visible ? preview.option.glyph : ""
             horizontalAlignment: Text.AlignHCenter
@@ -213,10 +273,10 @@ FocusScope {
             spacing: VitrailTokens.gap("sm")
 
             Preview {
-                Layout.preferredWidth: 24
-                Layout.preferredHeight: 24
+                Layout.preferredWidth: root.triggerSize
+                Layout.preferredHeight: root.triggerSize
                 option: root.currentOption
-                size: 24
+                size: root.triggerSize
                 columns: root.triggerColumns
                 maxShown: root.triggerShown
             }
@@ -310,6 +370,18 @@ FocusScope {
                 }
             }
 
+            VitrailTabs {
+                Layout.fillWidth: true
+                Layout.leftMargin: VitrailTokens.gap("md")
+                Layout.rightMargin: VitrailTokens.gap("md")
+                visible: root.tabs.length > 0
+                tabs: root.tabs
+                current: root.currentTab
+                foreground: root.foreground
+                accent: root.accent
+                onSelected: root.currentTab = key
+            }
+
             VitrailField {
                 id: searchField
 
@@ -323,6 +395,16 @@ FocusScope {
                 onTextChanged: root.filter = searchField.text
             }
 
+            VitrailText {
+                Layout.fillWidth: true
+                Layout.leftMargin: VitrailTokens.gap("md")
+                Layout.rightMargin: VitrailTokens.gap("md")
+                visible: root.matched.length === 0 && root.emptyText !== ""
+                text: root.emptyText
+                color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.7)
+                horizontalAlignment: Text.AlignHCenter
+            }
+
             GridView {
                 id: grid
 
@@ -330,6 +412,7 @@ FocusScope {
                 Layout.leftMargin: VitrailTokens.gap("md")
                 Layout.rightMargin: VitrailTokens.gap("md")
                 Layout.bottomMargin: VitrailTokens.gap("md")
+                visible: root.matched.length > 0
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: root.matched
@@ -359,7 +442,7 @@ FocusScope {
                     required property var modelData
                     required property int index
 
-                    readonly property bool chosen: cell.index === root.currentIndex
+                    readonly property bool chosen: cell.modelData.key === root.current
                     readonly property bool pointed: cellHover.hovered
 
                     width: grid.cellWidth - VitrailTokens.gap("sm")
@@ -377,11 +460,11 @@ FocusScope {
 
                         Preview {
                             Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: 84
-                            Layout.preferredHeight: 84
+                            Layout.preferredWidth: root.cellPreview
+                            Layout.preferredHeight: root.cellPreview
                             option: cell.modelData
-                            size: 84
-                            columns: 3
+                            size: root.cellPreview
+                            columns: root.cellColumns
                             maxShown: 0
                         }
 
@@ -398,6 +481,36 @@ FocusScope {
 
                     TapHandler {
                         onTapped: root.pick(cell.index)
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: VitrailTokens.gap("md")
+                Layout.rightMargin: VitrailTokens.gap("md")
+                Layout.bottomMargin: VitrailTokens.gap("md")
+                visible: root.visibleActions.length > 0
+                spacing: VitrailTokens.gap("sm")
+
+                Item { Layout.fillWidth: true }
+
+                Repeater {
+                    model: root.visibleActions
+
+                    VitrailButton {
+                        required property var modelData
+
+                        readonly property bool confirming: root.pendingAction === modelData.key
+                                                          && !!modelData.confirm
+
+                        text: confirming ? modelData.confirm : (modelData.label || "")
+                        icon: modelData.icon || ""
+                        variant: modelData.variant || "tonal"
+                        tone: modelData.tone || "secondary"
+                        size: "sm"
+                        enabled: modelData.enabled !== false
+                        onClicked: root.activateAction(modelData.key)
                     }
                 }
             }
