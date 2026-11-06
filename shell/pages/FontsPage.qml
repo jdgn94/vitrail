@@ -691,17 +691,34 @@ Item {
                         }
                     }
 
-                    VitrailSlider {
-                        Layout.fillWidth: true
+                    VitrailSettingRow {
+                        icon: "straighten"
                         label: page.t("fonts.cursorSize")
-                        suffix: " px"
-                        from: VitrailTokens.ranges.cursor.min
-                        to: VitrailTokens.ranges.cursor.max
-                        stepSize: VitrailTokens.ranges.cursor.step
-                        value: page.prefs.cursorSize
                         foreground: page.palette.foreground
-                        accent: page.palette.primary
-                        onMoved: page.prefs.cursorSize = value
+                        muted: page.palette.muted
+
+                        VitrailSelect {
+                            objectName: "cursorSizeSelect"
+                            Layout.preferredWidth: 150
+                            label: page.t("fonts.cursorSize")
+                            // The recommended static sizes; a value stored by an
+                            // older build stays listed instead of being lost.
+                            options: {
+                                var sizes = [16, 20, 24, 28, 32, 40, 48]
+                                var now = Number(page.prefs.cursorSize)
+                                if (now > 0 && sizes.indexOf(now) < 0)
+                                    sizes.push(now)
+                                sizes.sort(function (a, b) { return a - b })
+                                return sizes.map(function (size) {
+                                    return { key: String(size), label: size + " px" }
+                                })
+                            }
+                            current: String(page.prefs.cursorSize)
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            panel: page.palette.surfaceHigh
+                            onSelected: page.prefs.cursorSize = Number(key)
+                        }
                     }
                 }
             }
