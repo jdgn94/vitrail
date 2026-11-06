@@ -309,7 +309,7 @@ Item {
         }
 
         VitrailPicker {
-            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 240
             objectName: card.pickerName
             large: true
@@ -486,40 +486,82 @@ Item {
                         }
                     }
 
-                    VitrailSettingRow {
-                        icon: "widgets"
-                        label: page.t("fonts.iconTheme")
-                        description: page.t("fonts.iconTheme.help")
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: VitrailTokens.gap("md")
 
-                        VitrailPicker {
-                            objectName: "iconThemePicker"
-                            Layout.preferredWidth: 240
-                            large: true
-                            label: page.t("fonts.iconTheme")
-                            searchHint: page.t("fonts.search")
-                            cellPreview: 120
-                            cellColumns: 4
-                            cellWidth: 176
-                            cellHeight: 184
-                            current: page.prefs.iconTheme
-                            options: page.normalIconOptions(page.prefs.iconTheme)
-                                            .concat(page.adaptiveIconOptions(page.prefs.iconTheme))
-                            tabs: [
-                                { key: "normal", icon: "apps", label: page.t("fonts.iconTheme.normal") },
-                                { key: "adaptive", icon: "palette",
-                                  label: page.t("fonts.iconTheme.adaptive") }
-                            ]
-                            currentTab: page.iconTab
-                            actions: page.iconActions
-                            emptyText: page.t("fonts.iconTheme.empty")
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            panel: page.palette.surfaceHigh
-                            onCurrentTabChanged: page.iconTab = currentTab
-                            onActionTriggered: function (key, tab) { page.onIconAction(key, tab) }
-                            onSelected: page.prefs.iconTheme = key
+                        RowLayout {
+                            objectName: "iconPickerHeader"
+                            Layout.fillWidth: true
+                            spacing: VitrailTokens.gap("sm")
+
+                            VitrailText {
+                                Layout.alignment: Qt.AlignTop
+                                Layout.preferredWidth: 24
+                                variant: "icon"
+                                font.pixelSize: VitrailTokens.size("title")
+                                icon: "widgets"
+                                color: page.palette.muted
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: VitrailTokens.gap("xs")
+
+                                VitrailText {
+                                    Layout.fillWidth: true
+                                    variant: "body"
+                                    text: page.t("fonts.iconTheme")
+                                    color: page.palette.foreground
+                                    wrapMode: Text.WordWrap
+                                }
+
+                                VitrailText {
+                                    Layout.fillWidth: true
+                                    variant: "content"
+                                    text: page.t("fonts.iconTheme.help")
+                                    color: page.palette.muted
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            Item { Layout.fillWidth: true }
+
+                            VitrailPicker {
+                                objectName: "iconThemePicker"
+                                Layout.preferredWidth: 240
+                                large: true
+                                label: page.t("fonts.iconTheme")
+                                searchHint: page.t("fonts.search")
+                                cellPreview: 120
+                                cellColumns: 4
+                                cellWidth: 176
+                                cellHeight: 184
+                                current: page.prefs.iconTheme
+                                options: page.normalIconOptions(page.prefs.iconTheme)
+                                                .concat(page.adaptiveIconOptions(page.prefs.iconTheme))
+                                tabs: [
+                                    { key: "normal", icon: "apps",
+                                      label: page.t("fonts.iconTheme.normal") },
+                                    { key: "adaptive", icon: "palette",
+                                      label: page.t("fonts.iconTheme.adaptive") }
+                                ]
+                                currentTab: page.iconTab
+                                actions: page.iconActions
+                                emptyText: page.t("fonts.iconTheme.empty")
+                                foreground: page.palette.foreground
+                                accent: page.palette.primary
+                                panel: page.palette.surfaceHigh
+                                onCurrentTabChanged: page.iconTab = currentTab
+                                onActionTriggered: function (key, tab) { page.onIconAction(key, tab) }
+                                onSelected: page.prefs.iconTheme = key
+                            }
+
+                            Item { Layout.fillWidth: true }
                         }
                     }
 
@@ -570,7 +612,7 @@ Item {
 
                         CursorCard {
                             objectName: "cursorSharedCard"
-                            Layout.preferredWidth: 360
+                            Layout.preferredWidth: 240
                             pickerName: "cursorThemePicker"
                             icon: "mouse"
                             label: page.t("fonts.cursor")

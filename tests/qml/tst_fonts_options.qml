@@ -139,6 +139,28 @@ TestCase {
         var row = card.parent
         var place = card.mapToItem(row, 0, 0)
         verify(Math.abs(place.x + card.width / 2 - row.width / 2) < 4)
+        // Fixed width: the card and its picker do not stretch with the row.
+        verify(Math.abs(card.width - 240) < 2)
+        var picker = findObject(card, "cursorThemePicker")
+        verify(picker !== null)
+        verify(Math.abs(picker.width - 240) < 2)
+        verify(card.width < row.width)
+    }
+
+    function test_the_icon_pack_sits_below_its_header_centred_and_fixed() {
+        page.item.tab = "icons"
+        wait(50)
+        var header = findObject(page.item, "iconPickerHeader")
+        var picker = findObject(page.item, "iconThemePicker")
+        verify(header !== null)
+        verify(picker !== null)
+        var head = header.mapToItem(page.item, 0, 0)
+        var pack = picker.mapToItem(page.item, 0, 0)
+        verify(pack.y >= head.y + header.height - 2)
+        var row = picker.parent
+        var place = picker.mapToItem(row, 0, 0)
+        verify(Math.abs(place.x + picker.width / 2 - row.width / 2) < 4)
+        verify(Math.abs(picker.width - 240) < 2)
     }
 
     function test_split_cursors_sit_side_by_side_in_equal_columns() {
@@ -155,6 +177,8 @@ TestCase {
         verify(Math.abs(left.y - right.y) < 2)
         verify(left.x < right.x)
         verify(Math.abs(light.width - dark.width) < 2)
+        verify(Math.abs(light.width - 240) < 2)
+        verify(Math.abs(dark.width - 240) < 2)
         prefs.cursorThemeSplit = false
     }
 }
