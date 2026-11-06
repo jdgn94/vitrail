@@ -196,6 +196,13 @@ TestCase {
         verify(glyph.font.variableAxes["FILL"] === undefined)
     }
 
+    function test_neither_trigger_draws_a_chevron() {
+        var compact = createTemporaryObject(pickerComponent, testCase)
+        compare(findText(compact, "expand_more"), null)
+        var large = createTemporaryObject(largeComponent, testCase)
+        compare(findText(large, "expand_more"), null)
+    }
+
     function test_the_large_trigger_is_a_card_with_the_name() {
         var picker = createTemporaryObject(largeComponent, testCase)
         compare(picker.large, true)

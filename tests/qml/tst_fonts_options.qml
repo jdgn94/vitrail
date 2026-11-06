@@ -58,6 +58,15 @@ TestCase {
             compare(rows[i].key.indexOf("vitrail-icons-"), 0)
     }
 
+    function test_each_adaptive_icon_pack_has_three_fill_variants() {
+        var keys = page.item.adaptiveIconOptions("").map(function (row) {
+            return row.key
+        })
+        verify(keys.indexOf("vitrail-icons-Adwaita") >= 0)
+        verify(keys.indexOf("vitrail-icons-Adwaita@light") >= 0)
+        verify(keys.indexOf("vitrail-icons-Adwaita@solid") >= 0)
+    }
+
     function test_normal_icons_exclude_vitrail_icons() {
         var rows = page.item.normalIconOptions("Adwaita")
         verify(rows.length > 0)
@@ -88,5 +97,33 @@ TestCase {
         var shared = page.item.cursorOptions("", false)
         compare(split[0].key, "")
         compare(shared[0].key === "", false)
+    }
+
+    function findObject(item, name) {
+        if (item.objectName === name)
+            return item
+        for (var i = 0; i < item.children.length; i++) {
+            var found = findObject(item.children[i], name)
+            if (found)
+                return found
+        }
+        return null
+    }
+
+    function test_split_cursors_sit_side_by_side_in_equal_columns() {
+        prefs.cursorThemeSplit = true
+        page.item.tab = "cursor"
+        wait(50)
+        var light = findObject(page.item, "cursorLightPicker")
+        var dark = findObject(page.item, "cursorDarkPicker")
+        verify(light !== null)
+        verify(dark !== null)
+        verify(light.visible && dark.visible)
+        var left = light.mapToItem(page.item, 0, 0)
+        var right = dark.mapToItem(page.item, 0, 0)
+        verify(Math.abs(left.y - right.y) < 2)
+        verify(left.x < right.x)
+        verify(Math.abs(light.width - dark.width) < 2)
+        prefs.cursorThemeSplit = false
     }
 }

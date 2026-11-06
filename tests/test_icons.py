@@ -64,6 +64,88 @@ def icon_names() -> set[str]:
     return names - NOT_ICONS
 
 
+class DesignTests(unittest.TestCase):
+    def test_design_names_carry_an_optional_style(self) -> None:
+        self.assertEqual(icons.design_name("Papirus"), "vitrail-icons-Papirus")
+        self.assertEqual(icons.design_name("Papirus", "light"), "vitrail-icons-Papirus@light")
+        self.assertEqual(icons.design_name("Papirus", "solid"), "vitrail-icons-Papirus@solid")
+
+    def test_split_design_reads_the_style_back(self) -> None:
+        self.assertEqual(icons.split_design("vitrail-icons-Papirus@light"), ("Papirus", "light"))
+        self.assertEqual(icons.split_design("vitrail-icons-Papirus@solid"), ("Papirus", "solid"))
+        self.assertEqual(icons.split_design("vitrail-icons-Papirus"), ("Papirus", ""))
+        self.assertEqual(icons.split_design("Papirus"), ("", ""))
+
+    def test_source_of_drops_the_style(self) -> None:
+        self.assertEqual(icons.source_of("vitrail-icons-Papirus@light"), "Papirus")
+        self.assertEqual(icons.source_of("vitrail-icons-Papirus"), "Papirus")
+        self.assertEqual(icons.source_of("Papirus"), "")
+
+
+class TintStyleTests(unittest.TestCase):
+    SVG = '<svg><path style="fill:#5294e2"/><path style="fill:#2b2b2b"/></svg>'
+
+    def test_the_default_style_keeps_the_pack_shading(self) -> None:
+        tinted = icons.tint_svg(self.SVG, {"primary": "#ff0000"})
+        self.assertIn("#2b2b2b", tinted)
+        self.assertNotIn("#5294e2", tinted)
+
+    def test_light_keeps_the_outline_and_lifts_the_body(self) -> None:
+        tinted = icons.tint_svg(self.SVG, {"primary": "#ff0000"}, "light")
+        body = icons.colours(tinted)[0]
+        self.assertGreater(icons._hsl(body)[1], 0.8)
+        self.assertIn("#2b2b2b", tinted)
+
+    def test_solid_uses_primary_and_keeps_the_outline(self) -> None:
+        tinted = icons.tint_svg(self.SVG, {"primary": "#ff0000"}, "solid")
+        self.assertEqual(icons.colours(tinted)[0], "#ff0000")
+        self.assertIn("#2b2b2b", tinted)
+
+    def test_an_unknown_style_falls_back_to_the_default(self) -> None:
+        self.assertEqual(
+            icons.tint_svg(self.SVG, {"primary": "#ff0000"}, "nope"),
+            icons.tint_svg(self.SVG, {"primary": "#ff0000"}),
+        )
+
+
+class BuildStyleTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.pack = self.root / "icons" / "Acme"
+        (self.pack / "48x48" / "places").mkdir(parents=True)
+        (self.pack / "48x48" / "places" / "folder.svg").write_text(
+            '<svg><path style="fill:#5294e2"/><path style="fill:#2b2b2b"/></svg>', encoding="utf-8"
+        )
+        (self.pack / "index.theme").write_text(
+            "[Icon Theme]\nDirectories=48x48/places\n\n[48x48/places]\nSize=48\n", encoding="utf-8"
+        )
+        self.cache = self.root / "cache"
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def build(self, style: str, target: Path) -> bool:
+        return icons.build(self.pack, target, {"primary": "#ff0000"}, self.cache, [self.pack.parent], style=style)
+
+    def test_each_style_lands_in_its_own_name(self) -> None:
+        for style in ("", "light", "solid"):
+            target = self.root / "icons" / icons.design_name("Acme", style)
+            self.assertTrue(self.build(style, target))
+            text = (target / "index.theme").read_text(encoding="utf-8")
+            name = "Vitrail icons · Acme" + (f" ({style})" if style else "")
+            self.assertIn(f"Name={name}", text)
+            self.assertIn("Inherits=Acme", text)
+
+    def test_the_style_is_part_of_the_cache_key(self) -> None:
+        target = self.root / "icons" / "vitrail-icons-Acme@light"
+        self.assertTrue(self.build("", target))
+        first = (target / "48x48" / "places" / "folder.svg").read_text(encoding="utf-8")
+        self.assertTrue(self.build("light", target))
+        second = (target / "48x48" / "places" / "folder.svg").read_text(encoding="utf-8")
+        self.assertNotEqual(first, second)
+
+
 class IconTests(unittest.TestCase):
     def test_icon_tables_and_segmented_options_are_collected(self) -> None:
         names = icon_names()

@@ -61,10 +61,15 @@ Item {
     }
 
     function iconLabel(name) {
-        var pack = name.indexOf("vitrail-icons-") === 0 ? name.substring(14) : name
-        return name.indexOf("vitrail-icons-") === 0
-                ? page.t("fonts.vitrail") + " · " + pack.replace(/-/g, " ")
-                : name
+        if (name.indexOf("vitrail-icons-") !== 0)
+            return name
+        var rest = name.substring(14)
+        var at = rest.lastIndexOf("@")
+        var style = at > 0 ? rest.substring(at + 1) : ""
+        var pack = at > 0 && (style === "light" || style === "solid") ? rest.substring(0, at) : rest
+        var label = page.t("fonts.vitrail") + " · " + pack.replace(/-/g, " ")
+        return style === "" ? label
+                            : label + " · " + page.t("fonts.iconTheme." + style)
     }
 
     // The installed packs, one row each; the stored value stays selectable.
@@ -83,29 +88,35 @@ Item {
         return rows
     }
 
-    // The generated Vitrail layers plus one row per pack they can be built
-    // from: choosing that row writes `vitrail-icons-<pack>` and apply builds it.
+    // The generated Vitrail layers plus three rows per pack: the pack's own
+    // shading, a light body and a solid one. Choosing a row writes its full
+    // name (`@light` / `@solid`) and apply builds that style.
     function adaptiveIconOptions(current) {
         var rows = []
         var seen = Object.create(null)
         var previews = page.fonts.iconPreviews || {}
-        ;(page.fonts.iconThemes || []).forEach(function (name) {
-            if (name.indexOf("vitrail-icons-") !== 0 || seen[name])
-                return
-            seen[name] = true
-            var pack = name.substring(14)
-            rows.push(page.iconRow(name, page.iconLabel(name),
-                                   previews[name] || previews[pack] || [], "adaptive"))
-        })
-        ;(page.fonts.iconDesigns || []).forEach(function (pack) {
-            var name = "vitrail-icons-" + pack
+        function add(name, icons) {
             if (seen[name])
                 return
             seen[name] = true
-            rows.push(page.iconRow(name, page.iconLabel(name), previews[pack] || [], "adaptive"))
+            rows.push(page.iconRow(name, page.iconLabel(name), icons || [], "adaptive"))
+        }
+        ;(page.fonts.iconThemes || []).forEach(function (name) {
+            if (name.indexOf("vitrail-icons-") !== 0 || seen[name])
+                return
+            var rest = name.substring(14)
+            var at = rest.lastIndexOf("@")
+            var pack = at > 0 ? rest.substring(0, at) : rest
+            add(name, previews[name] || previews[pack])
         })
-        if (current && current.indexOf("vitrail-icons-") === 0 && !seen[current])
-            rows.push(page.iconRow(current, page.iconLabel(current), previews[current] || [], "adaptive"))
+        ;(page.fonts.iconDesigns || []).forEach(function (pack) {
+            var base = "vitrail-icons-" + pack
+            add(base, previews[pack] || previews[base])
+            add(base + "@light", previews[pack] || previews[base + "@light"])
+            add(base + "@solid", previews[pack] || previews[base + "@solid"])
+        })
+        if (current && current.indexOf("vitrail-icons-") === 0)
+            add(current, previews[current])
         rows.sort(function (a, b) { return a.label.localeCompare(b.label) })
         return rows
     }
@@ -361,17 +372,54 @@ Item {
                     foreground: page.palette.foreground
                     accent: page.palette.primary
 
-                    VitrailSettingRow {
-                        icon: "interests"
-                        label: page.t("fonts.uiIcons")
-                        description: page.t("fonts.uiIcons.help")
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
+                    // The shell-icons family is a stacked setting: its
+                    // segmented control sits under the title and description,
+                    // left-aligned with the text column, not beside it.
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: VitrailTokens.gap("sm")
 
                         RowLayout {
+                            Layout.fillWidth: true
+                            spacing: VitrailTokens.gap("sm")
+
+                            VitrailText {
+                                Layout.alignment: Qt.AlignTop
+                                Layout.preferredWidth: 24
+                                variant: "icon"
+                                font.pixelSize: VitrailTokens.size("title")
+                                text: "interests"
+                                color: page.palette.muted
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: VitrailTokens.gap("xs")
+
+                                VitrailText {
+                                    Layout.fillWidth: true
+                                    variant: "body"
+                                    text: page.t("fonts.uiIcons")
+                                    color: page.palette.foreground
+                                    wrapMode: Text.WordWrap
+                                }
+
+                                VitrailText {
+                                    Layout.fillWidth: true
+                                    variant: "content"
+                                    text: page.t("fonts.uiIcons.help")
+                                    color: page.palette.muted
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 24 + VitrailTokens.gap("sm")
                             spacing: VitrailTokens.gap("md")
 
-                            // The chosen family's own glyph, beside the switch.
+                            // The chosen family's own glyph, beside the choice.
                             VitrailText {
                                 variant: "icon"
                                 font.pixelSize: VitrailTokens.size("title")
@@ -504,73 +552,167 @@ Item {
                         }
                     }
 
-                    VitrailSettingRow {
+                    ColumnLayout {
+                        Layout.fillWidth: true
                         visible: page.prefs.cursorThemeSplit
-                        icon: "light_mode"
-                        label: page.t("fonts.cursor.light")
-                        description: page.t("fonts.cursor.light.help")
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
+                        spacing: VitrailTokens.gap("md")
 
-                        VitrailPicker {
-                            objectName: "cursorLightPicker"
-                            Layout.preferredWidth: 240
-                            large: true
-                            label: page.t("fonts.cursor.light")
-                            searchHint: page.t("fonts.search")
-                            cellPreview: 120
-                            cellColumns: 4
-                            cellWidth: 176
-                            cellHeight: 184
-                            tabs: [
-                                { key: "normal", icon: "apps", label: page.t("fonts.cursor.normal") },
-                                { key: "adaptive", icon: "palette",
-                                  label: page.t("fonts.cursor.adaptive") }
-                            ]
-                            currentTab: page.cursorTab
-                            emptyText: page.t("fonts.cursor.empty")
-                            current: page.prefs.cursorThemeLight
-                            options: page.cursorOptions(page.prefs.cursorThemeLight, true)
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            panel: page.palette.surfaceHigh
-                            onCurrentTabChanged: page.cursorTab = currentTab
-                            onSelected: page.prefs.cursorThemeLight = key
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: VitrailTokens.gap("sm")
+
+                            VitrailText {
+                                Layout.alignment: Qt.AlignTop
+                                Layout.preferredWidth: 24
+                                variant: "icon"
+                                font.pixelSize: VitrailTokens.size("title")
+                                text: "mouse"
+                                color: page.palette.muted
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: VitrailTokens.gap("xs")
+
+                                VitrailText {
+                                    Layout.fillWidth: true
+                                    variant: "body"
+                                    text: page.t("fonts.cursor")
+                                    color: page.palette.foreground
+                                    wrapMode: Text.WordWrap
+                                }
+
+                                VitrailText {
+                                    Layout.fillWidth: true
+                                    variant: "content"
+                                    text: page.t("fonts.cursor.split.help")
+                                    color: page.palette.muted
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
                         }
-                    }
 
-                    VitrailSettingRow {
-                        visible: page.prefs.cursorThemeSplit
-                        icon: "dark_mode"
-                        label: page.t("fonts.cursor.dark")
-                        description: page.t("fonts.cursor.dark.help")
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: VitrailTokens.gap("xl")
 
-                        VitrailPicker {
-                            objectName: "cursorDarkPicker"
-                            Layout.preferredWidth: 240
-                            large: true
-                            label: page.t("fonts.cursor.dark")
-                            searchHint: page.t("fonts.search")
-                            cellPreview: 120
-                            cellColumns: 4
-                            cellWidth: 176
-                            cellHeight: 184
-                            tabs: [
-                                { key: "normal", icon: "apps", label: page.t("fonts.cursor.normal") },
-                                { key: "adaptive", icon: "palette",
-                                  label: page.t("fonts.cursor.adaptive") }
-                            ]
-                            currentTab: page.cursorTab
-                            emptyText: page.t("fonts.cursor.empty")
-                            current: page.prefs.cursorThemeDark
-                            options: page.cursorOptions(page.prefs.cursorThemeDark, true)
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            panel: page.palette.surfaceHigh
-                            onCurrentTabChanged: page.cursorTab = currentTab
-                            onSelected: page.prefs.cursorThemeDark = key
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: VitrailTokens.gap("sm")
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: VitrailTokens.gap("xs")
+
+                                    VitrailText {
+                                        variant: "icon"
+                                        text: "light_mode"
+                                        color: page.palette.muted
+                                    }
+
+                                    VitrailText {
+                                        Layout.fillWidth: true
+                                        variant: "body"
+                                        text: page.t("fonts.cursor.light")
+                                        color: page.palette.foreground
+                                    }
+                                }
+
+                                VitrailPicker {
+                                    objectName: "cursorLightPicker"
+                                    Layout.fillWidth: true
+                                    Layout.preferredWidth: 240
+                                    large: true
+                                    label: page.t("fonts.cursor.light")
+                                    searchHint: page.t("fonts.search")
+                                    cellPreview: 120
+                                    cellColumns: 4
+                                    cellWidth: 176
+                                    cellHeight: 184
+                                    tabs: [
+                                        { key: "normal", icon: "apps",
+                                          label: page.t("fonts.cursor.normal") },
+                                        { key: "adaptive", icon: "palette",
+                                          label: page.t("fonts.cursor.adaptive") }
+                                    ]
+                                    currentTab: page.cursorTab
+                                    emptyText: page.t("fonts.cursor.empty")
+                                    current: page.prefs.cursorThemeLight
+                                    options: page.cursorOptions(page.prefs.cursorThemeLight, true)
+                                    foreground: page.palette.foreground
+                                    accent: page.palette.primary
+                                    panel: page.palette.surfaceHigh
+                                    onCurrentTabChanged: page.cursorTab = currentTab
+                                    onSelected: page.prefs.cursorThemeLight = key
+                                }
+
+                                VitrailText {
+                                    Layout.fillWidth: true
+                                    variant: "label"
+                                    text: page.t("fonts.cursor.light.note")
+                                    color: page.palette.muted
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: VitrailTokens.gap("sm")
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: VitrailTokens.gap("xs")
+
+                                    VitrailText {
+                                        variant: "icon"
+                                        text: "dark_mode"
+                                        color: page.palette.muted
+                                    }
+
+                                    VitrailText {
+                                        Layout.fillWidth: true
+                                        variant: "body"
+                                        text: page.t("fonts.cursor.dark")
+                                        color: page.palette.foreground
+                                    }
+                                }
+
+                                VitrailPicker {
+                                    objectName: "cursorDarkPicker"
+                                    Layout.fillWidth: true
+                                    Layout.preferredWidth: 240
+                                    large: true
+                                    label: page.t("fonts.cursor.dark")
+                                    searchHint: page.t("fonts.search")
+                                    cellPreview: 120
+                                    cellColumns: 4
+                                    cellWidth: 176
+                                    cellHeight: 184
+                                    tabs: [
+                                        { key: "normal", icon: "apps",
+                                          label: page.t("fonts.cursor.normal") },
+                                        { key: "adaptive", icon: "palette",
+                                          label: page.t("fonts.cursor.adaptive") }
+                                    ]
+                                    currentTab: page.cursorTab
+                                    emptyText: page.t("fonts.cursor.empty")
+                                    current: page.prefs.cursorThemeDark
+                                    options: page.cursorOptions(page.prefs.cursorThemeDark, true)
+                                    foreground: page.palette.foreground
+                                    accent: page.palette.primary
+                                    panel: page.palette.surfaceHigh
+                                    onCurrentTabChanged: page.cursorTab = currentTab
+                                    onSelected: page.prefs.cursorThemeDark = key
+                                }
+
+                                VitrailText {
+                                    Layout.fillWidth: true
+                                    variant: "label"
+                                    text: page.t("fonts.cursor.dark.note")
+                                    color: page.palette.muted
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
                         }
                     }
 

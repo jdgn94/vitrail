@@ -25,6 +25,9 @@ import zipfile
 from pathlib import Path
 
 PREFIX = "vitrail-icons-"
+# A generated layer can carry a fill style after `@`: plain (the pack's own
+# folder shading, hue-shifted), a light body, or a solid primary body.
+STYLES = ("", "light", "solid")
 # A pack imported from a zip lands here, in the user's own icon folder; an
 # earlier copy moves to BACKUP_DIR first, so replacing is never destructive.
 BACKUP_DIR = ".vitrail-backups"
@@ -60,12 +63,25 @@ def log(message: str) -> None:
     print(f"vitrail-icons: {message}", file=sys.stderr, flush=True)
 
 
-def design_name(pack: str) -> str:
-    return PREFIX + pack
+def design_name(pack: str, style: str = "") -> str:
+    """`vitrail-icons-<pack>` plus `@light` / `@solid` when asked."""
+    suffix = f"@{style}" if style in STYLES and style else ""
+    return PREFIX + pack + suffix
+
+
+def split_design(name: str) -> tuple[str, str]:
+    """(pack, style) of a generated name; ("", "") for a plain pack."""
+    if not name.startswith(PREFIX) or len(name) == len(PREFIX):
+        return "", ""
+    rest = name[len(PREFIX) :]
+    pack, at, style = rest.rpartition("@")
+    if at and style in STYLES and style:
+        return pack, style
+    return rest, ""
 
 
 def source_of(name: str) -> str:
-    return name[len(PREFIX) :] if name.startswith(PREFIX) and len(name) > len(PREFIX) else ""
+    return split_design(name)[0]
 
 
 def output_root() -> Path:
@@ -296,14 +312,27 @@ def body(text: str) -> str | None:
     return max(counts, key=lambda value: (counts[value], _hsl(value)[2]))
 
 
-def tint_svg(text: str, palette: dict) -> str:
-    """Hue-shifts the folder body towards `primary`, keeping its shading."""
+def tint_svg(text: str, palette: dict, style: str = "") -> str:
+    """Recolours the folder body towards `primary`, keeping the outline.
+
+    `""` hue-shifts every body shade (the pack's own light/dark reading is
+    preserved). `light` paints the body as a pale tint of `primary`; `solid`
+    paints it as `primary` itself. Colours outside the body hue window
+    (outlines, symbols) are never touched.
+    """
+    style = style if style in STYLES else ""
     anchor = body(text)
     primary = palette.get("primary")
     if anchor is None or not primary or not HEX.match(primary):
         return text
     anchor_hue = _hsl(anchor)[0]
-    target_hue = _hsl(primary)[0]
+    target_hue, _primary_light, primary_saturation = _hsl(primary)
+    if style == "light":
+        flat = _hex(target_hue, 0.85, max(0.35, min(0.60, primary_saturation)))
+    elif style == "solid":
+        flat = primary
+    else:
+        flat = ""
 
     def replace(match: re.Match) -> str:
         value = match.group(3)
@@ -314,7 +343,8 @@ def tint_svg(text: str, palette: dict) -> str:
         distance = min(distance, 1 - distance)
         if distance * 360 > HUE_WINDOW:
             return match.group(0)
-        return f"{match.group(1)}{match.group(2)}{_hex(target_hue, lightness, saturation)}"
+        body_colour = flat or _hex(target_hue, lightness, saturation)
+        return f"{match.group(1)}{match.group(2)}{body_colour}"
 
     return COLOUR.sub(replace, text)
 
@@ -385,14 +415,25 @@ def folder_files(pack: Path, roots: list[Path]) -> list[tuple[Path, str]]:
     return [(source, relative) for relative, source in sorted(found.items())]
 
 
-def build(pack: Path, target: Path, palette: dict, cache: Path, roots: list[Path], force: bool = False) -> bool:
+def build(
+    pack: Path,
+    target: Path,
+    palette: dict,
+    cache: Path,
+    roots: list[Path],
+    force: bool = False,
+    style: str = "",
+) -> bool:
     """Writes the folder layer of `pack`, tinted; False when already current."""
     files = folder_files(pack, roots)
     if not files:
         return False
+    style = style if style in STYLES else ""
     stamp = cache / "stamp"
     current = hashlib.sha256(
-        json.dumps({"pack": str(pack), "primary": palette.get("primary", "")}, sort_keys=True).encode("utf-8")
+        json.dumps({"pack": str(pack), "primary": palette.get("primary", ""), "style": style}, sort_keys=True).encode(
+            "utf-8"
+        )
     ).hexdigest()
     if not force and (target / "index.theme").is_file() and stamp.is_file():
         try:
@@ -408,11 +449,11 @@ def build(pack: Path, target: Path, palette: dict, cache: Path, roots: list[Path
             text = source.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        destination.write_text(tint_svg(text, palette), encoding="utf-8")
+        destination.write_text(tint_svg(text, palette, style), encoding="utf-8")
 
     (target / "index.theme").write_text(
         "[Icon Theme]\n"
-        f"Name=Vitrail icons · {pack.name}\n"
+        f"Name=Vitrail icons · {pack.name}" + (f" ({style})" if style else "") + "\n"
         f"Comment=Vitrail's palette on the {pack.name} folders\n"
         f"Inherits={pack.name}\n"
         "Directories=" + ",".join(sorted({str(Path(relative).parent) for _s, relative in files})) + "\n",

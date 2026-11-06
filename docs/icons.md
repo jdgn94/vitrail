@@ -71,14 +71,17 @@ stamp per pack and palette skips the work otherwise.
 
 From the window:
 
-1. **Icons → Palette tint** writes `iconTheme = vitrail-icons-<pack>` to
-   `fonts.ini`;
+1. the Icons tab's **Adaptive** section writes
+   `iconTheme = vitrail-icons-<pack>` (or `@light` / `@solid`) to `fonts.ini`;
 2. `scripts/apply-settings.sh` runs `python3 -m vitrail.fonts apply`;
-3. `apply` builds the layer (only the active one) and sets
+3. `apply` builds the layer for that style and sets
    `org.gnome.desktop.interface icon-theme`, `gtk-icon-theme-name` and qt6ct's
    `icon_theme` to the generated name.
 
-**Off** writes the pack's own name back.
+The plain row keeps each folder shade with its hue moved to `primary`. `@light`
+paints the body at L≈0.85 with a moderate saturation; `@solid` paints it as
+`primary`. Both keep the original outline and any symbol outside the folder
+body hue, so the folder still reads as the pack's own art.
 
 The generated theme is a normal installed theme: it appears in **App icon
 pack**, in `vitrail-fonts state`, and in any other program's theme list. Its

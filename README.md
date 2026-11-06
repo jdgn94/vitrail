@@ -369,9 +369,10 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   what makes a pack tint well, the Xcursor layout, and what each part of the
   session picks up live (X11 included) — is `docs/cursors.md`.
   On the Icons tab one picker lists both the installed packs (**Normal**) and
-  the palette-tinted Vitrail layers (**Adaptive**): the adaptive tab offers a
-  `Vitrail · <pack>` row for each installed pack and rebuilds only its folders,
-  keeping the shading and inheriting every other icon (`vitrail/icons.py`).
+  the palette-tinted Vitrail layers (**Adaptive**): each installed pack has
+  three rows there — the pack's own shading, a **light** fill and a **solid**
+  primary fill (`vitrail-icons-<pack>`, `@light`, `@solid`). Only the folders
+  are rebuilt; every other icon is inherited (`vitrail/icons.py`).
   Each tab can import a validated `.zip` into `~/.local/share/icons` (with a
   backup when it replaces an existing pack) or delete a pack that lives in the
   user's own folders; `docs/icons.md` is the authoring guide.

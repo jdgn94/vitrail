@@ -303,16 +303,6 @@ FocusScope {
                 text: root.currentLabel
                 elide: Text.ElideRight
             }
-
-            VitrailText {
-                variant: "icon"
-                font.pixelSize: VitrailTokens.size("subtitle")
-                text: "expand_more"
-                color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.7)
-                rotation: root.expanded ? 180 : 0
-
-                Behavior on rotation { NumberAnimation { duration: root.duration; easing.type: Easing.OutCubic } }
-            }
         }
 
         ColumnLayout {
@@ -338,20 +328,6 @@ FocusScope {
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
             }
-        }
-
-        VitrailText {
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.margins: VitrailTokens.gap("sm")
-            visible: root.large
-            variant: "icon"
-            font.pixelSize: VitrailTokens.size("subtitle")
-            text: "expand_more"
-            color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.7)
-            rotation: root.expanded ? 180 : 0
-
-            Behavior on rotation { NumberAnimation { duration: root.duration; easing.type: Easing.OutCubic } }
         }
 
         TapHandler {

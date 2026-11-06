@@ -612,9 +612,11 @@ def apply(
     # the other groups still apply.
     icons = ""
     if live["iconThemes"]:
-        icon_designs = [icon_engine.design_name(name) for name in live.get("iconDesigns", [])]
+        icon_designs = [
+            icon_engine.design_name(name, style) for name in live.get("iconDesigns", []) for style in icon_engine.STYLES
+        ]
         icons = pick(values.get("iconTheme"), live["iconThemes"] + icon_designs, DEFAULT_ICON_THEME, "icon theme")
-        pack = icon_engine.source_of(icons)
+        pack, style = icon_engine.split_design(icons)
         if pack:
             source = theme_dir(pack, roots or DEFAULT_ROOTS)
             if source is None:
@@ -629,6 +631,7 @@ def apply(
                     palette if palette is not None else active_palette(),
                     cache / "icon-themes",
                     roots or DEFAULT_ROOTS,
+                    style=style,
                 )
     else:
         log("skipped: no icon theme found")

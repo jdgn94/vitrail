@@ -526,6 +526,40 @@ class ApplyTests(unittest.TestCase):
             (self.config / "gtk-3.0/settings.ini").read_text(encoding="utf-8"),
         )
 
+    def test_an_icon_style_is_resolved_and_built(self) -> None:
+        places = self.icons / "Adwaita" / "48x48" / "places"
+        places.mkdir(parents=True)
+        (places / "folder.svg").write_text(
+            '<svg><path style="fill:#5294e2"/><path style="fill:#2b2b2b"/></svg>', encoding="utf-8"
+        )
+        (self.icons / "Adwaita" / "index.theme").write_text(
+            "[Icon Theme]\nDirectories=48x48/places\n\n[48x48/places]\nSize=48\n", encoding="utf-8"
+        )
+        code = fonts.apply(
+            {
+                "fontSystem": "Roboto",
+                "iconTheme": "vitrail-icons-Adwaita@light",
+                "cursorTheme": "Adwaita",
+                "cursorSize": 24,
+            },
+            self.config,
+            run=self.recording(FACES),
+            roots=[self.icons],
+            hyprland=False,
+            x11=False,
+            palette={"primary": "#ff0000"},
+            data_home=self.root / "data",
+            cache=self.root / "cache",
+        )
+        self.assertEqual(code, 0)
+        theme = self.root / "data" / "icons" / "vitrail-icons-Adwaita@light"
+        self.assertTrue(theme.is_dir())
+        self.assertIn("Name=Vitrail icons · Adwaita (light)", (theme / "index.theme").read_text(encoding="utf-8"))
+        self.assertIn(
+            "gtk-icon-theme-name=vitrail-icons-Adwaita@light",
+            (self.config / "gtk-3.0/settings.ini").read_text(encoding="utf-8"),
+        )
+
     def test_the_own_busy_cursor_is_not_written_from_the_page(self) -> None:
         def render(svg: str) -> bytes:
             return bytes((0, 255, 0, 255)) * (32 * 32)
