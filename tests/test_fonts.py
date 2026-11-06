@@ -195,6 +195,51 @@ class PreviewTests(unittest.TestCase):
         self.assertTrue(state["iconPreviews"]["Adwaita"][0].endswith("folder.png"))
         self.assertTrue(state["cursorPreviews"]["Adwaita"][0].endswith(".png"))
 
+    def test_styled_previews_show_light_and_solid_before_applying(self) -> None:
+        coloured = '<svg><path style="fill:#5294e2"/></svg>'
+        (self.icons / "Adwaita" / "32x32" / "apps" / "web-browser.svg").write_text(coloured, encoding="utf-8")
+        (self.icons / "Adwaita" / "scalable" / "apps" / "image-x-generic.svg").write_text(coloured, encoding="utf-8")
+        state = fonts.state(
+            run=lambda argv: "Roboto\t80\n",
+            roots=[self.icons],
+            cache=self.cache,
+            palette={"primary": "#ff0000"},
+        )
+        base = state["iconPreviews"]["Adwaita"]
+        light = state["iconPreviews"]["vitrail-icons-Adwaita@light"]
+        solid = state["iconPreviews"]["vitrail-icons-Adwaita@solid"]
+        self.assertNotEqual(light, base)
+        self.assertNotEqual(solid, base)
+        self.assertTrue(all(Path(path).is_file() for path in light + solid))
+        light_text = Path(light[0]).read_text(encoding="utf-8")
+        solid_text = Path(solid[0]).read_text(encoding="utf-8")
+        self.assertNotEqual(light_text, solid_text)
+        self.assertIn("#ff0000", solid_text)
+
+    def test_without_a_palette_the_styled_rows_keep_the_base_previews(self) -> None:
+        state = fonts.state(
+            run=lambda argv: "Roboto\t80\n",
+            roots=[self.icons],
+            cache=self.cache,
+            palette={},
+        )
+        base = state["iconPreviews"]["Adwaita"]
+        self.assertEqual(state["iconPreviews"]["vitrail-icons-Adwaita@light"], base)
+        self.assertEqual(state["iconPreviews"]["vitrail-icons-Adwaita@solid"], base)
+
+    def test_a_pack_without_previews_gets_no_styled_rows(self) -> None:
+        bare = self.icons / "Bare"
+        (bare / "48x48").mkdir(parents=True)
+        (bare / "index.theme").write_text("[Icon Theme]\nDirectories=48x48\n\n[48x48]\nSize=48\n", encoding="utf-8")
+        state = fonts.state(
+            run=lambda argv: "Roboto\t80\n",
+            roots=[self.icons],
+            cache=self.cache,
+            palette={"primary": "#ff0000"},
+        )
+        self.assertNotIn("vitrail-icons-Bare@light", state["iconPreviews"])
+        self.assertNotIn("vitrail-icons-Bare@solid", state["iconPreviews"])
+
 
 class EntryTests(unittest.TestCase):
     def test_state_prints_the_lists(self) -> None:

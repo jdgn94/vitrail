@@ -13,6 +13,7 @@ offers what fontconfig and the theme folders report.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -342,11 +343,46 @@ def cursor_previews(theme: Path, cache: Path) -> list[str]:
     return found
 
 
+def styled_previews(files: list[str], style: str, palette: dict, cache: Path) -> list[str]:
+    """The base pack's SVG previews, tinted with `style`, in the cache.
+
+    PNG previews are skipped: the picker can still show the base pack for
+    them, but only vector previews can be recoloured without an image
+    dependency.
+    """
+    if style not in ("light", "solid") or not palette.get("primary"):
+        return []
+    root = cache / "icon-styles"
+    styled: list[str] = []
+    for name in files:
+        source = Path(name)
+        if source.suffix.lower() != ".svg":
+            continue
+        try:
+            text = source.read_text(encoding="utf-8", errors="replace")
+            modified = source.stat().st_mtime_ns
+        except OSError:
+            continue
+        digest = hashlib.sha256(
+            f"{source}:{modified}:{style}:{palette.get('primary', '')}".encode("utf-8")
+        ).hexdigest()[:12]
+        target = root / f"{source.stem}-{style}-{digest}.svg"
+        try:
+            if not target.is_file():
+                root.mkdir(parents=True, exist_ok=True)
+                target.write_text(icon_engine.tint_svg(text, palette, style), encoding="utf-8")
+        except OSError:
+            continue
+        styled.append(str(target))
+    return styled
+
+
 def state(
     run: Runner = run_text,
     roots: list[Path] | None = None,
     cache: Path | None = None,
     user_roots: list[Path] | None = None,
+    palette: dict | None = None,
 ) -> dict:
     """The lists the settings window offers: fonts, packs and cursors."""
     roots = list(roots) if roots is not None else DEFAULT_ROOTS
@@ -372,6 +408,18 @@ def state(
     # is not itself generated.
     designs = [name for name in cursors if not name.startswith(cursor_engine.PREFIX)]
     icon_designs = [name for name in icons if not name.startswith(icon_engine.PREFIX)]
+
+    # The picker must show what @light and @solid look like before applying
+    # them: tint the base pack's vector previews once per palette and cache.
+    inks = palette if palette is not None else active_palette()
+    for pack in icon_designs:
+        base = icon_files.get(pack)
+        if not base:
+            continue
+        for style in ("light", "solid"):
+            key = icon_engine.design_name(pack, style)
+            if key not in icon_files:
+                icon_files[key] = styled_previews(base, style, inks, cache) or base
 
     return {
         "fonts": families(text),

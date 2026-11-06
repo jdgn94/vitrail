@@ -111,9 +111,9 @@ Item {
         })
         ;(page.fonts.iconDesigns || []).forEach(function (pack) {
             var base = "vitrail-icons-" + pack
-            add(base, previews[pack] || previews[base])
-            add(base + "@light", previews[pack] || previews[base + "@light"])
-            add(base + "@solid", previews[pack] || previews[base + "@solid"])
+            add(base, previews[base] || previews[pack])
+            add(base + "@light", previews[base + "@light"] || previews[pack] || previews[base])
+            add(base + "@solid", previews[base + "@solid"] || previews[pack] || previews[base])
         })
         if (current && current.indexOf("vitrail-icons-") === 0)
             add(current, previews[current])

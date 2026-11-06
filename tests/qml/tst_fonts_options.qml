@@ -42,7 +42,12 @@ TestCase {
                 iconUser: ["vitrail-icons-Adwaita"],
                 cursorThemes: ["Adwaita", "Bibata", "vitrail-Adwaita"],
                 cursorDesigns: ["Adwaita", "Bibata"],
-                iconPreviews: {}, cursorPreviews: {}
+                iconPreviews: {
+                    Adwaita: ["base.svg"],
+                    "vitrail-icons-Adwaita@light": ["light.svg"],
+                    "vitrail-icons-Adwaita@solid": ["solid.svg"]
+                },
+                cursorPreviews: {}
             })
         }
     }
@@ -56,6 +61,20 @@ TestCase {
         verify(rows.length > 0)
         for (var i = 0; i < rows.length; i++)
             compare(rows[i].key.indexOf("vitrail-icons-"), 0)
+    }
+
+    function test_each_fill_variant_shows_its_own_previews() {
+        var rows = page.item.adaptiveIconOptions("")
+        function iconOf(key) {
+            for (var i = 0; i < rows.length; i++) {
+                if (rows[i].key === key)
+                    return rows[i].icons[0]
+            }
+            return ""
+        }
+        compare(iconOf("vitrail-icons-Adwaita@light"), "light.svg")
+        compare(iconOf("vitrail-icons-Adwaita@solid"), "solid.svg")
+        compare(iconOf("vitrail-icons-Adwaita"), "base.svg")
     }
 
     function test_each_adaptive_icon_pack_has_three_fill_variants() {
