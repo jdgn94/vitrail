@@ -18,19 +18,26 @@
 //       "monitors": { "DP-1": { "hidden": ["tray"], "order": { ... } } }
 //     }
 //
-// panel (flat: one list, and the size/style of each widget):
+// panel (flat: one list, and the size/style/typography of each widget):
 //     {
 //       "order": ["media", "toggles", "capture", "notes", "session"],
 //       "hidden": [],
-//       "widgets": { "media": { "size": "md", "style": "" } }
+//       "widgets": { "media": { "size": "md", "style": "",
+//                               "font": "Inter", "weight": "bold", "italic": true } }
 //     }
 //
 // desktop (one placed list per monitor; x/y are 0..1 of the monitor):
 //     {
 //       "monitors": { "DP-1": { "widgets": [
-//         { "id": "clock", "x": 0.35, "y": 0.30, "size": "lg", "style": "full" }
+//         { "id": "clock", "x": 0.35, "y": 0.30, "size": "lg", "style": "full",
+//           "font": "Inter", "weight": "bold", "italic": true }
 //       ] } }
 //     }
+//
+// A widget setting carries its own typography: `font` is a family name ("" or
+// a missing/unknown value inherits the shell's font), `weight` is "" (inherit)
+// or one of "regular", "medium", "bold" (case and padding are normalised, an
+// unknown weight inherits), and `italic` is a boolean (only `true` turns it on).
 //
 // An empty or invalid document is the built-in default: today's bar or today's
 // panel, and no desktop widgets. Per-monitor entries replace the global field
@@ -61,6 +68,9 @@ var CLUSTERS = {
 }
 
 var DENSITIES = ["comfortable", "compact"]
+
+// The weights a widget may ask for; "" inherits the variant's own.
+var WEIGHTS = ["regular", "medium", "bold"]
 
 function objectOf(value) {
     return value && typeof value === "object" && !Array.isArray(value) ? value : null
@@ -213,19 +223,37 @@ function cleanMonitors(raw, surface) {
     return out
 }
 
-// One widget's size and style, checked against the registry. The default size
-// is the widget's "md" when it has one; no style means the widget's own
-// default (for the player, the bar's `mediaStyle` preference).
+// One widget's size, style and typography, checked against the registry. The
+// default size is the widget's "md" when it has one; no style means the
+// widget's own default (for the player, the bar's `mediaStyle` preference).
+// An empty font, weight or italic inherits the shell's type.
 function cleanSetting(entry, widget) {
     if (!widget)
-        return { size: "md", style: "" }
+        return { size: "md", style: "", font: "", weight: "", italic: false }
     var value = objectOf(entry) || {}
     var sizes = widget.sizes || []
     var styles = widget.styles || []
     var size = sizes.indexOf(value.size) >= 0 ? value.size : Registry.defaultSize(widget)
     var style = typeof value.style === "string"
                 && (value.style === "" || styles.indexOf(value.style) >= 0) ? value.style : ""
-    return { size: size, style: style }
+    return { size: size, style: style,
+             font: cleanFont(value.font),
+             weight: cleanWeight(value.weight),
+             italic: value.italic === true }
+}
+
+// A family name as typed; "" inherits. Only strings count, and padding around
+// the name (a hand-edited document, a copy-paste) is dropped.
+function cleanFont(value) {
+    return typeof value === "string" ? value.trim() : ""
+}
+
+// "" inherits; regular/medium/bold are the only weights, compared without case.
+function cleanWeight(value) {
+    if (typeof value !== "string")
+        return ""
+    var name = value.trim().toLowerCase()
+    return WEIGHTS.indexOf(name) >= 0 ? name : ""
 }
 
 function copyWidgets(widgets) {
@@ -236,7 +264,8 @@ function copyWidgets(widgets) {
     for (var id in values) {
         var entry = objectOf(values[id])
         if (entry)
-            out[id] = { size: entry.size, style: entry.style }
+            out[id] = { size: entry.size, style: entry.style,
+                        font: entry.font, weight: entry.weight, italic: entry.italic }
     }
     return out
 }
@@ -279,6 +308,12 @@ function configure(widgets, id, values, surface) {
         current.size = patch.size
     if (has(patch, "style"))
         current.style = patch.style
+    if (has(patch, "font"))
+        current.font = patch.font
+    if (has(patch, "weight"))
+        current.weight = patch.weight
+    if (has(patch, "italic"))
+        current.italic = patch.italic
     out[id] = cleanSetting(current, widget)
     return out
 }
@@ -309,7 +344,10 @@ function cleanDesktopWidget(entry) {
              x: coordinate(value.x, 0.5),
              y: coordinate(value.y, 0.5),
              size: setting.size,
-             style: setting.style }
+             style: setting.style,
+             font: setting.font,
+             weight: setting.weight,
+             italic: setting.italic }
 }
 
 // One widget per id, in document order; unknown ids and duplicates drop.
@@ -336,7 +374,8 @@ function copyDesktopWidgets(list) {
         var widget = objectOf(list[i])
         if (widget)
             out.push({ id: widget.id, x: widget.x, y: widget.y,
-                       size: widget.size, style: widget.style })
+                       size: widget.size, style: widget.style,
+                       font: widget.font, weight: widget.weight, italic: widget.italic })
     }
     return out
 }
@@ -385,7 +424,10 @@ function desktopAdd(widgets, id, x, y) {
                x: coordinate(x, 0.5),
                y: coordinate(y, 0.5),
                size: setting.size,
-               style: setting.style })
+               style: setting.style,
+               font: setting.font,
+               weight: setting.weight,
+               italic: setting.italic })
     return out
 }
 
@@ -420,14 +462,24 @@ function desktopConfigure(widgets, id, values) {
     for (var i = 0; i < out.length; i++) {
         if (out[i].id !== id)
             continue
-        var current = { size: out[i].size, style: out[i].style }
+        var current = { size: out[i].size, style: out[i].style,
+                        font: out[i].font, weight: out[i].weight, italic: out[i].italic }
         if (has(patch, "size"))
             current.size = patch.size
         if (has(patch, "style"))
             current.style = patch.style
+        if (has(patch, "font"))
+            current.font = patch.font
+        if (has(patch, "weight"))
+            current.weight = patch.weight
+        if (has(patch, "italic"))
+            current.italic = patch.italic
         var setting = cleanSetting(current, widget)
         out[i].size = setting.size
         out[i].style = setting.style
+        out[i].font = setting.font
+        out[i].weight = setting.weight
+        out[i].italic = setting.italic
         break
     }
     return out

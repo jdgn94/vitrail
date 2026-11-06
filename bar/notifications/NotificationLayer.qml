@@ -268,6 +268,9 @@ Scope {
                         widgetId: modelData
                         size: setting.size
                         style: root.widgetStyle(modelData, setting.style)
+                        fontFamily: setting.font
+                        fontWeight: setting.weight
+                        italic: setting.italic
                         strings: root.strings
                         mediaPlayer: root.mediaPlayer
                         mediaPlayers: root.mediaPlayers

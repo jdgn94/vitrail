@@ -84,8 +84,8 @@ TestCase {
                 ghost: { size: "sm", style: "disc" }
             }
         }), "panel")
-        compare(doc.widgets.media, { size: "lg", style: "cassette" })
-        compare(doc.widgets.notes, { size: "md", style: "" })
+        compare(doc.widgets.media, { size: "lg", style: "cassette", font: "", weight: "", italic: false })
+        compare(doc.widgets.notes, { size: "md", style: "", font: "", weight: "", italic: false })
         compare(doc.widgets.ghost, undefined)
         compare(Layouts.setting(doc, "media", "panel").style, "cassette")
     }
@@ -93,11 +93,11 @@ TestCase {
     function test_configure_merges_one_widget_and_survives_validation() {
         var widgets = Layouts.configure(Layouts.defaults("panel").widgets, "media",
                                         { size: "lg" }, "panel")
-        compare(widgets.media, { size: "lg", style: "" })
+        compare(widgets.media, { size: "lg", style: "", font: "", weight: "", italic: false })
         widgets = Layouts.configure(widgets, "media", { style: "cassette" }, "panel")
-        compare(widgets.media, { size: "lg", style: "cassette" })
+        compare(widgets.media, { size: "lg", style: "cassette", font: "", weight: "", italic: false })
         widgets = Layouts.configure(widgets, "media", { size: "nope", style: "nope" }, "panel")
-        compare(widgets.media, { size: "md", style: "" })
+        compare(widgets.media, { size: "md", style: "", font: "", weight: "", italic: false })
         var original = Layouts.configure(Layouts.defaults("panel").widgets, "media",
                                          { size: "lg" }, "panel")
         compare(original.media.size, "lg")
@@ -133,9 +133,9 @@ TestCase {
         var text = Layouts.write("", "", { order: Layouts.reorder(panelIds, 0, 1), widgets: widgets }, "panel")
         var doc = Layouts.sanitize(text, "panel")
         compare(doc.order, ["toggles", "media", "capture", "notes", "session"])
-        compare(doc.widgets.media, { size: "lg", style: "cassette" })
+        compare(doc.widgets.media, { size: "lg", style: "cassette", font: "", weight: "", italic: false })
         compare(Layouts.effective(text, "", null, "panel").widgets.media,
-                { size: "lg", style: "cassette" })
+                { size: "lg", style: "cassette", font: "", weight: "", italic: false })
     }
 
     function test_the_panel_well_known_registry_entries_keep_the_panels_services() {
@@ -195,7 +195,8 @@ TestCase {
     function test_desktop_add_remove_and_configure_never_change_the_input() {
         var widgets = Layouts.desktopAdd([], "clock", 0.25, 0.75)
         compare(widgets.length, 1)
-        compare(widgets[0], { id: "clock", x: 0.25, y: 0.75, size: "md", style: "" })
+        compare(widgets[0], { id: "clock", x: 0.25, y: 0.75, size: "md", style: "",
+                             font: "", weight: "", italic: false })
         compare(Layouts.desktopAdd(widgets, "clock", 0.1, 0.1).length, 1)
         compare(Layouts.desktopAdd(widgets, "ghost", 0.1, 0.1).length, 1)
         widgets = Layouts.desktopConfigure(widgets, "clock", { size: "lg", style: "compact" })

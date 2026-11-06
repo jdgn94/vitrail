@@ -17,6 +17,10 @@ Item {
     property string icon: ""
     // sm / md / lg / xl: label size and padding grow together.
     property string size: "md"
+    // The label's typography; "" / false keep the button's own.
+    property string fontFamily: ""
+    property string fontWeight: ""
+    property bool italic: false
     // Waiting for something: shows the busy indicator, takes no clicks.
     property bool busy: false
 
@@ -113,7 +117,12 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             visible: !root.iconOnly
             variant: root.scaleBySize.label
-            font.weight: Font.DemiBold
+            family: root.fontFamily
+            italic: root.italic
+            font.weight: root.fontWeight === "bold" ? Font.Bold
+                         : root.fontWeight === "medium" ? Font.Medium
+                         : root.fontWeight === "regular" ? Font.Normal
+                         : Font.DemiBold
             text: root.iconOnly ? " " : root.text
             color: root.ink
             opacity: 1

@@ -23,6 +23,9 @@ Item {
     property string tab: "layout"
     // { available, monitors: [{ name, … }] } as the settings window injected it.
     property var monitors: ({ available: false, monitors: [] })
+    // The installed text families, as the settings window injected them
+    // (`{ fonts: [...] }`); the typography picker lists them.
+    property var fonts: ({ fonts: [], monospace: [] })
     // The monitor whose order and visibility the editor edits; "" is global.
     property string monitor: ""
     // Which surface the editor edits: "bar" (today's groups) or "panel" (one
@@ -33,6 +36,8 @@ Item {
     readonly property var panelLayout: Layouts.effective(page.prefs.panelLayout || "", "", null, "panel")
     // The desktop widgets of the selected output (bar.ini `desktopLayout`).
     property string desktopMonitor: ""
+    // The placed widget whose typography the editor is showing; "" is none.
+    property string desktopSelection: ""
     readonly property var desktopOutputs: page.monitors && page.monitors.monitors
                                              ? page.monitors.monitors : []
     readonly property string desktopMonitorName: {
@@ -61,12 +66,16 @@ Item {
             return placed.indexOf(widget.id) < 0
         })
     }
+    // The placed entry the Typography section edits, or null; it follows the
+    // document, so it disappears when the widget does.
+    readonly property var desktopSelectedEntry: page.desktopEntry(page.desktopSelection)
     // Where a dragged panel widget would land: an insertion index, -1 when no
     // drag is running.
     property int panelDragFrom: -1
     property int panelDropIndex: -1
 
     onTabChanged: scroller.contentY = 0
+    onDesktopMonitorChanged: page.desktopSelection = ""
 
     function t(key) {
         var value = page.strings[key]
@@ -158,10 +167,13 @@ Item {
         var count = page.desktopDocument.widgets.length
         page.desktopCommit(Layouts.desktopAdd(page.desktopDocument.widgets, id, 0.5,
                                               0.3 + Math.min(0.5, count * 0.08)))
+        page.desktopSelection = id
     }
 
     function desktopRemoveWidget(id) {
         page.desktopCommit(Layouts.desktopRemove(page.desktopDocument.widgets, id))
+        if (page.desktopSelection === id)
+            page.desktopSelection = ""
     }
 
     function desktopMoveWidget(id, x, y) {
@@ -176,6 +188,51 @@ Item {
     function desktopSetStyle(id, style) {
         page.desktopCommit(Layouts.desktopConfigure(page.desktopDocument.widgets, id,
                                                      { style: style }))
+    }
+
+    function desktopSetFont(id, font) {
+        page.desktopCommit(Layouts.desktopConfigure(page.desktopDocument.widgets, id,
+                                                     { font: font }))
+    }
+
+    function desktopSetWeight(id, weight) {
+        page.desktopCommit(Layouts.desktopConfigure(page.desktopDocument.widgets, id,
+                                                     { weight: weight }))
+    }
+
+    function desktopSetItalic(id, italic) {
+        page.desktopCommit(Layouts.desktopConfigure(page.desktopDocument.widgets, id,
+                                                     { italic: italic }))
+    }
+
+    // The placed entry of one id, or null.
+    function desktopEntry(id) {
+        var list = page.desktopDocument.widgets
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].id === id)
+                return list[i]
+        }
+        return null
+    }
+
+    // One card or row selects a widget; selecting it again closes the section.
+    function selectDesktopWidget(id) {
+        page.desktopSelection = page.desktopSelection === id ? "" : id
+    }
+
+    function desktopFontOptions() {
+        var families = page.fonts && Array.isArray(page.fonts.fonts) ? page.fonts.fonts : []
+        return [{ key: "", label: page.t("desktop.editor.font.inherit") }].concat(
+            families.map(function (family) {
+                return { key: family, label: family }
+            }))
+    }
+
+    function desktopWeightOptions() {
+        return ["", "regular", "medium", "bold"].map(function (weight) {
+            return { key: weight,
+                     label: page.t("desktop.editor.weight." + (weight === "" ? "inherit" : weight)) }
+        })
     }
 
     function desktopWidget(id) {
@@ -982,6 +1039,10 @@ Item {
                                         cursorShape: grab.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                                     }
 
+                                    TapHandler {
+                                        onTapped: page.selectDesktopWidget(placed.modelData.id)
+                                    }
+
                                     DragHandler {
                                         id: grab
 
@@ -1035,11 +1096,115 @@ Item {
 
                             VitrailButton {
                                 variant: "text"
+                                tone: page.desktopSelection === desktopRow.modelData.id
+                                      ? "primary" : "secondary"
+                                icon: "text_fields"
+                                onClicked: page.selectDesktopWidget(desktopRow.modelData.id)
+                            }
+
+                            VitrailButton {
+                                variant: "text"
                                 tone: "secondary"
                                 icon: "delete"
                                 onClicked: page.desktopRemoveWidget(desktopRow.modelData.id)
                             }
                         }
+                    }
+                }
+
+                // The selected widget's own typography. Empty values are
+                // the widget's variant; a family is a name from the shell's
+                // font list.
+                Section {
+                    objectName: "desktopTypography"
+                    Layout.fillWidth: true
+                    visible: page.tab === "editor" && page.editorSurface === "desktop"
+                             && page.desktopSelectedEntry !== null
+                    icon: "text_fields"
+                    title: page.t("desktop.editor.typography")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: page.t("desktop.editor.typography.help")
+                        color: page.palette.muted
+                        font.pixelSize: 12
+                        font.family: VitrailTokens.fontFamily
+                        wrapMode: Text.WordWrap
+                    }
+
+                    VitrailSettingRow {
+                        icon: "font_download"
+                        label: page.t("desktop.editor.font")
+                        description: page.t("desktop.editor.font.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailPicker {
+                            objectName: "desktopFontPicker"
+                            Layout.preferredWidth: 320
+                            label: page.t("desktop.editor.font")
+                            searchHint: page.t("desktop.editor.font.search")
+                            current: page.desktopSelectedEntry
+                                     ? page.desktopSelectedEntry.font : ""
+                            options: page.desktopFontOptions()
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            panel: page.palette.surfaceHigh
+                            onSelected: function (key) {
+                                page.desktopSetFont(page.desktopSelection, key)
+                            }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "format_bold"
+                        label: page.t("desktop.editor.weight")
+                        description: page.t("desktop.editor.weight.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            objectName: "desktopWeightPicker"
+                            options: page.desktopWeightOptions()
+                            current: page.desktopSelectedEntry
+                                     ? page.desktopSelectedEntry.weight : ""
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: function (key) {
+                                page.desktopSetWeight(page.desktopSelection, key)
+                            }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "format_italic"
+                        label: page.t("desktop.editor.italic")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            objectName: "desktopItalicSwitch"
+                            checked: page.desktopSelectedEntry
+                                     ? page.desktopSelectedEntry.italic : false
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) {
+                                page.desktopSetItalic(page.desktopSelection, value)
+                            }
+                        }
+                    }
+
+                    VitrailText {
+                        Layout.fillWidth: true
+                        variant: "subtitle"
+                        family: page.desktopSelectedEntry ? page.desktopSelectedEntry.font : ""
+                        fontWeight: page.desktopSelectedEntry
+                                    ? page.desktopSelectedEntry.weight : ""
+                        italic: page.desktopSelectedEntry
+                                ? page.desktopSelectedEntry.italic : false
+                        text: page.t("desktop.editor.typography.preview")
                     }
                 }
 

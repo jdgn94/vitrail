@@ -14,6 +14,10 @@ ColumnLayout {
     property string language: "en"
     property string size: "md"
     property string variant: ""
+    // The widget's own typography; empty values keep the variant's look.
+    property string fontFamily: ""
+    property string fontWeight: ""
+    property bool italic: false
 
     signal pageRequested(int step)
     signal todayRequested()
@@ -37,6 +41,18 @@ ColumnLayout {
                && root.shown.getFullYear() === root.now.getFullYear()
     }
 
+    // The override when there is one; otherwise the cell keeps its own weight
+    // (today is bolder than the rest of the month).
+    function weightOf(fallback) {
+        if (root.fontWeight === "bold")
+            return Font.Bold
+        if (root.fontWeight === "medium")
+            return Font.Medium
+        if (root.fontWeight === "regular")
+            return Font.Normal
+        return fallback
+    }
+
     RowLayout {
         Layout.fillWidth: true
         spacing: VitrailTokens.gap("xs")
@@ -45,7 +61,9 @@ ColumnLayout {
         VitrailText {
             Layout.fillWidth: true
             variant: root.look.title
-            font.weight: Font.DemiBold
+            family: root.fontFamily
+            italic: root.italic
+            font.weight: root.weightOf(Font.DemiBold)
             text: root.monthTitle()
         }
 
@@ -81,6 +99,9 @@ ColumnLayout {
 
             horizontalAlignment: Text.AlignHCenter
             variant: "label"
+            family: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             text: shortName.charAt(0).toUpperCase() + shortName.slice(1, 2)
         }
     }
@@ -114,8 +135,10 @@ ColumnLayout {
             VitrailText {
                 anchors.centerIn: parent
                 variant: root.look.day
+                family: root.fontFamily
+                italic: root.italic
                 font.features: ({ "tnum": 1 })
-                font.weight: day.today ? Font.DemiBold : Font.Normal
+                font.weight: root.weightOf(day.today ? Font.DemiBold : Font.Normal)
                 opacity: day.inMonth ? 1 : 0.35
                 color: day.today ? VitrailTokens.color("accentForeground")
                                  : VitrailTokens.color("foreground")

@@ -15,6 +15,10 @@ Item {
     property string language: "en"
     property string size: "md"
     property string variant: ""
+    // The widget's own typography; empty values keep the variant's look.
+    property string fontFamily: ""
+    property string fontWeight: ""
+    property bool italic: false
 
     readonly property bool hasWeather: !!(root.weather && root.weather.current)
     readonly property bool compact: root.variant === "compact"
@@ -72,6 +76,9 @@ Item {
             objectName: "dashboardWeatherEmpty"
             Layout.alignment: Qt.AlignHCenter
             variant: "content"
+            family: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             text: root.t("dashboard.weather.empty")
             wrapMode: Text.WordWrap
         }
@@ -100,6 +107,9 @@ Item {
                     objectName: "dashboardWeatherLocation"
                     Layout.fillWidth: true
                     variant: "label"
+                    family: root.fontFamily
+                    fontWeight: root.fontWeight
+                    italic: root.italic
                     elide: Text.ElideRight
                     text: root.weather.location ? root.weather.location.name : ""
                 }
@@ -110,6 +120,9 @@ Item {
                     VitrailText {
                         objectName: "dashboardWeatherTemperature"
                         variant: root.look.temperature
+                        family: root.fontFamily
+                        fontWeight: root.fontWeight
+                        italic: root.italic
                         text: Dash.temperature(weatherColumn.current.temperature,
                                                weatherColumn.units.temperature)
                     }
@@ -118,6 +131,9 @@ Item {
                         objectName: "dashboardWeatherCondition"
                         Layout.alignment: Qt.AlignBottom
                         variant: root.look.condition
+                        family: root.fontFamily
+                        fontWeight: root.fontWeight
+                        italic: root.italic
                         elide: Text.ElideRight
                         text: root.condition(weatherColumn.current.code,
                                              weatherColumn.current.condition)
@@ -133,12 +149,18 @@ Item {
 
             VitrailText {
                 variant: "label"
+                family: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 text: root.t("dashboard.humidity")
             }
 
             VitrailText {
                 objectName: "dashboardWeatherHumidity"
                 variant: root.look.detail
+                family: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 font.features: ({ "tnum": 1 })
                 text: weatherColumn.current.humidity !== undefined
                       ? weatherColumn.current.humidity + " " + (weatherColumn.units.humidity || "")
@@ -149,12 +171,18 @@ Item {
 
             VitrailText {
                 variant: "label"
+                family: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 text: root.t("dashboard.wind")
             }
 
             VitrailText {
                 objectName: "dashboardWeatherWind"
                 variant: root.look.detail
+                family: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 font.features: ({ "tnum": 1 })
                 text: weatherColumn.current.wind !== undefined
                       ? weatherColumn.current.wind + " " + (weatherColumn.units.wind || "")
@@ -184,6 +212,9 @@ Item {
 
                 VitrailText {
                     variant: "label"
+                    family: root.fontFamily
+                    fontWeight: root.fontWeight
+                    italic: root.italic
                     text: root.weekday(forecastDay.modelData.date)
                 }
 
@@ -191,12 +222,18 @@ Item {
                     objectName: "dashboardWeatherDayCondition" + forecastDay.index
                     Layout.fillWidth: true
                     variant: root.look.detail
+                    family: root.fontFamily
+                    fontWeight: root.fontWeight
+                    italic: root.italic
                     elide: Text.ElideRight
                     text: root.condition(forecastDay.modelData.code, forecastDay.modelData.condition)
                 }
 
                 VitrailText {
                     variant: root.look.detail
+                    family: root.fontFamily
+                    fontWeight: root.fontWeight
+                    italic: root.italic
                     font.features: ({ "tnum": 1 })
                     text: Dash.degrees(forecastDay.modelData.high) + " / "
                           + Dash.degrees(forecastDay.modelData.low)

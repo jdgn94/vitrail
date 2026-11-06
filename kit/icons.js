@@ -111,6 +111,8 @@ var names = {
     folder: "folder",
     folder_open: "folder_open",
     font_download: "font_download",
+    format_bold: "format_bold",
+    format_italic: "format_italic",
     format_color_text: "format_color_text",
     format_list_numbered: "format_list_numbered",
     fullscreen: "fullscreen",

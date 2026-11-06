@@ -101,6 +101,9 @@ Scope {
                     widgetId: window.modelData.id
                     size: window.modelData.size
                     style: window.modelData.style
+                    fontFamily: window.modelData.font
+                    fontWeight: window.modelData.weight
+                    italic: window.modelData.italic
                     strings: root.strings
                     now: root.now
                     language: root.language

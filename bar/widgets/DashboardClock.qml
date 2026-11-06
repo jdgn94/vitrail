@@ -13,6 +13,10 @@ ColumnLayout {
     property string language: "en"
     property string size: "md"
     property string variant: ""
+    // The widget's own typography; empty values keep the variant's look.
+    property string fontFamily: ""
+    property string fontWeight: ""
+    property bool italic: false
     // The dashboard's tests and the desktop host may name the two labels.
     property string clockName: "dashboardClock"
     property string dateName: "dashboardClockDate"
@@ -28,6 +32,9 @@ ColumnLayout {
     VitrailText {
         objectName: root.clockName
         variant: root.look.time
+        family: root.fontFamily
+        fontWeight: root.fontWeight
+        italic: root.italic
         font.features: ({ "tnum": 1 })
         text: root.now.toLocaleTimeString(Qt.locale(root.language), "HH:mm")
     }
@@ -37,6 +44,9 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: root.variant !== "compact"
         variant: root.look.date
+        family: root.fontFamily
+        fontWeight: root.fontWeight
+        italic: root.italic
         text: {
             var day = root.now.toLocaleDateString(Qt.locale(root.language), "dddd d MMMM yyyy")
             return day.charAt(0).toUpperCase() + day.slice(1)

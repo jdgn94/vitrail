@@ -12,8 +12,12 @@ Text {
     id: root
 
     property string variant: ""
-    // A family from outside the kit (the Fonts page's preview).
+    // A family from outside the kit (the Fonts page's preview and a widget's
+    // own typography; "" keeps the shell's font).
     property string family: ""
+    // "" keeps the variant's weight; regular, medium and bold override it.
+    property string fontWeight: ""
+    property bool italic: false
     // An icon ligature name. It goes through the resolver, so a name the table
     // does not know draws `question_mark` instead of the word itself; an empty
     // value is "no icon" and draws nothing.
@@ -34,5 +38,9 @@ Text {
     font.pixelSize: VitrailTokens.size(root.style.size)
     font.family: root.resolvedFamily
     font.variableAxes: root.style.family === "icons" ? ({ "FILL": 0 }) : ({})
-    font.weight: root.style.weight
+    font.weight: root.fontWeight === "bold" ? Font.Bold
+                 : root.fontWeight === "medium" ? Font.Medium
+                 : root.fontWeight === "regular" ? Font.Normal
+                 : root.style.weight
+    font.italic: root.italic
 }

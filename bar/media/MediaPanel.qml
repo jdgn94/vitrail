@@ -33,6 +33,10 @@ Item {
     property string style: "disc"
     // sm / md / lg: the card's spacing and control sizes. "md" is today's look.
     property string size: "md"
+    // The widget's own typography; empty values keep the variant's look.
+    property string fontFamily: ""
+    property string fontWeight: ""
+    property bool italic: false
 
     signal playerChosen(int index)
 
@@ -147,12 +151,18 @@ Item {
             VitrailMarquee {
                 Layout.fillWidth: true
                 variant: "body"
+                family: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 text: root.trackLabel !== "" ? root.trackLabel : root.t("media.nothing")
             }
 
             VitrailMarquee {
                 Layout.fillWidth: true
                 variant: "label"
+                family: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 color: Qt.alpha(VitrailTokens.color("foreground"), 0.7)
                 text: root.current ? (root.current.trackArtist || root.current.identity || "") : ""
             }
@@ -252,6 +262,9 @@ Item {
 
                 VitrailText {
                     variant: "label"
+                    family: root.fontFamily
+                    fontWeight: root.fontWeight
+                    italic: root.italic
                     text: root.elapsed
                 }
 
@@ -259,6 +272,9 @@ Item {
 
                 VitrailText {
                     variant: "label"
+                    family: root.fontFamily
+                    fontWeight: root.fontWeight
+                    italic: root.italic
                     text: root.total
                 }
             }
@@ -272,6 +288,9 @@ Item {
 
             VitrailButton {
                 variant: "plain"
+                fontFamily: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 tone: root.shuffled ? "primary" : "secondary"
                 size: root.scaleBySize.small
                 icon: "shuffle"
@@ -281,6 +300,9 @@ Item {
 
             VitrailButton {
                 variant: "text"
+                fontFamily: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 tone: "secondary"
                 size: root.scaleBySize.small
                 icon: "skip_previous"
@@ -290,6 +312,9 @@ Item {
 
             VitrailButton {
                 variant: "filled"
+                fontFamily: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 size: root.scaleBySize.main
                 icon: root.playing ? "pause" : "play_arrow"
                 enabled: root.current ? root.current.canTogglePlaying : false
@@ -298,6 +323,9 @@ Item {
 
             VitrailButton {
                 variant: "text"
+                fontFamily: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 tone: "secondary"
                 size: root.scaleBySize.small
                 icon: "skip_next"
@@ -307,6 +335,9 @@ Item {
 
             VitrailButton {
                 variant: "plain"
+                fontFamily: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 tone: root.looping ? "primary" : "secondary"
                 size: root.scaleBySize.small
                 icon: "repeat"
@@ -388,6 +419,9 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Math.min(chipName.textWidth, selector.chipLook.nameMax)
                         variant: "label"
+                        family: root.fontFamily
+                        fontWeight: root.fontWeight
+                        italic: root.italic
                         text: root.appName(root.current)
                     }
 
@@ -513,6 +547,9 @@ Item {
                             width: Math.min(choiceName.textWidth, selector.chipLook.nameMax,
                                             choices.nameRoom - (choiceIcon.visible ? choiceIcon.width + choiceRow.spacing : 0))
                             variant: "label"
+                            family: root.fontFamily
+                            fontWeight: root.fontWeight
+                            italic: root.italic
                             text: root.appName(choice.modelData)
                         }
                     }

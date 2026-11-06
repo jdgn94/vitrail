@@ -15,6 +15,10 @@ Item {
     property var strings: ({})
     property string size: "md"
     property string variant: ""
+    // The widget's own typography; empty values keep the variant's look.
+    property string fontFamily: ""
+    property string fontWeight: ""
+    property bool italic: false
 
     readonly property bool hasResources: !!(root.readings && root.readings.memory)
     readonly property bool compact: root.variant === "compact"
@@ -62,6 +66,9 @@ Item {
             objectName: "dashboardPerformanceEmpty"
             Layout.alignment: Qt.AlignHCenter
             variant: "content"
+            family: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             text: root.t("dashboard.performance.empty")
             wrapMode: Text.WordWrap
         }
@@ -93,6 +100,9 @@ Item {
                 VitrailText {
                     Layout.fillWidth: true
                     variant: root.look.label
+                    family: root.fontFamily
+                    fontWeight: root.fontWeight
+                    italic: root.italic
                     elide: Text.ElideRight
                     text: modelData.label
                 }
@@ -100,6 +110,9 @@ Item {
                 VitrailText {
                     objectName: "dashboardValue_" + modelData.key
                     variant: root.look.value
+                    family: root.fontFamily
+                    fontWeight: root.fontWeight
+                    italic: root.italic
                     font.features: ({ "tnum": 1 })
                     text: modelData.value
                 }

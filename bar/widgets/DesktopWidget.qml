@@ -11,6 +11,11 @@ Item {
     property string widgetId: ""
     property string size: "md"
     property string style: ""
+    // The widget's own typography (bar/layouts.js): a family ("" inherits the
+    // shell's), a weight ("" inherits the variant's) and italic.
+    property string fontFamily: ""
+    property string fontWeight: ""
+    property bool italic: false
     property var strings: ({})
 
     // The clock and the calendar.
@@ -49,9 +54,14 @@ Item {
     // natural height comes from its content and its width from the registry
     // (bar/widgets.js), the same number the editor canvas uses.
     readonly property real preferredWidth: Registry.widthOf(root.widgetId, root.size)
+    // The player, the toggles and the notes are the panel's own widgets; their
+    // file pulls in the shell's services, so only those ids load it.
+    readonly property bool panelBacked: root.widgetId === "media"
+                                         || root.widgetId === "toggles"
+                                         || root.widgetId === "notes"
 
-    implicitWidth: Math.max(root.preferredWidth, loader.implicitWidth)
-    implicitHeight: loader.implicitHeight
+    implicitWidth: Math.max(root.preferredWidth, loader.implicitWidth, panelLoader.implicitWidth)
+    implicitHeight: Math.max(loader.implicitHeight, panelLoader.implicitHeight)
 
     function t(key) {
         var value = root.strings[key]
@@ -63,16 +73,24 @@ Item {
 
         width: root.width
         height: root.height
-        sourceComponent: root.widgetId === "clock" ? clockWidget
+        sourceComponent: root.panelBacked ? null
+                       : root.widgetId === "clock" ? clockWidget
                        : root.widgetId === "calendar" ? calendarWidget
                        : root.widgetId === "weather" ? weatherWidget
                        : root.widgetId === "resources" ? resourcesWidget
                        : root.widgetId === "pomodoro" ? pomodoroWidget
                        : root.widgetId === "timer" ? timerWidget
-                       : root.widgetId === "media" ? mediaWidget
-                       : root.widgetId === "toggles" ? togglesWidget
-                       : root.widgetId === "notes" ? notesWidget
                        : null
+    }
+
+    Loader {
+        id: panelLoader
+
+        width: root.width
+        height: root.height
+        active: root.panelBacked
+        source: root.panelBacked ? "DesktopPanelWidget.qml" : ""
+        onLoaded: item.host = root
     }
 
     Component {
@@ -84,6 +102,9 @@ Item {
             now: root.now
             language: root.language
             size: root.size
+            fontFamily: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             variant: root.style
         }
     }
@@ -98,6 +119,9 @@ Item {
             shown: root.month
             language: root.language
             size: root.size
+            fontFamily: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             variant: root.style
             todayText: root.t("clock.today")
             onPageRequested: function (step) {
@@ -117,6 +141,9 @@ Item {
             strings: root.strings
             language: root.language
             size: root.size
+            fontFamily: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             variant: root.style
         }
     }
@@ -130,6 +157,9 @@ Item {
             readings: root.readings
             strings: root.strings
             size: root.size
+            fontFamily: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             variant: root.style
         }
     }
@@ -145,6 +175,9 @@ Item {
             strings: root.strings
             now: root.now.getTime()
             size: root.size
+            fontFamily: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             variant: root.style
         }
     }
@@ -160,58 +193,10 @@ Item {
             strings: root.strings
             now: root.now.getTime()
             size: root.size
+            fontFamily: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             variant: root.style
-        }
-    }
-
-    Component {
-        id: mediaWidget
-
-        PanelWidget {
-            width: loader.width
-            height: loader.height
-            widgetId: "media"
-            size: root.size
-            style: root.style !== "" ? root.style : root.mediaStyle
-            strings: root.strings
-            mediaPlayer: root.mediaPlayer
-            mediaPlayers: root.mediaPlayers
-            mediaIndex: root.mediaIndex
-            onPlayerChosen: function (index) { root.playerChosen(index) }
-        }
-    }
-
-    Component {
-        id: togglesWidget
-
-        PanelWidget {
-            width: loader.width
-            height: loader.height
-            widgetId: "toggles"
-            size: root.size
-            strings: root.strings
-            wifiOn: root.wifiOn
-            bluetoothOn: root.bluetoothOn
-            bluetoothPresent: root.bluetoothPresent
-            micMuted: root.micMuted
-            airplaneOn: root.airplaneOn
-            dnd: root.dnd
-            onQuickToggled: function (key) { root.quickToggled(key) }
-        }
-    }
-
-    Component {
-        id: notesWidget
-
-        PanelWidget {
-            width: loader.width
-            height: loader.height
-            widgetId: "notes"
-            size: root.size
-            strings: root.strings
-            notes: root.notes
-            onNoteAdded: function (note) { root.noteAdded(note) }
-            onNoteRemoved: function (index) { root.noteRemoved(index) }
         }
     }
 }

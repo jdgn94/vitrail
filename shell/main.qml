@@ -644,6 +644,7 @@ Window {
                                         prefs: app.store
                                         strings: app.strings
                                         monitors: app.monitors
+                                        fonts: app.fonts
                                         tab: Args.value("--tab", "layout")
                                     }
                                 }

@@ -27,6 +27,10 @@ VitrailSurface {
     // The common widget API: sm / md / lg, and "plain" for no card behind it.
     property string size: "md"
     property string variant: ""
+    // The widget's own typography; empty values keep the variant's look.
+    property string fontFamily: ""
+    property string fontWeight: ""
+    property bool italic: false
 
     readonly property var metricsLook: ({
         sm: { title: "body", remaining: "subtitle", pad: "sm", button: "sm", symbol: "sm" },
@@ -64,6 +68,9 @@ VitrailSurface {
             VitrailText {
                 Layout.fillWidth: true
                 variant: root.metricsLook.title
+                family: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 elide: Text.ElideRight
                 text: root.title
             }
@@ -71,6 +78,9 @@ VitrailSurface {
             VitrailText {
                 objectName: "focusPhase_" + root.name
                 variant: "label"
+                family: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 text: root.phase
             }
         }
@@ -78,6 +88,9 @@ VitrailSurface {
         VitrailText {
             objectName: "focusRemaining_" + root.name
             variant: root.metricsLook.remaining
+            family: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             font.features: ({ "tnum": 1 })
             text: root.remaining
         }
@@ -117,6 +130,9 @@ VitrailSurface {
             VitrailButton {
                 objectName: "focusToggle_" + root.name
                 variant: root.running ? "tonal" : "flat"
+                fontFamily: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 size: root.metricsLook.button
                 icon: root.running ? "pause" : "play_arrow"
                 text: root.running ? root.pauseText : root.startText
@@ -126,6 +142,9 @@ VitrailSurface {
             VitrailButton {
                 objectName: "focusReset_" + root.name
                 variant: "text"
+                fontFamily: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 size: root.metricsLook.button
                 tone: "secondary"
                 icon: "restart_alt"

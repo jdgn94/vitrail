@@ -18,6 +18,10 @@ ColumnLayout {
     // sm / md / lg: "md" keeps the panel's compact field and buttons; "lg"
     // gives them the next size up.
     property string size: "md"
+    // The widget's own typography; empty values keep the variant's look.
+    property string fontFamily: ""
+    property string fontWeight: ""
+    property bool italic: false
 
     signal noteAdded(string note)
     signal noteRemoved(int index)
@@ -55,14 +59,21 @@ ColumnLayout {
 
 
             VitrailText {
+                objectName: "quickNote" + index
                 Layout.fillWidth: true
                 variant: "content"
+                family: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 elide: Text.ElideRight
                 text: modelData
             }
 
             VitrailButton {
                 variant: "plain"
+                fontFamily: root.fontFamily
+                fontWeight: root.fontWeight
+                italic: root.italic
                 tone: "secondary"
                 size: root.size === "lg" ? "md" : "sm"
                 icon: "close"

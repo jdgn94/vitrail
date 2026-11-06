@@ -18,6 +18,10 @@ Item {
     // The widget's look; empty means the widget's own default (the player uses
     // the bar's mediaStyle preference).
     property string style: ""
+    // The widget's own typography (bar/layouts.js); empty values inherit.
+    property string fontFamily: ""
+    property string fontWeight: ""
+    property bool italic: false
     property var strings: ({})
 
     // The player.
@@ -72,6 +76,9 @@ Item {
             width: loader.width
             height: loader.height
             size: root.size
+            fontFamily: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             style: root.style
             player: root.mediaPlayer
             players: root.mediaPlayers
@@ -88,6 +95,9 @@ Item {
             width: loader.width
             height: loader.height
             size: root.size
+            fontFamily: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             wifiOn: root.wifiOn
             bluetoothOn: root.bluetoothOn
             bluetoothPresent: root.bluetoothPresent
@@ -118,6 +128,9 @@ Item {
             width: loader.width
             height: loader.height
             size: root.size
+            fontFamily: root.fontFamily
+            fontWeight: root.fontWeight
+            italic: root.italic
             strings: root.strings
             text: root.notes
             onNoteAdded: function (note) { root.noteAdded(note) }

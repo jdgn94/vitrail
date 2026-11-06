@@ -10,6 +10,10 @@ Item {
 
     property string text: ""
     property string variant: "body"
+    // Typography overrides; "" / false keep the variant's own.
+    property string family: ""
+    property string fontWeight: ""
+    property bool italic: false
     property color color: VitrailTokens.color("foreground")
     property real gap: VitrailTokens.gap("xl")
     // Pixels per second while it travels.
@@ -28,6 +32,9 @@ Item {
 
         visible: false
         variant: root.variant
+        family: root.family
+        fontWeight: root.fontWeight
+        italic: root.italic
         text: root.text
     }
 
@@ -38,12 +45,18 @@ Item {
 
         VitrailText {
             variant: root.variant
+            family: root.family
+            fontWeight: root.fontWeight
+            italic: root.italic
             color: root.color
             text: root.text
         }
 
         VitrailText {
             variant: root.variant
+            family: root.family
+            fontWeight: root.fontWeight
+            italic: root.italic
             color: root.color
             text: root.text
             visible: root.scrolling
