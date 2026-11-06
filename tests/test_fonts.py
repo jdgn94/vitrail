@@ -166,6 +166,12 @@ class PreviewTests(unittest.TestCase):
         for path in paths:
             self.assertEqual(Path(path).read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
 
+    def test_the_mosaic_shows_eight_cursor_shapes(self) -> None:
+        cursors = self.icons / "Adwaita" / "cursors"
+        for name in ("xterm", "sb_h_double_arrow", "sb_v_double_arrow", "fleur", "help", "progress"):
+            xcursor(cursors / name)
+        self.assertEqual(len(fonts.cursor_previews(self.icons / "Adwaita", self.cache)), 8)
+
     def test_a_cursor_without_a_readable_file_has_no_preview(self) -> None:
         empty = self.icons / "Bare"
         (empty / "cursors").mkdir(parents=True)
@@ -208,13 +214,14 @@ class ApplyTests(unittest.TestCase):
         self.tmp = tempfile.mkdtemp()
         self.root = Path(self.tmp)
         self.icons = self.root / "icons"
-        for name, folders in (("Adwaita", ["cursors", "48x48"]), ("Papirus", ["48x48"])):
+        for name, folders in (("Adwaita", ["cursors", "48x48"]), ("Papirus", ["cursors", "48x48"])):
             (self.icons / name).mkdir(parents=True)
             for folder in folders:
                 (self.icons / name / folder).mkdir()
             (self.icons / name / "index.theme").write_text("[Icon Theme]\n", encoding="utf-8")
         xcursor(self.icons / "Adwaita" / "cursors" / "default")
         xcursor(self.icons / "Adwaita" / "cursors" / "hand2")
+        xcursor(self.icons / "Papirus" / "cursors" / "default")
         self.config = self.root / "config"
         (self.config / "qt6ct").mkdir(parents=True)
         (self.config / "qt6ct" / "qt6ct.conf").write_text("[Appearance]\n", encoding="utf-8")
@@ -231,7 +238,7 @@ class ApplyTests(unittest.TestCase):
 
         return run
 
-    def apply(self, values: dict, run=None) -> int:
+    def apply(self, values: dict, run=None, mode=None) -> int:
         return fonts.apply(
             values,
             self.config,
@@ -239,6 +246,7 @@ class ApplyTests(unittest.TestCase):
             roots=[self.icons],
             hyprland=True,
             cache=self.root / "cache",
+            mode=mode,
         )
 
     def test_the_font_name_keeps_the_size_already_set(self) -> None:
@@ -375,6 +383,102 @@ class ApplyTests(unittest.TestCase):
             'Gtk/CursorThemeName "Adwaita"', (self.config / "xsettingsd/xsettingsd.conf").read_text(encoding="utf-8")
         )
 
+    def test_each_mode_uses_its_own_cursor_pack(self) -> None:
+        values = {
+            "fontSystem": "Roboto",
+            "iconTheme": "Adwaita",
+            "cursorTheme": "Adwaita",
+            "cursorThemeLight": "Papirus",
+            "cursorThemeDark": "Adwaita",
+            "cursorSize": 24,
+        }
+        self.apply(values, mode="light")
+        env = (self.config / "environment.d" / "20-vitrail-cursor.conf").read_text(encoding="utf-8")
+        self.assertIn("XCURSOR_THEME=Papirus", env)
+        self.apply(values, mode="dark")
+        env = (self.config / "environment.d" / "20-vitrail-cursor.conf").read_text(encoding="utf-8")
+        self.assertIn("XCURSOR_THEME=Adwaita", env)
+
+    def test_an_empty_theme_falls_back_to_the_shared_cursor(self) -> None:
+        values = {
+            "fontSystem": "Roboto",
+            "iconTheme": "Adwaita",
+            "cursorTheme": "Adwaita",
+            "cursorThemeLight": "",
+            "cursorThemeDark": "",
+            "cursorSize": 24,
+        }
+        for mode in ("light", "dark"):
+            self.apply(values, mode=mode)
+            env = (self.config / "environment.d" / "20-vitrail-cursor.conf").read_text(encoding="utf-8")
+            self.assertIn("XCURSOR_THEME=Adwaita", env)
+
+    def test_an_adaptive_cursor_is_built_for_the_active_theme(self) -> None:
+        calls: list[list[str]] = []
+        code = fonts.apply(
+            {
+                "fontSystem": "Roboto",
+                "iconTheme": "Adwaita",
+                "cursorTheme": "Adwaita",
+                "cursorThemeLight": "vitrail-Adwaita",
+                "cursorSize": 24,
+            },
+            self.config,
+            run=self.recording(FACES, calls),
+            roots=[self.icons],
+            hyprland=True,
+            x11=False,
+            palette={"on_surface": "#ffffff", "surface": "#000000", "primary": "#ff0000"},
+            data_home=self.root / "data",
+            cache=self.root / "cache",
+            mode="light",
+        )
+        self.assertEqual(code, 0)
+        self.assertTrue((self.root / "data" / "icons" / "vitrail-Adwaita" / "index.theme").is_file())
+        self.assertIn(
+            ["hyprctl", "setcursor", "vitrail-Adwaita", "24"],
+            calls,
+        )
+
+    def test_the_active_cursor_reaches_every_app_channel(self) -> None:
+        calls: list[list[str]] = []
+        self.apply(
+            {
+                "fontSystem": "Roboto",
+                "iconTheme": "Adwaita",
+                "cursorTheme": "Adwaita",
+                "cursorThemeLight": "Papirus",
+                "cursorSize": 24,
+            },
+            run=self.recording(FACES, calls),
+            mode="light",
+        )
+        # Wayland, GTK (dconf) and X11's XSETTINGS.
+        self.assertIn(["hyprctl", "setcursor", "Papirus", "24"], calls)
+        self.assertIn(
+            ["gsettings", "set", "org.gnome.desktop.interface", "cursor-theme", "Papirus"],
+            calls,
+        )
+        self.assertIn(
+            ["gsettings", "set", "org.gnome.desktop.interface", "cursor-size", "24"],
+            calls,
+        )
+        gtk = (self.config / "gtk-3.0" / "settings.ini").read_text(encoding="utf-8")
+        self.assertIn("gtk-cursor-theme-name=Papirus", gtk)
+        self.assertIn("gtk-cursor-theme-size=24", gtk)
+        self.assertIn(
+            "XCURSOR_THEME=Papirus",
+            (self.config / "environment.d" / "20-vitrail-cursor.conf").read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            "Xcursor.theme: Papirus",
+            (self.config / "X11" / "vitrail-cursor.Xresources").read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            'Gtk/CursorThemeName "Papirus"',
+            (self.config / "xsettingsd" / "xsettingsd.conf").read_text(encoding="utf-8"),
+        )
+
     def test_a_vitrail_icon_layer_is_built_before_it_is_set(self) -> None:
         places = self.icons / "Adwaita" / "48x48" / "places"
         places.mkdir(parents=True)
@@ -402,9 +506,7 @@ class ApplyTests(unittest.TestCase):
             (self.config / "gtk-3.0/settings.ini").read_text(encoding="utf-8"),
         )
 
-    def test_the_own_busy_cursor_is_off_unless_asked(self) -> None:
-        from vitrail import cursor as cursor_engine
-
+    def test_the_own_busy_cursor_is_not_written_from_the_page(self) -> None:
         def render(svg: str) -> bytes:
             return bytes((0, 255, 0, 255)) * (32 * 32)
 
@@ -420,10 +522,8 @@ class ApplyTests(unittest.TestCase):
             render=render,
             palette={"on_surface": "#ffffff", "surface": "#000000", "primary": "#ff0000"},
         )
-        fonts.apply(dict(base), self.config, **arguments)
-        self.assertFalse((target / "cursors" / "wait").exists())
         fonts.apply(dict(base, cursorSpinner="true"), self.config, **arguments)
-        self.assertEqual(len(cursor_engine.read_cursor(target / "cursors" / "wait")), 12)
+        self.assertFalse((target / "cursors" / "wait").exists())
 
     def test_a_theme_that_is_not_installed_falls_back(self) -> None:
         code = self.apply({"fontSystem": "Roboto", "iconTheme": "Adwaita", "cursorTheme": "Nope", "cursorSize": 24})

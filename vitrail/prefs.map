@@ -124,7 +124,10 @@ fonts iconTheme
 # runs it once and clears the key ("<nonce>|path" / "<nonce>|name").
 fonts iconImport
 fonts iconRemove
+# One cursor pack per mode; empty follows `cursorTheme` for both.
 fonts cursorTheme
+fonts cursorThemeLight
+fonts cursorThemeDark
 fonts cursorSize
 fonts cursorSpinner
 

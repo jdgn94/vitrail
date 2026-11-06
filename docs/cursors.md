@@ -4,9 +4,9 @@ How a cursor pack becomes a Vitrail cursor: which colours a pack must have to
 take the wallpaper's palette, how the build works, where the files land, and
 what each part of the session picks up and when.
 
-The code is `vitrail/cursor.py`; the window's switch is **Cursor → Palette
-tint**; `scripts/apply-settings.sh` runs the build (`python3 -m
-vitrail.fonts apply`) after the palette is regenerated.
+The code is `vitrail/cursor.py`; the window offers a **Vitrail · pack** row in
+each of the light and dark cursor pickers; `scripts/apply-settings.sh` runs the
+build (`python3 -m vitrail.fonts apply`) after the palette is regenerated.
 
 ## The two inks
 
@@ -64,14 +64,16 @@ it, a stamp in `~/.cache/vitrail/fonts/themes/stamp` skips the work.
 
 The same build runs by itself:
 
-1. **Cursor → Palette tint** in the settings window writes
-   `cursorTheme = vitrail-<pack>` to `fonts.ini`;
+1. the light or dark picker in the settings window writes
+   `cursorThemeLight` / `cursorThemeDark = vitrail-<pack>` to `fonts.ini`
+   (the shared `cursorTheme` row stays for machines that never set either);
 2. the path unit runs `scripts/apply-settings.sh`, which runs
    `python3 -m vitrail.fonts apply`;
-3. `apply` builds the design (only the active one) and applies it.
+3. `apply` builds the design for the active mode and applies it, so each mode
+   can carry its own tinted layer.
 
-Choosing **Off** writes the pack's own theme name back, so the plain pack
-returns.
+Choosing **Same as the shared pack** writes an empty value, so that mode
+follows `cursorTheme` again.
 
 ## What the build writes
 
@@ -103,6 +105,20 @@ hyprcursor (`.hlc`) is not produced: Hyprland reads Xcursor themes directly.
 The conversion is optional and would add a dependency for no visible gain
 today.
 
+## A pack per theme
+
+The Cursor tab offers a light pack and a dark pack. `fonts.ini` stores them as
+`cursorThemeLight` / `cursorThemeDark`; an empty value follows the shared
+`cursorTheme`, so a machine that never uses the two new keys keeps one pack for
+both modes. A picker's first row is exactly that: **Same as the shared pack**,
+with the shared pack's name in the label.
+
+`fonts apply` resolves the mode from `appearance` (falling back to the clock
+between 07:00 and 19:00), picks that mode's pack, and builds the generated
+`vitrail-<pack>` layer for that pack when the choice is adaptive. The automatic
+07:00 / 19:00 switch runs `vitrail theme apply --mode …`, which re-runs the
+font/cursor half so the pointer changes with the rest of the theme.
+
 ## Live propagation
 
 When the cursor changes, `vitrail.fonts apply` writes and runs, in this order:
@@ -115,6 +131,7 @@ When the cursor changes, `vitrail.fonts apply` writes and runs, in this order:
 | X11 / XWayland, X server cursors | `~/.config/X11/vitrail-cursor.Xresources` (`Xcursor.theme`, `Xcursor.size`) merged with `xrdb -merge` | the X server's cursor and cursors created after the merge |
 | GTK apps on X11 | `~/.config/gtk-3.0/settings.ini` (`gtk-cursor-theme-name`, `gtk-cursor-theme-size`) | next window/restart |
 | GTK apps on X11, live | `~/.config/xsettingsd/xsettingsd.conf` (the two `Gtk/Cursor*` keys, merged into the user's file) + `pkill -HUP -x xsettingsd` | immediately, when `xsettingsd` runs |
+| Qt 6 apps | `XCURSOR_THEME`/`XCURSOR_SIZE` from `environment.d` for new windows, and `gsettings`/XSETTINGS while running. `qt6ct.conf` carries the icon theme; Qt has no separate cursor key there. | next window/restart |
 
 Limits worth knowing:
 
@@ -147,16 +164,12 @@ own two colours, switches light/dark and gets a contrast ring).
 
 ## The busy cursor
 
-By default `wait`, `progress` and `left_ptr_watch` come from the pack, tinted,
-like every other pointer. **Cursor → Own busy spinner** switches to Vitrail's
-own: twelve frames of the shell's `clover4` shape turning 30° per frame in the
-palette's `primary`, 120 ms each.
+`wait`, `progress` and `left_ptr_watch` come from the pack, tinted, like every
+other pointer. **Cursor → Own busy spinner** is hidden for now while the design
+is planned: `fonts apply` always builds with `spinner=False`, and the
+`cursorSpinner` preference stays at its `false` default without affecting the
+generated theme.
 
-The frames come from `vitrail/spinner.py`, a Python mirror of
-`kit/shapes.js` (the geometry is pinned by `tests/test_spinner.py` against the
-JavaScript output) rasterised with ImageMagick. The flag is opt-in because a
-turning shape in the pointer is a taste, not a default; the pack's own busy
-cursor is perfectly good and follows the same two inks.
-
-The toggle writes `cursorSpinner` to `fonts.ini`; `fonts apply` rebuilds the
-active design when it changes (the build stamp includes the flag).
+`vitrail/spinner.py` and its tests are untouched. `cursor.build(..., spinner=True)`
+still writes the twelve `clover4` frames, so a later opt-in can bring the row
+back without rebuilding the pipeline.

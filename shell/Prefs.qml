@@ -73,6 +73,8 @@ QtObject {
     property alias iconImport: fontsFile.iconImport
     property alias iconRemove: fontsFile.iconRemove
     property alias cursorTheme: fontsFile.cursorTheme
+    property alias cursorThemeLight: fontsFile.cursorThemeLight
+    property alias cursorThemeDark: fontsFile.cursorThemeDark
     property alias cursorSize: fontsFile.cursorSize
     property alias cursorSpinner: fontsFile.cursorSpinner
     property alias wallpaper: wallpaperFile.wallpaper
@@ -351,6 +353,8 @@ QtObject {
         property string iconImport: ""
         property string iconRemove: ""
         property string cursorTheme: "Adwaita"
+        property string cursorThemeLight: ""
+        property string cursorThemeDark: ""
         property int cursorSize: VitrailTokens.ranges.cursor.value
         property bool cursorSpinner: false
     }

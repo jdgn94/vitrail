@@ -307,7 +307,7 @@ the window declares it in another file, or the path unit watches another set.
 | `terminal.ini` | `terminalScheme`, `terminalPadding`, `fontSize`, `tabStyle`, `tabIcons`, `tabNumbers` |
 | `sound.ini` | `soundOutputApps`, `soundInputApps`, `soundFocusApps`, `soundStep` |
 | `colors.ini` | `colorScheme`, `colorContrast` |
-| `fonts.ini` | `fontSystem`, `fontConsole`, `uiIcons`, `iconTheme`, `iconImport`, `iconRemove`, `cursorTheme`, `cursorSize`, `cursorSpinner` |
+| `fonts.ini` | `fontSystem`, `fontConsole`, `uiIcons`, `iconTheme`, `iconImport`, `iconRemove`, `cursorTheme`, `cursorThemeLight`, `cursorThemeDark`, `cursorSize`, `cursorSpinner` |
 | `capture.ini` | `captureDir`, `captureCopy`, `captureAnnotate`, `captureRecordDir`, `captureRecordAudio`, `captureRecordRegion` |
 | `launcher.ini` | `launcherEngine`, `launcherBangs`, `launcherModes`, `launcherView`, `launcherClear` |
 | `language.ini` | `language`, `languageSystem` |
@@ -357,12 +357,12 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   and the shell, the console font, the shell's Material Symbols family, the
   GTK/Qt icon pack, and the cursor pack with its size. Each choice opens a
   mosaic of everything installed — "Aa" in each family, eight icons per pack,
-  six real cursors per theme — with a search box and the name under every
+  eight real cursors per theme — with a search box and the name under every
   cell (`kit/VitrailPicker.qml`); the dialog is sized by its content and the
-  trigger shows the chosen one. **Palette tint** rebuilds an installed pack in
-  `~/.local/share/icons/vitrail-<pack>` with the wallpaper's `on_surface` and
-  `primary` (`vitrail/cursor.py`); the generated theme is then a normal entry
-  in the cursor list and follows every palette change. The authoring guide —
+  trigger shows the chosen one. The cursor has a light and a dark picker; an
+  empty choice follows the shared pack, and a **Vitrail · pack** row rebuilds
+  that pack in `~/.local/share/icons/vitrail-<pack>` with the wallpaper's
+  `on_surface` and `primary` for that mode (`vitrail/cursor.py`). The authoring guide —
   what makes a pack tint well, the Xcursor layout, and what each part of the
   session picks up live (X11 included) — is `docs/cursors.md`.
   On the Icons tab one picker lists both the installed packs (**Normal**) and

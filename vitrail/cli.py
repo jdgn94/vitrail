@@ -15,6 +15,7 @@ from vitrail import (
     clipboard,
     colors,
     doctor,
+    fonts,
     plugins,
     prefs,
     resources,
@@ -275,6 +276,13 @@ def _theme(args: argparse.Namespace) -> int:
         return 1
     system_theme.apply(args.mode, generated, _config_home())
     apps.apply(args.mode, generated, cache=colors.cache_dir())
+    # The page may choose a cursor pack per mode; a light/dark switch must
+    # select the matching one even when no preference file changed.
+    try:
+        palette = json.loads((generated / f"theme-{args.mode}.json").read_text(encoding="utf-8")).get("colors", {})
+    except (OSError, ValueError):
+        palette = {}
+    fonts.apply(prefs.read_prefs(prefs.config_dir()), _config_home(), palette=palette, mode=args.mode)
     _say(f"System theme: {args.mode}")
     return 0
 

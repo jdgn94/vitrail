@@ -75,6 +75,8 @@ CURSOR_SHAPES = [
     ("resize-h", ("sb_h_double_arrow", "ew-resize", "size_hor")),
     ("resize-v", ("sb_v_double_arrow", "ns-resize", "size_ver")),
     ("move", ("fleur", "move", "all-scroll")),
+    ("help", ("help", "question_arrow", "left_ptr_help", "whats_this")),
+    ("progress", ("progress", "wait", "left_ptr_watch", "half-busy")),
 ]
 
 Runner = Callable[[list[str]], str | None]
@@ -417,20 +419,18 @@ def console_family(name: str, run: Runner = run_text) -> str:
     return ""
 
 
-def _flag(value: object, default: bool = False) -> bool:
-    """A stored boolean, which arrives as a string from the INI files."""
-    if value is None or value == "":
-        return default
-    return str(value).strip().lower() in ("true", "1", "yes", "on")
+def active_mode(appearance: str | None = None) -> str:
+    """The session's light/dark mode: the choice or the clock's guess."""
+    if appearance is None:
+        appearance = prefs.read_prefs(prefs.config_dir()).get("appearance", "auto")
+    return (
+        appearance if appearance in ("light", "dark") else ("light" if 7 <= time.localtime().tm_hour < 19 else "dark")
+    )
 
 
 def active_palette() -> dict:
     """The palette the wallpaper produced for the current light/dark mode."""
-    appearance = prefs.read_prefs(prefs.config_dir()).get("appearance", "auto")
-    mode = (
-        appearance if appearance in ("light", "dark") else ("light" if 7 <= time.localtime().tm_hour < 19 else "dark")
-    )
-    path = preview_cache().parent / "generated" / f"theme-{mode}.json"
+    path = preview_cache().parent / "generated" / f"theme-{active_mode()}.json"
     try:
         return json.loads(path.read_text(encoding="utf-8")).get("colors", {})
     except (OSError, ValueError):
@@ -564,6 +564,7 @@ def apply(
     cache: Path | None = None,
     x11: bool | None = None,
     render=None,
+    mode: str | None = None,
 ) -> int:
     """Applies `fonts.ini` system-wide.
 
@@ -629,7 +630,16 @@ def apply(
     cursor = ""
     designs = [cursor_engine.design_name(name) for name in live.get("cursorDesigns", [])]
     if live["cursorThemes"] or designs:
-        cursor = pick(values.get("cursorTheme"), live["cursorThemes"] + designs, DEFAULT_CURSOR, "cursor theme")
+        active = active_mode() if mode not in ("light", "dark") else mode
+        per_theme = values.get("cursorThemeLight" if active == "light" else "cursorThemeDark")
+        # An empty per-theme value means "use the shared pack", and the active
+        # mode decides which row of the page is in force.
+        cursor = pick(
+            per_theme or values.get("cursorTheme"),
+            live["cursorThemes"] + designs,
+            DEFAULT_CURSOR,
+            f"cursor theme ({active})",
+        )
         pack = cursor_engine.source_of(cursor)
         if pack:
             source = theme_dir(pack, roots or DEFAULT_ROOTS)
@@ -644,7 +654,7 @@ def apply(
                     target,
                     palette if palette is not None else active_palette(),
                     cache / "themes",
-                    spinner=_flag(values.get("cursorSpinner")),
+                    spinner=False,
                     render=render,
                 )
     else:
