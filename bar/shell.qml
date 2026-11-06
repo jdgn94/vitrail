@@ -829,6 +829,21 @@ ShellRoot {
         }
     }
 
+    // The settings window's monitor-edit state: a QSettings INI file with one
+    // JSON value, so the page can write it without running a command.
+    function readMonitorEdit(text) {
+        var value = Prefs.parse(text).monitorEdit || ""
+        if (value === "") {
+            shell.monitorEdit = ({})
+            return
+        }
+        try {
+            shell.monitorEdit = JSON.parse(value)
+        } catch (error) {
+            shell.monitorEdit = ({})
+        }
+    }
+
     // A numeric preference; zero is a value, not a missing one.
     function prefNumber(key, fallback) {
         var raw = shell.prefs[key]
@@ -1494,6 +1509,17 @@ ShellRoot {
         onLoadFailed: shell.readRecordStatus("{}")
     }
 
+    // Which monitor the settings window is editing: written by the Monitors
+    // page, read by every monitor's MonitorEditLayer.
+    FileView {
+        path: shell.cacheDir + "/system/monitor-edit.ini"
+        watchChanges: true
+        printErrors: false
+        onLoaded: shell.readMonitorEdit(this.text())
+        onFileChanged: this.reload()
+        onLoadFailed: shell.monitorEdit = ({})
+    }
+
     FileView {
         path: Quickshell.shellDir + "/../vitrail/prefs.map"
         printErrors: false
@@ -1701,6 +1727,9 @@ ShellRoot {
     // A recording is running: its state file is written by vitrail-capture.
     property bool recording: false
     property string recordPath: ""
+    // The monitor the settings window is editing, from the small file the
+    // Monitors page writes (<cache>/system/monitor-edit.ini).
+    property var monitorEdit: ({})
 
     IpcHandler {
         target: "dialog"
@@ -2794,6 +2823,14 @@ ShellRoot {
                     keyTime: shell.prefNumber("osdKeyTime", VitrailTokens.ranges.osdKey.value)
                     hotZone: shell.prefNumber("osdHotZone", VitrailTokens.ranges.osdHot.value)
                     sliderSize: shell.prefs.osdSize || VitrailTokens.osd.size
+                }
+
+                // The settings window marks the output it is editing.
+                MonitorEditLayer {
+                    screen: monitor.modelData
+                    state: shell.monitorEdit
+                    strings: shell.strings
+                    opacityLevel: shell.barOpacity
                 }
 
                 // Notifications: a full-height panel that opens from a hot

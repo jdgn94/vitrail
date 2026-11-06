@@ -16,7 +16,11 @@ The document is one JSON object in `monitors.ini` (`monitorOverrides`), keyed by
 output name:
 
     { "DP-1": { "mode": "2560x1440@180", "position": "0x0", "scale": 1,
-                "transform": 0, "disabled": false, "mirror": "" } }
+                "transform": 0, "disabled": false, "mirror": "",
+                "primary": true } }
+
+`primary` is not a monitor rule: it names the one output that receives
+workspace 1 when the document is applied. At most one output may carry it.
 
 Every value is validated before it becomes Lua: the rule is assembled here,
 never taken from the file as text.
@@ -47,7 +51,7 @@ POSITION = re.compile(r"^(auto(-(left|right|up|down))?|-?\d+x-?\d+)$")
 
 Runner = Callable[[list[str]], str | None]
 
-FIELDS = {"mode", "position", "scale", "transform", "disabled", "mirror"}
+FIELDS = {"mode", "position", "scale", "transform", "disabled", "mirror", "primary"}
 
 
 def log(message: str) -> None:
@@ -194,8 +198,19 @@ def _one(name: str, spec: object) -> dict:
     if "mirror" in spec:
         if not isinstance(spec["mirror"], str) or (spec["mirror"] and not NAME.match(spec["mirror"])):
             raise ValueError(f"{name}: bad mirror")
+        if spec["mirror"] == name:
+            raise ValueError(f"{name}: cannot mirror itself")
         cleaned["mirror"] = spec["mirror"]
+    if "primary" in spec:
+        if not isinstance(spec["primary"], bool):
+            raise ValueError(f"{name}: primary is not a boolean")
+        cleaned["primary"] = spec["primary"]
     return cleaned
+
+
+def primary_of(data: dict) -> str:
+    """The output that owns workspace 1, or "" when the document names none."""
+    return next((name for name in sorted(data) if data[name].get("primary")), "")
 
 
 def document(text: str | None) -> dict:
@@ -208,7 +223,10 @@ def document(text: str | None) -> dict:
         raise ValueError("not JSON") from error
     if not isinstance(data, dict):
         raise ValueError("the document is not an object")
-    return {name: _one(name, spec) for name, spec in data.items()}
+    cleaned = {name: _one(name, spec) for name, spec in data.items()}
+    if len([name for name, spec in cleaned.items() if spec.get("primary")]) > 1:
+        raise ValueError("only one output may be primary")
+    return cleaned
 
 
 # --- applying ----------------------------------------------------------------
@@ -253,6 +271,7 @@ def apply(
     if not data:
         return 0
 
+    primary = primary_of(data)
     canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
     stamp = cache / "monitors"
     if not force and stamp.is_file():
@@ -262,7 +281,11 @@ def apply(
                     config / STATE_FILE,
                     json.dumps(
                         state(run=run, overrides=data)
-                        | {"updated": int(time.time() * 1000), "result": {"code": 0, "skipped": True}},
+                        | {
+                            "updated": int(time.time() * 1000),
+                            "primary": primary,
+                            "result": {"code": 0, "skipped": True},
+                        },
                         separators=(",", ":"),
                     ),
                 )
@@ -275,16 +298,31 @@ def apply(
         answer = run(["hyprctl", "eval", rule(name, data[name])])
         if (answer or "").strip() != "ok":
             failed.append(name)
+    # The primary output owns workspace 1. The rule is applied at every
+    # login by the start hook; this moves the workspace now.
+    workspace = None
+    if primary:
+        moved = (run(["hyprctl", "dispatch", "moveworkspacetomonitor", "1", primary]) or "").strip() == "ok"
+        workspace = {"monitor": primary, "workspace": 1, "moved": moved}
+        if not moved:
+            log(f"the compositor refused workspace 1 on {primary}")
     stamp.parent.mkdir(parents=True, exist_ok=True)
     _write(stamp, canonical)
-    code = 1 if failed else 0
+    code = 1 if failed or (workspace is not None and not workspace["moved"]) else 0
     if failed:
         log(f"the compositor refused {', '.join(failed)}")
+    result: dict = {"code": code, "failed": failed}
+    if workspace is not None:
+        result["workspace"] = workspace
     _write(
         config / STATE_FILE,
         json.dumps(
             state(run=run, overrides=data)
-            | {"updated": int(time.time() * 1000), "result": {"code": code, "failed": failed}},
+            | {
+                "updated": int(time.time() * 1000),
+                "primary": primary,
+                "result": result,
+            },
             separators=(",", ":"),
         ),
     )

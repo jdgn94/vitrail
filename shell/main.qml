@@ -24,6 +24,9 @@ Window {
 
     // The folder with one preference file per area (see Prefs.qml).
     readonly property string configDir: Args.value("--config", ".")
+    // The bar's small state folder: the Monitors page leaves the output it is
+    // configuring at <cache>/system/monitor-edit.ini.
+    readonly property string cacheDir: Args.value("--cache", "")
     // The translations, in a file the launcher writes: every language in one
     // argument passes the kernel's 128 KiB limit as the strings grow.
     // `--i18n` still serves a caller with a small bundle.
@@ -594,6 +597,7 @@ Window {
                                         prefs: app.store
                                         strings: app.strings
                                         configDir: app.configDir
+                                        cacheDir: app.cacheDir
                                         monitors: app.monitors
                                     }
                                 }

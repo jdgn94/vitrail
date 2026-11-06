@@ -391,9 +391,16 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   default instead of reaching fontconfig. Palette-tinted cursors are P2.10.
 - **Windows:** border geometry and window opacity (focused and unfocused).
   Blur is a single global value and only exists in glass mode.
-- **Monitors:** each output's mode, scale, rotation, position, mirror and
-  enabled state, saved as one JSON document in `monitors.ini` (`monitorOverrides`)
-  and applied when it changes and at login: the Hyprland start hook runs
+- **Monitors:** a drag-and-drop canvas places each output at its logical
+  position, snapping to its neighbours' edges; clicking one opens its mode,
+  scale, rotation, position, mirror, enabled state, wallpaper, bar edge and
+  primary flag. The page keeps a draft and writes `monitorOverrides` in
+  `monitors.ini` only on **Apply**; **Discard** restores the applied document,
+  and a refused apply keeps the draft and shows the reason. One output may be
+  primary: applying the layout moves workspace 1 there and records it in
+  `monitor-state.json`. While the page is open it leaves the selected output in
+  `~/.cache/vitrail/system/monitor-edit.ini`, and the bar draws an accent frame
+  and "Configuring" on that screen. The Hyprland start hook runs
   `vitrail-monitors apply --force`, so a two-monitor layout with different
   scales comes back after a logout without the bar being involved.
 - **Input:** keyboard layouts with variants and the switch shortcut; pointer

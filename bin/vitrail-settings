@@ -28,7 +28,9 @@ mkdir -p -- "${CONFIG}" "${VPN_DIR}"
 # the kernel's 128 KiB limit for one argument. The window reads it at start.
 CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/vitrail"
 i18n_file="${CACHE_DIR}/i18n-bundle.json"
-mkdir -p -- "${CACHE_DIR}"
+# `system` holds the small files the window leaves for the bar (the monitor
+# being configured, monitor-state.json).
+mkdir -p -- "${CACHE_DIR}" "${CACHE_DIR}/system"
 
 work="$(mktemp -d)"
 trap 'rm -rf -- "${work}"' EXIT
@@ -123,6 +125,7 @@ export QT_QPA_PLATFORMTHEME=xdgdesktopportal
 
 exec qml6 -I "${HERE}/.." "${SHELL_DIR}/main.qml" -- \
     --config "${CONFIG}" \
+    --cache "${CACHE_DIR}" \
     --palette "${palette}" \
     --palette-file "${palette_file}" \
     --i18n-file "${i18n_file}" \

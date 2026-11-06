@@ -199,6 +199,14 @@ var osd = {
     card: 300
 }
 
+// The indicator the settings window leaves on the monitor being configured:
+// a thin accent frame, and a card with the output's name and "Configuring".
+var monitorEdit = {
+    frame: 3,
+    label: 320,
+    labelGap: "xl"
+}
+
 // The media player (bar/media). Lengths are px, times ms.
 // disc: `size` of the cover, `pad` of room around it for the ring, `marks`
 // dashes in the ring, `gap` from the cover to the ring, `dot` the mark's

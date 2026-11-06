@@ -98,4 +98,75 @@ TestCase {
         compare(View.live(monitors, "HDMI-A-1"), second)
         compare(View.live(monitors, "nope"), null)
     }
+
+    // --- the draft -----------------------------------------------------------
+
+    function test_the_draft_seeds_every_output_and_one_primary() {
+        var doc = View.draft([monitor, second], "", "")
+        compare(Object.keys(doc).sort(), ["DP-1", "HDMI-A-1"])
+        compare(doc["DP-1"].primary, true, "the focused output starts primary")
+        compare(doc["HDMI-A-1"].primary, undefined)
+        compare(doc["DP-1"].position, "0x0")
+        compare(doc["HDMI-A-1"].position, "2560x0")
+    }
+
+    function test_a_saved_auto_position_stays_auto() {
+        var doc = View.draft([monitor], '{"DP-1":{"position":"auto"}}', "DP-1")
+        compare(doc["DP-1"].position, "auto")
+        compare(doc["DP-1"].mode, "2560x1440@180.00")
+    }
+
+    function test_primary_is_only_one_and_can_move() {
+        var doc = View.draft([monitor, second], "", "DP-1")
+        var moved = View.setPrimary(doc, "HDMI-A-1")
+        compare(moved["DP-1"].primary, undefined)
+        compare(moved["HDMI-A-1"].primary, true)
+        compare(View.primaryOf(moved), "HDMI-A-1")
+    }
+
+    function test_dragging_changes_the_draft_only() {
+        var base = View.draft([monitor, second], "", "DP-1")
+        var next = View.moveTo(base, [monitor, second], "DP-1", -1280, 120, false)
+        compare(View.position(next["DP-1"]), ({ auto: false, x: -1280, y: 120 }))
+        compare(base["DP-1"].position, "0x0", "the old draft is untouched")
+    }
+
+    function test_dropping_snaps_to_an_edge_without_overlapping() {
+        var base = View.draft([monitor, second], "", "DP-1")
+        var moved = View.moveTo(base, [monitor, second], "HDMI-A-1", 1200, 30, false)
+        var dropped = View.drop(moved, [monitor, second], "HDMI-A-1")
+        var rect = View.rectOfName([monitor, second], dropped, "HDMI-A-1")
+        var other = View.rectOfName([monitor, second], dropped, "DP-1")
+        compare(rect.x, other.x + other.width, "it touches the first output's right edge")
+        compare(View.rects([monitor, second], dropped).some(function (one, index, all) {
+            return all.some(function (two) {
+                return one.name !== two.name && View.overlaps(one, two)
+            })
+        }), false)
+    }
+
+    function test_the_document_is_canonical_and_dirty_only_with_a_difference() {
+        var base = View.draft([monitor, second], "", "DP-1")
+        var same = View.copy(base)
+        compare(View.dirty(base, same), false)
+        compare(View.documentText(base), View.documentText(same))
+        var next = View.set(base, [monitor, second], "DP-1", { scale: 1.25 })
+        compare(View.dirty(base, next), true)
+        compare(View.changed(base, next), ["DP-1"])
+        compare(View.countChanges(base, next), 1)
+    }
+
+    function test_the_canvas_fits_the_logical_extents() {
+        compare(View.extent(monitor, { transform: 1, scale: 1 }), ({ width: 1440, height: 2560 }))
+        compare(View.extent(second, { transform: 0, scale: 2 }), ({ width: 960, height: 600 }))
+        var box = View.bounds(View.rects([monitor, second], View.draft([monitor, second], "", "DP-1")))
+        compare(box, ({ x: 0, y: 0, width: 3520, height: 1536 }))
+    }
+
+    function test_the_indicator_document_round_trips() {
+        var text = View.indicator("DP-1", true)
+        compare(View.parseIndicator(text), ({ active: true, name: "DP-1" }))
+        compare(View.parseIndicator(View.indicator("DP-1", false)), ({ active: false, name: "" }))
+        compare(View.parseIndicator("not json"), ({ active: false, name: "" }))
+    }
 }

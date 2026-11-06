@@ -66,6 +66,8 @@ def fake(text: str | None = MONITORS, record: list | None = None):
             record.append(argv)
         if argv[:2] == ["hyprctl", "eval"]:
             return "ok"
+        if argv[:2] == ["hyprctl", "dispatch"]:
+            return "ok"
         if argv[:3] == ["hyprctl", "monitors", "-j"]:
             return text
         return None
@@ -92,6 +94,12 @@ def document() -> dict:
             "mirror": "",
         },
     }
+
+
+def with_primary(name: str = "DP-1") -> dict:
+    data = document()
+    data[name]["primary"] = True
+    return data
 
 
 class ParseTests(unittest.TestCase):
@@ -152,6 +160,20 @@ class DocumentTests(unittest.TestCase):
         text = json.dumps(document())
         self.assertEqual(monitors.document(text), document())
 
+    def test_primary_is_a_boolean_and_only_one_output_may_have_it(self) -> None:
+        self.assertEqual(monitors.document(json.dumps(with_primary()))["DP-1"]["primary"], True)
+        two = with_primary()
+        two["HDMI-A-1"]["primary"] = True
+        for patch in ({"primary": "yes"}, {"primary": 1}, {"primary": None}):
+            with self.subTest(patch=patch), self.assertRaises(ValueError):
+                monitors.document(json.dumps({"DP-1": {**document()["DP-1"], **patch}}))
+        with self.assertRaises(ValueError):
+            monitors.document(json.dumps(two))
+
+    def test_a_mirror_cannot_name_itself(self) -> None:
+        with self.assertRaises(ValueError):
+            monitors.document(json.dumps({"DP-1": {**document()["DP-1"], "mirror": "DP-1"}}))
+
     def test_an_output_name_is_a_hyprland_name(self) -> None:
         for name in ("DP-1", "HDMI-A-1", "eDP-1", "desc:Dell U2415"):
             monitors.document(json.dumps({name: document()["DP-1"]}))
@@ -183,6 +205,12 @@ class RuleTests(unittest.TestCase):
         self.assertEqual(
             monitors.rule("DP-1", None),
             'hl.monitor({ output = "DP-1", mode = "preferred", position = "auto", scale = 1 })',
+        )
+
+    def test_primary_is_not_a_monitor_rule(self) -> None:
+        self.assertEqual(
+            monitors.rule("DP-1", {**document()["DP-1"], "primary": True}),
+            'hl.monitor({ output = "DP-1", mode = "2560x1440@180.00", position = "0x0", scale = 1.0, transform = 0 })',
         )
 
 
@@ -238,6 +266,57 @@ class ApplyTests(unittest.TestCase):
     def test_an_empty_document_resets_nothing(self) -> None:
         self.assertEqual(self.apply("{}"), 0)
         self.assertFalse((self.config / "monitor-state.json").exists())
+
+    def test_the_primary_output_gets_workspace_one(self) -> None:
+        calls: list[list[str]] = []
+        code = monitors.apply(json.dumps(with_primary()), config=self.config, cache=self.cache, run=fake(record=calls))
+        self.assertEqual(code, 0)
+        dispatched = [call for call in calls if call[:2] == ["hyprctl", "dispatch"]]
+        self.assertEqual(dispatched, [["hyprctl", "dispatch", "moveworkspacetomonitor", "1", "DP-1"]])
+        state = json.loads((self.config / "monitor-state.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["primary"], "DP-1")
+        self.assertEqual(state["overrides"]["DP-1"]["primary"], True)
+        self.assertEqual(state["result"]["workspace"], {"monitor": "DP-1", "workspace": 1, "moved": True})
+
+    def test_a_refused_workspace_makes_the_apply_fail(self) -> None:
+        def refusing(argv):
+            if argv[:2] == ["hyprctl", "eval"]:
+                return "ok"
+            if argv[:2] == ["hyprctl", "dispatch"]:
+                return "error"
+            if argv[:3] == ["hyprctl", "monitors", "-j"]:
+                return MONITORS
+            return None
+
+        code = monitors.apply(json.dumps(with_primary()), config=self.config, cache=self.cache, run=refusing)
+        self.assertEqual(code, 1)
+        state = json.loads((self.config / "monitor-state.json").read_text(encoding="utf-8"))
+        self.assertFalse(state["result"]["workspace"]["moved"])
+
+    def test_the_previous_document_can_be_applied_again(self) -> None:
+        before = json.dumps(with_primary())
+        after = monitors.document(before)
+        after["DP-1"]["position"] = "-1920x0"
+        after["HDMI-A-1"]["position"] = "0x0"
+        calls: list[list[str]] = []
+        self.assertEqual(
+            monitors.apply(json.dumps(after), config=self.config, cache=self.cache, run=fake(record=calls)), 0
+        )
+        calls.clear()
+        self.assertEqual(
+            monitors.apply(before, config=self.config, cache=self.cache, run=fake(record=calls), force=True), 0
+        )
+        evaluated = [call[2] for call in calls if call[:2] == ["hyprctl", "eval"]]
+        self.assertTrue(any('position = "0x0"' in rule and 'output = "DP-1"' in rule for rule in evaluated))
+        self.assertTrue(any('position = "2560x0"' in rule and 'output = "HDMI-A-1"' in rule for rule in evaluated))
+
+    def test_a_draft_never_rewrites_the_preference_file(self) -> None:
+        (self.config / "monitors.ini").write_text(
+            "[monitors]\nmonitorOverrides=" + json.dumps(document()) + "\n", encoding="utf-8"
+        )
+        before = (self.config / "monitors.ini").read_text(encoding="utf-8")
+        self.assertEqual(self.apply(json.dumps(with_primary())), 0)
+        self.assertEqual((self.config / "monitors.ini").read_text(encoding="utf-8"), before)
 
 
 class CommandTests(unittest.TestCase):
