@@ -156,4 +156,35 @@ TestCase {
         page.visible = false
         compare(View.parseIndicator(page.indicatorState), ({ active: false, name: "" }))
     }
+
+    function test_the_apply_bar_shrinks_to_its_controls() {
+        var page = make()
+        page.dragMonitor("DP-1", -1200, 0)
+        var bar = findChild(page, "applyBar")
+        var row = findChild(page, "applyRow")
+        tryVerify(function () { return bar.visible && row.implicitWidth > 0 })
+        compare(bar.width, Math.min(page.width - 2 * VitrailTokens.gap("md"),
+                                    row.implicitWidth + 2 * VitrailTokens.gap("md")))
+        verify(bar.width < page.width - VitrailTokens.gap("md"),
+               "the card no longer spans the page")
+    }
+
+    function test_the_last_option_can_scroll_above_the_apply_bar() {
+        var page = createTemporaryObject(pageComponent, testCase, { width: 900, height: 480 })
+        verify(page)
+        var details = findChild(page, "details")
+        var spacer = findChild(page, "detailsSpacer")
+        var bar = findChild(page, "applyBar")
+        compare(spacer.height, 0, "no room is kept when there is nothing to apply")
+        page.dragMonitor("DP-1", -1200, 0)
+        tryVerify(function () { return bar.visible && spacer.height > 0 })
+        verify(spacer.height >= bar.height, "the spacer clears the floating bar")
+        details.contentY = Math.max(0, details.contentHeight - details.height)
+        tryVerify(function () {
+            return details.contentY >= details.contentHeight - details.height - 1
+        })
+        var last = findChild(page, "detailsLast")
+        var bottom = last.mapToItem(page, 0, last.height).y
+        verify(bottom <= bar.y, "the last row sits above the floating card")
+    }
 }

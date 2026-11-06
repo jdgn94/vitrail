@@ -400,7 +400,6 @@ Item {
         id: content
 
         anchors.fill: parent
-        anchors.bottomMargin: page.dirty ? applyBar.height + VitrailTokens.gap("md") : 0
         enabled: !page.pending
         spacing: VitrailTokens.gap("lg")
 
@@ -880,6 +879,7 @@ Item {
                     }
 
                     RowLayout {
+                        objectName: "detailsLast"
                         Layout.fillWidth: true
                         spacing: VitrailTokens.gap("sm")
 
@@ -898,6 +898,17 @@ Item {
                             onClicked: page.resetDraft(page.selected)
                         }
                     }
+                }
+
+                // Room for the floating bar: the details scroll behind it, and
+                // the last row can still come fully above it.
+                Item {
+                    id: detailsSpacer
+
+                    objectName: "detailsSpacer"
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: page.dirty
+                                           ? applyBar.height + 2 * VitrailTokens.gap("md") : 0
                 }
 
                 VitrailText {
@@ -922,8 +933,10 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: VitrailTokens.gap("md")
+        // The card is only as wide as its controls; the content scrolls
+        // visibly around it.
         width: Math.min(page.width - 2 * VitrailTokens.gap("md"),
-                        VitrailTokens.size("display") * 16)
+                        applyRow.implicitWidth + 2 * VitrailTokens.gap("md"))
         height: applyRow.implicitHeight + 2 * VitrailTokens.gap("md")
         tint: page.palette.surfaceHigh
         opacityLevel: VitrailTokens.opacity
@@ -932,6 +945,7 @@ Item {
         RowLayout {
             id: applyRow
 
+            objectName: "applyRow"
             anchors.fill: parent
             anchors.margins: VitrailTokens.gap("md")
             spacing: VitrailTokens.gap("md")
@@ -943,7 +957,13 @@ Item {
             }
 
             ColumnLayout {
-                Layout.fillWidth: true
+                id: applySummary
+
+                readonly property real maxWidth: VitrailTokens.size("display") * 10
+
+                objectName: "applySummary"
+                Layout.maximumWidth: applySummary.maxWidth
+                Layout.preferredWidth: Math.min(applySummary.implicitWidth, applySummary.maxWidth)
                 spacing: 0
 
                 VitrailText {
