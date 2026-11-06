@@ -66,6 +66,14 @@ Item {
 
         objectName: "glyph"
         anchors.centerIn: parent
+        // Inside the badge the glyph's line box is replaced by the circle, so
+        // the alignment below centres the drawn glyph on the badge instead of
+        // leaving the extra line height below the baseline. The implicit size
+        // stays the glyph's own, so the outlined footprint does not move.
+        width: root.container ? root.badgeSize : glyphText.implicitWidth
+        height: root.container ? root.badgeSize : glyphText.implicitHeight
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
         variant: "icon"
         family: root.resolvedFamily
         icon: root.glyph
