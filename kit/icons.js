@@ -256,6 +256,7 @@ var names = {
     wallpaper: "wallpaper",
     warning: "warning",
     water_drop: "water_drop",
+    waves: "waves",
     widgets: "widgets",
     wifi: "wifi",
     wifi_off: "wifi_off",

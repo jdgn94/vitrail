@@ -461,6 +461,12 @@ var dashboard = {
 // below it at `fade` opacity and `reach` of their height. The panel gives the
 // strip a surface with `padding` (a gap step), `radius` times the shell radius
 // and `width` of the screen.
+// circle: `count` bars around the centre, their `radius` as a share of the
+// strip's half height, `inner` where a bar starts and `coverage` its share of
+// the angular cell (the rest is the gap).
+// waves: `count` samples per line, `lines` of them, their `amplitude` as a
+// share of the height, `spread` the distance between lines, `fade` the opacity
+// each line loses to the one above it and `thickness` in px.
 var visualiser = {
     bars: 64,
     coverage: 0.52,
@@ -469,7 +475,9 @@ var visualiser = {
     maxWidth: 1280,
     smoothing: 90,
     reflection: { baseline: 0.72, fade: 0.28, reach: 0.62, gap: 2 },
-    panel: { padding: "lg", radius: 1.5, width: 0.72 }
+    panel: { padding: "lg", radius: 1.5, width: 0.72 },
+    circle: { count: 48, radius: 0.88, inner: 0.36, coverage: 0.5 },
+    waves: { count: 48, lines: 3, amplitude: 0.34, spread: 0.16, fade: 0.55, thickness: 2 }
 }
 
 var space = {

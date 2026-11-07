@@ -721,11 +721,11 @@ the global player).
 layer: `cava` (started by `vitrail/visualiser.py`, 64 bars at 60 fps) writes
 the mix to `$XDG_RUNTIME_DIR/vitrail/cava.json`, and the bar draws it under the
 wallpaper on every monitor. It runs only while the preference is on and an app
-is playing audio, so an idle desktop pays nothing. The three approved looks are
-`bars` (from the bottom edge), `reflection` (a mirrored, fading copy below the
-bars) and `panel` (the bars inside a rounded surface). `circle` and `waves` are
-planned variants. `visualiserHeight` follows a token range, like every other
-size.
+is playing audio, so an idle desktop pays nothing. The five looks are `bars`
+(from the bottom edge), `reflection` (a mirrored, fading copy below the bars),
+`panel` (the bars inside a rounded surface), `circle` (a radial ring of bars
+around the centre) and `waves` (smooth wave lines across the strip).
+`visualiserHeight` follows a token range, like every other size.
 
 ### Panels
 

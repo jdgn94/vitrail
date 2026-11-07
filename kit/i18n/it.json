@@ -784,6 +784,8 @@
   "bar.visualiser.variant.bars": "Barre",
   "bar.visualiser.variant.reflection": "Riflesso",
   "bar.visualiser.variant.panel": "Pannello",
+  "bar.visualiser.variant.circle": "Cerchio",
+  "bar.visualiser.variant.waves": "Onde",
   "bar.visualiser.height": "Altezza",
   "wallpaper.effect": "Effetto",
   "wallpaper.effect.help": "Un trattamento ImageMagick sull'immagine; anche la palette lo segue.",

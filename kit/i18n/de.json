@@ -784,6 +784,8 @@
   "bar.visualiser.variant.bars": "Balken",
   "bar.visualiser.variant.reflection": "Spiegelung",
   "bar.visualiser.variant.panel": "Panel",
+  "bar.visualiser.variant.circle": "Kreis",
+  "bar.visualiser.variant.waves": "Wellen",
   "bar.visualiser.height": "Höhe",
   "wallpaper.effect": "Effekt",
   "wallpaper.effect.help": "Eine ImageMagick-Behandlung des Bildes; auch die Palette folgt ihr.",

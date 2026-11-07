@@ -88,8 +88,8 @@ class VariantContractTests(unittest.TestCase):
         self.assertEqual(variant_names("panel"), {"full", "overlay"})
         self.assertEqual(variant_names("wallpaper"), {"frame", "screen"})
 
-    def test_the_three_approved_visualiser_looks_exist(self) -> None:
-        self.assertEqual(variant_names("visualiser"), {"bars", "reflection", "panel"})
+    def test_the_five_visualiser_looks_exist(self) -> None:
+        self.assertEqual(variant_names("visualiser"), {"bars", "reflection", "panel", "circle", "waves"})
 
     def test_launcher_has_a_popout_and_a_fullscreen_variant_over_real_tokens(self) -> None:
         self.assertEqual(variant_names("launcher"), {"popout", "fullscreen"})

@@ -273,7 +273,8 @@ Item {
         screens: { primary: "monitor", all: "devices" },
         frame: { full: "border_outer", corners: "rounded_corner", none: "border_clear" },
         vertical: { top: "vertical_align_top", bottom: "vertical_align_bottom" },
-        visualiser: { bars: "bar_chart", reflection: "flip", panel: "crop_free" },
+        visualiser: { bars: "bar_chart", reflection: "flip", panel: "crop_free",
+                      circle: "radio_button_checked", waves: "waves" },
         group: { start: "first_page", center: "filter_center_focus", end: "last_page" },
         widget: {
             launcher: "apps", notifications: "notifications", media: "play_circle",

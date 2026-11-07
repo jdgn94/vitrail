@@ -948,7 +948,7 @@ Window {
 
         VitrailText {
             variant: "title"
-            text: "VitrailVisualiser · the three approved looks · real tokens"
+            text: "VitrailVisualiser · the five looks · real tokens"
         }
 
         RowLayout {
