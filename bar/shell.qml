@@ -116,15 +116,20 @@ ShellRoot {
     // does, until it is opened on another one.
     property var notificationsScreen: null
 
-    // The in-place desktop editor (right-click → Edit): one monitor at a time,
-    // one global flag the bar, the notification panel and the toasts follow
-    // (bar/desktop/policy.js). The local document is the edited one until the
-    // preference file catches up, so two quick drags never lose a change.
+    // The in-place desktop editor (right-click → Edit): every monitor shows it,
+    // while one global flag drives the bar, the notification panel and the
+    // toasts (bar/desktop/policy.js). The initiating monitor keeps the desktop
+    // document; the bar and panel documents are global. The local document is
+    // the edited one until the preference file catches up, so two quick drags
+    // never lose a change.
     property bool editMode: false
     property var editScreen: null
     property string desktopEditLayout: ""
     property string barEditLayout: ""
     property string panelEditLayout: ""
+    // The bar's per-monitor placements while the editor is open (bar.ini
+    // `barMonitors`), so a selector moves the bar before the file reloads.
+    property string barMonitorsEditLayout: "{}"
     // The right-click menu and the point it came from.
     property bool desktopMenuOpen: false
     property var desktopMenuScreen: null
@@ -762,6 +767,7 @@ ShellRoot {
         shell.desktopEditLayout = shell.prefs.desktopLayout || "{}"
         shell.barEditLayout = shell.prefs.barLayout || ""
         shell.panelEditLayout = shell.prefs.panelLayout || ""
+        shell.barMonitorsEditLayout = shell.prefs.barMonitors || "{}"
         shell.editScreen = screen
         shell.editMode = true
     }
@@ -976,7 +982,8 @@ ShellRoot {
                                              && shell.visualiserValues.length > 0
     // Whether any monitor places a desktop widget; the data services run only
     // then, and an empty document costs nothing.
-    readonly property bool desktopWidgetsActive: Layouts.desktopCount(shell.prefs.desktopLayout || "") > 0
+    readonly property bool desktopWidgetsActive: Layouts.desktopCount(shell.prefs.desktopLayout || "",
+                                                                        shell.prefBool("desktopSync", true)) > 0
     onVisualiserEnabledChanged: if (!shell.visualiserEnabled) shell.visualiserValues = []
     onAudioPlayingChanged: if (!shell.audioPlaying) shell.visualiserValues = []
     // The palette both modes use, written with the theme files by
@@ -1026,13 +1033,10 @@ ShellRoot {
         return best
     }
 
-    // The primary monitor's bar, which every monitor's OSD follows: one edge
-    // and one centring everywhere (see OsdLayer).
+    // The primary monitor's bar, whose reserve every monitor's OSD follows so
+    // the panels are centred at the same spot; each monitor still picks its own
+    // edge (bar/barview.js).
     property var primaryBar: null
-    readonly property string notificationSide: Notifications.sideFor(
-        shell.prefs.notificationPosition, shell.prefs.barEdge || "left")
-    readonly property string osdEdge: Osd.edgeFor(shell.notificationSide,
-                                                  shell.primaryBar ? shell.primaryBar.layout.edge : "")
     readonly property var osdReference: !shell.primaryBar ? ({ left: 0, top: 0, right: 0, bottom: 0 })
         : (shell.primaryBar.style.docked ? shell.primaryBar.layout.dock : shell.primaryBar.layout.reserve)
 
@@ -2505,6 +2509,35 @@ ShellRoot {
                 // not rebuild the elements.
                 readonly property string layoutText: shell.prefs.barLayout || ""
                 readonly property var barDocument: Layouts.effective(monitor.layoutText, monitor.modelData.name)
+                // The placements that may differ per output (bar.ini
+                // `barMonitors`): the bar's edge and style, plus the
+                // notification side and the OSD edge. The editor's local text
+                // wins while it is open so a selector moves at once.
+                readonly property string positionText: shell.editMode
+                                                        ? shell.barMonitorsEditLayout
+                                                        : (shell.prefs.barMonitors || "{}")
+                readonly property var positionOverride: BarView.override(
+                    BarView.document(monitor.positionText), monitor.modelData.name)
+                readonly property var barPosition: BarView.forMonitor(
+                    monitor.positionText, monitor.modelData.name,
+                    { edge: shell.prefs.barEdge || "left", style: shell.prefs.barStyle || "" })
+                // The panel never opens on this monitor's bar edge; an explicit
+                // override wins. Without one, the OSD sits opposite it.
+                readonly property string notificationSide: {
+                    if (monitor.positionOverride
+                            && typeof monitor.positionOverride.notificationSide === "string"
+                            && monitor.positionOverride.notificationSide !== "")
+                        return monitor.positionOverride.notificationSide
+                    return Notifications.sideFor(shell.prefs.notificationPosition,
+                                                 monitor.barPosition.edge)
+                }
+                readonly property string osdEdge: {
+                    if (monitor.positionOverride
+                            && typeof monitor.positionOverride.osdEdge === "string"
+                            && monitor.positionOverride.osdEdge !== "")
+                        return monitor.positionOverride.osdEdge
+                    return Osd.edgeFor(monitor.notificationSide, monitor.barPosition.edge)
+                }
                 readonly property var hyprMonitor: Hyprland.monitorFor(monitor.modelData)
                 readonly property bool fullscreen: !!(hyprMonitor
                     && hyprMonitor.activeWorkspace && hyprMonitor.activeWorkspace.hasFullscreen)
@@ -3021,8 +3054,10 @@ ShellRoot {
                     screen: monitor.modelData
                     monitor: monitor.modelData.name
                     layoutText: shell.prefs.desktopLayout || ""
-                    hiddenFullscreen: monitor.hiddenFullscreen
-                                       || (shell.editMode && shell.editScreen === monitor.modelData)
+                    // The editor shows the desktop of every monitor on every
+                    // screen, so the real widgets step aside everywhere.
+                    hiddenFullscreen: monitor.hiddenFullscreen || shell.editMode
+                    sync: shell.prefBool("desktopSync", true)
                     strings: shell.strings
                     language: shell.prefs.language || "en"
                     weather: desktopData.weather
@@ -3091,9 +3126,7 @@ ShellRoot {
 
                         // The global bar, with this output's edge and style
                         // (bar.ini `barMonitors`); the thickness stays global.
-                        readonly property var barLayout: BarView.forMonitor(
-                            shell.prefs.barMonitors, monitor.modelData.name,
-                            { edge: shell.prefs.barEdge || "left", style: shell.prefs.barStyle || "" })
+                        readonly property var barLayout: monitor.barPosition
                         // What this monitor draws, in which order (bar.ini
                         // `barLayout`, bar → Editor).
                         readonly property var startEntries: Layouts.entries(monitor.barDocument.order.start,
@@ -3306,14 +3339,22 @@ ShellRoot {
                     id: desktopEditLayer
 
                     screen: monitor.modelData
-                    active: shell.editMode && shell.editScreen === monitor.modelData
-                    monitor: monitor.modelData.name
+                    // Every monitor shows the editor; only the one that started
+                    // it keeps the keyboard. The Desktop tab keeps that monitor's
+                    // document, while the position selectors write this screen's
+                    // override.
+                    active: shell.editMode
+                    focused: shell.editScreen === monitor.modelData
+                    monitor: shell.editScreen ? shell.editScreen.name : monitor.modelData.name
+                    screenMonitor: monitor.modelData.name
                     layoutText: shell.desktopEditLayout
                     strings: shell.strings
                     screenWidth: monitor.modelData.width
                     screenHeight: monitor.modelData.height
                     barLayout: shell.barEditLayout
                     panelLayout: shell.panelEditLayout
+                    positions: shell.barMonitorsEditLayout
+                    desktopSync: shell.prefBool("desktopSync", true)
                     monitors: Quickshell.screens.map(function (screen) {
                         return { name: screen.name }
                     })
@@ -3354,7 +3395,11 @@ ShellRoot {
                             shell.setPref("desktopLayout", text)
                         }
                     }
-                    onPrefChanged: function (key, value) { shell.setPref(key, String(value)) }
+                    onPrefChanged: function (key, value) {
+                        if (key === "barMonitors")
+                            shell.barMonitorsEditLayout = String(value)
+                        shell.setPref(key, String(value))
+                    }
                     onFinished: shell.stopDesktopEdit()
                 }
 
@@ -3390,7 +3435,7 @@ ShellRoot {
                     controller: osdController
                     layout: bar.layout
                     docked: bar.style.docked
-                    edge: shell.osdEdge
+                    edge: monitor.osdEdge
                     reference: shell.osdReference
                     focused: monitor.modelData === shell.focusedScreen
                     strings: shell.strings
@@ -3418,7 +3463,7 @@ ShellRoot {
                     screen: monitor.modelData
                     layout: bar.layout
                     docked: bar.style.docked
-                    side: shell.notificationSide
+                    side: monitor.notificationSide
                     // Every monitor keeps its hot zone; only the pinned one draws the panel.
                     active: DesktopPolicy.notificationsAllowed(monitor.fullscreen, shell.editMode)
                     pinned: monitor.modelData === shell.notificationsScreen

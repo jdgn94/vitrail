@@ -3,25 +3,52 @@ import QtQuick.Layouts
 import "../kit"
 import "../kit/base"
 import "../layouts.js" as Layouts
+import "../barview.js" as BarView
 
 // The panel tab of the in-place editor. One flat list in the document's order:
 // show or hide each widget, move it, and set its size, style and typography.
 // It edits bar.ini `panelLayout`; every edit is one whole write, emitted as
-// `committed`.
+// `committed`. The notification side may differ per monitor and is written to
+// bar.ini `barMonitors` for the monitor being edited.
 Item {
     id: root
 
     property var strings: ({})
     property var fonts: []
     property string layoutText: ""
+    property string positions: ""
+    property string screenMonitor: ""
 
     signal committed(string text)
+    signal positionsEdited(string text)
 
     readonly property var doc: Layouts.effective(root.layoutText, "", null, "panel")
+    readonly property string notificationSideOverride: {
+        var entry = root.screenMonitor !== ""
+                    ? BarView.override(BarView.document(root.positions), root.screenMonitor) : null
+        return entry && typeof entry.notificationSide === "string" ? entry.notificationSide : ""
+    }
 
     function t(key) {
         var value = root.strings[key]
         return value === undefined ? key : value
+    }
+
+    function sideOptions() {
+        return [
+            { key: "", label: root.t("bar.monitors.edge.global") },
+            { key: "left", label: root.t("bar.edge.left") },
+            { key: "right", label: root.t("bar.edge.right") }
+        ]
+    }
+
+    function setSide(key) {
+        if (root.screenMonitor === "")
+            return
+        var text = BarView.update(root.positions || "{}", root.screenMonitor,
+                                  { notificationSide: key })
+        if (text !== null)
+            root.positionsEdited(text)
     }
 
     function meta(id) {
@@ -134,6 +161,19 @@ Item {
                     VitrailText {
                         variant: "subtitle"
                         text: root.t("desktop.edit.panel.widgets")
+                    }
+
+                    VitrailSettingRow {
+                        icon: "vertical_align_center"
+                        label: root.t("panel.editor.position")
+
+                        VitrailSegmented {
+                            objectName: "editorPanelSide"
+
+                            options: root.sideOptions()
+                            current: root.notificationSideOverride
+                            onSelected: root.setSide(key)
+                        }
                     }
 
                     VitrailText {

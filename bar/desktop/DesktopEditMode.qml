@@ -39,8 +39,15 @@ Item {
     property string barLayout: ""
     property string panelLayout: ""
     property var monitors: []
+    // The bar's per-monitor placements (bar.ini `barMonitors`) and the output
+    // this editor instance is on: the "on this monitor" selectors write it.
+    property string positions: ""
+    property string screenMonitor: ""
     // The monitor whose bar override is being edited ("" is global).
     property string barMonitor: ""
+    // Whether every monitor shares one desktop document (bar.ini
+    // `desktopSync`); the toggle in the Desktop tab flips it.
+    property bool desktopSync: true
     // The bar preferences Settings no longer edits (edge, style, opacity…).
     property var bar: ({ edge: "left", trayStyle: "inline", batteryChip: true,
                          bluetoothChip: true, keyboard: true, style: "",
@@ -51,9 +58,13 @@ Item {
     // the preference file does, so two quick edits never lose a change.
     property string barText: ""
     property string panelText: ""
+    property string positionsText: ""
+    property bool sync: root.desktopSync
 
     onBarLayoutChanged: root.barText = root.barLayout
     onPanelLayoutChanged: root.panelText = root.panelLayout
+    onPositionsChanged: root.positionsText = root.positions
+    onDesktopSyncChanged: root.sync = root.desktopSync
 
     // Which tab is up: the desktop is the default and the middle one.
     property string tab: "desktop"
@@ -66,7 +77,7 @@ Item {
     signal prefChanged(string key, var value)
     signal finished()
 
-    readonly property var document: Layouts.effective(root.layoutText, root.monitor, null, "desktop")
+    readonly property var document: Layouts.effective(root.layoutText, root.monitor, null, "desktop", root.sync)
     readonly property var placed: root.document.widgets
     readonly property var selectedEntry: root.entry(root.selection)
     readonly property var paletteWidgets: ["clock", "media", "image", "notes"]
@@ -108,11 +119,29 @@ Item {
     }
 
     // Every edit is one whole document write, as the settings editor does.
+    // With the desktop synced, the shared list is the one that changes.
     function commit(widgets) {
-        var text = Layouts.write(root.layoutText, root.monitor, { widgets: widgets }, "desktop")
+        var text = Layouts.write(root.layoutText, root.monitor, { widgets: widgets }, "desktop",
+                                 root.sync)
         if (text !== null)
             root.layoutChanged("desktop", text)
     }
+
+    // --- the shared desktop --------------------------------------------------
+
+    function setSync(value) {
+        if (value === root.sync)
+            return
+        root.sync = value
+        root.prefChanged("desktopSync", value)
+    }
+
+    function setPositions(text) {
+        root.positionsText = text
+        root.prefChanged("barMonitors", text)
+    }
+
+    Component.onCompleted: root.positionsText = root.positions
 
     // --- the palette ---------------------------------------------------------
 
@@ -318,10 +347,38 @@ Item {
             Layout.fillHeight: true
             visible: root.tab === "desktop"
 
+            VitrailSettingRow {
+                id: syncRow
+
+                objectName: "desktopEditSyncRow"
+                anchors {
+                    top: parent.top
+                    left: parent.left
+                    right: parent.right
+                }
+                icon: "sync"
+                label: root.t("desktop.edit.sync")
+                description: root.t("desktop.edit.sync.help")
+
+                VitrailSwitch {
+                    objectName: "desktopEditSync"
+
+                    checked: root.sync
+                    foreground: VitrailTokens.color("foreground", "#e2e2e9")
+                    accent: VitrailTokens.color("primary", "#a8c7fa")
+                    onToggled: root.setSync(value)
+                }
+            }
+
             Item {
                 id: stage
 
-                anchors.fill: parent
+                anchors {
+                    top: syncRow.bottom
+                    bottom: parent.bottom
+                    left: parent.left
+                    right: parent.right
+                }
 
                 // The whole desktop, shrunk into the container. The animation
                 // starts at 100% and settles at 85%.
@@ -810,10 +867,13 @@ Item {
             monitors: root.monitors
             layoutText: root.barText
             monitor: root.barMonitor
+            positions: root.positionsText
+            screenMonitor: root.screenMonitor !== "" ? root.screenMonitor : root.monitor
             onCommitted: function (text) {
                 root.barText = text
                 root.layoutChanged("bar", text)
             }
+            onPositionsEdited: function (text) { root.setPositions(text) }
             onPrefChanged: function (key, value) { root.prefChanged(key, value) }
         }
 
@@ -828,10 +888,13 @@ Item {
             strings: root.strings
             fonts: root.fonts
             layoutText: root.panelText
+            positions: root.positionsText
+            screenMonitor: root.screenMonitor !== "" ? root.screenMonitor : root.monitor
             onCommitted: function (text) {
                 root.panelText = text
                 root.layoutChanged("panel", text)
             }
+            onPositionsEdited: function (text) { root.setPositions(text) }
         }
 
         // The selected widget's size, variant and typography. The document is

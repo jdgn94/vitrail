@@ -30,6 +30,8 @@ QtObject {
     property alias barLayout: barFile.barLayout
     property alias panelLayout: barFile.panelLayout
     property alias desktopLayout: barFile.desktopLayout
+    // Whether every monitor shares one desktop document.
+    property alias desktopSync: barFile.desktopSync
     // Whether a right click on the desktop opens its menu.
     property alias desktopMenu: barFile.desktopMenu
     property alias barSize: barFile.barSize
@@ -192,6 +194,9 @@ QtObject {
         // The desktop widgets: per monitor, each one's point (0..1), size and
         // style (bar/layouts.js, bar/widgets.js). Empty is no widgets.
         property string desktopLayout: "{}"
+        // Whether every monitor shares the one desktop document (on) or each
+        // output keeps its own list (off).
+        property bool desktopSync: true
         // The desktop's right-click menu: the way into the in-place editor.
         property bool desktopMenu: true
         property int barSize: VitrailTokens.ranges.bar.value

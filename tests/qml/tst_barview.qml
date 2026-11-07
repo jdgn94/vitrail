@@ -3,7 +3,8 @@ import QtTest
 import "../../bar/barview.js" as BarView
 
 // The bar's per-monitor overrides: one JSON object in bar.ini, keyed by the
-// Hyprland output name. Only edge and style may differ from the global bar.
+// Hyprland output name. The bar edge/style, notification side and OSD edge may
+// differ from the global shell.
 TestCase {
     name: "BarView"
 
@@ -76,5 +77,15 @@ TestCase {
         var text = BarView.update('{"DP-1":{"edge":"top"}}', "DP-1", { edge: "" })
         compare(text, "{}")
         compare(BarView.forMonitor(text, "DP-1", defaults), defaults)
+    }
+
+    function test_the_notification_side_and_osd_edge_are_per_monitor() {
+        var defaultsWithPlacements = ({ edge: "left", style: "",
+                                        notificationSide: "right", osdEdge: "bottom" })
+        var text = BarView.update("{}", "DP-1", { notificationSide: "left", osdEdge: "top" })
+        compare(BarView.forMonitor(text, "DP-1", defaultsWithPlacements),
+                { edge: "left", style: "", notificationSide: "left", osdEdge: "top" })
+        compare(BarView.forMonitor(text, "HDMI-A-1", defaultsWithPlacements),
+                defaultsWithPlacements)
     }
 }

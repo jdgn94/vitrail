@@ -34,6 +34,9 @@ TestCase {
             screenHeight: 1080
             strings: ({})
             fonts: ["Inter", "DejaVu Sans"]
+            // These tests exercise the per-monitor documents; the synced
+            // document has its own test.
+            desktopSync: false
         }
     }
 

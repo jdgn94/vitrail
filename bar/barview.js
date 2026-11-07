@@ -3,12 +3,14 @@
 // The bar's per-monitor overrides: one JSON object in bar.ini (`barMonitors`),
 // keyed by Hyprland output name:
 //
-//     { "DP-1": { "edge": "top", "style": "floating" } }
+//     { "DP-1": { "edge": "top", "style": "floating",
+//                 "notificationSide": "left", "osdEdge": "bottom" } }
 //
-// Only the edge and the style may differ per monitor; the bar's thickness
-// stays global. An output without an entry, or a document that is not valid
-// JSON, follows the global preferences.
-var FIELDS = ["edge", "style"]
+// Only the placements may differ per monitor: the bar's edge and style, the
+// notification panel's side and the OSD's edge. The bar's thickness and the
+// rest of the shell stay global. An output without an entry, or a document
+// that is not valid JSON, follows the global preferences.
+var FIELDS = ["edge", "style", "notificationSide", "osdEdge"]
 
 // The override document from preference text (or an already parsed object).
 // Anything that is not an object is empty.

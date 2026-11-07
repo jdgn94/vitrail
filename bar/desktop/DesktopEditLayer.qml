@@ -12,8 +12,14 @@ PanelWindow {
 
     required property var screen
     property bool active: false
+    // Only the monitor that started the edit takes the keyboard; the others
+    // show the same editor while the pointer and their buttons keep working.
+    property bool focused: false
     property string monitor: ""
     property string layoutText: ""
+    // The output this layer sits on: the "on this monitor" placement selectors
+    // write its override.
+    property string screenMonitor: ""
     property var strings: ({})
     property real screenWidth: 1920
     property real screenHeight: 1080
@@ -28,6 +34,9 @@ PanelWindow {
     // their tabs.
     property string barLayout: ""
     property string panelLayout: ""
+    // The bar's per-monitor placements and whether the desktop is shared.
+    property string positions: ""
+    property bool desktopSync: true
     property var monitors: []
     property var bar: ({ edge: "left", trayStyle: "inline", batteryChip: true,
                          bluetoothChip: true, keyboard: true, style: "",
@@ -56,7 +65,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     // The editor is modal: Escape and its controls need the keyboard. The
     // OSD keeps its own surface above this one and never needs it.
-    WlrLayershell.keyboardFocus: root.active ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: root.focused ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     mask: Region { item: root.active ? editor : null }
 
     DesktopEditMode {
@@ -73,6 +82,9 @@ PanelWindow {
         dock: root.dock
         barLayout: root.barLayout
         panelLayout: root.panelLayout
+        positions: root.positions
+        desktopSync: root.desktopSync
+        screenMonitor: root.screenMonitor
         monitors: root.monitors
         bar: root.bar
         onLayoutChanged: function (surface, text) { root.layoutChanged(surface, text) }

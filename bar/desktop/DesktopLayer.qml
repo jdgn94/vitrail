@@ -17,6 +17,8 @@ Scope {
     required property var screen
     property string monitor: ""
     property string layoutText: ""
+    // Whether every monitor shares the document's `shared` list.
+    property bool sync: true
     // The bar's fullscreen switch (`hideFullscreen`) may take the widgets away
     // with the bar and the frame.
     property bool hiddenFullscreen: false
@@ -49,7 +51,8 @@ Scope {
     signal noteAdded(string note)
     signal noteRemoved(int index)
 
-    readonly property var document: Layouts.effective(root.layoutText, root.monitor, null, "desktop")
+    readonly property var document: Layouts.effective(root.layoutText, root.monitor, null, "desktop",
+                                                      root.sync)
     readonly property var placed: root.document.widgets
 
     // The clock and the calendar tick; the services update on their own.

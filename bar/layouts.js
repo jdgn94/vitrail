@@ -34,13 +34,19 @@
 //                               "font": "Inter", "weight": "bold", "italic": true } }
 //     }
 //
-// desktop (one placed list per monitor; x/y are 0..1 of the monitor):
+// desktop (a shared placed list, and one list per monitor; x/y are 0..1):
 //     {
-//       "monitors": { "DP-1": { "widgets": [
+//       "shared": [
 //         { "id": "clock", "x": 0.35, "y": 0.30, "size": "lg", "style": "full",
 //           "font": "Inter", "weight": "bold", "italic": true }
-//       ] } }
+//       ],
+//       "monitors": { "DP-1": { "widgets": [ ... ] } }
 //     }
+//
+// `shared` is the desktop of every monitor while `desktopSync` is on; the
+// per-monitor `monitors` entries are the unsynced documents. A document
+// written before the preference existed has no `shared`: it keeps working one
+// monitor at a time until the first synced edit writes one.
 //
 // A widget setting carries its own typography: `font` is a family name ("" or
 // a missing/unknown value inherits the shell's font), `weight` is "" (inherit)
@@ -694,15 +700,22 @@ function cleanDesktopMonitors(raw) {
     return out
 }
 
-function desktopWidgets(doc, monitor) {
-    var values = objectOf(doc) ? objectOf(doc.monitors) : null
-    var entry = values && monitor ? objectOf(values[monitor]) : null
+function desktopWidgets(doc, monitor, sync) {
+    var values = objectOf(doc) ? doc : null
+    var shared = values && Array.isArray(values.shared) ? copyDesktopWidgets(values.shared) : null
+    if (sync === true && shared !== null)
+        return shared
+    var monitors = values ? objectOf(values.monitors) : null
+    var entry = monitors && monitor ? objectOf(monitors[monitor]) : null
     return entry ? copyDesktopWidgets(entry.widgets) : []
 }
 
-// How many widgets the document places on every monitor.
-function desktopCount(textOrDoc) {
+// How many widgets the document places on every monitor: the shared list when
+// it has one, otherwise the sum of the per-monitor documents.
+function desktopCount(textOrDoc, sync) {
     var doc = sanitize(textOrDoc, "desktop")
+    if (sync === true && Array.isArray(doc.shared))
+        return doc.shared.length
     var total = 0
     for (var name in doc.monitors)
         total += doc.monitors[name].widgets.length
@@ -792,8 +805,12 @@ function sanitize(text, surface) {
     var raw = typeof text === "string" ? parse(text) : objectOf(text)
     if (!raw)
         raw = {}
-    if (isDesktop(name))
-        return { monitors: cleanDesktopMonitors(raw.monitors) }
+    if (isDesktop(name)) {
+        var desktop = { monitors: cleanDesktopMonitors(raw.monitors) }
+        if (Array.isArray(raw.shared))
+            desktop.shared = cleanDesktopWidgets(raw.shared)
+        return desktop
+    }
     if (isFlat(name)) {
         return {
             order: cleanFlatList(raw.order, name),
@@ -815,13 +832,15 @@ function sanitize(text, surface) {
 // What one monitor draws: the global document with that monitor's order and
 // hidden list substituted when it has them. `base` is the document an empty
 // preference falls back to (another surface's default, later). A flat surface
-// has no per-monitor overrides.
-function effective(layout, monitor, base, surface) {
+// has no per-monitor overrides. With `sync` on, the desktop's shared list wins;
+// a document without one (written before the preference existed) still reads
+// its per-monitor entry.
+function effective(layout, monitor, base, surface, sync) {
     var name = surface || "bar"
     var source = layout === undefined || layout === null || layout === "" ? base : layout
     var doc = sanitize(source, name)
     if (isDesktop(name))
-        return { widgets: desktopWidgets(doc, monitor) }
+        return { widgets: desktopWidgets(doc, monitor, sync) }
     if (isFlat(name))
         return { order: doc.order.slice(), hidden: doc.hidden.slice(), widgets: copyWidgets(doc.widgets) }
     var entry = monitor && doc.monitors[monitor] ? doc.monitors[monitor] : null
@@ -993,19 +1012,24 @@ function toggle(hidden, id) {
 // The new document text for a patch, or null when nothing changed. With a
 // monitor, only that output's order and hidden list are written; without one,
 // the global document (density and fullscreen hiding included). A flat
-// surface writes its order, hidden list and per-widget settings.
-function write(text, monitor, patch, surface) {
+// surface writes its order, hidden list and per-widget settings. A synced
+// desktop writes the one shared list, whichever monitor asked.
+function write(text, monitor, patch, surface, sync) {
     var name = surface || "bar"
     var before = sanitize(text, name)
     var doc = sanitize(text, name)
     var values = objectOf(patch) || {}
     if (isDesktop(name)) {
-        if (monitor && has(values, "widgets")) {
-            var placed = copyDesktopWidgets(values.widgets)
-            if (placed.length > 0)
-                doc.monitors[monitor] = { widgets: cleanDesktopWidgets(placed) }
-            else
-                delete doc.monitors[monitor]
+        if (has(values, "widgets")) {
+            var placed = cleanDesktopWidgets(copyDesktopWidgets(values.widgets))
+            if (sync === true) {
+                doc.shared = placed
+            } else if (monitor) {
+                if (placed.length > 0)
+                    doc.monitors[monitor] = { widgets: placed }
+                else
+                    delete doc.monitors[monitor]
+            }
         }
     } else if (isFlat(name)) {
         if (has(values, "order"))

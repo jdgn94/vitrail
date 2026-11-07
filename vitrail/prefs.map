@@ -38,8 +38,11 @@ bar barLayout
 # each one. One JSON document (bar/layouts.js, bar/widgets.js).
 bar panelLayout
 # The desktop widgets: per monitor, each one's point (0..1), size and style.
-# One JSON document (bar/layouts.js, bar/widgets.js).
+# One JSON document (bar/layouts.js, bar/widgets.js). With `desktopSync` on,
+# every monitor draws the document's `shared` list.
 bar desktopLayout
+# Whether every monitor shares one desktop document (on) or each keeps its own.
+bar desktopSync
 # Whether a right click on the desktop opens its menu (Edit → in-place editor).
 bar desktopMenu
 bar barSize

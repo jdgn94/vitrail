@@ -3,12 +3,15 @@ import QtQuick.Layouts
 import "../kit"
 import "../kit/base"
 import "../layouts.js" as Layouts
+import "../barview.js" as BarView
 
 // The bar tab of the in-place editor. It holds everything that used to live in
 // Settings → Bar: the bar's own look (edge, tray style, chips, style, screens,
 // opacity and size) and the placement of its elements — one list per group,
 // with visibility, order, a group selector, chips and dividers, plus density,
-// fullscreen hiding and the per-monitor override.
+// fullscreen hiding and the per-monitor override. The placements that may
+// differ per monitor (the bar and OSD edges) are written to `barMonitors` for
+// the screen this editor sits on; every other option stays global.
 //
 // The document is the state: every edit is one whole `barLayout` write, emitted
 // as `committed`, and the parent keeps the text and persists it.
@@ -27,11 +30,26 @@ Item {
     // The whole bar document and the monitor being edited ("" is global).
     property string layoutText: ""
     property string monitor: ""
+    // The bar's per-monitor placements (bar.ini `barMonitors`) and the output
+    // whose placement the "on this monitor" selectors write.
+    property string positions: ""
+    property string screenMonitor: ""
 
     signal committed(string text)
     signal prefChanged(string key, var value)
+    signal positionsEdited(string text)
 
     readonly property var doc: Layouts.effective(root.layoutText, root.monitor, null, "bar")
+    readonly property string positionMonitor: root.screenMonitor !== "" ? root.screenMonitor : root.monitor
+    readonly property var positionDoc: BarView.document(root.positions)
+    readonly property var positionEntry: root.positionMonitor !== ""
+                                               ? BarView.override(root.positionDoc, root.positionMonitor) : null
+    readonly property string edgeOverride: root.positionEntry
+                                           && typeof root.positionEntry.edge === "string"
+                                           ? root.positionEntry.edge : ""
+    readonly property string osdEdgeOverride: root.positionEntry
+                                              && typeof root.positionEntry.osdEdge === "string"
+                                              ? root.positionEntry.osdEdge : ""
     readonly property string edge: root.bar.edge || "left"
     readonly property string trayStyle: root.bar.trayStyle || "inline"
     readonly property string style: root.bar.style || ""
@@ -96,6 +114,28 @@ Item {
         var text = Layouts.write(root.layoutText, "", patch, "bar")
         if (text !== null)
             root.committed(text)
+    }
+
+    // The placements that may differ per output. Only this monitor's entry is
+    // written; the rest of the document (and the global bar) stays untouched.
+    function positionOptions() {
+        return [
+            { key: "", icon: "public", label: root.t("bar.monitors.edge.global") },
+            { key: "left", icon: root.icons.edge.left, label: root.t("bar.edge.left") },
+            { key: "top", icon: root.icons.edge.top, label: root.t("bar.edge.top") },
+            { key: "right", icon: root.icons.edge.right, label: root.t("bar.edge.right") },
+            { key: "bottom", icon: root.icons.edge.bottom, label: root.t("bar.edge.bottom") }
+        ]
+    }
+
+    function setPosition(field, key) {
+        if (root.positionMonitor === "")
+            return
+        var patch = {}
+        patch[field] = key
+        var text = BarView.update(root.positions || "{}", root.positionMonitor, patch)
+        if (text !== null)
+            root.positionsEdited(text)
     }
 
     function setVisible(id, visible) {
@@ -240,6 +280,33 @@ Item {
                                                   root.icons.edge)
                             current: root.edge
                             onSelected: root.prefChanged("barEdge", key)
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "monitor"
+                        label: root.t("bar.editor.position")
+                        description: root.t("bar.editor.position.help")
+
+                        VitrailSegmented {
+                            objectName: "editorBarPosition"
+
+                            options: root.positionOptions()
+                            current: root.edgeOverride
+                            onSelected: root.setPosition("edge", key)
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "aspect_ratio"
+                        label: root.t("bar.editor.osdPosition")
+
+                        VitrailSegmented {
+                            objectName: "editorBarOsdEdge"
+
+                            options: root.positionOptions()
+                            current: root.osdEdgeOverride
+                            onSelected: root.setPosition("osdEdge", key)
                         }
                     }
 
