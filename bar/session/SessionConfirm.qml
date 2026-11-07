@@ -17,6 +17,10 @@ import "actions.js" as Session
 Item {
     id: root
 
+    // Tests (and the alert layer) look it up by name: exactly one lives at a
+    // time, inside the alert surface.
+    objectName: "sessionConfirm"
+
     property var strings: ({})
     // The action key ("poweroff"…) and the phase ("problem" | "countdown").
     property string action: ""
@@ -75,7 +79,7 @@ Item {
     Keys.onEscapePressed: root.cancelled()
     Keys.onReturnPressed: root.confirmed()
 
-    // The menu behind it dims; the card is the only thing to read.
+    // The screen behind it dims; the card is the only thing to read.
     Rectangle {
         anchors.fill: parent
         color: "#000000"

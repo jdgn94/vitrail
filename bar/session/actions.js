@@ -22,6 +22,13 @@ var CONFIRM = ["suspend", "hibernate", "reboot", "poweroff"]
 // The actions the guard checks first: they cut what is still running.
 var INTERRUPT = CONFIRM.concat(["logout"])
 
+// The alert is up while an action waits for an answer. The guard's `check`
+// phase is silent: it turns into a problem or into the countdown, and only
+// those ask the user. Nothing here knows about the menu or the bar popup.
+function alertVisible(pending) {
+    return !!pending && pending.phase !== "check"
+}
+
 function confirmable(key) {
     return CONFIRM.indexOf(key) >= 0
 }

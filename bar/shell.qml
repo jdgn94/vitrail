@@ -795,6 +795,13 @@ ShellRoot {
     // "countdown", jobs, deadline }, and the time its countdown reads.
     property var sessionPending: null
     property real sessionNow: Date.now()
+    // Where the alert goes: the monitor the menu or the popout was on. The
+    // alert layer is independent of both, and `sessionAlertShown` is the only
+    // thing that maps it.
+    property var sessionAlertScreen: null
+    // Cancel returns to the full-screen menu only when the action came from it.
+    property bool sessionFromMenu: false
+    readonly property bool sessionAlertShown: Session.alertVisible(shell.sessionPending)
 
     function toggleSession(screen) {
         if (shell.editMode)
@@ -806,11 +813,14 @@ ShellRoot {
     }
 
     // What the menu asks. A lock runs at once; every action that cuts work is
-    // checked first, and then asks (the countdown) or runs (log out).
-    function runSession(key) {
+    // checked first, and then asks (the countdown) or runs (log out). The
+    // alert goes to the monitor that asked, whichever way it was opened.
+    function runSession(key, screen, fromMenu) {
         var action = Session.find(key)
         if (!action)
             return
+        shell.sessionAlertScreen = screen || shell.sessionScreen || shell.popupScreen || shell.focusedScreen
+        shell.sessionFromMenu = fromMenu === true
         shell.sessionOpen = false
         shell.closePopup()
         if (!Session.interrupting(key)) {
@@ -864,12 +874,14 @@ ShellRoot {
             shell.executeSession(pending.key)
     }
 
-    // Cancel stops the action and returns to the menu.
+    // Cancel stops the action and, when it was opened from the menu, returns
+    // to it.
     function cancelSession() {
         var pending = shell.sessionPending
         shell.sessionPending = null
-        if (pending && pending.phase !== "check" && shell.sessionScreen)
+        if (pending && pending.phase !== "check" && shell.sessionFromMenu && shell.sessionScreen)
             shell.sessionOpen = true
+        shell.sessionFromMenu = false
     }
 
     function executeSession(key) {
@@ -877,6 +889,7 @@ ShellRoot {
         shell.sessionPending = null
         shell.sessionOpen = false
         shell.closePopup()
+        shell.sessionFromMenu = false
         if (action) {
             sessionRun.command = action.command
             sessionRun.startDetached()
@@ -3340,6 +3353,7 @@ ShellRoot {
                     offset: bar.layout.face
                     opacityLevel: shell.barOpacity
                     popupOpen: shell.popupOpen || shell.launcherOpen || shell.sessionOpen
+                               || shell.sessionAlertShown
                 }
 
                 // Volume, microphone and brightness, on the edge opposite the
@@ -3421,7 +3435,7 @@ ShellRoot {
                         // A manual answer wins over the bell's hour.
                         shell.setPref("notificationMuteUntil", "0")
                     }
-                    onSessionRequested: function (key) { shell.runSession(key) }
+                    onSessionRequested: function (key) { shell.runSession(key, monitor.modelData) }
                     onNoteAdded: function (note) {
                         shell.notes = Notes.add(shell.notes, note)
                         shell.setPref("quickNotes", shell.notes)
@@ -3959,7 +3973,7 @@ ShellRoot {
                     SessionPopout {
                         strings: shell.strings
                         canHibernate: shell.canHibernate
-                        onChosen: function (key) { shell.runSession(key) }
+                        onChosen: function (key) { shell.runSession(key, monitor.modelData) }
                     }
                 }
 
@@ -4236,17 +4250,18 @@ ShellRoot {
                     request: shell.dropletRequest
                 }
 
-                // Session menu: a dimmed full-screen layer that takes the keyboard.
+                // Session menu: a dimmed full-screen layer that takes the
+                // keyboard. Alerts and confirmations do not live here: they
+                // are their own layer below, so a popout action gets one too.
                 PanelWindow {
                     id: sessionLayer
 
-                    readonly property bool asked: shell.sessionPending !== null
-                    readonly property bool shown: (shell.sessionOpen || sessionLayer.asked)
+                    readonly property bool shown: shell.sessionOpen
                                                   && shell.sessionScreen === monitor.modelData
 
                     screen: monitor.modelData
-                    // Only while the menu or the question is up; idle, the
-                    // window is unmapped so it can never swallow a click.
+                    // Only while the menu is up; idle, the window is unmapped
+                    // so it can never swallow a click.
                     visible: sessionLayer.shown || sessionMenu.opacity > 0
                     anchors {
                         top: true
@@ -4264,31 +4279,36 @@ ShellRoot {
                         id: sessionMenu
 
                         anchors.fill: parent
-                        open: sessionLayer.shown && shell.sessionOpen
+                        open: sessionLayer.shown
                         strings: shell.strings
                         user: Quickshell.env("USER") || ""
                         now: shell.now
                         canHibernate: shell.canHibernate
-                        onChosen: function (key) { shell.runSession(key) }
+                        onChosen: function (key) { shell.runSession(key, monitor.modelData, true) }
                         onDismissed: shell.sessionOpen = false
                     }
+                }
 
-                    // The guard's alert and the countdown, over the menu.
-                    SessionConfirm {
-                        id: sessionConfirm
+                // Session alerts and confirmations: a layer of their own, so
+                // they show with the menu closed (a popout action) and stay
+                // above the full-screen menu and every application. Created
+                // after the menu, in the same Overlay layer, so it stacks on
+                // top of it; only the monitor that asked maps it.
+                AlertLayer {
+                    id: alertLayer
 
-                        anchors.fill: parent
-                        allowed: sessionLayer.shown
-                        strings: shell.strings
-                        action: shell.sessionPending ? shell.sessionPending.key : ""
-                        phase: shell.sessionPending ? shell.sessionPending.phase : "countdown"
-                        jobs: shell.sessionPending && shell.sessionPending.jobs ? shell.sessionPending.jobs : []
-                        remaining: shell.sessionPending ? Session.remaining(shell.sessionPending.deadline || 0,
-                                                                            shell.sessionNow) : 0
-                        total: Session.SECONDS
-                        onCancelled: shell.cancelSession()
-                        onConfirmed: shell.confirmSession()
-                    }
+                    screen: monitor.modelData
+                    shown: shell.sessionAlertShown
+                           && shell.sessionAlertScreen === monitor.modelData
+                    strings: shell.strings
+                    action: shell.sessionPending ? shell.sessionPending.key : ""
+                    phase: shell.sessionPending ? shell.sessionPending.phase : "countdown"
+                    jobs: shell.sessionPending && shell.sessionPending.jobs ? shell.sessionPending.jobs : []
+                    remaining: shell.sessionPending ? Session.remaining(shell.sessionPending.deadline || 0,
+                                                                        shell.sessionNow) : 0
+                    total: Session.SECONDS
+                    onCancelled: shell.cancelSession()
+                    onConfirmed: shell.confirmSession()
                 }
 
                 // Incoming notifications, on the focused monitor (see

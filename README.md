@@ -564,6 +564,16 @@ Preview them without installing anything:
 - **Lock** is the UI half only. A real locker must take `ext-session-lock-v1`
   from a native Wayland client; QML cannot do that on its own. The card, the
   fields and the slots are already the ones the native client will render.
+- **Lock and the session alert.** The session menu's lock action runs
+  `hyprlock`, an external `ext-session-lock` client. The protocol requires the
+  compositor not to draw any other surface while a session lock is active, so
+  the bar's alert layer (confirmations, the guard's list, the countdown)
+  cannot appear over `hyprlock`; it is not faked. Locking is immediate and
+  asks nothing, so no question is lost. Alerts work over every application and
+  over the session menu, which is what the layer is for. A Vitrail-owned lock
+  surface (roadmap P4.1) would draw its own alerts inside the locked client,
+  not on a layer above it. The login screen (`login/`) is an SDDM theme, not a
+  Quickshell surface, so the layer cannot live there either.
 
 One QML trap worth knowing: properties whose names start with `on`
 (`onSurface`, `onPrimary`) are read as signal handlers and their bindings
