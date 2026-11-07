@@ -46,6 +46,27 @@ for file in "$REPO"/kit/*.qml "$REPO"/kit/base/*.qml "$REPO"/kit/composed/*.qml 
     fi
 done
 
+# The launcher uses Quickshell types, so only a Quickshell process can load it.
+# Its fixture sits beside a symlink to bar/ because Quickshell refuses imports
+# from outside the config folder. A QML error in the launcher makes
+# createObject() return null and the process exit non-zero.
+if ! command -v quickshell >/dev/null 2>&1; then
+    not_ok "launcher loads in the shell" "quickshell is missing"
+else
+    mkdir -p "$tmp/launcher" "$tmp/launcher-runtime"
+    ln -s "$REPO/bar" "$tmp/launcher/bar"
+    cp "$REPO/tests/fixtures/launcher_smoke.qml" "$tmp/launcher/shell.qml"
+    if XDG_CONFIG_HOME="$tmp/launcher-config" XDG_CACHE_HOME="$tmp/launcher-cache" \
+        XDG_RUNTIME_DIR="$tmp/launcher-runtime" \
+        QT_QPA_PLATFORM=offscreen timeout 20 quickshell --path "$tmp/launcher/shell.qml" \
+        >"$tmp/launcher.log" 2>&1 && grep -q "launcher smoke: loaded" "$tmp/launcher.log"; then
+        ok "launcher loads in the shell"
+    else
+        not_ok "launcher loads in the shell" \
+            "$(grep -E 'ERROR|Failed|did not load|timed out' "$tmp/launcher.log" | head -5)"
+    fi
+fi
+
 if XDG_CONFIG_HOME="$tmp/config" XDG_CACHE_HOME="$tmp/cache" \
     QT_QPA_PLATFORM=offscreen timeout 25 "$REPO/bin/vitrail-settings" --selftest >/dev/null 2>&1; then
     ok "window loads and exits"
