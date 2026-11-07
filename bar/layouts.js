@@ -11,12 +11,20 @@
 //     {
 //       "order": { "start": ["launcher", "notifications"],
 //                  "center": ["media", "clock"],
-//                  "end": ["tray", "network", "vpn", "profile", "power"] },
+//                  "end": ["tray", "@connections", "power"] },
 //       "hidden": [],
+//       "chips": { "connections": { "members": ["network", "bluetooth",
+//                                               "vpn", "profile"] } },
 //       "density": "comfortable",
 //       "hideFullscreen": true,
 //       "monitors": { "DP-1": { "hidden": ["tray"], "order": { ... } } }
 //     }
+//
+// A group's order names elements and, with `@<chip>`, whole chips; a divider
+// is `divider`, `divider-2`… `chips` is global (a monitor override only
+// replaces its order and hidden list). An element moved by hand follows its
+// new group, except the fixed ones (launcher, tray, power), which always stay
+// in their own group.
 //
 // panel (flat: one list, and the size/style/typography of each widget):
 //     {
@@ -62,10 +70,19 @@ var DESKTOP = { desktop: true }
 // button is an editor option, not a change to today's bar.
 var DEFAULT_HIDDEN = { bar: ["capture"] }
 
-// Elements that share one pill (`cluster`) while they are next to each other.
-var CLUSTERS = {
-    bar: { network: "connections", bluetooth: "connections", vpn: "connections", profile: "connections" }
+// Chips: several elements that share one pill. The document stores them in
+// `chips` and places the chip itself with its token (`"@connections"`) in a
+// group's order, so a chip moves between groups like any other entry. A
+// document without `chips` keeps the built-in one, which is exactly the pill
+// the bar had before chips were editable.
+var DEFAULT_CHIPS = {
+    bar: {
+        connections: { members: ["network", "bluetooth", "vpn", "profile"] }
+    }
 }
+
+// The order entry that stands for a chip: `@<chip id>`.
+var CHIP_PREFIX = "@"
 
 var DENSITIES = ["comfortable", "compact"]
 
@@ -113,24 +130,17 @@ function defaultHidden(surface) {
 }
 
 // The built-in document: every element, in this file's order, with today's
-// look (only the editor-only elements hidden).
+// look (only the editor-only elements hidden). A chip takes the place of its
+// first member; the divider is never added on its own.
 function defaults(surface) {
     var name = surface || "bar"
     if (isDesktop(name))
         return { monitors: {} }
     if (isFlat(name))
         return { order: cleanFlatList([], name), hidden: defaultHidden(name), widgets: {} }
-    var out = { order: {}, hidden: defaultHidden(name), density: "comfortable",
-                hideFullscreen: true, monitors: {} }
-    var names = groups(name)
-    for (var i = 0; i < names.length; i++)
-        out.order[names[i]] = []
-    var list = widgets(name)
-    for (var j = 0; j < list.length; j++) {
-        if (out.order[list[j].group])
-            out.order[list[j].group].push(list[j].id)
-    }
-    return out
+    var chips = defaultChips(name)
+    return { order: cleanOrder({}, name, chips), hidden: defaultHidden(name), chips: chips,
+             density: "comfortable", hideFullscreen: true, monitors: {} }
 }
 
 function knownIds(surface) {
@@ -141,14 +151,15 @@ function knownIds(surface) {
     return out
 }
 
-// Known ids in document order, each once.
+// Known ids in document order, each once. Every divider id counts; documents
+// may place as many as they like, so a hidden list can name them too.
 function cleanList(list, known) {
     var out = []
     if (!Array.isArray(list))
         return out
     for (var i = 0; i < list.length; i++) {
         var id = list[i]
-        if (typeof id === "string" && known[id] && out.indexOf(id) < 0)
+        if (typeof id === "string" && (known[id] || Registry.isDivider(id)) && out.indexOf(id) < 0)
             out.push(id)
     }
     return out
@@ -166,34 +177,79 @@ function cleanFlatList(list, surface) {
     return out
 }
 
-// A whole order: the document's placement, then every element it forgot in
-// its own group. Never loses or duplicates an element.
-function cleanOrder(source, surface) {
-    var known = knownIds(surface)
+// A whole order: the document's placement, then every element it forgot in its
+// own group. Never loses or duplicates an element. The rules of the bar:
+//
+//   - a divider is a normal entry (one id per divider, repeatable by suffix);
+//   - a chip is placed by its token; naming one of its members places the chip
+//     there (an old document keeps its pill);
+//   - a fixed element stays in its own group, wherever the document put it;
+//   - optional elements (the divider) are never added on their own.
+function cleanOrder(source, surface, chips) {
+    var name = surface || "bar"
+    var table = chips || defaultChips(name)
+    var known = knownIds(name)
+    var membership = chipMembership(table)
     var taken = {}
-    var names = groups(surface)
+    var takenChips = {}
+    var names = groups(name)
     var out = {}
     var raw = objectOf(source) || {}
     for (var i = 0; i < names.length; i++) {
         var group = names[i]
         out[group] = []
-        var list = cleanList(raw[group], known)
+        var list = Array.isArray(raw[group]) ? raw[group] : []
         for (var j = 0; j < list.length; j++) {
-            if (taken[list[j]])
+            var entry = list[j]
+            if (typeof entry !== "string")
                 continue
-            taken[list[j]] = true
-            out[group].push(list[j])
+            if (isChipToken(entry)) {
+                var at = chipName(entry)
+                if (table[at] && !takenChips[at]) {
+                    takenChips[at] = true
+                    out[group].push(entry)
+                }
+                continue
+            }
+            if (!known[entry] && !Registry.isDivider(entry))
+                continue
+            if (membership[entry]) {
+                var chip = membership[entry]
+                if (!takenChips[chip]) {
+                    takenChips[chip] = true
+                    out[group].push(chipToken(chip))
+                }
+                continue
+            }
+            if (taken[entry])
+                continue
+            var widget = find(entry, name)
+            if (widget && widget.fixed && group !== widget.group)
+                continue
+            taken[entry] = true
+            out[group].push(entry)
         }
     }
-    var all = widgets(surface)
+    var all = widgets(name)
     for (var k = 0; k < all.length; k++) {
-        var widget = all[k]
-        if (taken[widget.id])
+        var item = all[k]
+        if (item.optional)
             continue
-        taken[widget.id] = true
-        var home = out[widget.group] ? widget.group : names[0]
+        if (membership[item.id]) {
+            var id = membership[item.id]
+            if (!takenChips[id]) {
+                takenChips[id] = true
+                out[item.group].push(chipToken(id))
+            }
+            taken[item.id] = true
+            continue
+        }
+        if (taken[item.id])
+            continue
+        taken[item.id] = true
+        var home = out[item.group] ? item.group : names[0]
         if (out[home])
-            out[home].push(widget.id)
+            out[home].push(item.id)
     }
     return out
 }
@@ -205,7 +261,251 @@ function copyOrder(order) {
     return out
 }
 
-function cleanMonitors(raw, surface) {
+// --- chips -----------------------------------------------------------------
+
+function isChipToken(entry) {
+    return typeof entry === "string" && entry.length > 1 && entry.charAt(0) === CHIP_PREFIX
+}
+
+function chipName(token) {
+    return isChipToken(token) ? token.slice(CHIP_PREFIX.length) : ""
+}
+
+function chipToken(id) {
+    return CHIP_PREFIX + id
+}
+
+// One chip id per element, or none.
+function chipMembership(chips) {
+    var out = {}
+    var table = objectOf(chips) || {}
+    for (var id in table) {
+        var entry = objectOf(table[id])
+        if (!entry || !Array.isArray(entry.members))
+            continue
+        for (var i = 0; i < entry.members.length; i++)
+            out[entry.members[i]] = id
+    }
+    return out
+}
+
+function defaultChips(surface) {
+    var table = DEFAULT_CHIPS[surface || "bar"] || {}
+    var out = {}
+    for (var id in table)
+        out[id] = { members: table[id].members.slice() }
+    return out
+}
+
+function copyChips(chips) {
+    var out = {}
+    var table = objectOf(chips)
+    if (!table)
+        return out
+    for (var id in table) {
+        var entry = objectOf(table[id])
+        if (entry && Array.isArray(entry.members))
+            out[id] = { members: entry.members.slice() }
+    }
+    return out
+}
+
+function chipEntry(chips, id) {
+    var table = objectOf(chips)
+    var entry = table && has(table, id) ? objectOf(table[id]) : null
+    return entry && Array.isArray(entry.members) ? entry : null
+}
+
+// The chip an element belongs to, or null.
+function chipOf(chips, id) {
+    var table = objectOf(chips) || {}
+    for (var chip in table) {
+        var entry = objectOf(table[chip])
+        if (entry && Array.isArray(entry.members) && entry.members.indexOf(id) >= 0)
+            return chip
+    }
+    return null
+}
+
+// Whether an element may join a chip: known on this surface, not fixed (it
+// would leave its own group) and not structural.
+function chipMember(id, surface) {
+    var widget = find(id, surface)
+    return !!widget && !widget.fixed && !widget.optional && !Registry.isDivider(id)
+}
+
+function cleanChipMembers(list, surface, used) {
+    var out = []
+    if (!Array.isArray(list))
+        return out
+    for (var i = 0; i < list.length; i++) {
+        var id = list[i]
+        if (typeof id !== "string" || used[id] || !chipMember(id, surface))
+            continue
+        used[id] = true
+        out.push(id)
+    }
+    return out
+}
+
+// The document's chips, checked against the registry: an unknown or fixed
+// member drops, an element belongs to one chip at most, and an invalid table
+// is the built-in one. A declared empty chip survives so the editor can fill
+// it; an old document without `chips` gets the built-in pill.
+function cleanChips(raw, surface) {
+    var source = objectOf(raw)
+    if (!source)
+        return defaultChips(surface)
+    var out = {}
+    var used = {}
+    for (var id in source) {
+        if (!/^[A-Za-z0-9_-]+$/.test(id))
+            continue
+        var entry = objectOf(source[id])
+        if (!entry)
+            continue
+        out[id] = { members: cleanChipMembers(entry.members, surface, used) }
+    }
+    return out
+}
+
+// The next free chip id, so a new chip never overwrites one.
+function nextChipId(chips) {
+    var table = objectOf(chips) || {}
+    var n = 1
+    while (has(table, "chip-" + n))
+        n++
+    return "chip-" + n
+}
+
+// A new, empty chip at the end of a group.
+function newChip(order, chips, group, surface) {
+    var table = copyChips(chips)
+    var id = nextChipId(table)
+    var out = copyOrder(order)
+    var names = groups(surface)
+    var at = out[group] ? group : names[0]
+    table[id] = { members: [] }
+    if (out[at])
+        out[at].push(chipToken(id))
+    return { order: out, chips: table, id: id }
+}
+
+// Where a chip token is, or null.
+function chipPlace(order, id) {
+    for (var group in order) {
+        var index = order[group].indexOf(chipToken(id))
+        if (index >= 0)
+            return { group: group, index: index }
+    }
+    return null
+}
+
+// One chip's members replaced: a new member leaves its old group (and its old
+// chip), a removed one returns to the order beside the chip. The input is
+// never changed.
+function setChipMembers(order, chips, id, members, surface) {
+    var table = copyChips(chips)
+    var out = copyOrder(order)
+    if (!table[id])
+        return { order: out, chips: table }
+    var wanted = cleanChipMembers(members, surface, {})
+    for (var other in table) {
+        if (other === id)
+            continue
+        var kept = []
+        for (var i = 0; i < table[other].members.length; i++) {
+            if (wanted.indexOf(table[other].members[i]) < 0)
+                kept.push(table[other].members[i])
+        }
+        table[other].members = kept
+    }
+    var before = table[id].members
+    var removed = []
+    for (var j = 0; j < before.length; j++) {
+        if (wanted.indexOf(before[j]) < 0)
+            removed.push(before[j])
+    }
+    table[id].members = wanted
+    for (var group in out) {
+        out[group] = out[group].filter(function (entry) {
+            return wanted.indexOf(entry) < 0
+        })
+    }
+    var place = chipPlace(out, id)
+    if (removed.length > 0) {
+        if (place) {
+            for (var k = 0; k < removed.length; k++)
+                out[place.group].splice(place.index + 1 + k, 0, removed[k])
+        } else {
+            var names = groups(surface)
+            var home = out[names[names.length - 1]] ? names[names.length - 1] : names[0]
+            if (out[home])
+                out[home] = out[home].concat(removed)
+        }
+    }
+    return { order: out, chips: table }
+}
+
+// The chip removed: its members return to the order where it was.
+function removeChip(order, chips, id) {
+    var table = copyChips(chips)
+    var out = copyOrder(order)
+    if (!table[id])
+        return { order: out, chips: table }
+    var members = table[id].members
+    var place = chipPlace(out, id)
+    delete table[id]
+    if (!place)
+        return { order: out, chips: table }
+    out[place.group].splice(place.index, 1)
+    for (var i = 0; i < members.length; i++)
+        out[place.group].splice(place.index + i, 0, members[i])
+    return { order: out, chips: table }
+}
+
+// The next free divider id, so several dividers can share a document.
+function nextDividerId(order) {
+    var taken = {}
+    var source = objectOf(order) || {}
+    for (var group in source) {
+        for (var i = 0; i < source[group].length; i++) {
+            if (Registry.isDivider(source[group][i]))
+                taken[source[group][i]] = true
+        }
+    }
+    if (!taken.divider)
+        return "divider"
+    var n = 2
+    while (taken["divider-" + n])
+        n++
+    return "divider-" + n
+}
+
+// A divider at a place of a group (the end by default).
+function addDivider(order, group, index, surface) {
+    var out = copyOrder(order)
+    var names = groups(surface)
+    var at = out[group] ? group : names[0]
+    if (!out[at])
+        return out
+    var place = index === undefined ? out[at].length
+                                : Math.max(0, Math.min(out[at].length, index))
+    out[at].splice(place, 0, nextDividerId(out))
+    return out
+}
+
+function removeDivider(order, id) {
+    var out = copyOrder(order)
+    for (var group in out) {
+        out[group] = out[group].filter(function (entry) {
+            return entry !== id
+        })
+    }
+    return out
+}
+
+function cleanMonitors(raw, surface, chips) {
     var out = {}
     var monitors = objectOf(raw) || {}
     for (var name in monitors) {
@@ -216,7 +516,7 @@ function cleanMonitors(raw, surface) {
         if (Array.isArray(entry.hidden))
             clean.hidden = cleanList(entry.hidden, knownIds(surface))
         if (objectOf(entry.order))
-            clean.order = cleanOrder(entry.order, surface)
+            clean.order = cleanOrder(entry.order, surface, chips)
         if (clean.hidden || clean.order)
             out[name] = clean
     }
@@ -501,12 +801,14 @@ function sanitize(text, surface) {
             widgets: cleanWidgets(raw.widgets, name)
         }
     }
+    var chips = cleanChips(raw.chips, name)
     var out = {}
-    out.order = cleanOrder(raw.order, name)
+    out.order = cleanOrder(raw.order, name, chips)
     out.hidden = Array.isArray(raw.hidden) ? cleanList(raw.hidden, knownIds(name)) : defaultHidden(name)
+    out.chips = chips
     out.density = raw.density === "compact" ? "compact" : "comfortable"
     out.hideFullscreen = !(raw.hideFullscreen === false || raw.hideFullscreen === "false")
-    out.monitors = cleanMonitors(raw.monitors, name)
+    out.monitors = cleanMonitors(raw.monitors, name, chips)
     return out
 }
 
@@ -526,6 +828,7 @@ function effective(layout, monitor, base, surface) {
     return {
         order: copyOrder(entry && entry.order ? entry.order : doc.order),
         hidden: (entry && entry.hidden ? entry.hidden : doc.hidden).slice(),
+        chips: copyChips(doc.chips),
         density: doc.density,
         hideFullscreen: doc.hideFullscreen
     }
@@ -542,30 +845,89 @@ function visible(orderGroup, hidden) {
     return out
 }
 
-function clusterOf(id, surface) {
-    var table = CLUSTERS[surface || "bar"] || {}
-    return table[id] || null
+// The fixed elements: their group is part of the bar's shape, not a choice.
+function isFixed(id, surface) {
+    var widget = find(id, surface)
+    return !!(widget && widget.fixed)
 }
 
-// One visual entry per element, with neighbouring elements of a cluster folded
-// into one: the bar draws such a run inside a single pill.
-function entries(orderGroup, hidden, surface) {
+// `divider`, `divider-2`…: structural entries a document may repeat.
+function isDivider(id) {
+    return Registry.isDivider(id)
+}
+
+function homeGroup(id, surface) {
+    var widget = find(id, surface)
+    var names = groups(surface)
+    return widget && widget.group ? widget.group : (names.length > 0 ? names[0] : "")
+}
+
+// One visual entry per order entry: a chip brings its visible members inside
+// one pill, a divider marks the line it draws, and anything else is one
+// element. An empty chip (every member hidden) draws nothing at all.
+function entries(orderGroup, hidden, surface, chips) {
+    var table = chips || defaultChips(surface)
     var list = visible(orderGroup, hidden)
     var out = []
-    var run = null
+    var hiddenIds = hidden || []
     for (var i = 0; i < list.length; i++) {
         var id = list[i]
-        var cluster = clusterOf(id, surface)
-        if (cluster === null) {
-            out.push({ id: id })
-            run = null
-        } else if (run !== null && run.cluster === cluster) {
-            run.ids.push(id)
+        if (isChipToken(id)) {
+            var chip = chipEntry(table, chipName(id))
+            if (!chip)
+                continue
+            var ids = visible(chip.members, hiddenIds)
+            if (ids.length > 0)
+                out.push({ chip: chipName(id), ids: ids })
+        } else if (Registry.isDivider(id)) {
+            out.push({ id: id, divider: true })
         } else {
-            run = { cluster: cluster, ids: [id] }
-            out.push(run)
+            out.push({ id: id })
         }
     }
+    return out
+}
+
+// One order entry moved to a group and a place in it; a new order, never the
+// one passed in. A fixed element may only be reordered inside its own group;
+// a chip moves by its token (`"@connections"`), and an element inside a chip
+// is moved by changing the chip's members, not by this helper. Out-of-range
+// places are clamped. A flat surface passes its list and an index instead.
+function moveTo(order, id, group, index, surface) {
+    if (Array.isArray(order)) {
+        var flat = order.slice()
+        var from = flat.indexOf(id)
+        if (from < 0)
+            return flat
+        var place = index === undefined ? flat.length : index
+        if (from < place)
+            place -= 1
+        place = Math.max(0, Math.min(flat.length - 1, place))
+        flat.splice(from, 1)
+        flat.splice(place, 0, id)
+        return flat
+    }
+    var out = copyOrder(order)
+    if (!out[group])
+        return out
+    if (!isChipToken(id) && isFixed(id, surface) && group !== homeGroup(id, surface))
+        return out
+    var at = null
+    for (var name in out) {
+        var index2 = out[name].indexOf(id)
+        if (index2 >= 0) {
+            at = { group: name, index: index2 }
+            break
+        }
+    }
+    if (!at)
+        return out
+    var target = index === undefined ? out[group].length : index
+    out[at.group].splice(at.index, 1)
+    if (at.group === group && at.index < target)
+        target -= 1
+    target = Math.max(0, Math.min(out[group].length, target))
+    out[group].splice(target, 0, id)
     return out
 }
 
@@ -658,6 +1020,9 @@ function write(text, monitor, patch, surface) {
             entry.order = copyOrder(values.order)
         if (has(values, "hidden"))
             entry.hidden = (values.hidden || []).slice()
+        // Chips belong to the whole bar, not to one monitor.
+        if (has(values, "chips"))
+            doc.chips = copyChips(values.chips)
         if (entry.order || entry.hidden)
             doc.monitors[monitor] = entry
     } else {
@@ -665,6 +1030,8 @@ function write(text, monitor, patch, surface) {
             doc.order = copyOrder(values.order)
         if (values.hidden)
             doc.hidden = values.hidden.slice()
+        if (has(values, "chips"))
+            doc.chips = copyChips(values.chips)
         if (values.density !== undefined)
             doc.density = values.density === "compact" ? "compact" : "comfortable"
         if (values.hideFullscreen !== undefined)

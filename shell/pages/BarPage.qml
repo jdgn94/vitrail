@@ -9,11 +9,13 @@ import "../../bar/widgets.js" as Widgets
 // the side panels and where notifications appear. An empty preference
 // inherits the family default from VitrailStyle.
 //
-// Its Editor tab is the one UI for the bar's elements: their order in the
-// start / center / end groups, their visibility per monitor, the density and
-// whether a fullscreen window hides the bar. It writes bar.ini `barLayout`, the
-// document bar/shell.qml reads (bar/layouts.js), so panel, desktop and lock
-// can offer the same editor later with a document of their own.
+// Its Editor tab is the one UI for the bar's elements: their place in the
+// start / center / end groups (any element may change group; only the
+// launcher, the tray and the power button are fixed), the chips that share one
+// pill, the dividers, their visibility per monitor, the density and whether a
+// fullscreen window hides the bar. It writes bar.ini `barLayout`, the document
+// bar/shell.qml reads (bar/layouts.js), so panel, desktop and lock can offer
+// the same editor later with a document of their own.
 Item {
     id: page
 
@@ -118,6 +120,101 @@ Item {
 
     function moveWidget(id, delta) {
         page.commit({ order: Layouts.move(page.layout.order, id, delta) })
+    }
+
+    // --- entries: elements, chips and dividers -------------------------------
+    // One order entry may be an element, a chip token (`@connections`) or a
+    // divider id. The editor moves any of them to any group; only the fixed
+    // elements (launcher, tray, power) keep their group.
+
+    function groupOptions() {
+        return Layouts.groups("bar").map(function (group) {
+            return { key: group, icon: page.icons.group[group] || "widgets", label: "" }
+        })
+    }
+
+    function entryFixed(entry) {
+        return !Layouts.isChipToken(entry) && !Layouts.isDivider(entry)
+               && Layouts.isFixed(entry)
+    }
+
+    function entryIcon(entry) {
+        if (Layouts.isChipToken(entry))
+            return "link"
+        if (Layouts.isDivider(entry))
+            return "vertical_split"
+        return page.icons.widget[entry] || "widgets"
+    }
+
+    function entryLabel(entry) {
+        if (Layouts.isChipToken(entry))
+            return page.t("bar.editor.chip")
+        return page.labelOf(entry)
+    }
+
+    function entryDescription(entry) {
+        if (Layouts.isChipToken(entry)) {
+            var members = page.chipMembers(Layouts.chipName(entry))
+            if (members.length === 0)
+                return page.t("bar.editor.chip.empty")
+            return members.map(function (id) { return page.labelOf(id) }).join(" · ")
+        }
+        if (Layouts.isDivider(entry))
+            return page.t("bar.editor.divider.help")
+        return page.entryFixed(entry) ? page.t("bar.editor.fixed") : ""
+    }
+
+    function chipMembers(chipId) {
+        var chip = Layouts.chipEntry(page.layout.chips, chipId)
+        return chip ? chip.members.slice() : []
+    }
+
+    // The elements a chip may still take: known on the bar, not fixed and not
+    // structural, free of another chip and not a member of this one.
+    function chipCandidates(chipId) {
+        var chips = page.layout.chips
+        return Layouts.widgets("bar").filter(function (widget) {
+            if (widget.fixed || widget.optional || Layouts.isDivider(widget.id))
+                return false
+            var owner = Layouts.chipOf(chips, widget.id)
+            return (owner === null || owner === chipId)
+                   && page.chipMembers(chipId).indexOf(widget.id) < 0
+        })
+    }
+
+    function moveEntry(entry, group) {
+        var at = page.layout.order[group] ? page.layout.order[group].length : 0
+        page.commit({ order: Layouts.moveTo(page.layout.order, entry, group, at) })
+    }
+
+    function addChip(group) {
+        var result = Layouts.newChip(page.layout.order, page.layout.chips, group)
+        page.commit({ order: result.order, chips: result.chips })
+    }
+
+    function addDivider(group) {
+        page.commit({ order: Layouts.addDivider(page.layout.order, group) })
+    }
+
+    function removeEntry(entry) {
+        if (Layouts.isChipToken(entry)) {
+            var result = Layouts.removeChip(page.layout.order, page.layout.chips,
+                                            Layouts.chipName(entry))
+            page.commit({ order: result.order, chips: result.chips })
+        } else if (Layouts.isDivider(entry)) {
+            page.commit({ order: Layouts.removeDivider(page.layout.order, entry) })
+        }
+    }
+
+    function toggleChipMember(chipId, id) {
+        var members = page.chipMembers(chipId)
+        var at = members.indexOf(id)
+        if (at < 0)
+            members.push(id)
+        else
+            members.splice(at, 1)
+        var result = Layouts.setChipMembers(page.layout.order, page.layout.chips, chipId, members)
+        page.commit({ order: result.order, chips: result.chips })
     }
 
     // One patch of the panel's document, as layouts.js writes it; unchanged
@@ -282,7 +379,7 @@ Item {
             clock: "schedule", capture: "screenshot_monitor", recording: "stop_circle",
             tray: "widgets", network: "lan", bluetooth: "bluetooth", vpn: "shield",
             profile: "speed", battery: "battery_full", keyboard: "keyboard",
-            power: "power_settings_new"
+            power: "power_settings_new", divider: "vertical_split"
         }
     })
 
@@ -578,8 +675,9 @@ Item {
                     }
                 }
 
-                // One list per group, in the document's order: show or hide an
-                // element, and move it up or down inside its group.
+                // One list per group, in the document's order: an element, a
+                // chip or a divider. Show or hide it, move it up or down inside
+                // the group, send it to another group, or add a chip/divider.
                 Repeater {
                     model: Layouts.groups("bar")
 
@@ -598,41 +696,163 @@ Item {
                         Repeater {
                             model: page.layout.order[groupCard.modelData] || []
 
-                            delegate: VitrailSettingRow {
+                            delegate: ColumnLayout {
                                 id: widgetRow
 
                                 required property string modelData
                                 required property int index
 
                                 readonly property var ids: page.layout.order[groupCard.modelData] || []
+                                readonly property bool chipEntry: Layouts.isChipToken(widgetRow.modelData)
+                                readonly property bool dividerEntry: Layouts.isDivider(widgetRow.modelData)
+                                readonly property string chipId: widgetRow.chipEntry
+                                                               ? Layouts.chipName(widgetRow.modelData) : ""
+                                readonly property string entry: widgetRow.modelData
 
+                                objectName: "barEditorEntry-" + widgetRow.modelData
                                 Layout.fillWidth: true
-                                icon: page.icons.widget[widgetRow.modelData] || "widgets"
-                                label: page.labelOf(widgetRow.modelData)
-                                foreground: page.palette.foreground
-                                muted: page.palette.muted
+                                spacing: VitrailTokens.gap("xs")
 
-                                VitrailSwitch {
-                                    checked: page.layout.hidden.indexOf(widgetRow.modelData) < 0
+                                VitrailSettingRow {
+                                    Layout.fillWidth: true
+                                    icon: page.entryIcon(widgetRow.entry)
+                                    label: page.entryLabel(widgetRow.entry)
+                                    description: page.entryDescription(widgetRow.entry)
                                     foreground: page.palette.foreground
-                                    accent: page.palette.primary
-                                    onToggled: page.setVisible(widgetRow.modelData, value)
+                                    muted: page.palette.muted
+
+                                    VitrailSwitch {
+                                        objectName: "barEditorVisible-" + widgetRow.entry
+                                        visible: !widgetRow.chipEntry
+                                        checked: page.layout.hidden.indexOf(widgetRow.entry) < 0
+                                        foreground: page.palette.foreground
+                                        accent: page.palette.primary
+                                        onToggled: page.setVisible(widgetRow.entry, value)
+                                    }
+
+                                    VitrailSegmented {
+                                        objectName: "barEditorGroup-" + widgetRow.entry
+                                        visible: !page.entryFixed(widgetRow.entry)
+                                        options: page.groupOptions()
+                                        current: groupCard.modelData
+                                        foreground: page.palette.foreground
+                                        accent: page.palette.primary
+                                        onSelected: page.moveEntry(widgetRow.entry, key)
+                                    }
+
+                                    VitrailButton {
+                                        variant: "text"
+                                        icon: "arrow_upward"
+                                        onClicked: if (widgetRow.index > 0)
+                                                       page.moveWidget(widgetRow.entry, -1)
+                                    }
+
+                                    VitrailButton {
+                                        variant: "text"
+                                        icon: "arrow_downward"
+                                        onClicked: if (widgetRow.index < widgetRow.ids.length - 1)
+                                                       page.moveWidget(widgetRow.entry, 1)
+                                    }
+
+                                    VitrailButton {
+                                        objectName: "barEditorRemove-" + widgetRow.entry
+                                        variant: "text"
+                                        tone: "error"
+                                        icon: "remove_circle_outline"
+                                        visible: widgetRow.chipEntry || widgetRow.dividerEntry
+                                        onClicked: page.removeEntry(widgetRow.entry)
+                                    }
                                 }
 
-                                VitrailButton {
-                                    variant: "text"
-                                    icon: "arrow_upward"
-                                    onClicked: if (widgetRow.index > 0)
-                                                   page.moveWidget(widgetRow.modelData, -1)
+                                // A chip's members: each keeps its own
+                                // visibility switch, and one leaves the chip
+                                // with its remove button.
+                                Repeater {
+                                    model: widgetRow.chipEntry ? page.chipMembers(widgetRow.chipId) : []
+
+                                    delegate: VitrailSettingRow {
+                                        id: memberRow
+
+                                        required property string modelData
+
+                                        Layout.fillWidth: true
+                                        Layout.leftMargin: VitrailTokens.gap("lg")
+                                        icon: page.entryIcon(memberRow.modelData)
+                                        label: page.labelOf(memberRow.modelData)
+                                        foreground: page.palette.foreground
+                                        muted: page.palette.muted
+
+                                        VitrailSwitch {
+                                            objectName: "barChipVisible-" + widgetRow.chipId + "-" + memberRow.modelData
+                                            checked: page.layout.hidden.indexOf(memberRow.modelData) < 0
+                                            foreground: page.palette.foreground
+                                            accent: page.palette.primary
+                                            onToggled: function (value) {
+                                            page.setVisible(memberRow.modelData, value)
+                                        }
+                                        }
+
+                                        VitrailButton {
+                                            objectName: "barChipRemove-" + widgetRow.chipId + "-" + memberRow.modelData
+                                            variant: "text"
+                                            icon: "close"
+                                            onClicked: page.toggleChipMember(widgetRow.chipId, memberRow.modelData)
+                                        }
+                                    }
                                 }
 
-                                VitrailButton {
-                                    variant: "text"
-                                    icon: "arrow_downward"
-                                    onClicked: if (widgetRow.index < widgetRow.ids.length - 1)
-                                                   page.moveWidget(widgetRow.modelData, 1)
+                                // The elements the chip may still take.
+                                Flow {
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: VitrailTokens.gap("lg")
+                                    visible: widgetRow.chipEntry
+                                             && page.chipCandidates(widgetRow.chipId).length > 0
+                                    spacing: VitrailTokens.gap("xs")
+
+                                    Repeater {
+                                        model: widgetRow.chipEntry ? page.chipCandidates(widgetRow.chipId) : []
+
+                                        delegate: VitrailButton {
+                                            required property var modelData
+
+                                            objectName: "barChipAdd-" + widgetRow.chipId + "-" + modelData.id
+                                            variant: "outlined"
+                                            tone: "secondary"
+                                            size: "sm"
+                                            icon: "add"
+                                            text: page.t(modelData.labelKey)
+                                            onClicked: page.toggleChipMember(widgetRow.chipId, modelData.id)
+                                        }
+                                    }
                                 }
                             }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: VitrailTokens.gap("sm")
+
+                            VitrailButton {
+                                objectName: "barAddChip-" + groupCard.modelData
+                                variant: "outlined"
+                                tone: "secondary"
+                                size: "sm"
+                                icon: "link"
+                                text: page.t("bar.editor.chip.add")
+                                onClicked: page.addChip(groupCard.modelData)
+                            }
+
+                            VitrailButton {
+                                objectName: "barAddDivider-" + groupCard.modelData
+                                variant: "outlined"
+                                tone: "secondary"
+                                size: "sm"
+                                icon: "horizontal_rule"
+                                text: page.t("bar.editor.divider.add")
+                                onClicked: page.addDivider(groupCard.modelData)
+                            }
+
+                            Item { Layout.fillWidth: true }
                         }
                     }
                 }

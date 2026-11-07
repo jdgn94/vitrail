@@ -2537,14 +2537,20 @@ ShellRoot {
                 }
 
                 function entryComponent(entry) {
-                    return entry && entry.cluster !== undefined ? chipWidget : monitor.widgetComponent(entry.id)
+                    if (!entry)
+                        return null
+                    if (entry.chip !== undefined)
+                        return chipWidget
+                    if (entry.divider)
+                        return dividerWidget
+                    return monitor.widgetComponent(entry.id)
                 }
 
                 // Whether an entry has anything to show. The element itself
                 // says so when it can (battery, Bluetooth); the rest read the
                 // shell's state here, in whatever group the editor put them.
                 function entryVisible(entry) {
-                    if (!entry || entry.cluster !== undefined)
+                    if (!entry || entry.chip !== undefined || entry.divider)
                         return true
                     switch (entry.id) {
                     case "workspaces": return shell.workspaceEntries.length > 0
@@ -2856,41 +2862,27 @@ ShellRoot {
                 }
 
                 // Neighbouring connection buttons share one pill, exactly as
-                // they did when the bar had a fixed chip.
+                // they did when the bar had a fixed chip; any chip the editor
+                // makes draws the same way (bar/BarChip.qml).
                 Component {
                     id: chipWidget
 
-                    Rectangle {
-                        id: chip
+                    BarChip {
+                        ids: []
+                        vertical: bar.vertical
+                        componentFor: function (id) { return monitor.widgetComponent(id) }
+                        onLoaded: function (id, item) { monitor.register(id, item) }
+                        onUnloaded: function (id) { monitor.unregister(id) }
+                    }
+                }
 
-                        property var ids: []
-                        implicitWidth: chipRow.implicitWidth
-                        implicitHeight: chipRow.implicitHeight + 2
-                        radius: height / 2
-                        // A soft primary: opaque, so it does not smear over the glass.
-                        color: VitrailTokens.solid("primary", 0.14)
+                // A divider: a line with no content and no input (bar/layouts.js
+                // keeps their ids, so a document may place several).
+                Component {
+                    id: dividerWidget
 
-                        GridLayout {
-                            id: chipRow
-
-                            anchors.centerIn: parent
-                            flow: bar.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
-                            rowSpacing: 0
-                            columnSpacing: 0
-
-                            Repeater {
-                                model: chip.ids
-
-                                delegate: BarEntry {
-                                    required property string modelData
-
-                                    vertical: bar.vertical
-                                    sourceComponent: monitor.widgetComponent(modelData)
-                                    onLoaded: monitor.register(modelData, item)
-                                    Component.onDestruction: monitor.unregister(modelData)
-                                }
-                            }
-                        }
+                    BarDivider {
+                        vertical: bar.vertical
                     }
                 }
 
@@ -3101,11 +3093,14 @@ ShellRoot {
                         // What this monitor draws, in which order (bar.ini
                         // `barLayout`, bar → Editor).
                         readonly property var startEntries: Layouts.entries(monitor.barDocument.order.start,
-                                                                            monitor.barDocument.hidden)
+                                                                            monitor.barDocument.hidden, "bar",
+                                                                            monitor.barDocument.chips)
                         readonly property var centerEntries: Layouts.entries(monitor.barDocument.order.center,
-                                                                             monitor.barDocument.hidden)
+                                                                             monitor.barDocument.hidden, "bar",
+                                                                             monitor.barDocument.chips)
                         readonly property var endEntries: Layouts.entries(monitor.barDocument.order.end,
-                                                                          monitor.barDocument.hidden)
+                                                                          monitor.barDocument.hidden, "bar",
+                                                                          monitor.barDocument.chips)
 
                         anchors.fill: parent
                         edge: bar.barLayout.edge
@@ -3188,7 +3183,7 @@ ShellRoot {
                                         contentVisible: monitor.entryVisible(startEntry.modelData)
                                         sourceComponent: monitor.entryComponent(startEntry.modelData)
                                         onLoaded: {
-                                            if (startEntry.modelData.cluster !== undefined)
+                                            if (startEntry.modelData.chip !== undefined)
                                                 item.ids = startEntry.modelData.ids
                                             else
                                                 monitor.register(startEntry.modelData.id, item)
@@ -3222,7 +3217,7 @@ ShellRoot {
                                         contentVisible: monitor.entryVisible(centerEntry.modelData)
                                         sourceComponent: monitor.entryComponent(centerEntry.modelData)
                                         onLoaded: {
-                                            if (centerEntry.modelData.cluster !== undefined)
+                                            if (centerEntry.modelData.chip !== undefined)
                                                 item.ids = centerEntry.modelData.ids
                                             else
                                                 monitor.register(centerEntry.modelData.id, item)
@@ -3257,7 +3252,7 @@ ShellRoot {
                                         contentVisible: monitor.entryVisible(endEntry.modelData)
                                         sourceComponent: monitor.entryComponent(endEntry.modelData)
                                         onLoaded: {
-                                            if (endEntry.modelData.cluster !== undefined)
+                                            if (endEntry.modelData.chip !== undefined)
                                                 item.ids = endEntry.modelData.ids
                                             else
                                                 monitor.register(endEntry.modelData.id, item)

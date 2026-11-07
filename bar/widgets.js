@@ -4,16 +4,20 @@
 // the size and style of each one (bar/layouts.js).
 //
 // shapes:
-//   { id, surfaces, labelKey, icon, sizes, styles, interactive? }
+//   { id, surfaces, group, labelKey, icon, sizes, styles,
+//     fixed?, optional?, interactive? }
 // `surfaces` names every surface that may show the widget; `labelKey` is the
 // i18n key its editor row shows; `sizes` / `styles` are the values that
 // widget understands (the first size is the default when "md" is absent).
-// `interactive` marks a desktop widget that takes the pointer.
+// `fixed` keeps the element in its own group (the launcher, the tray and the
+// power button); `optional` keeps it out of the built-in document while a
+// document may still place it (the divider); `interactive` marks a desktop
+// widget that takes the pointer.
 .pragma library
 
 var WIDGETS = [
     // --- the bar (bar → Editor)
-    { id: "launcher", surfaces: ["bar"], group: "start", labelKey: "bar.widget.launcher", icon: "apps", sizes: [], styles: [] },
+    { id: "launcher", surfaces: ["bar"], group: "start", fixed: true, labelKey: "bar.widget.launcher", icon: "apps", sizes: [], styles: [] },
     { id: "workspaces", surfaces: ["bar"], group: "start", labelKey: "bar.widget.workspaces", icon: "view_column", sizes: [], styles: [] },
     { id: "notifications", surfaces: ["bar"], group: "start", labelKey: "bar.widget.notifications", icon: "notifications", sizes: [], styles: [] },
     { id: "title", surfaces: ["bar"], group: "center", labelKey: "bar.widget.title", icon: "desktop_windows", sizes: [], styles: [] },
@@ -21,14 +25,17 @@ var WIDGETS = [
     { id: "clock", surfaces: ["bar"], group: "center", labelKey: "bar.widget.clock", icon: "schedule", sizes: [], styles: [] },
     { id: "capture", surfaces: ["bar"], group: "end", labelKey: "bar.widget.capture", icon: "screenshot_monitor", sizes: [], styles: [] },
     { id: "recording", surfaces: ["bar"], group: "end", labelKey: "bar.widget.recording", icon: "stop_circle", sizes: [], styles: [] },
-    { id: "tray", surfaces: ["bar"], group: "end", labelKey: "bar.widget.tray", icon: "widgets", sizes: [], styles: [] },
+    { id: "tray", surfaces: ["bar"], group: "end", fixed: true, labelKey: "bar.widget.tray", icon: "widgets", sizes: [], styles: [] },
     { id: "network", surfaces: ["bar"], group: "end", labelKey: "bar.widget.network", icon: "lan", sizes: [], styles: [] },
     { id: "bluetooth", surfaces: ["bar"], group: "end", labelKey: "bar.widget.bluetooth", icon: "bluetooth", sizes: [], styles: [] },
     { id: "vpn", surfaces: ["bar"], group: "end", labelKey: "bar.widget.vpn", icon: "shield", sizes: [], styles: [] },
     { id: "profile", surfaces: ["bar"], group: "end", labelKey: "bar.widget.profile", icon: "speed", sizes: [], styles: [] },
     { id: "battery", surfaces: ["bar"], group: "end", labelKey: "bar.widget.battery", icon: "battery_full", sizes: [], styles: [] },
     { id: "keyboard", surfaces: ["bar"], group: "end", labelKey: "bar.widget.keyboard", icon: "keyboard", sizes: [], styles: [] },
-    { id: "power", surfaces: ["bar"], group: "end", labelKey: "bar.widget.power", icon: "power_settings_new", sizes: [], styles: [] },
+    { id: "power", surfaces: ["bar"], group: "end", fixed: true, labelKey: "bar.widget.power", icon: "power_settings_new", sizes: [], styles: [] },
+    // A structural element a document may place as many times as it likes
+    // (`divider`, `divider-2`…): a 1 px line, no content and no input.
+    { id: "divider", surfaces: ["bar"], group: "center", optional: true, labelKey: "bar.widget.divider", icon: "vertical_split", sizes: [], styles: [] },
 
     // --- the notification panel (bar → Editor → Panel)
     { id: "media", surfaces: ["panel", "desktop"], labelKey: "panel.widget.media", icon: "play_circle", sizes: ["sm", "md", "lg"], styles: ["disc", "cassette", "minimal"], interactive: true },
@@ -63,7 +70,20 @@ function find(id, surface) {
         if (list[i].id === id)
             return list[i]
     }
+    // Every divider shares one registry entry, whatever its suffix.
+    if (isDivider(id)) {
+        for (var j = 0; j < list.length; j++) {
+            if (list[j].id === "divider")
+                return list[j]
+        }
+    }
     return null
+}
+
+// A divider id: `divider`, then `divider-2`, `divider-3`… A document may place
+// as many as it likes, so they need their own ids.
+function isDivider(id) {
+    return typeof id === "string" && /^divider(-\d+)?$/.test(id)
 }
 
 function defaultSize(widget) {
