@@ -65,4 +65,16 @@ TestCase {
         var text = BarView.update("{}", "DP-1", { edge: "top", style: "floating" })
         compare(BarView.update(text, "DP-1", { edge: "", style: "" }), "{}")
     }
+
+    function test_clearing_the_edge_returns_to_global_and_keeps_the_style() {
+        var text = BarView.update('{"DP-1":{"edge":"top","style":"floating"}}', "DP-1", { edge: "" })
+        compare(BarView.document(text), { "DP-1": { style: "floating" } })
+        compare(BarView.forMonitor(text, "DP-1", defaults), { edge: "left", style: "floating" })
+    }
+
+    function test_clearing_an_edge_only_override_drops_the_monitor() {
+        var text = BarView.update('{"DP-1":{"edge":"top"}}', "DP-1", { edge: "" })
+        compare(text, "{}")
+        compare(BarView.forMonitor(text, "DP-1", defaults), defaults)
+    }
 }

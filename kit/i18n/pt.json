@@ -196,6 +196,7 @@
   "bar.frameSize": "Largura da moldura",
   "bar.help": "Acoplada funde a barra com a moldura. Só cantos mantém os cantos arredondados sem borda.",
   "bar.monitors.edge": "Posição da barra",
+  "bar.monitors.edge.global": "Global",
   "bar.monitors.help": "Cada monitor pode colocar a barra noutra borda ou dar-lhe outro estilo; a sua espessura continua global.",
   "bar.monitors.style": "Estilo da barra",
   "bar.monitors.style.global": "Global",

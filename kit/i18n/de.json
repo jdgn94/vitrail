@@ -196,6 +196,7 @@
   "bar.frameSize": "Rahmenbreite",
   "bar.help": "Angedockt verschmilzt die Leiste mit dem Rahmen. Nur Ecken behält die runden Ecken ohne Rand.",
   "bar.monitors.edge": "Leistenposition",
+  "bar.monitors.edge.global": "Global",
   "bar.monitors.help": "Jeder Monitor kann die Leiste an einer anderen Kante oder in einem anderen Stil zeigen; ihre Dicke bleibt global.",
   "bar.monitors.style": "Leistenstil",
   "bar.monitors.style.global": "Global",

@@ -196,6 +196,7 @@
   "bar.frameSize": "Frame width",
   "bar.help": "Docked melts the bar into the frame. Corners only keeps the rounded screen corners without a border.",
   "bar.monitors.edge": "Bar position",
+  "bar.monitors.edge.global": "Global",
   "bar.monitors.help": "Each monitor may put the bar on another edge or give it another style; the thickness stays global.",
   "bar.monitors.style": "Bar style",
   "bar.monitors.style.global": "Global",

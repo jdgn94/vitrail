@@ -372,9 +372,14 @@ Item {
     }
 
     function barEdgeOf(monitor) {
+        var edge = page.barEdgeOverrideOf(monitor)
+        return edge !== "" ? edge : (page.prefs.barEdge || "left")
+    }
+
+    // The edge this monitor sets for itself; "" follows the global bar.
+    function barEdgeOverrideOf(monitor) {
         var entry = page.barOf(monitor)
-        return entry && typeof entry.edge === "string" && entry.edge !== ""
-               ? entry.edge : (page.prefs.barEdge || "left")
+        return entry && typeof entry.edge === "string" ? entry.edge : ""
     }
 
     function barStyleOf(monitor) {
@@ -840,13 +845,15 @@ Item {
                         muted: page.palette.muted
 
                         VitrailSegmented {
+                            objectName: "barEdge"
                             options: [
+                                { key: "", label: page.t("bar.monitors.edge.global"), icon: "public" },
                                 { key: "left", label: page.t("bar.edge.left"), icon: "left_panel_open" },
                                 { key: "top", label: page.t("bar.edge.top"), icon: "top_panel_open" },
                                 { key: "right", label: page.t("bar.edge.right"), icon: "right_panel_open" },
                                 { key: "bottom", label: page.t("bar.edge.bottom"), icon: "bottom_panel_open" }
                             ]
-                            current: page.selectedMonitor ? page.barEdgeOf(page.selectedMonitor) : ""
+                            current: page.selectedMonitor ? page.barEdgeOverrideOf(page.selectedMonitor) : ""
                             foreground: page.palette.foreground
                             accent: page.palette.primary
                             onSelected: function (key) {

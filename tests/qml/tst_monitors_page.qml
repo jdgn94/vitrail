@@ -64,6 +64,7 @@ TestCase {
 
     function init() {
         mockPrefs.monitorOverrides = ""
+        mockPrefs.barMonitors = "{}"
     }
 
     function make() {
@@ -186,5 +187,29 @@ TestCase {
         var last = findChild(page, "detailsLast")
         var bottom = last.mapToItem(page, 0, last.height).y
         verify(bottom <= bar.y, "the last row sits above the floating card")
+    }
+
+    function test_the_bar_edge_control_offers_global_and_clears_the_override() {
+        mockPrefs.barMonitors = '{"DP-1":{"edge":"top"}}'
+        var page = make()
+        compare(page.barEdgeOf(testCase.first), "top")
+        compare(page.barEdgeOverrideOf(testCase.first), "top")
+        var control = findChild(page, "barEdge")
+        verify(control)
+        compare(control.current, "top")
+        control.selected("")
+        compare(page.barEdgeOverrideOf(testCase.first), "")
+        compare(mockPrefs.barMonitors, "{}")
+        compare(page.barEdgeOf(testCase.first), "left")
+        compare(control.current, "")
+    }
+
+    function test_global_keeps_a_monitor_style_override() {
+        mockPrefs.barMonitors = '{"DP-1":{"edge":"top","style":"floating"}}'
+        var page = make()
+        findChild(page, "barEdge").selected("")
+        compare(JSON.parse(mockPrefs.barMonitors), { "DP-1": { style: "floating" } })
+        compare(page.barEdgeOf(testCase.first), "left")
+        compare(page.barStyleOf(testCase.first), "floating")
     }
 }

@@ -196,6 +196,7 @@
   "bar.frameSize": "Spessore della cornice",
   "bar.help": "Agganciata fonde la barra con la cornice. Solo angoli mantiene gli angoli arrotondati senza bordo.",
   "bar.monitors.edge": "Posizione della barra",
+  "bar.monitors.edge.global": "Globale",
   "bar.monitors.help": "Ogni monitor può mettere la barra su un altro bordo o darle un altro stile; il suo spessore resta globale.",
   "bar.monitors.style": "Stile della barra",
   "bar.monitors.style.global": "Globale",
