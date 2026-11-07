@@ -105,7 +105,7 @@ TestCase {
     }
 
     function lastText(spy) {
-        return spy.signalArguments[spy.count - 1][0]
+        return spy.signalArguments[spy.count - 1][1]
     }
 
     function apply(mode, spy) {

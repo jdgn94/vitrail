@@ -10,8 +10,9 @@ import "desktopEditor.js" as Editor
 
 // The in-place desktop editor. The desktop itself shrinks to 85% inside this
 // full-screen container while the bar and the notification panel step aside
-// (bar/desktop/policy.js). The three tabs put the desktop in the middle, the
-// bar and the panel beside it; this phase edits the desktop.
+// (bar/desktop/policy.js). The four tabs edit the bar, the desktop, the dock
+// and the notification panel; this phase puts the bar and panel placement here
+// instead of in Settings.
 //
 // The document is the state: every drag, resize, variant or typography change
 // goes through bar/layouts.js and is emitted as `layoutChanged`, so nothing is
@@ -33,6 +34,26 @@ Item {
                           magnifyRange: VitrailTokens.dock.magnify.range,
                           magnifyScale: VitrailTokens.dock.magnify.scale,
                           pinned: "[]" })
+    // The bar and panel documents (bar.ini `barLayout` / `panelLayout`), and
+    // the outputs a per-monitor bar override may name.
+    property string barLayout: ""
+    property string panelLayout: ""
+    property var monitors: []
+    // The monitor whose bar override is being edited ("" is global).
+    property string barMonitor: ""
+    // The bar preferences Settings no longer edits (edge, style, opacity…).
+    property var bar: ({ edge: "left", trayStyle: "inline", batteryChip: true,
+                         bluetoothChip: true, keyboard: true, style: "",
+                         screens: "primary", opacityFollow: true,
+                         opacity: VitrailTokens.ranges.opacity.value,
+                         size: VitrailTokens.ranges.bar.value })
+    // The live document while the editor is open: a write reaches it before
+    // the preference file does, so two quick edits never lose a change.
+    property string barText: ""
+    property string panelText: ""
+
+    onBarLayoutChanged: root.barText = root.barLayout
+    onPanelLayoutChanged: root.panelText = root.panelLayout
 
     // Which tab is up: the desktop is the default and the middle one.
     property string tab: "desktop"
@@ -41,7 +62,7 @@ Item {
     // The placed widget being edited ("" = none).
     property string selection: ""
 
-    signal layoutChanged(string text)
+    signal layoutChanged(string surface, string text)
     signal prefChanged(string key, var value)
     signal finished()
 
@@ -90,7 +111,7 @@ Item {
     function commit(widgets) {
         var text = Layouts.write(root.layoutText, root.monitor, { widgets: widgets }, "desktop")
         if (text !== null)
-            root.layoutChanged(text)
+            root.layoutChanged("desktop", text)
     }
 
     // --- the palette ---------------------------------------------------------
@@ -777,40 +798,39 @@ Item {
             }
         }
 
-        // The bar and the panel tabs: the same editor chrome, with the notice
-        // this phase leaves them.
-        VitrailSurface {
+        // The bar tab: its own look and the placement of its elements.
+        BarEditTab {
+            objectName: "editorBarTab"
+
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: root.tab === "bar" || root.tab === "panel"
-            radius: VitrailTokens.radius
-            tint: VitrailTokens.color("surfaceHigh", "#282a2f")
-            opacityLevel: VitrailTokens.opacity * 0.39
+            visible: root.tab === "bar"
+            strings: root.strings
+            bar: root.bar
+            monitors: root.monitors
+            layoutText: root.barText
+            monitor: root.barMonitor
+            onCommitted: function (text) {
+                root.barText = text
+                root.layoutChanged("bar", text)
+            }
+            onPrefChanged: function (key, value) { root.prefChanged(key, value) }
+        }
 
-            Column {
-                anchors.centerIn: parent
-                spacing: VitrailTokens.gap("sm")
+        // The panel tab: one flat list of widgets, with visibility, order,
+        // size, style and typography.
+        PanelEditTab {
+            objectName: "editorPanelTab"
 
-                VitrailIcon {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    icon: root.tab === "bar" ? "toolbar" : "view_sidebar"
-                    size: "xl"
-                    tone: "muted"
-                }
-
-                VitrailText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    variant: "subtitle"
-                    text: root.tab === "bar" ? root.t("desktop.edit.tab.bar")
-                                             : root.t("desktop.edit.tab.panel")
-                }
-
-                VitrailText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    variant: "body"
-                    color: VitrailTokens.color("muted", "#9aa0a6")
-                    text: root.t("desktop.edit.comingSoon")
-                }
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.tab === "panel"
+            strings: root.strings
+            fonts: root.fonts
+            layoutText: root.panelText
+            onCommitted: function (text) {
+                root.panelText = text
+                root.layoutChanged("panel", text)
             }
         }
 

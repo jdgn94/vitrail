@@ -24,10 +24,24 @@ PanelWindow {
                           magnifyRange: VitrailTokens.dock.magnify.range,
                           magnifyScale: VitrailTokens.dock.magnify.scale,
                           pinned: "[]" })
+    // The bar and panel documents and the bar's own options, all edited by
+    // their tabs.
+    property string barLayout: ""
+    property string panelLayout: ""
+    property var monitors: []
+    property var bar: ({ edge: "left", trayStyle: "inline", batteryChip: true,
+                         bluetoothChip: true, keyboard: true, style: "",
+                         screens: "primary", opacityFollow: true,
+                         opacity: VitrailTokens.ranges.opacity.value,
+                         size: VitrailTokens.ranges.bar.value })
 
-    signal layoutChanged(string text)
+    signal layoutChanged(string surface, string text)
     signal prefChanged(string key, var value)
     signal finished()
+
+    // The tab the editor shows ("bar", "desktop", "dock", "panel"); the shell
+    // and the smoke fixture drive the real editor through it.
+    property alias tab: editor.tab
 
     visible: root.active || editor.progress > 0
     anchors {
@@ -57,7 +71,11 @@ PanelWindow {
         screenHeight: root.screenHeight
         fonts: root.fontFamilies
         dock: root.dock
-        onLayoutChanged: function (text) { root.layoutChanged(text) }
+        barLayout: root.barLayout
+        panelLayout: root.panelLayout
+        monitors: root.monitors
+        bar: root.bar
+        onLayoutChanged: function (surface, text) { root.layoutChanged(surface, text) }
         onPrefChanged: function (key, value) { root.prefChanged(key, value) }
         onFinished: root.finished()
     }

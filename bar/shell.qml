@@ -123,6 +123,8 @@ ShellRoot {
     property bool editMode: false
     property var editScreen: null
     property string desktopEditLayout: ""
+    property string barEditLayout: ""
+    property string panelEditLayout: ""
     // The right-click menu and the point it came from.
     property bool desktopMenuOpen: false
     property var desktopMenuScreen: null
@@ -758,6 +760,8 @@ ShellRoot {
         shell.sessionOpen = false
         shell.clipboardOpen = false
         shell.desktopEditLayout = shell.prefs.desktopLayout || "{}"
+        shell.barEditLayout = shell.prefs.barLayout || ""
+        shell.panelEditLayout = shell.prefs.panelLayout || ""
         shell.editScreen = screen
         shell.editMode = true
     }
@@ -3308,6 +3312,24 @@ ShellRoot {
                     strings: shell.strings
                     screenWidth: monitor.modelData.width
                     screenHeight: monitor.modelData.height
+                    barLayout: shell.barEditLayout
+                    panelLayout: shell.panelEditLayout
+                    monitors: Quickshell.screens.map(function (screen) {
+                        return { name: screen.name }
+                    })
+                    bar: ({
+                        edge: shell.prefs.barEdge || "left",
+                        trayStyle: shell.prefs.trayStyle || "inline",
+                        batteryChip: shell.prefBool("barBatteryChip", true),
+                        bluetoothChip: shell.prefBool("barBluetoothChip", true),
+                        keyboard: shell.prefBool("barKeyboard", true),
+                        style: shell.prefs.barStyle || "",
+                        screens: shell.prefs.barScreens || "primary",
+                        opacityFollow: shell.prefBool("barOpacityFollow", true),
+                        opacity: shell.prefNumber("barOpacity",
+                                                  VitrailTokens.ranges.opacity.value),
+                        size: shell.prefNumber("barSize", VitrailTokens.ranges.bar.value)
+                    })
                     dock: ({
                         enabled: shell.prefBool("dockEnabled", false),
                         edge: shell.prefs.dockEdge || "bottom",
@@ -3320,9 +3342,17 @@ ShellRoot {
                                                        VitrailTokens.ranges.dockMagnifyScale.value),
                         pinned: shell.prefs.dockPinned || "[]"
                     })
-                    onLayoutChanged: function (text) {
-                        shell.desktopEditLayout = text
-                        shell.setPref("desktopLayout", text)
+                    onLayoutChanged: function (surface, text) {
+                        if (surface === "bar") {
+                            shell.barEditLayout = text
+                            shell.setPref("barLayout", text)
+                        } else if (surface === "panel") {
+                            shell.panelEditLayout = text
+                            shell.setPref("panelLayout", text)
+                        } else {
+                            shell.desktopEditLayout = text
+                            shell.setPref("desktopLayout", text)
+                        }
                     }
                     onPrefChanged: function (key, value) { shell.setPref(key, String(value)) }
                     onFinished: shell.stopDesktopEdit()
