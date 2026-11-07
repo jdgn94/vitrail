@@ -8,19 +8,27 @@ import "../../bar/layouts.js" as Layouts
 TestCase {
     name: "Layouts"
 
-    readonly property var startIds: ["launcher", "notifications"]
+    readonly property var startIds: ["launcher", "workspaces", "notifications"]
     readonly property var endIds: ["capture", "recording", "tray", "network", "bluetooth",
                                    "vpn", "profile", "battery", "keyboard", "power"]
 
     function test_the_empty_document_is_todays_bar() {
         var doc = Layouts.sanitize("")
         compare(doc.order.start, startIds)
-        compare(doc.order.center, ["media", "clock"])
+        compare(doc.order.center, ["title", "media", "clock"])
         compare(doc.order.end, endIds)
         compare(doc.hidden, ["capture"])
         compare(doc.density, "comfortable")
         compare(doc.hideFullscreen, true)
         compare(doc.monitors, {})
+    }
+
+    function test_the_workspace_pills_and_the_title_are_visible_by_default() {
+        var doc = Layouts.sanitize("")
+        verify(doc.order.start.indexOf("workspaces") >= 0)
+        verify(doc.order.center.indexOf("title") >= 0)
+        compare(doc.hidden.indexOf("workspaces"), -1)
+        compare(doc.hidden.indexOf("title"), -1)
     }
 
     function test_defaults_cover_every_element_once() {
@@ -47,8 +55,8 @@ TestCase {
             order: { start: ["ghost", "notifications", "notifications"], center: [], end: [] },
             hidden: ["ghost", "tray", "tray"]
         }))
-        compare(doc.order.start, ["notifications", "launcher"])
-        compare(doc.order.center, ["media", "clock"])
+        compare(doc.order.start, ["notifications", "launcher", "workspaces"])
+        compare(doc.order.center, ["title", "media", "clock"])
         compare(doc.order.end, endIds)
         compare(doc.hidden, ["tray"])
     }
@@ -58,7 +66,7 @@ TestCase {
             order: { start: [], center: ["clock"], end: ["power"] }
         }))
         compare(doc.order.start, startIds)
-        compare(doc.order.center, ["clock", "media"])
+        compare(doc.order.center, ["clock", "title", "media"])
         compare(doc.order.end.length, endIds.length)
         compare(doc.order.end[0], "power")
         compare(doc.order.end[doc.order.end.length - 1], "keyboard")
@@ -70,7 +78,7 @@ TestCase {
                      center: ["media"], end: endIds }
         }))
         compare(doc.order.start[2], "clock")
-        compare(doc.order.center, ["media"])
+        compare(doc.order.center, ["media", "title"])
     }
 
     function test_effective_without_an_override_follows_the_globals() {
@@ -96,8 +104,8 @@ TestCase {
         })
         var one = Layouts.effective(text, "DP-1")
         compare(one.hidden, ["tray"])
-        compare(one.order.start, ["notifications", "launcher"])
-        compare(one.order.center, ["clock", "media"])
+        compare(one.order.start, ["notifications", "launcher", "workspaces"])
+        compare(one.order.center, ["clock", "media", "title"])
         var other = Layouts.effective(text, "HDMI-A-1")
         compare(other.hidden, [])
         compare(other.order.start, startIds)
@@ -120,12 +128,12 @@ TestCase {
     function test_move_swaps_within_the_group_only() {
         var order = Layouts.defaults("bar").order
         var moved = Layouts.move(order, "clock", -1)
-        compare(moved.center, ["clock", "media"])
+        compare(moved.center, ["title", "clock", "media"])
         compare(moved.start, startIds)
-        compare(order.center, ["media", "clock"])
+        compare(order.center, ["title", "media", "clock"])
         compare(Layouts.move(order, "launcher", -1).start, startIds)
-        compare(Layouts.move(order, "launcher", 1).start, ["notifications", "launcher"])
-        compare(Layouts.move(order, "launcher", 1).center, ["media", "clock"])
+        compare(Layouts.move(order, "launcher", 1).start, ["workspaces", "launcher", "notifications"])
+        compare(Layouts.move(order, "launcher", 1).center, ["title", "media", "clock"])
     }
 
     function test_toggle_shows_and_hides_one_element() {
@@ -186,10 +194,10 @@ TestCase {
         compare(doc.monitors["DP-1"].hidden, ["tray"])
         text = Layouts.write(text, "DP-1", { order: Layouts.move(doc.order, "clock", -1) })
         doc = Layouts.sanitize(text)
-        compare(doc.monitors["DP-1"].order.center, ["clock", "media"])
+        compare(doc.monitors["DP-1"].order.center, ["title", "clock", "media"])
         compare(doc.monitors["DP-1"].hidden, ["tray"])
-        compare(Layouts.effective(text, "DP-1").order.center, ["clock", "media"])
-        compare(Layouts.effective(text, "HDMI-A-1").order.center, ["media", "clock"])
+        compare(Layouts.effective(text, "DP-1").order.center, ["title", "clock", "media"])
+        compare(Layouts.effective(text, "HDMI-A-1").order.center, ["title", "media", "clock"])
     }
 
     function test_a_monitor_only_patch_is_not_a_global_change() {

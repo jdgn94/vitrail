@@ -14,7 +14,9 @@
 var WIDGETS = [
     // --- the bar (bar → Editor)
     { id: "launcher", surfaces: ["bar"], group: "start", labelKey: "bar.widget.launcher", icon: "apps", sizes: [], styles: [] },
+    { id: "workspaces", surfaces: ["bar"], group: "start", labelKey: "bar.widget.workspaces", icon: "view_column", sizes: [], styles: [] },
     { id: "notifications", surfaces: ["bar"], group: "start", labelKey: "bar.widget.notifications", icon: "notifications", sizes: [], styles: [] },
+    { id: "title", surfaces: ["bar"], group: "center", labelKey: "bar.widget.title", icon: "desktop_windows", sizes: [], styles: [] },
     { id: "media", surfaces: ["bar"], group: "center", labelKey: "bar.widget.media", icon: "play_circle", sizes: [], styles: [] },
     { id: "clock", surfaces: ["bar"], group: "center", labelKey: "bar.widget.clock", icon: "schedule", sizes: [], styles: [] },
     { id: "capture", surfaces: ["bar"], group: "end", labelKey: "bar.widget.capture", icon: "screenshot_monitor", sizes: [], styles: [] },

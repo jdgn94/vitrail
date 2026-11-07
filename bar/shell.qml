@@ -35,6 +35,9 @@ import "desktop"
 import "desktop/policy.js" as DesktopPolicy
 import "dock"
 import "dock/dock.js" as DockJS
+import "workspaces"
+import "workspaces/workspaces.js" as Workspaces
+import "window"
 import "droplet"
 import "droplet/droplet.js" as DropletJS
 import "binds"
@@ -1145,6 +1148,24 @@ ShellRoot {
     function syncTokens() {
         VitrailTokens.configure(wallpaper, shell.dark, shell.prefs.surfaceStyle, shell.tokenValues)
     }
+
+    // --- the window and its workspaces ---------------------------------------
+    // The active toplevel names the title in the centre of the bar; its IPC
+    // object carries the class Hyprland does not expose as a property.
+    readonly property string activeWindowTitle: Hyprland.activeToplevel
+                                                  ? String(Hyprland.activeToplevel.title || "") : ""
+    readonly property string activeWindowClass: {
+        var top = Hyprland.activeToplevel
+        if (!top)
+            return ""
+        var ipc = top.lastIpcObject || ({})
+        return String(ipc["class"] || "")
+    }
+    // One entry per workspace, with the app the pill should draw (see
+    // bar/workspaces/workspaces.js).
+    readonly property var workspaceEntries: Workspaces.collect(
+        Hyprland.workspaces.values,
+        Hyprland.activeToplevel ? Hyprland.activeToplevel.address : "")
 
     // --- the dock -------------------------------------------------------------
     // The pinned apps, in their stored order, and the windows Hyprland has
@@ -2483,7 +2504,9 @@ ShellRoot {
                 function widgetComponent(id) {
                     switch (id) {
                     case "launcher": return launcherWidget
+                    case "workspaces": return workspacesWidget
                     case "notifications": return notificationsWidget
+                    case "title": return titleWidget
                     case "media": return mediaWidget
                     case "clock": return clockWidget
                     case "capture": return captureWidget
@@ -2511,6 +2534,8 @@ ShellRoot {
                     if (!entry || entry.cluster !== undefined)
                         return true
                     switch (entry.id) {
+                    case "workspaces": return shell.workspaceEntries.length > 0
+                    case "title": return shell.activeWindowTitle !== "" && !monitor.fullscreen
                     case "media": return shell.mprisPlayer !== null
                     case "recording": return shell.recording
                     case "keyboard": return shell.keyboardShown
@@ -2553,6 +2578,24 @@ ShellRoot {
                 }
 
                 Component {
+                    id: workspacesWidget
+
+                    WorkspacePills {
+                        id: workspacesPills
+
+                        workspaces: shell.workspaceEntries
+                        vertical: bar.vertical
+                        strings: shell.strings
+                        iconProvider: function (klass) {
+                            var icon = Workspaces.iconFor(DesktopEntries.applications.values, klass)
+                            return icon === "" ? "" : Quickshell.iconPath(icon, true)
+                        }
+                        onClicked: function (id) { Hyprland.dispatch("workspace " + id) }
+                        onHovered: function (item, on) { tooltips.hover(item, on) }
+                    }
+                }
+
+                Component {
                     id: notificationsWidget
 
                     NotificationButton {
@@ -2566,6 +2609,21 @@ ShellRoot {
                         onClicked: shell.toggleNotifications(monitor.modelData)
                         onMutedRequested: shell.toggleNotificationMute()
                         onHoveredChanged: tooltips.hover(notificationButton, hovered)
+                    }
+                }
+
+                Component {
+                    id: titleWidget
+
+                    WindowTitle {
+                        id: windowTitle
+
+                        title: shell.activeWindowTitle
+                        appClass: shell.activeWindowClass
+                        fullscreen: monitor.fullscreen
+                        vertical: bar.vertical
+                        strings: shell.strings
+                        onHoveredChanged: tooltips.hover(windowTitle, hovered)
                     }
                 }
 

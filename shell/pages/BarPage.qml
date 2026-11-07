@@ -277,7 +277,8 @@ Item {
                       circle: "radio_button_checked", waves: "waves" },
         group: { start: "first_page", center: "filter_center_focus", end: "last_page" },
         widget: {
-            launcher: "apps", notifications: "notifications", media: "play_circle",
+            launcher: "apps", workspaces: "view_column", notifications: "notifications",
+            title: "desktop_windows", media: "play_circle",
             clock: "schedule", capture: "screenshot_monitor", recording: "stop_circle",
             tray: "widgets", network: "lan", bluetooth: "bluetooth", vpn: "shield",
             profile: "speed", battery: "battery_full", keyboard: "keyboard",
