@@ -39,8 +39,8 @@ PanelWindow {
     property bool desktopSync: true
     property var monitors: []
     property var bar: ({ edge: "left", trayStyle: "inline", batteryChip: true,
-                         bluetoothChip: true, keyboard: true, style: "",
-                         screens: "primary", opacityFollow: true,
+                         bluetoothChip: true, keyboard: true, dragReorder: true,
+                         style: "", screens: "primary", opacityFollow: true,
                          opacity: VitrailTokens.ranges.opacity.value,
                          size: VitrailTokens.ranges.bar.value })
 

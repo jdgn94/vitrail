@@ -4,6 +4,7 @@ import "../kit"
 import "../kit/base"
 import "../layouts.js" as Layouts
 import "../barview.js" as BarView
+import "../dragdrop.js" as DragDrop
 
 // The bar tab of the in-place editor. It holds everything that used to live in
 // Settings → Bar: the bar's own look (edge, tray style, chips, style, screens,
@@ -13,8 +14,12 @@ import "../barview.js" as BarView
 // differ per monitor (the bar and OSD edges) are written to `barMonitors` for
 // the screen this editor sits on; every other option stays global.
 //
-// The document is the state: every edit is one whole `barLayout` write, emitted
-// as `committed`, and the parent keeps the text and persists it.
+// Rows reorder by dragging: a grip starts the drag, the preview strip at the
+// top draws the document the drop would write, an insertion line marks the
+// gap and a refused target says why. The group selectors and arrows stay as
+// the keyboard alternative. The document is still the only state: the drop is
+// one whole `barLayout` write, emitted as `committed`, and the parent keeps
+// the text and persists it.
 Item {
     id: root
 
@@ -23,6 +28,7 @@ Item {
     property var bar: ({ edge: "left", trayStyle: "inline", batteryChip: true,
                          bluetoothChip: true, keyboard: true, style: "",
                          screens: "primary", opacityFollow: true,
+                         dragReorder: true,
                          opacity: VitrailTokens.ranges.opacity.value,
                          size: VitrailTokens.ranges.bar.value })
     // The outputs the monitor override can name: [{ name }].
@@ -55,6 +61,9 @@ Item {
     readonly property string style: root.bar.style || ""
     readonly property string screens: root.bar.screens || "primary"
     readonly property bool opacityFollow: root.bar.opacityFollow !== false
+    // Drag handles: the rows reorder by dragging while this is on; the group
+    // selectors and arrows below stay as the keyboard alternative.
+    readonly property bool dragReorder: root.bar.dragReorder !== false
     readonly property real barOpacityValue: root.bar.opacity !== undefined
                                              && root.bar.opacity !== ""
                                              ? Number(root.bar.opacity)
@@ -236,11 +245,210 @@ Item {
         root.commit({ order: result.order, chips: result.chips })
     }
 
-    Flickable {
+    // --- dragging -------------------------------------------------------------
+
+    // The row being dragged, the checked target under the pointer and the line
+    // that marks it. The document is not written until the drop: `previewDoc`
+    // is what the strip at the top draws while the pointer moves.
+    property string dragId: ""
+    property var dragTarget: null
+    property bool dragInvalid: false
+    // { x, y, width } of the insertion line, in this tab's coordinates.
+    property var dragLine: null
+    property var dragPoint: ({ x: 0, y: 0 })
+    // The drop areas the row delegates announce themselves to. The smallest
+    // one under the pointer wins, so a chip member beats its chip body and its
+    // whole card.
+    property var zones: []
+
+    readonly property bool dragging: root.dragId !== ""
+    readonly property var previewDoc: {
+        if (root.dragging && root.dragTarget !== null) {
+            var preview = DragDrop.preview(root.doc, root.dragId, root.dragTarget)
+            if (preview !== null)
+                return preview
+        }
+        return root.doc
+    }
+
+    function registerZone(item, spec) {
+        var next = root.zones.slice()
+        next.push({ item: item, spec: spec })
+        root.zones = next
+    }
+
+    function unregisterZone(item) {
+        root.zones = root.zones.filter(function (zone) {
+            return zone.item !== item
+        })
+    }
+
+    // The drop area under a point, with the gap of that area the pointer marks.
+    function zoneAt(point) {
+        var best = null
+        var local = null
+        var area = 0
+        for (var i = 0; i < root.zones.length; i++) {
+            var zone = root.zones[i]
+            var item = zone.item
+            if (!item || !item.visible)
+                continue
+            var at = item.mapFromItem(root, point.x, point.y)
+            if (at.x < 0 || at.y < 0 || at.x > item.width || at.y > item.height)
+                continue
+            var size = item.width * item.height
+            if (best !== null && size >= area)
+                continue
+            best = zone
+            local = at
+            area = size
+        }
+        if (best === null)
+            return null
+        var spec = best.spec
+        var base = spec.base === undefined ? 0 : spec.base
+        return {
+            item: best.item,
+            base: base,
+            atEnd: spec.atEnd === true,
+            target: {
+                kind: spec.kind,
+                group: spec.group,
+                chip: spec.chip,
+                index: spec.atEnd ? base
+                                  : base + DragDrop.insertion(0, local.y, best.item.height)
+            }
+        }
+    }
+
+    function startDrag(id) {
+        if (!root.dragReorder)
+            return
+        root.dragId = id
+        root.dragTarget = null
+        root.dragInvalid = false
+        root.dragLine = null
+    }
+
+    // Check a drop target without the pointer (the drag surface calls it, and
+    // the tests drive a whole drag through it).
+    function hoverTarget(raw) {
+        if (!root.dragging)
+            return null
+        var checked = DragDrop.target(root.doc, root.dragId, raw)
+        root.dragTarget = checked !== null && checked.valid ? checked : null
+        root.dragInvalid = checked !== null && !checked.valid
+        return checked
+    }
+
+    // The pointer moved: find its zone, check the target, place the line.
+    function pointAt(sceneX, sceneY) {
+        if (!root.dragging)
+            return
+        var point = root.mapFromItem(null, sceneX, sceneY)
+        root.dragPoint = point
+        var hit = root.zoneAt(point)
+        if (hit === null) {
+            root.dragTarget = null
+            root.dragInvalid = false
+            root.dragLine = null
+            return
+        }
+        var checked = DragDrop.target(root.doc, root.dragId, hit.target)
+        if (checked === null || !checked.valid) {
+            root.dragTarget = null
+            root.dragInvalid = checked !== null
+            root.dragLine = null
+            return
+        }
+        root.dragTarget = checked
+        root.dragInvalid = false
+        var origin = hit.item.mapToItem(root, 0, 0)
+        var offset = hit.atEnd ? hit.item.height
+                               : (checked.index > hit.base ? hit.item.height : 0)
+        root.dragLine = { x: origin.x, y: origin.y + offset, width: hit.item.width }
+    }
+
+    // Let go: write the previewed document. A release without a target leaves
+    // the document as it was.
+    function finishDrag() {
+        var id = root.dragId
+        var place = root.dragTarget
+        root.cancelDrag()
+        if (id === "" || place === null)
+            return false
+        var result = DragDrop.apply(root.doc, id, place)
+        if (result === null)
+            return false
+        root.commit({ order: result.order, chips: result.chips })
+        return true
+    }
+
+    function cancelDrag() {
+        root.dragId = ""
+        root.dragTarget = null
+        root.dragInvalid = false
+        root.dragLine = null
+    }
+
+    ColumnLayout {
+        id: page
+
         anchors.fill: parent
-        contentHeight: column.implicitHeight
-        boundsBehavior: Flickable.StopAtBounds
-        clip: true
+        spacing: VitrailTokens.gap("md")
+
+        // --- the live preview -------------------------------------------
+        VitrailSurface {
+            objectName: "editorBarPreviewCard"
+
+            Layout.fillWidth: true
+            implicitHeight: previewColumn.implicitHeight + 2 * VitrailTokens.gap("md")
+            radius: VitrailTokens.radius
+            tint: VitrailTokens.color("surfaceHigh", "#282a2f")
+            opacityLevel: VitrailTokens.opacity * 0.83
+
+            ColumnLayout {
+                id: previewColumn
+
+                anchors.fill: parent
+                anchors.margins: VitrailTokens.gap("md")
+                spacing: VitrailTokens.gap("xs")
+
+                VitrailText {
+                    variant: "subtitle"
+                    text: root.t("bar.editor.preview")
+                }
+
+                VitrailText {
+                    variant: "label"
+                    color: VitrailTokens.color("muted", "#c4c6d0")
+                    text: root.t("bar.editor.preview.help")
+                }
+
+                BarPreview {
+                    objectName: "editorBarPreview"
+
+                    Layout.fillWidth: true
+                    doc: root.previewDoc
+                    strings: root.strings
+                    target: root.dragTarget
+                    iconOf: function (id) { return root.entryIcon(id) }
+                }
+            }
+        }
+
+        Flickable {
+            id: scroller
+
+            objectName: "editorBarScroller"
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            contentHeight: column.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
+            // A drag owns the pointer; scrolling would move the row under it.
+            interactive: !root.dragging
 
         ColumnLayout {
             id: column
@@ -320,6 +528,19 @@ Item {
                             options: root.options("bar.trayStyle.", ["inline", "popup"], ({}))
                             current: root.trayStyle
                             onSelected: root.prefChanged("trayStyle", key)
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "drag_indicator"
+                        label: root.t("bar.editor.drag")
+                        description: root.t("bar.editor.drag.help")
+
+                        VitrailSwitch {
+                            objectName: "editorBarDragReorder"
+
+                            checked: root.dragReorder
+                            onToggled: root.prefChanged("barDragReorder", value)
                         }
                     }
 
@@ -526,6 +747,16 @@ Item {
                         anchors.margins: VitrailTokens.gap("md")
                         spacing: VitrailTokens.gap("xs")
 
+                        // The card itself catches the pointer between the rows
+                        // and on the Add buttons: a drop there goes last.
+                        Component.onCompleted: root.registerZone(groupColumn, {
+                            kind: "group",
+                            group: groupCard.modelData,
+                            base: (root.doc.order[groupCard.modelData] || []).length,
+                            atEnd: true
+                        })
+                        Component.onDestruction: root.unregisterZone(groupColumn)
+
                         VitrailText {
                             variant: "subtitle"
                             text: root.t("bar.editor.group." + groupCard.modelData)
@@ -551,11 +782,34 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: VitrailTokens.gap("xs")
 
+                                // One row, one drop area: its top half inserts
+                                // before it and its bottom half after it.
+                                Component.onCompleted: root.registerZone(widgetRow, {
+                                    kind: "group",
+                                    group: groupCard.modelData,
+                                    base: widgetRow.index,
+                                    atEnd: false
+                                })
+                                Component.onDestruction: root.unregisterZone(widgetRow)
+
                                 VitrailSettingRow {
                                     Layout.fillWidth: true
                                     icon: root.entryIcon(widgetRow.entry)
                                     label: root.entryLabel(widgetRow.entry)
                                     description: root.entryDescription(widgetRow.entry)
+
+                                    BarDragHandle {
+                                        objectName: "editorBarDrag-" + widgetRow.entry
+
+                                        Layout.alignment: Qt.AlignTop
+                                        enabled: root.dragReorder
+                                        visible: root.dragReorder
+                                        onStarted: root.startDrag(widgetRow.entry)
+                                        onMoved: function (sceneX, sceneY) {
+                                            root.pointAt(sceneX, sceneY)
+                                        }
+                                        onFinished: root.finishDrag()
+                                    }
 
                                     VitrailSwitch {
                                         objectName: "editorBarVisible-" + widgetRow.entry
@@ -598,62 +852,116 @@ Item {
                                     }
                                 }
 
-                                Repeater {
-                                    model: widgetRow.chipEntry
-                                           ? root.chipMembers(widgetRow.chipId) : []
+                                // The members and the "add a member" buttons:
+                                // the chip's own drop area. Dropping here puts
+                                // the row at the end of the chip; dropping on
+                                // a member row puts it at that gap.
+                                ColumnLayout {
+                                    id: chipBody
 
-                                    delegate: VitrailSettingRow {
-                                        id: memberRow
-
-                                        required property string modelData
-
-                                        Layout.fillWidth: true
-                                        Layout.leftMargin: VitrailTokens.gap("lg")
-                                        icon: root.entryIcon(memberRow.modelData)
-                                        label: root.labelOf(memberRow.modelData)
-
-                                        VitrailSwitch {
-                                            objectName: "editorBarChipVisible-"
-                                                        + widgetRow.chipId + "-" + memberRow.modelData
-                                            checked: root.doc.hidden.indexOf(memberRow.modelData) < 0
-                                            onToggled: root.setVisible(memberRow.modelData, value)
-                                        }
-
-                                        VitrailButton {
-                                            objectName: "editorBarChipRemove-"
-                                                        + widgetRow.chipId + "-" + memberRow.modelData
-                                            variant: "text"
-                                            icon: "close"
-                                            onClicked: root.toggleChipMember(widgetRow.chipId,
-                                                                             memberRow.modelData)
-                                        }
-                                    }
-                                }
-
-                                Flow {
                                     Layout.fillWidth: true
-                                    Layout.leftMargin: VitrailTokens.gap("lg")
-                                    visible: widgetRow.chipEntry
-                                             && root.chipCandidates(widgetRow.chipId).length > 0
                                     spacing: VitrailTokens.gap("xs")
+                                    visible: widgetRow.chipEntry
+
+                                    Component.onCompleted: {
+                                        if (widgetRow.chipEntry)
+                                            root.registerZone(chipBody, {
+                                                kind: "chip",
+                                                chip: widgetRow.chipId,
+                                                base: root.chipMembers(widgetRow.chipId).length,
+                                                atEnd: true
+                                            })
+                                    }
+                                    Component.onDestruction: root.unregisterZone(chipBody)
 
                                     Repeater {
                                         model: widgetRow.chipEntry
-                                               ? root.chipCandidates(widgetRow.chipId) : []
+                                               ? root.chipMembers(widgetRow.chipId) : []
 
-                                        delegate: VitrailButton {
-                                            required property var modelData
+                                        delegate: VitrailSettingRow {
+                                            id: memberRow
 
-                                            objectName: "editorBarChipAdd-" + widgetRow.chipId
-                                                        + "-" + modelData.id
-                                            variant: "outlined"
-                                            tone: "secondary"
-                                            size: "sm"
-                                            icon: "add"
-                                            text: root.t(modelData.labelKey)
-                                            onClicked: root.toggleChipMember(widgetRow.chipId,
-                                                                             modelData.id)
+                                            required property string modelData
+                                            required property int index
+
+                                            Layout.fillWidth: true
+                                            Layout.leftMargin: VitrailTokens.gap("lg")
+                                            icon: root.entryIcon(memberRow.modelData)
+                                            label: root.labelOf(memberRow.modelData)
+
+                                            Component.onCompleted: root.registerZone(memberRow, {
+                                                kind: "chip",
+                                                chip: widgetRow.chipId,
+                                                base: memberRow.index,
+                                                atEnd: false
+                                            })
+                                            Component.onDestruction: root.unregisterZone(memberRow)
+
+                                            BarDragHandle {
+                                                objectName: "editorBarMemberDrag-"
+                                                            + widgetRow.chipId + "-" + memberRow.modelData
+
+                                                Layout.alignment: Qt.AlignTop
+                                                enabled: root.dragReorder
+                                                visible: root.dragReorder
+                                                onStarted: root.startDrag(memberRow.modelData)
+                                                onMoved: function (sceneX, sceneY) {
+                                                    root.pointAt(sceneX, sceneY)
+                                                }
+                                                onFinished: root.finishDrag()
+                                            }
+
+                                            VitrailSwitch {
+                                                objectName: "editorBarChipVisible-"
+                                                            + widgetRow.chipId + "-" + memberRow.modelData
+                                                checked: root.doc.hidden.indexOf(memberRow.modelData) < 0
+                                                onToggled: root.setVisible(memberRow.modelData, value)
+                                            }
+
+                                            VitrailButton {
+                                                objectName: "editorBarChipRemove-"
+                                                            + widgetRow.chipId + "-" + memberRow.modelData
+                                                variant: "text"
+                                                icon: "close"
+                                                onClicked: root.toggleChipMember(widgetRow.chipId,
+                                                                                 memberRow.modelData)
+                                            }
                                         }
+                                    }
+
+                                    Flow {
+                                        Layout.fillWidth: true
+                                        Layout.leftMargin: VitrailTokens.gap("lg")
+                                        visible: widgetRow.chipEntry
+                                                 && root.chipCandidates(widgetRow.chipId).length > 0
+                                        spacing: VitrailTokens.gap("xs")
+
+                                        Repeater {
+                                            model: widgetRow.chipEntry
+                                                   ? root.chipCandidates(widgetRow.chipId) : []
+
+                                            delegate: VitrailButton {
+                                                required property var modelData
+
+                                                objectName: "editorBarChipAdd-" + widgetRow.chipId
+                                                            + "-" + modelData.id
+                                                variant: "outlined"
+                                                tone: "secondary"
+                                                size: "sm"
+                                                icon: "add"
+                                                text: root.t(modelData.labelKey)
+                                                onClicked: root.toggleChipMember(widgetRow.chipId,
+                                                                                 modelData.id)
+                                            }
+                                        }
+                                    }
+
+                                    // An empty chip still needs a target while a
+                                    // drag is in flight.
+                                    Item {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: root.dragging
+                                                                ? VitrailTokens.gap("md") : 0
                                     }
                                 }
                             }
@@ -689,5 +997,81 @@ Item {
                 }
             }
         }
-    }
+        }
+        }
+
+        // The insertion line: the gap the drop would fill, in the primary
+        // colour, drawn over the list at the height of the hovered row.
+        VitrailSurface {
+            id: insertionLine
+
+            objectName: "editorBarInsertion"
+
+            visible: root.dragTarget !== null && root.dragLine !== null
+            z: 90
+            x: root.dragLine !== null ? root.dragLine.x : 0
+            y: root.dragLine !== null ? root.dragLine.y - height / 2 : 0
+            width: root.dragLine !== null ? root.dragLine.width : 0
+            height: VitrailTokens.gap("xs")
+            radius: height / 2
+            tint: VitrailTokens.color("primary", "#a8c7fa")
+            opacityLevel: VitrailTokens.opacity
+        }
+
+        // The ghost: a copy of the dragged row that follows the pointer. It
+        // says why a destination is refused instead of drawing a line.
+        Item {
+            id: ghost
+
+            objectName: "editorBarGhost"
+
+            readonly property real gap: VitrailTokens.gap("sm")
+
+            visible: root.dragging
+            z: 100
+            width: ghostRow.implicitWidth + 2 * ghost.gap
+            height: ghostRow.implicitHeight + 2 * VitrailTokens.gap("xs")
+            x: Math.max(ghost.gap,
+                        Math.min(root.width - ghost.width - ghost.gap,
+                                 root.dragPoint.x + ghost.gap))
+            y: Math.max(ghost.gap,
+                        Math.min(root.height - ghost.height - ghost.gap,
+                                 root.dragPoint.y - ghost.height / 2))
+
+            VitrailSurface {
+                anchors.fill: parent
+                radius: VitrailTokens.radius * 0.7
+                tint: VitrailTokens.color("primary", "#a8c7fa")
+                opacityLevel: VitrailTokens.opacity * 0.61
+            }
+
+            RowLayout {
+                id: ghostRow
+
+                anchors.centerIn: parent
+                spacing: VitrailTokens.gap("xs")
+
+                VitrailIcon {
+                    icon: root.entryIcon(root.dragId)
+                    size: "sm"
+                    color: VitrailTokens.color("foreground", "#e2e2e9")
+                }
+
+                ColumnLayout {
+                    spacing: 0
+
+                    VitrailText {
+                        variant: "label"
+                        text: root.entryLabel(root.dragId)
+                    }
+
+                    VitrailText {
+                        visible: root.dragInvalid
+                        variant: "label"
+                        color: VitrailTokens.color("error", "#ffb4ab")
+                        text: root.t("bar.editor.drop.invalid")
+                    }
+                }
+            }
+        }
 }

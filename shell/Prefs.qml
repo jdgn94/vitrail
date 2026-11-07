@@ -34,6 +34,8 @@ QtObject {
     property alias desktopSync: barFile.desktopSync
     // Whether a right click on the desktop opens its menu.
     property alias desktopMenu: barFile.desktopMenu
+    // Whether the bar editor reorders rows by dragging.
+    property alias barDragReorder: barFile.barDragReorder
     property alias barSize: barFile.barSize
     property alias barOpacity: barFile.barOpacity
     property alias barOpacityFollow: barFile.barOpacityFollow
@@ -199,6 +201,9 @@ QtObject {
         property bool desktopSync: true
         // The desktop's right-click menu: the way into the in-place editor.
         property bool desktopMenu: true
+        // The Bar tab reorders its rows by dragging (the group selectors and
+        // arrows stay as the keyboard alternative).
+        property bool barDragReorder: true
         property int barSize: VitrailTokens.ranges.bar.value
         property real barOpacity: VitrailTokens.ranges.opacity.value
         property bool barOpacityFollow: true

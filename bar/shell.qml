@@ -3364,6 +3364,7 @@ ShellRoot {
                         batteryChip: shell.prefBool("barBatteryChip", true),
                         bluetoothChip: shell.prefBool("barBluetoothChip", true),
                         keyboard: shell.prefBool("barKeyboard", true),
+                        dragReorder: shell.prefBool("barDragReorder", true),
                         style: shell.prefs.barStyle || "",
                         screens: shell.prefs.barScreens || "primary",
                         opacityFollow: shell.prefBool("barOpacityFollow", true),

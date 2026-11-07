@@ -50,8 +50,8 @@ Item {
     property bool desktopSync: true
     // The bar preferences Settings no longer edits (edge, style, opacity…).
     property var bar: ({ edge: "left", trayStyle: "inline", batteryChip: true,
-                         bluetoothChip: true, keyboard: true, style: "",
-                         screens: "primary", opacityFollow: true,
+                         bluetoothChip: true, keyboard: true, dragReorder: true,
+                         style: "", screens: "primary", opacityFollow: true,
                          opacity: VitrailTokens.ranges.opacity.value,
                          size: VitrailTokens.ranges.bar.value })
     // The live document while the editor is open: a write reaches it before

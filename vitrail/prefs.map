@@ -45,6 +45,9 @@ bar desktopLayout
 bar desktopSync
 # Whether a right click on the desktop opens its menu (Edit → in-place editor).
 bar desktopMenu
+# Whether the bar editor reorders rows by dragging; its group selectors and
+# arrows remain as the keyboard alternative.
+bar barDragReorder
 bar barSize
 bar barOpacity
 bar barOpacityFollow
