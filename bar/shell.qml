@@ -3160,7 +3160,8 @@ ShellRoot {
                         popupOrigin: shell.popupAnchor
                         popupLag: popupCard.lag
                         // Docked, the notification stack, the OSD and the notification panel are tabs of the frame too.
-                        tabs: (stackHolder.docked && stackLiquid.shown && stackHolder.height > 0
+                        tabs: (dockLayer.frameTab ? [dockLayer.frameTab] : [])
+                              .concat(stackHolder.docked && stackLiquid.shown && stackHolder.height > 0
                               ? [{ edge: stackHolder.place.edge, reveal: stackLiquid.look.reveal,
                                    swell: stackLiquid.look.swell,
                                    rect: Frame.liquidRect(Qt.rect(stackHolder.x, stackHolder.y, stackHolder.width, stackHolder.height),
@@ -3314,6 +3315,9 @@ ShellRoot {
                     edge: shell.prefs.dockEdge || "bottom"
                     autohide: shell.prefBool("dockAutohide", false)
                     attached: shell.prefBool("dockAttached", true)
+                    // A docked bar owns a frame around the screen: the dock on
+                    // any edge becomes one more tab of that frame.
+                    framed: bar.style.docked
                     magnify: DockJS.magnifyStyle(shell.prefs.dockMagnify)
                     magnifyRange: shell.prefNumber("dockMagnifyRange",
                                                       VitrailTokens.ranges.dockMagnifyRange.value)

@@ -13,6 +13,9 @@ Item {
     property var windows: []
     property string edge: "bottom"
     property bool attached: true
+    // Docked into the screen frame (like the bar): the frame draws the band,
+    // so the dock's own surface steps aside instead of doubling it.
+    property bool framed: false
     property bool autohide: false
     property bool revealed: false
     property bool forceShown: false
@@ -80,6 +83,7 @@ Item {
 
     VitrailSurface {
         anchors.fill: parent
+        visible: !root.framed
         radius: Dock.radius(root.attached, VitrailTokens.radius * (root.look.radius || 0))
         tint: VitrailTokens.color("surfaceHigh", "#282a2f")
         opacityLevel: root.opacityLevel

@@ -17,6 +17,9 @@ PanelWindow {
     property string edge: "bottom"
     property bool autohide: false
     property bool attached: true
+    // The bar is docked into its frame: the dock joins that same frame instead
+    // of drawing a second surface beside it.
+    property bool framed: false
     property string magnify: "planet"
     property int magnifyRange: VitrailTokens.dock.magnify.range
     property real magnifyScale: VitrailTokens.dock.magnify.scale
@@ -44,6 +47,25 @@ PanelWindow {
                                      + 2 * root.margin
     readonly property bool active: root.enabled && !root.hidden && dock.count > 0
     readonly property bool shown: dock.shown
+    // The dock's whole edge band in screen coordinates. Docked, the frame
+    // thickens along that band exactly like the navigation bar does on its own
+    // edge; the icons stay centred inside it. The layer is only the band, so
+    // its own origin is added.
+    readonly property var tabRect: {
+        if (!dock)
+            return null
+        if (root.edge === "bottom")
+            return Qt.rect(0, root.screen.height - root.band, root.screen.width, root.band)
+        if (root.edge === "top")
+            return Qt.rect(0, 0, root.screen.width, root.band)
+        if (root.edge === "right")
+            return Qt.rect(root.screen.width - root.band, 0, root.band, root.screen.height)
+        return Qt.rect(0, 0, root.band, root.screen.height)
+    }
+    readonly property var frameTab: root.active && root.framed && root.attached && root.tabRect
+                                     ? ({ edge: root.edge, rect: root.tabRect,
+                                          reveal: root.autohide ? dock.progress : 1, swell: 0 })
+                                     : null
 
     signal launchRequested(var app, var rect)
     signal focusRequested(var app)
@@ -148,6 +170,7 @@ PanelWindow {
         windows: root.windows
         edge: root.edge
         attached: root.attached
+        framed: root.framed && root.attached
         autohide: root.autohide
         revealed: root.revealed
         magnify: root.magnify
