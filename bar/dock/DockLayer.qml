@@ -60,7 +60,14 @@ PanelWindow {
             y += root.screen.height - root.band
         else if (root.edge === "right")
             x += root.screen.width - root.band
-        return Qt.rect(x, y, dock.width, dock.height)
+        // A margin along the edge so the island's rounded corners never clip
+        // the first or last icon: the content stays inside it.
+        var grow = VitrailTokens.gap("md")
+        if (root.edge === "bottom" || root.edge === "top")
+            return Qt.rect(Math.max(0, x - grow), y,
+                           Math.min(root.screen.width, dock.width + 2 * grow), dock.height)
+        return Qt.rect(x, Math.max(0, y - grow),
+                       dock.width, Math.min(root.screen.height, dock.height + 2 * grow))
     }
     readonly property var frameTab: root.active && root.framed && root.attached && root.tabRect
                                      ? ({ edge: root.edge, rect: root.tabRect,
