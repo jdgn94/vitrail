@@ -47,20 +47,20 @@ PanelWindow {
                                      + 2 * root.margin
     readonly property bool active: root.enabled && !root.hidden && dock.count > 0
     readonly property bool shown: dock.shown
-    // The dock's whole edge band in screen coordinates. Docked, the frame
-    // thickens along that band exactly like the navigation bar does on its own
-    // edge; the icons stay centred inside it. The layer is only the band, so
-    // its own origin is added.
+    // The dock's card only, in screen coordinates: the frame rises into an
+    // island under the content, like the islands of the navigation bar, while
+    // the rest of the edge stays thin. The layer is only the edge band, so its
+    // own origin is added.
     readonly property var tabRect: {
         if (!dock)
             return null
+        var x = dock.x
+        var y = dock.y
         if (root.edge === "bottom")
-            return Qt.rect(0, root.screen.height - root.band, root.screen.width, root.band)
-        if (root.edge === "top")
-            return Qt.rect(0, 0, root.screen.width, root.band)
-        if (root.edge === "right")
-            return Qt.rect(root.screen.width - root.band, 0, root.band, root.screen.height)
-        return Qt.rect(0, 0, root.band, root.screen.height)
+            y += root.screen.height - root.band
+        else if (root.edge === "right")
+            x += root.screen.width - root.band
+        return Qt.rect(x, y, dock.width, dock.height)
     }
     readonly property var frameTab: root.active && root.framed && root.attached && root.tabRect
                                      ? ({ edge: root.edge, rect: root.tabRect,
