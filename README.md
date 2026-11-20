@@ -129,6 +129,7 @@ package to the manifest and a row here.
 | `plocate`, `fd` | `plocate`, `fd` | launcher file search (`/`); `plocate-updatedb.timer` is enabled by the installer |
 | `cliphist`, `wl-clipboard`, `wtype`, `hyprpicker` | `cliphist`, `wl-copy`, `wl-paste`, `wtype`, `hyprpicker` | launcher clipboard history (`;`), the clipboard panel (`Mod+.`) with emojis and the colour picker, and pasting a pick into the focused window |
 | `xdg-utils` | `xdg-open`, `xdg-mime` | opening files, folders and links; finding the desktop's file manager |
+| `xdg-desktop-portal-phosh` | the FileChooser portal backend | every open/save dialog, drawn by Phosh's GTK 4 chooser: the settings window's, and a GTK 3 app's through `GTK_USE_PORTAL=1` (`dots/.config/xdg-desktop-portal/hyprland-portals.conf`) |
 | `xorg-xrdb` | `xrdb` | the cursor theme for X11/XWayland apps |
 | `flatpak` | `flatpak` | the sandbox overrides that let Flatpak apps read the theme |
 | `btrfs-progs` | `btrfs` | the snapshot `vitrail update` takes on a btrfs root |
@@ -148,9 +149,12 @@ package to the manifest and a row here.
 `vitrail-vpn` comes from the VPN module (`vpn/`), not from the manifest.
 `ping` (iputils, in the Arch `base` group, so not in the manifest) measures the
 latency of each VPN connection for the VPN tab and for the automatic choice of
-the best one. `xdg-desktop-portal-gtk` (in `packages/base.txt`) or any other
-FileChooser backend of your portal config serves the settings window's file
-dialog.
+the best one. Open and save dialogs are the FileChooser portal's, served by
+`xdg-desktop-portal-phosh` (`packages/base.txt`, selected by
+`dots/.config/xdg-desktop-portal/hyprland-portals.conf`): the settings window's
+own dialog, and every GTK 3 app's — the browser's included — which reaches the
+portal through `GTK_USE_PORTAL=1` in `hyprland.lua`. One dialog, in the
+wallpaper's GTK 4 colours, the same one a download shows.
 
 ## VPN
 

@@ -13,6 +13,11 @@ local home = os.getenv("HOME")
 -- compositor's own cursor with them. A missing file is not an error.
 pcall(dofile, home .. "/.config/hypr/vitrail-cursor.lua")
 
+-- GTK 3 only asks the FileChooser portal when told to; without this every
+-- open/save dialog of a GTK 3 app (browser included) is drawn in-process
+-- instead of by the Phosh GTK4 chooser the portal config names.
+hl.env("GTK_USE_PORTAL", "1")
+
 hl.config({
     general = {
         gaps_in = 4,

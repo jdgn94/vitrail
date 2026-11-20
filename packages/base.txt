@@ -16,6 +16,10 @@ hyprpicker
 plocate
 libqalculate
 xdg-desktop-portal-gtk
+# The FileChooser portal's backend: Phosh's GTK 4 chooser, named by
+# dots/.config/xdg-desktop-portal/hyprland-portals.conf, so a GTK 3 app's
+# open/save dialog is the same one the downloads show.
+xdg-desktop-portal-phosh
 polkit-gnome
 grim
 wf-recorder

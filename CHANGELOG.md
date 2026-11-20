@@ -45,6 +45,9 @@ The first distributable release.
 - Icon packs: one list, Adaptive recolours only the folder icons with the
   system colour (solid by default, symbolic sizes included), and a
   Pack/Light/Solid folder fill.
+- One file dialog: open and save dialogs come from the FileChooser portal,
+  drawn by Phosh's GTK 4 chooser, for the settings window and for GTK 3 apps
+  (the browser's included) through `GTK_USE_PORTAL=1`.
 - Screenshots (region, window, full, annotate) and screen recording from the
   panel, with the recording chip in the bar.
 - Installation without cloning (`bootstrap.sh`), an AUR package, and

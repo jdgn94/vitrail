@@ -271,3 +271,94 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - No hay un test de comportamiento de la línea de kitty de
   `scripts/apply-settings.sh`; la familia ya está cubierta por
   `fonts.console_family` y el script la escribe solo si no está vacía.
+
+## Selector de archivos — uno solo, el GTK 4 del portal
+
+- [ ] `hyprctl dispatch 'hl.dsp.exec_cmd("sh -c \"env | grep GTK_USE_PORTAL > /tmp/e\"")'`
+      y `cat /tmp/e` → `GTK_USE_PORTAL=1` (lo pone `hyprland.lua`; una sesión
+      nueva ya lo trae).
+- [ ] Cierra y reabre el navegador con el lanzador: hereda ese entorno.
+- [ ] En una web con `<input type="file">`, **Open file**: sale el mismo
+      diálogo que al descargar (cabecera libadwaita, mosaico de carpetas,
+      campo **Name**, barra de ruta), no el GTK 3 con **Enable preview**.
+- [ ] `ls -l ~/.config/xdg-desktop-portal/hyprland-portals.conf` → apunta al
+      repo y nombra `phrosh`; `pacman -Q xdg-desktop-portal-phosh` responde.
+- [ ] La ventana de ajustes (importar fondo, fuente, cursor, VPN) abre ese
+      mismo diálogo.
+
+## Captura — overlay con área editable (2026-11-15)
+
+- [ ] `pkill quickshell` y vuelve a lanzar la barra (`~/.local/bin/vitrail-bar &`).
+- [ ] Pulsa el botón de captura de la barra (o el del panel): la pantalla se
+      queda quieta y aparece la cruz, sin barra todavía.
+- [ ] Arrastra un área: al soltar salen las asas y la barra de iconos fuera del
+      área; el tamaño sale al lado del puntero. Mueve el área desde dentro;
+      redimensiona desde cada asa y con `Tab` + flechas.
+- [ ] Pasa el puntero por los iconos: cada uno dice qué hace. Pulsa uno con el
+      ratón (Guardar, Cerrar) y comprueba que responde.
+- [ ] `⏎`: no se crea ningún archivo en `~/Pictures/Screenshots` y la imagen
+      está en el portapapeles (`wl-paste -t image/png > /tmp/a.png`).
+- [ ] `G`: aparece `Screenshot_<fecha>.png` en la carpeta de `capture.ini`, y
+      el portapapeles no cambia.
+- [ ] `A`: se abre `swappy` con esa captura.
+- [ ] `R`: graban las mismas coordenadas; el chip rojo de la barra la para.
+- [ ] `T` dos veces (3 s, 5 s) y `G`: la captura sale 3 o 5 s más tarde, sin la
+      UI en la imagen.
+- [ ] `W`: la ventana bajo el puntero se resalta; **un clic la captura en el
+      acto** (mismo resultado que `⏎`).
+- [ ] `F`: área = todos los monitores; `G` escribe la imagen del layout entero.
+- [ ] Arrastra de un monitor al otro: el borde cruza, la barra no se sale del
+      monitor donde empezó, y el archivo guardado tiene las dos partes (comparar
+      con `magick compare`).
+- [ ] Pasa el puntero por cada icono: todos dicen su tecla («Intro · …», «G · …»).
+- [ ] Un área sin texto: *Copiar texto* y *Traducir* salen apagados y su tooltip
+      dice «No se detectó texto»; sobre texto se encienden al medio segundo.
+      El icono de QR solo aparece si el área contiene un código.
+- [ ] `Q` sobre un QR: la tarjeta muestra el contenido, «copiado», y el botón de
+      abrir (solo si es un enlace) lo abre en el navegador; `wl-paste` da el contenido.
+- [ ] `L` sobre texto (con `translate-shell` instalado): tarjeta «Traduciendo…» y
+      luego la traducción en el idioma de *Traducir a*; el botón copia; sin red:
+      «La traducción falló»; sin `trans`: «translate-shell no está instalado».
+- [ ] `C` (o el icono del cuentagotas): una lupa sigue al puntero con el código del
+      color; un clic lo copia, aparece «Color copiado» y el color está en la
+      pestaña de colores de `Super+.`. `Esc` sale del modo sin cerrar la captura.
+- [ ] `P`: el área queda fija encima de todo en su monitor. Arrástrala; la rueda
+      la agranda o reduce; `Ctrl`+rueda cambia la opacidad; al pasar el puntero
+      sale la barra con el deslizador de opacidad y la `x`. `Esc` (tras un clic),
+      doble clic o la `x` la cierran; dos pins a la vez funcionan; los pins
+      siguen cuando se cierra el overlay y no roban el teclado.
+- [ ] Ajustes → Barra → Captura: *Detectar texto y códigos* apagado ofrece
+      siempre Copiar texto, Traducir y QR; *Traducir a* cambia el idioma de `L`.
+- [ ] `Esc`: no queda nada en pantalla.
+- [ ] `O` con un área sobre texto: llega una notificación «Texto copiado» con
+      una vista previa, y `wl-paste` devuelve el texto. Sobre un área sin texto:
+      «No se encontró texto en el área» y el portapapeles no cambia.
+- [ ] Ajustes → Barra → Captura → *Idiomas del reconocimiento de texto*: pon
+      `eng` y `O` sobre texto en español lee peor; vacío vuelve a `spa+eng`.
+- [ ] `I` (o el icono de la IA): el área se queda, en lugar de la barra sale un
+      campo «Pregunta sobre esta imagen…»; `Esc` vuelve a la barra de iconos con
+      el área intacta. Escribe una pregunta y `⏎`: el navegador predeterminado
+      abre Google Lens con la imagen y la pregunta, y la vista de IA la
+      responde; la pestaña *Modo IA* sigue con las dos. Nada se envía antes de
+      `⏎`; en el overlay no queda nada.
+- [ ] Ajustes → Barra → Captura → *Preguntar a la IA sobre un área* apagado: el
+      icono desaparece y `I` no hace nada.
+- [ ] `PRINT` (la tecla de captura) abre este mismo overlay; `Super+PRINT` lo
+      abre con todo el layout ya seleccionado, y `⏎` lo copia.
+
+## Portapapeles con estilo
+
+- [ ] Copia texto con estilos de una página (Firefox: `Ctrl+A`, `Ctrl+C`);
+      aparece un `.html` en `~/.cache/vitrail/clipboard/`. Copiar desde un
+      gestor de contraseñas no guarda nada.
+- [ ] `Super+.` y pasa el puntero por la fila: tras el retardo del tooltip sale
+      una tarjeta junto al panel con la fuente, tamaño, peso, cursiva, color y
+      listas del origen; una imagen muestra la imagen; texto plano, texto plano.
+      Las flechas del teclado muestran la tarjeta de la fila elegida.
+- [ ] `Enter` sobre esa fila: `wl-paste --list-types` ofrece `text/html` y
+      `text/plain`; pegar en un editor de texto enriquecido conserva el estilo,
+      en una terminal (`Ctrl+Enter`) pega texto sin salto final.
+- [ ] Borrar la fila (✕) o vaciar el historial borra también el `.html`.
+- [ ] Ajustes → Lanzador → Portapapeles: *Conservar el estilo* apagado no
+      guarda HTML nuevo ni ofrece `text/html`; *Vista previa al pasar* apagado
+      no abre la tarjeta.
