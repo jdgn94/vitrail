@@ -523,6 +523,25 @@ Item {
                         }
                     }
 
+                    VitrailSlider {
+                        Layout.fillWidth: true
+                        label: page.t("bar.capture.palette")
+                        from: VitrailTokens.ranges.capturePalette.min
+                        to: VitrailTokens.ranges.capturePalette.max
+                        stepSize: VitrailTokens.ranges.capturePalette.step
+                        value: page.prefs.capturePaletteSize
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onMoved: page.prefs.capturePaletteSize = value
+                    }
+
+                    VitrailText {
+                        Layout.fillWidth: true
+                        variant: "label"
+                        wrapMode: Text.WordWrap
+                        text: page.t("bar.capture.palette.help")
+                    }
+
                     VitrailSelect {
                         Layout.fillWidth: true
                         label: page.t("bar.capture.translate")

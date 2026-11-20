@@ -55,7 +55,9 @@ Item {
     signal inspect(string kind, var selection)
     signal copyRequested(string text)
     signal openRequested(string url)
-    signal colorPicked(string hex)
+    // A colour of the palette card, or all of them (hex values, most used first).
+    signal colorChosen(string hex)
+    signal colorsChosen(var colors)
 
     readonly property var monitors: root.capture.monitors || []
     readonly property var bounds: root.capture.bounds || ({ x: 0, y: 0, w: 0, h: 0 })
@@ -96,12 +98,9 @@ Item {
     property var found: ({ text: false, codes: 0 })
     property bool detecting: false
     property int token: 0
-    // The result card (translation, QR code) or null: { kind, phase, text,
-    // url, message, note }.
+    // The result card (translation, QR code, palette) or null: { kind, phase,
+    // text, url, message, note, colors }.
     property var card: null
-    // The colour picker's sub-mode: a loupe follows the pointer over the frozen
-    // screen and a click takes the pixel under it.
-    property bool picking: false
 
     onSelectionChanged: root.settle()
 
@@ -138,7 +137,7 @@ Item {
     readonly property bool textReady: !root.detect || root.found.text
     readonly property bool codeReady: !root.detect || root.found.codes > 0
 
-    // Translate and QR answer on a card; the shell fills it in.
+    // Translate, QR and the palette answer on a card; the shell fills it in.
     function startInspect(kind) {
         if (!root.selection)
             root.selectAll()
@@ -159,17 +158,14 @@ Item {
         root.card = null
     }
 
-    function beginPick() {
-        root.picking = true
-        root.card = null
-        root.asking = false
-    }
-
-    function finishPick(hex) {
-        if (hex === "")
-            return
-        root.picking = false
-        root.colorPicked(hex)
+    // The palette of the area's main colours, on the same card; the shell
+    // computes it (locally) and answers through `setCard`.
+    function startPalette() {
+        if (!root.selection)
+            root.selectAll()
+        root.card = ({ kind: "palette", phase: "loading", text: "", url: "", colors: [],
+                       note: root.t("capture.palette"), message: root.t("capture.palette.loading") })
+        root.inspect("palette", root.selection)
     }
 
     function monitorNamed(name) {
@@ -317,16 +313,12 @@ Item {
         if (root.asking)
             return
         if (event.key === Qt.Key_Escape) {
-            if (root.picking)
-                root.picking = false
-            else if (root.card)
+            if (root.card)
                 root.closeCard()
             else
                 root.cancelled()
             return
         }
-        if (root.picking)
-            return
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.activate(root.mode === "record" ? "record" : "copy")
             return
@@ -345,7 +337,7 @@ Item {
             break
         case Qt.Key_L: root.startInspect("translate"); break
         case Qt.Key_Q: root.startInspect("qr"); break
-        case Qt.Key_C: root.beginPick(); break
+        case Qt.Key_C: root.startPalette(); break
         case Qt.Key_I: root.beginAsk(); break
         case Qt.Key_R: root.activate("record"); break
         case Qt.Key_T: root.cycleTimer(); break
@@ -526,11 +518,6 @@ Item {
 
                         onPressed: function (mouse) {
                             gestures.forceActiveFocus()
-                            if (root.picking) {
-                                root.pointer = Capture.toLayout(({ x: mouse.x, y: mouse.y }), surface.record)
-                                root.finishPick(sampler.hex)
-                                return
-                            }
                             root.press(Capture.toLayout(({ x: mouse.x, y: mouse.y }), surface.record), surface.record)
                         }
 
@@ -545,8 +532,6 @@ Item {
                         }
 
                         onReleased: function (mouse) {
-                            if (root.picking)
-                                return
                             root.release(Capture.toLayout(({ x: mouse.x, y: mouse.y }), surface.record))
                         }
                     }
@@ -774,116 +759,11 @@ Item {
                     }
                 }
 
-                // The colour under the pointer, read from the frozen image: a
-                // 1 px canvas that draws that pixel and reads it back.
-                Canvas {
-                    id: sampler
-
-                    property string hex: ""
-                    readonly property string source: surface.record ? "file://" + surface.record.image : ""
-                    readonly property var pixel: surface.record ? Capture.pixelAt(root.pointer, surface.record)
-                                                                : ({ x: 0, y: 0 })
-
-                    width: 1
-                    height: 1
-                    visible: false
-                    onSourceChanged: if (source !== "") loadImage(source)
-                    onImageLoaded: requestPaint()
-                    onPixelChanged: if (root.picking && isImageLoaded(source)) requestPaint()
-                    onPaint: {
-                        if (source === "" || !isImageLoaded(source))
-                            return
-                        var ctx = getContext("2d")
-                        ctx.clearRect(0, 0, 1, 1)
-                        ctx.drawImage(source, pixel.x, pixel.y, 1, 1, 0, 0, 1, 1)
-                        var data = ctx.getImageData(0, 0, 1, 1).data
-                        sampler.hex = "#" + [data[0], data[1], data[2]].map(function (value) {
-                            return ("0" + value.toString(16)).slice(-2)
-                        }).join("")
-                    }
-                }
-
-                // The loupe: the pixels around the pointer, enlarged, with the
-                // colour's code under it.
-                Item {
-                    id: loupe
-
-                    readonly property real zoom: VitrailTokens.capture.loupe.zoom
-                    readonly property var clip: surface.record
-                        ? Capture.loupeClip(sampler.pixel, VitrailTokens.capture.loupe.radius,
-                                            ({ w: surface.record.width, h: surface.record.height }))
-                        : ({ x: 0, y: 0, w: 1, h: 1 })
-                    readonly property real side: clip.w * zoom
-                    readonly property var seat: Capture.loupePlace(surface.localPointer,
-                        ({ w: side, h: side + tag.height + VitrailTokens.gap("xs") }),
-                        ({ x: 0, y: 0, w: surface.width, h: surface.height }), VitrailTokens.capture.loupe.gap)
-
-                    visible: root.picking && surface.record !== null
-                        && root.pointer.x >= surface.record.x && root.pointer.x < surface.record.x + surface.record.width
-                        && root.pointer.y >= surface.record.y && root.pointer.y < surface.record.y + surface.record.height
-                    x: seat.x
-                    y: seat.y
-                    width: side
-                    height: side + tag.height + VitrailTokens.gap("xs")
-
-                    VitrailSurface {
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        width: loupe.side
-                        height: loupe.side
-                        radius: VitrailTokens.radius
-
-                        // The frozen image already in memory, cropped: a
-                        // clipped second Image would decode the whole PNG
-                        // again at every pointer move.
-                        ShaderEffectSource {
-                            readonly property real ratio: surface.record && surface.width > 0
-                                ? surface.record.width / surface.width : 1
-
-                            anchors.fill: parent
-                            anchors.margins: VitrailTokens.gap("xs")
-                            sourceItem: frozen
-                            sourceRect: Qt.rect(loupe.clip.x / ratio, loupe.clip.y / ratio,
-                                                loupe.clip.w / ratio, loupe.clip.h / ratio)
-                            smooth: false
-                            hideSource: false
-                        }
-
-                        // The pixel that will be taken: one enlarged cell.
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: loupe.zoom
-                            height: loupe.zoom
-                            color: "transparent"
-                            border.width: VitrailTokens.capture.border
-                            border.color: root.ink
-                        }
-                    }
-
-                    VitrailSurface {
-                        id: tag
-
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.bottom: parent.bottom
-                        width: tagText.implicitWidth + 2 * VitrailTokens.gap("sm")
-                        height: tagText.implicitHeight + 2 * VitrailTokens.gap("xs")
-                        radius: VitrailTokens.gap("sm")
-
-                        VitrailText {
-                            id: tagText
-
-                            anchors.centerIn: parent
-                            variant: "label"
-                            text: sampler.hex
-                        }
-                    }
-                }
-
                 // The actions, once there is something to act on.
                 CaptureToolbar {
                     id: toolbar
 
-                    visible: surface.host && surface.alive && !root.asking && !root.card && !root.picking
+                    visible: surface.host && surface.alive && !root.asking && !root.card
                     x: surface.seat.x
                     y: surface.seat.y
                     t: root.t
@@ -902,7 +782,7 @@ Item {
                     onOcr: root.activate("ocr")
                     onTranslate: root.startInspect("translate")
                     onQr: root.startInspect("qr")
-                    onPickColor: root.beginPick()
+                    onPalette: root.startPalette()
                     onAsk: root.beginAsk()
                     onRecord: root.activate("record")
                     onTimerCycled: root.cycleTimer()
@@ -946,10 +826,13 @@ Item {
                     phase: root.card ? root.card.phase : "loading"
                     text: root.card ? root.card.text : ""
                     url: root.card ? root.card.url : ""
+                    colors: root.card && root.card.colors ? root.card.colors : []
                     message: root.card ? root.card.message : ""
                     note: root.card ? root.card.note : ""
                     onCopyRequested: function (text) { root.copyRequested(text) }
                     onOpenRequested: function (url) { root.openRequested(url) }
+                    onColorRequested: function (hex) { root.colorChosen(hex) }
+                    onColorsRequested: root.colorsChosen(answer.colors.map(function (one) { return one.hex }))
                     onClosed: root.closeCard()
                 }
 

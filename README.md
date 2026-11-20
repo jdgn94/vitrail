@@ -336,7 +336,7 @@ the window declares it in another file, or the path unit watches another set.
 | `sound.ini` | `soundOutputApps`, `soundInputApps`, `soundFocusApps`, `soundStep` |
 | `colors.ini` | `colorScheme`, `colorContrast` |
 | `fonts.ini` | `fontSystem`, `fontConsole`, `uiIcons`, `iconTheme`, `iconAdaptive`, `iconFill`, `iconImport`, `iconRemove`, `cursorTheme`, `cursorThemeLight`, `cursorThemeDark`, `cursorImport`, `cursorRemove`, `cursorAdaptive`, `cursorMonochrome`, `cursorSize`, `cursorSpinner` |
-| `capture.ini` | `captureDir`, `captureRecordDir`, `captureRecordAudio`, `captureRecordRegion`, `captureAnimation` (the selection glides like a drop), `annotatePanel` (swappy's tools panel), `captureAi` (the Ask AI button and `I` key), `ocrLanguages` (tesseract codes for Copy text, e.g. `spa+eng`; empty follows the system language plus English), `captureDetect` (look for text and codes in the selection to enable Copy text, Translate and QR), `translateTarget` (Translate's language code; empty follows the system language) |
+| `capture.ini` | `captureDir`, `captureRecordDir`, `captureRecordAudio`, `captureRecordRegion`, `captureAnimation` (the selection glides like a drop), `annotatePanel` (swappy's tools panel), `captureAi` (the Ask AI button and `I` key), `ocrLanguages` (tesseract codes for Copy text, e.g. `spa+eng`; empty follows the system language plus English), `captureDetect` (look for text and codes in the selection to enable Copy text, Translate and QR), `capturePaletteSize` (how many colours the `C` palette shows, 3-10), `translateTarget` (Translate's language code; empty follows the system language) |
 | `launcher.ini` | `launcherEngine`, `launcherBangs`, `launcherModes`, `launcherView`, `launcherClear` |
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
@@ -428,8 +428,10 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   `zbarimg`) so `O` copies its text, `L` translates it (`translate-shell`,
   online) on a card beside the area, and `Q` reads a QR or bar code (copied;
   the card opens a web link) — each only when there is text or a code; `C`
-  picks a colour from the frozen screen with a loupe into the `Super+.` colour
-  history; `P` pins the area as a floating glass window (drag, wheel zoom,
+  shows a palette of the area's main colours on a card (ImageMagick, local;
+  similar shades merged, the count is `capturePaletteSize`): a click on a swatch
+  copies it into the `Super+.` colour history and the clipboard, the card's
+  button takes them all (one hex per line); `P` pins the area as a floating glass window (drag, wheel zoom,
   `Ctrl`+wheel opacity, `Esc` or double click closes); and `I` asks Google about it: a question field opens beside the
   area and `Enter` opens the default browser on Google Lens with the picture
   and the question (a private page of the runtime folder posts them; the

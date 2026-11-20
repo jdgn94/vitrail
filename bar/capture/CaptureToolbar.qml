@@ -35,7 +35,7 @@ Item {
     signal ocr()
     signal translate()
     signal qr()
-    signal pickColor()
+    signal palette()
     signal ask()
     signal record()
     signal timerCycled()
@@ -172,10 +172,10 @@ Item {
             }
 
             Action {
-                icon: "colorize"
-                tooltip: root.t("capture.color")
-                tooltipDetail: root.t("capture.color.detail")
-                onClicked: root.pickColor()
+                icon: "palette"
+                tooltip: root.t("capture.palette.name")
+                tooltipDetail: root.t("capture.palette.detail")
+                onClicked: root.palette()
             }
 
             Action {

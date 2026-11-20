@@ -52,9 +52,12 @@ plus English, only the installed `tesseract-data-*`). Translate shows the text
 translated by `translate-shell` in a card beside the area (loading and error
 states, a copy button) into `translateTarget` (default: the system language) —
 it sends the text to Google Translate online. The QR button copies the code's
-content and, for a web link, the card offers to open it. **Colour** (`C`)
-turns the pointer into a loupe over the frozen screen; a click puts the colour
-in the clipboard and in the colour history of `Super+.`. **Pin** (`P`) keeps
+content and, for a web link, the card offers to open it. **Colour
+palette** (`C`) shows the area's main colours on a card (swatch, hex and share,
+loading and error states): ImageMagick quantizes the area locally and similar
+shades merge. A click on a swatch puts that colour in the clipboard and in the
+colour history of `Super+.`; the card's copy button takes them all, one hex per
+line. The number of colours is Bar → Capture → *Colours in the palette*. **Pin** (`P`) keeps
 the area on screen as a floating glass window on its monitor: drag it, zoom with
 the wheel, change its opacity with `Ctrl`+wheel or the bar that appears on
 hover, close it with `Esc`, a double click or the close button; any number of

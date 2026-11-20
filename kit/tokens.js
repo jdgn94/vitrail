@@ -27,6 +27,8 @@ var ranges = {
     dockMagnifyScale: { min: 1.1, max: 2.0, step: 0.05, value: 1.32 },
     // The percent one wheel notch moves an app's own volume.
     soundStep: { min: 1, max: 20, step: 1, value: 5 },
+    // How many colours the capture overlay's palette shows.
+    capturePalette: { min: 3, max: 10, step: 1, value: 6 },
     // The dashboard's clock widgets: the pomodoro's work and break periods
     // (minutes), the rounds before it is over, and the timer's default length.
     pomodoroWork: { min: 1, max: 120, step: 1, value: 25 },
@@ -240,18 +242,17 @@ var desktopEdit = {
 // `glide` ms is the timeline of that birth and of a jump (how long the neck
 // lasts: about 45% of it).
 // ask: `width` of the question field of "Ask AI". card: `width` of the result
-// card (translation, code) and the `lines` of text it shows. detect: ms the
-// selection must rest before it is searched for text and codes. loupe: the
-// colour picker's magnifier, `radius` source pixels each side of the one
-// picked, enlarged `zoom` times, `gap` px from the pointer. pin: the floating
-// copy of an area: wheel `zoomStep` per notch between `zoomMin` and `zoomMax`,
-// `opacityStep` per Ctrl+wheel notch down to `opacityMin`.
+// card (translation, code, palette) and the `lines` of text it shows; the
+// palette's `swatch` tiles are `columns` per row, `height` px tall, with an
+// outline of `edge` alpha. detect: ms the selection must rest before it is
+// searched for text and codes. pin: the floating copy of an area: wheel
+// `zoomStep` per notch between `zoomMin` and `zoomMax`, `opacityStep` per
+// Ctrl+wheel notch down to `opacityMin`.
 var capture = {
     handle: 12,
     ask: { width: 360 },
-    card: { width: 360, lines: 12 },
+    card: { width: 360, lines: 12, swatch: { columns: 3, height: 44, edge: 0.25 } },
     detect: 300,
-    loupe: { radius: 6, zoom: 10, gap: 24 },
     pin: { zoomMin: 0.1, zoomMax: 8, zoomStep: 1.1, opacityStep: 0.05, opacityMin: 0.2 },
     border: 2,
     guide: { width: 1, alpha: 0.6 },

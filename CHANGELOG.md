@@ -18,13 +18,14 @@ The first distributable release.
 - More capture actions: **Copy text** (`O`) reads the area with tesseract,
   locally; **Translate** (`L`, translate-shell, online) shows the translation
   on a card; **QR / bar code** (`Q`, zbar) copies a code's content and opens
-  links; **Colour** (`C`) picks a pixel of the frozen screen with a loupe into
-  the `Super+.` colour history; **Pin** (`P`) keeps the area as a floating
+  links; **Colour palette** (`C`) shows the main colours of the
+  area (local, ImageMagick; similar shades merged) and a click copies one into
+  the `Super+.` colour history, or all of them from the card; **Pin** (`P`) keeps the area as a floating
   glass window (drag, zoom, opacity); **Ask AI** (`I`) asks Google about the
   area in the default browser. The selection is searched for text and codes in
   the background so only the buttons that can work are enabled, and every
   button's tooltip names its key. Settings: Bar → Capture (detection, Ask AI,
-  OCR languages, Translate language).
+  OCR languages, palette size, Translate language).
 - Rich clipboard: a copy keeps the style of its source (font family, size,
   weight, italics, colour, spacing, lists). The watcher keeps the source's
   `text/html` beside cliphist's text (`~/.cache/vitrail/clipboard/`, keyed by the

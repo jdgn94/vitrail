@@ -197,6 +197,7 @@ capture annotatePanel
 capture captureAi
 capture ocrLanguages
 capture captureDetect
+capture capturePaletteSize
 capture translateTarget
 
 launcher launcherEngine

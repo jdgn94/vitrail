@@ -9,6 +9,7 @@ selected from those images, or record it. No helper daemon:
     python3 -m vitrail.capture ask --geometry X,Y,W,H --text "question"
     python3 -m vitrail.capture detect --geometry X,Y,W,H
     python3 -m vitrail.capture qr --geometry X,Y,W,H
+    python3 -m vitrail.capture palette --geometry X,Y,W,H
     python3 -m vitrail.capture translate --geometry X,Y,W,H
     python3 -m vitrail.capture pin --geometry X,Y,W,H
     python3 -m vitrail.capture open <link>
@@ -714,6 +715,131 @@ def translate(
     return {"source": read["text"], "text": text}
 
 
+# --- palette -------------------------------------------------------------------
+
+# The colours of the area, local: the area is shrunk (box average), quantized
+# to PALETTE_QUANTIZE colours without dithering and counted by ImageMagick; the
+# ranking and the merging of near-duplicates are here. `capturePaletteSize` is
+# the number of colours, between PALETTE_MIN and PALETTE_MAX (the settings
+# slider's range, `ranges.capturePalette` in kit/tokens.js).
+PALETTE_MIN = 3
+PALETTE_MAX = 10
+PALETTE_DEFAULT = 6
+PALETTE_QUANTIZE = 24
+PALETTE_SAMPLE = "128x128>"
+# Two colours closer than this in OKLab are one colour (a shade of it), and a
+# colour under this share of the pixels is noise.
+PALETTE_MERGE = 0.07
+PALETTE_FLOOR = 0.02
+HISTOGRAM_LINE = re.compile(r"^\s*(\d+):\s*\([^)]*\)\s*(#[0-9A-Fa-f]{6})\b")
+
+
+def palette_size(values: dict) -> int:
+    """`capturePaletteSize` kept inside its bounds; the default when it is not a number."""
+    try:
+        size = int(str(values.get("capturePaletteSize") or PALETTE_DEFAULT).strip())
+    except ValueError:
+        return PALETTE_DEFAULT
+    return max(PALETTE_MIN, min(PALETTE_MAX, size))
+
+
+def parse_histogram(text: str) -> list[tuple[str, int]]:
+    """The lines of `magick -format %c histogram:info:` as [("#RRGGBB", pixels)]."""
+    found: list[tuple[str, int]] = []
+    for line in text.splitlines():
+        match = HISTOGRAM_LINE.match(line)
+        if match:
+            found.append((match.group(2).upper(), int(match.group(1))))
+    return found
+
+
+def oklab(rgb: tuple[int, int, int]) -> tuple[float, float, float]:
+    """An sRGB colour (0-255) in OKLab, where distance follows what the eye tells apart."""
+
+    def linear(value: int) -> float:
+        channel = value / 255
+        return channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (linear(value) for value in rgb)
+    long = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b) ** (1 / 3)
+    medium = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b) ** (1 / 3)
+    short = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b) ** (1 / 3)
+    return (
+        0.2104542553 * long + 0.7936177850 * medium - 0.0040720468 * short,
+        1.9779984951 * long - 2.4285922050 * medium + 0.4505937099 * short,
+        0.0259040371 * long + 0.7827717662 * medium - 0.8086757660 * short,
+    )
+
+
+def oklab_distance(first: tuple[float, float, float], second: tuple[float, float, float]) -> float:
+    return sum((a - b) ** 2 for a, b in zip(first, second)) ** 0.5
+
+
+def _rgb(hex_color: str) -> tuple[int, int, int]:
+    return int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16)
+
+
+def rank_palette(
+    entries: list[tuple[str, int]], size: int, merge: float = PALETTE_MERGE, floor: float = PALETTE_FLOOR
+) -> list[dict]:
+    """The main colours, most pixels first: [{"hex", "share"}], `share` of all the pixels.
+
+    Each colour joins the nearest bigger one closer than `merge` (its pixels are
+    added, the bigger one's value stays: a real colour of the area, not an
+    average); a colour under `floor` is dropped, except the first.
+    """
+    total = sum(count for _, count in entries)
+    if total <= 0:
+        return []
+    clusters: list[dict] = []
+    for hex_color, count in sorted(entries, key=lambda entry: (-entry[1], entry[0])):
+        point = oklab(_rgb(hex_color))
+        near = min(clusters, key=lambda one: oklab_distance(one["point"], point), default=None)
+        if near is not None and oklab_distance(near["point"], point) < merge:
+            near["count"] += count
+        else:
+            clusters.append({"hex": hex_color, "point": point, "count": count})
+    clusters.sort(key=lambda one: -one["count"])
+    kept = [one for index, one in enumerate(clusters) if index == 0 or one["count"] / total >= floor]
+    return [{"hex": one["hex"], "share": round(one["count"] / total, 4)} for one in kept[:size]]
+
+
+def palette(
+    selection: dict,
+    monitors: list[dict],
+    size: int,
+    runtime: Path | None = None,
+    run: Runner = run_text,
+) -> dict:
+    """The main colours of the selection: {"colors": [{"hex", "share"}]} or {"error"}."""
+    composed = compose(selection, monitors, runtime, run, name="palette")
+    if "error" in composed:
+        return composed
+    counted = run(
+        [
+            "magick",
+            composed["image"],
+            "-scale",
+            PALETTE_SAMPLE,
+            "-alpha",
+            "off",
+            "-depth",
+            "8",
+            "-dither",
+            "None",
+            "-colors",
+            str(PALETTE_QUANTIZE),
+            "-format",
+            "%c",
+            "histogram:info:",
+        ]
+    )
+    if counted is None:
+        return {"error": "magick failed"}
+    colors = rank_palette(parse_histogram(counted), size)
+    return {"colors": colors} if colors else {"error": "no colours"}
+
+
 # --- pin -----------------------------------------------------------------------
 
 
@@ -962,7 +1088,7 @@ def _flag(value: object, fallback: bool) -> bool:
 USAGE = (
     "usage: capture freeze | grab --geometry <X,Y,W,H> [--copy] [--save]"
     " | record <start|stop|toggle> [--geometry <WxH+X+Y>] [--audio]"
-    " | ocr|detect|qr|translate|pin --geometry <X,Y,W,H> | ask --geometry <X,Y,W,H> --text <question>"
+    " | ocr|detect|qr|palette|translate|pin --geometry <X,Y,W,H> | ask --geometry <X,Y,W,H> --text <question>"
     " | open <link>"
     " | window <x> <y> | annotate <path> | status"
 )
@@ -1022,7 +1148,7 @@ def main(argv: list[str] | None = None) -> int:
             log(USAGE)
             return 2
         result = read_text(geometry, read_frozen().get("monitors") or monitors(), wanted_languages(values))
-    elif args[:1] in (["detect"], ["qr"], ["translate"], ["pin"]):
+    elif args[:1] in (["detect"], ["qr"], ["palette"], ["translate"], ["pin"]):
         if geometry is None:
             log(USAGE)
             return 2
@@ -1032,6 +1158,8 @@ def main(argv: list[str] | None = None) -> int:
             result = detect(geometry, screens, wanted_languages(values))
         elif args[0] == "qr":
             result = read_codes(geometry, screens)
+        elif args[0] == "palette":
+            result = palette(geometry, screens, palette_size(values))
         elif args[0] == "pin":
             result = pin_image(geometry, screens)
         else:

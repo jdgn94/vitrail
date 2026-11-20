@@ -631,10 +631,21 @@ ShellRoot {
     function useColor(hex) {
         if (!Colors.isColor(hex))
             return
-        shell.clipboardColor = hex
-        shell.clipboardRecent = Colors.addRecent(shell.clipboardRecent, hex, Colors.RECENT)
-        shell.setPref("clipboardColors", JSON.stringify(shell.clipboardRecent))
+        shell.rememberColors([hex])
         shell.copyText(Colors.format(Colors.parse(hex), shell.clipboardFormat))
+    }
+
+    // The colours go into the history in one write; the first of the list
+    // ends up on top (and is the current one).
+    function rememberColors(colors) {
+        if (colors.length === 0)
+            return
+        var list = shell.clipboardRecent
+        for (var index = colors.length - 1; index >= 0; index--)
+            list = Colors.addRecent(list, colors[index], Colors.RECENT)
+        shell.clipboardColor = list[0]
+        shell.clipboardRecent = list
+        shell.setPref("clipboardColors", JSON.stringify(list))
     }
 
     // An emoji goes into the clipboard and into the field that had the focus:
@@ -1106,7 +1117,7 @@ ShellRoot {
         var geometry = Math.round(selection.x) + "," + Math.round(selection.y) + ","
             + Math.round(selection.w) + "," + Math.round(selection.h)
         shell.inspectKind = kind
-        captureInspect.exec(["python3", "-m", "vitrail.capture", kind === "qr" ? "qr" : "translate",
+        captureInspect.exec(["python3", "-m", "vitrail.capture", kind === "qr" || kind === "palette" ? kind : "translate",
                              "--geometry", geometry])
     }
 
@@ -1119,7 +1130,15 @@ ShellRoot {
         }
         var kind = shell.inspectKind
         var card
-        if (kind === "qr") {
+        if (kind === "palette") {
+            var colors = document.colors || []
+            if (document.error || colors.length === 0)
+                card = { kind: kind, phase: "error", text: "", url: "", colors: [], note: shell.t("capture.palette"),
+                         message: shell.t("capture.palette.failed") }
+            else
+                card = { kind: kind, phase: "done", text: "", url: "", message: "", colors: colors,
+                         note: shell.t("capture.palette") }
+        } else if (kind === "qr") {
             var codes = document.codes || []
             if (document.error || codes.length === 0)
                 card = { kind: kind, phase: "error", text: "", url: "", note: shell.t("capture.qr"),
@@ -1142,12 +1161,21 @@ ShellRoot {
             overlayLoader.item.setCard(kind, card)
     }
 
-    // The colour picked on the frozen screen goes where Super+. sends one: the
+    // A colour of the area's palette goes where Super+. sends one: the
     // clipboard colour history and the clipboard.
     function captureColor(hex) {
         overlayLoader.active = false
         shell.useColor(hex)
         shell.captureNotice("capture.color.copied", hex)
+    }
+
+    // All of them: into the history, and on the clipboard one per line.
+    function captureColors(colors) {
+        var valid = colors.filter(function (hex) { return Colors.isColor(hex) })
+        overlayLoader.active = false
+        shell.rememberColors(valid)
+        shell.copyText(valid.join("\n"))
+        shell.captureNotice("capture.palette.copied", valid.join(" "))
     }
 
     function captureOpen(url) {
@@ -2973,7 +3001,8 @@ ShellRoot {
             item.inspect.connect(shell.runInspect)
             item.copyRequested.connect(shell.copyText)
             item.openRequested.connect(shell.captureOpen)
-            item.colorPicked.connect(shell.captureColor)
+            item.colorChosen.connect(shell.captureColor)
+            item.colorsChosen.connect(shell.captureColors)
             item.confirmed.connect(shell.confirmCapture)
             item.cancelled.connect(function () { overlayLoader.active = false })
             item.windowModeRequested.connect(shell.loadCaptureWindows)

@@ -199,36 +199,11 @@ function pinOpacity(value, delta, low) {
     return clamp(value + delta, low, 1)
 }
 
-// The pixel of a monitor's frozen image under a layout point.
-function pixelAt(point, monitor) {
-    var scale = monitor.scale || 1
-    return {
-        x: clamp(Math.round((point.x - monitor.x) * scale), 0, monitor.width - 1),
-        y: clamp(Math.round((point.y - monitor.y) * scale), 0, monitor.height - 1)
-    }
-}
-
-// The square of the frozen image the loupe magnifies (source pixels), kept
-// inside the image so the loupe keeps its size at the screen's edge.
-function loupeClip(pixel, radius, image) {
-    var side = 2 * radius + 1
-    return {
-        x: clamp(pixel.x - radius, 0, Math.max(0, image.w - side)),
-        y: clamp(pixel.y - radius, 0, Math.max(0, image.h - side)),
-        w: side,
-        h: side
-    }
-}
-
-// The loupe sits down-right of the pointer and flips to the other side at an edge.
-function loupePlace(point, size, screen, gap) {
-    var x = point.x + gap
-    var y = point.y + gap
-    if (x + size.w > screen.x + screen.w)
-        x = point.x - gap - size.w
-    if (y + size.h > screen.y + screen.h)
-        y = point.y - gap - size.h
-    return { x: Math.max(screen.x, x), y: Math.max(screen.y, y) }
+// A colour's share of the area as the card shows it: whole percent, "<1%"
+// for what rounds to nothing.
+function shareLabel(share) {
+    var percent = Math.round(share * 100)
+    return percent < 1 ? "<1%" : percent + "%"
 }
 
 function label(rect) {

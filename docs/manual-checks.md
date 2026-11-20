@@ -322,9 +322,15 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] `L` sobre texto (con `translate-shell` instalado): tarjeta «Traduciendo…» y
       luego la traducción en el idioma de *Traducir a*; el botón copia; sin red:
       «La traducción falló»; sin `trans`: «translate-shell no está instalado».
-- [ ] `C` (o el icono del cuentagotas): una lupa sigue al puntero con el código del
-      color; un clic lo copia, aparece «Color copiado» y el color está en la
-      pestaña de colores de `Super+.`. `Esc` sale del modo sin cerrar la captura.
+- [ ] `C` (o el icono de la paleta) sobre un área con varios colores: una tarjeta
+      «Buscando los colores principales…» se convierte en una cuadrícula de
+      muestras con su código y su porcentaje, la más usada primero y sin tonos
+      casi iguales repetidos. Un clic en una muestra la copia, aparece «Color
+      copiado» y el color está en la pestaña de colores de `Super+.`; el botón
+      de copiar de la tarjeta toma todas (`wl-paste` da un código por línea y
+      salen en el historial). `Esc` vuelve a la barra de iconos con el área
+      intacta. Ajustes → Barra → Captura → *Colores en la paleta* cambia cuántas
+      muestras salen.
 - [ ] `P`: el área queda fija encima de todo en su monitor. Arrástrala; la rueda
       la agranda o reduce; `Ctrl`+rueda cambia la opacidad; al pasar el puntero
       sale la barra con el deslizador de opacidad y la `x`. `Esc` (tras un clic),

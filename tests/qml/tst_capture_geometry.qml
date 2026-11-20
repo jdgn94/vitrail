@@ -233,23 +233,11 @@ TestCase {
         compare(Capture.pinOpacity(0.3, -0.25, 0.2), 0.2)
     }
 
-    function test_a_pixel_of_the_frozen_image_is_found_at_its_scale() {
-        compare(Capture.pixelAt({ x: 10.4, y: 20.6 }, monitors[0]), { x: 10, y: 21 })
-        compare(Capture.pixelAt({ x: 2560 + 100, y: 30 }, monitors[1]), { x: 200, y: 60 })
-        compare(Capture.pixelAt({ x: -5, y: 99999 }, monitors[0]), { x: 0, y: 1439 })
-    }
-
-    function test_the_loupe_shows_a_square_that_never_leaves_the_image() {
-        compare(Capture.loupeClip({ x: 100, y: 100 }, 6, { w: 2560, h: 1440 }), { x: 94, y: 94, w: 13, h: 13 })
-        compare(Capture.loupeClip({ x: 0, y: 0 }, 6, { w: 2560, h: 1440 }), { x: 0, y: 0, w: 13, h: 13 })
-        compare(Capture.loupeClip({ x: 2559, y: 1439 }, 6, { w: 2560, h: 1440 }), { x: 2547, y: 1427, w: 13, h: 13 })
-    }
-
-    function test_the_loupe_flips_away_from_the_screen_edges() {
-        var screen = { x: 0, y: 0, w: 1000, h: 800 }
-        compare(Capture.loupePlace({ x: 100, y: 100 }, { w: 120, h: 150 }, screen, 20), { x: 120, y: 120 })
-        compare(Capture.loupePlace({ x: 950, y: 100 }, { w: 120, h: 150 }, screen, 20), { x: 810, y: 120 })
-        compare(Capture.loupePlace({ x: 100, y: 780 }, { w: 120, h: 150 }, screen, 20), { x: 120, y: 610 })
+    function test_a_share_reads_as_a_whole_percent() {
+        compare(Capture.shareLabel(0.4104), "41%")
+        compare(Capture.shareLabel(0.0225), "2%")
+        compare(Capture.shareLabel(0.004), "<1%")
+        compare(Capture.shareLabel(1), "100%")
     }
 
     function test_only_one_web_link_is_a_link() {

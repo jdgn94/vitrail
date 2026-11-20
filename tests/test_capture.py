@@ -989,6 +989,94 @@ class PinTests(unittest.TestCase):
         self.assertEqual(result, {"error": "empty selection"})
 
 
+class PaletteTests(unittest.TestCase):
+    flat = CropTests.flat
+    histogram = (
+        "   608: (255,255,255) #FFFFFF white\n"
+        "   250: (200, 30, 40) #C81E28 srgb(200,30,40)\n"
+        "   100: (203, 33, 42) #CB212A srgb(203,33,42)\n"
+        "    30: ( 20,120,230) #1478E6 srgb(20,120,230)\n"
+        "     8: (  0,  0,  0) #000000 black\n"
+        "     4: (120,120,120) #787878 srgb(120,120,120)\n"
+    )
+
+    def test_the_histogram_lines_become_hex_and_count(self) -> None:
+        self.assertEqual(
+            capture.parse_histogram(self.histogram)[:3],
+            [("#FFFFFF", 608), ("#C81E28", 250), ("#CB212A", 100)],
+        )
+
+    def test_garbage_has_no_histogram(self) -> None:
+        self.assertEqual(capture.parse_histogram("nonsense\n\n"), [])
+
+    def test_the_perceptual_distance_tells_close_reds_from_red_and_blue(self) -> None:
+        close = capture.oklab_distance(capture.oklab((200, 30, 40)), capture.oklab((203, 33, 42)))
+        far = capture.oklab_distance(capture.oklab((200, 30, 40)), capture.oklab((20, 120, 230)))
+        self.assertLess(close, 0.01)
+        self.assertGreater(far, 0.3)
+
+    def test_colours_are_ranked_by_share_and_near_duplicates_merge(self) -> None:
+        ranked = capture.rank_palette(capture.parse_histogram(self.histogram), 6)
+        self.assertEqual([one["hex"] for one in ranked], ["#FFFFFF", "#C81E28", "#1478E6"])
+        # The two reds are one colour with their pixels added (350 of 1000).
+        self.assertAlmostEqual(ranked[1]["share"], 0.35, places=3)
+
+    def test_tiny_shares_are_dropped_but_the_first_colour_always_stays(self) -> None:
+        ranked = capture.rank_palette([("#FFFFFF", 995), ("#000000", 5)], 6)
+        self.assertEqual([one["hex"] for one in ranked], ["#FFFFFF"])
+        self.assertEqual(capture.rank_palette([("#336699", 3)], 6, floor=2), [{"hex": "#336699", "share": 1.0}])
+
+    def test_the_palette_is_capped_at_the_asked_size(self) -> None:
+        entries = [
+            (f"#{value:02X}{value:02X}{value:02X}", 100 - index) for index, value in enumerate(range(0, 256, 40))
+        ]
+        self.assertEqual(len(capture.rank_palette(entries, 3)), 3)
+
+    def test_an_empty_histogram_is_an_empty_palette(self) -> None:
+        self.assertEqual(capture.rank_palette([], 6), [])
+
+    def test_the_size_is_the_preference_inside_its_bounds(self) -> None:
+        self.assertEqual(capture.palette_size({}), 6)
+        self.assertEqual(capture.palette_size({"capturePaletteSize": "8"}), 8)
+        self.assertEqual(capture.palette_size({"capturePaletteSize": "99"}), 10)
+        self.assertEqual(capture.palette_size({"capturePaletteSize": "1"}), 3)
+        self.assertEqual(capture.palette_size({"capturePaletteSize": "many"}), 6)
+
+    def read(self, histogram: str | None, size: int = 6):
+        calls: list[list[str]] = []
+
+        def run(argv: list[str]) -> str | None:
+            calls.append(argv)
+            if "histogram:info:" in argv:
+                return histogram
+            Path(argv[-1]).write_bytes(b"png")
+            return ""
+
+        with tempfile.TemporaryDirectory() as tmp:
+            result = capture.palette({"x": 0, "y": 0, "w": 400, "h": 300}, self.flat, size, Path(tmp), run=run)
+        return result, calls
+
+    def test_the_area_is_shrunk_quantized_without_dithering_and_counted_locally(self) -> None:
+        result, calls = self.read(self.histogram)
+        command = calls[-1]
+        self.assertEqual(command[0], "magick")
+        self.assertTrue(command[1].endswith("/capture/palette.png"))
+        for word in ("-scale", "-dither", "None", "-colors", "-format", "%c"):
+            self.assertIn(word, command)
+        self.assertEqual([one["hex"] for one in result["colors"]], ["#FFFFFF", "#C81E28", "#1478E6"])
+
+    def test_a_failing_magick_is_an_error(self) -> None:
+        self.assertEqual(self.read(None)[0], {"error": "magick failed"})
+
+    def test_an_unreadable_histogram_is_an_error(self) -> None:
+        self.assertEqual(self.read("garbage")[0], {"error": "no colours"})
+
+    def test_a_bad_selection_is_an_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = capture.palette({"x": 0, "y": 0, "w": 0, "h": 5}, self.flat, 6, Path(tmp), run=lambda argv: "")
+        self.assertEqual(result, {"error": "empty selection"})
+
+
 class ComposeNameTests(unittest.TestCase):
     def test_the_composition_can_go_to_a_named_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1018,7 +1106,7 @@ class EntryTests(unittest.TestCase):
         self.assertEqual(capture.main(["ask", "--text", "x"]), 2)
 
     def test_every_area_command_needs_a_geometry(self) -> None:
-        for command in ("detect", "qr", "translate", "pin"):
+        for command in ("detect", "qr", "translate", "pin", "palette"):
             with self.subTest(command=command):
                 self.assertEqual(capture.main([command]), 2)
 

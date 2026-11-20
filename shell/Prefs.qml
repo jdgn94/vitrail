@@ -149,6 +149,7 @@ QtObject {
     property alias captureAi: captureFile.captureAi
     property alias ocrLanguages: captureFile.ocrLanguages
     property alias captureDetect: captureFile.captureDetect
+    property alias capturePaletteSize: captureFile.capturePaletteSize
     property alias translateTarget: captureFile.translateTarget
     property alias launcherEngine: launcherFile.launcherEngine
     property alias launcherBangs: launcherFile.launcherBangs
@@ -470,6 +471,8 @@ QtObject {
         property string ocrLanguages: ""
         // Search the selection for text and codes once it rests (local).
         property bool captureDetect: true
+        // How many main colours the palette of an area shows.
+        property int capturePaletteSize: VitrailTokens.ranges.capturePalette.value
         // Language code Translate writes in; empty: the system language.
         property string translateTarget: ""
     }

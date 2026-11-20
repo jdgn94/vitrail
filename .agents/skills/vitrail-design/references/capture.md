@@ -51,15 +51,14 @@ The border strokes the bowed outline only. No fill inside the selection.
 ## Performance rules (measured)
 
 Pointer handlers must stay under a millisecond: a 60 ms handler stalled every
-frame (15 events in a drag, 8 frames of 50-130 ms). The cause was the colour
-loupe: an `Image` with a moving `sourceClipRect` reloads, and decodes, the whole
-2560x1440 PNG on every change, hidden or not. The loupe is now a
-`ShaderEffectSource` over the already loaded frozen `Image` (`frozen`), so a
-new crop costs nothing. Rule: never bind a moving `sourceClipRect` to the
-pointer; crop a loaded image with `ShaderEffectSource.sourceRect`. After the
-fix a fast drag over both 2560x1440 monitors runs at 60 fps (median 16.0 ms,
-no frame over 25 ms, 0.5-1 ms per pointer event) with the mask veil, the
-outline `Shape` and the grips all on, so the veil is not the cost.
+frame (15 events in a drag, 8 frames of 50-130 ms). The cause was an `Image`
+with a `sourceClipRect` following the pointer: it reloads, and decodes, the
+whole 2560x1440 PNG on every change, hidden or not. Rule: never bind a moving
+`sourceClipRect` to the pointer; crop a loaded image with
+`ShaderEffectSource.sourceRect`. After the fix a fast drag over both 2560x1440
+monitors runs at 60 fps (median 16.0 ms, no frame over 25 ms, 0.5-1 ms per
+pointer event) with the mask veil, the outline `Shape` and the grips all on,
+so the veil is not the cost.
 
 ## Actions that leave the overlay
 
@@ -104,12 +103,24 @@ outline `Shape` and the grips all on, so the veil is not the cost.
   the card offers *Open* only for `is_url` (http/https), through
   `capture open`. Translate sends the text to `trans -b :<target> -i <file>`
   from a private file; `translateTarget` empty means the system language.
-- **Colour** (`C`, `picking`): a 1 px `Canvas` per surface draws the frozen
-  image's pixel under the pointer (`Capture.pixelAt`) and reads it back; the
-  loupe is an `Image` with `sourceClipRect` (`Capture.loupeClip`) placed by
-  `loupePlace`. The click calls `colorPicked(hex)` and the shell sends it to
-  `useColor` (the `Super+.` history) and a toast. The canvas draws only once
-  `isImageLoaded`: before that it reads black.
+- **Colour palette** (`C`, `palette` icon, preference `capturePaletteSize`,
+  3-10, default 6): there is no dropper or loupe any more. `startPalette`
+  puts a `palette` card (loading) in the toolbar's seat and asks the shell for
+  `capture palette`; `capture.palette` composes the area into `palette.png`,
+  shrinks it (`-scale 128x128>`), quantizes it to 24 colours without dither and
+  counts them (`-format %c histogram:info:`), all with ImageMagick. Ranking is
+  Python (`rank_palette`): by pixel share, each colour joins the nearest
+  bigger one closer than 0.07 in OKLab (its pixels add up, the bigger one's
+  hex stays, so every swatch is a real colour of the area), colours under 2 %
+  are dropped (the first always stays), up to the size. The CLI prints
+  `{"colors": [{"hex", "share"}]}`. `CaptureCard` renders `kind: "palette"` as
+  a `GridLayout` (`capture.card.swatch`: columns, height, edge) of tiles; hover
+  outlines in the accent and its tooltip says "Copy this colour". A click emits
+  `colorChosen(hex)` and the card's copy button `colorsChosen(list)`; the shell
+  closes the overlay, `rememberColors` writes the `Super+.` history in one
+  write (first colour on top), `useColor` also copies the one in the chosen
+  format, `captureColors` copies all as hex lines, and a toast says "Colour
+  copied" / "Colours copied". Escape closes the card and keeps the area.
 - **Pin** (`P`): `capture pin` copies the composed area to
   `$XDG_RUNTIME_DIR/vitrail/pins/` (outside `capture/`, which the next freeze
   empties). `PinLayer` (owned by the shell, so pins outlive the overlay) keeps a
