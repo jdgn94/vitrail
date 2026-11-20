@@ -16,6 +16,11 @@ FocusScope {
     property var strings: ({})
     property var entries: []
     property var thumbs: ({})
+    property var previews: ({})
+    property bool previewOn: true
+    // The screen the panel is on, for the hover card's side.
+    property real screenWidth: 0
+    property real screenHeight: 0
     property var emojis: []
     property var recent: []
     property bool active: false
@@ -30,6 +35,7 @@ FocusScope {
     signal picked(string id, string mode)
     signal closeRequested()
     signal thumbRequested(string id)
+    signal previewRequested(string id)
     signal removeRequested(string id)
     signal clearRequested()
     signal emojiPicked(string emoji)
@@ -116,11 +122,17 @@ FocusScope {
             strings: root.strings
             entries: root.entries
             thumbs: root.thumbs
+            previews: root.previews
+            previewOn: root.previewOn
+            screenWidth: root.screenWidth
+            screenHeight: root.screenHeight
+            bounds: Qt.rect(root.x, root.y, root.width, root.height)
             max: root.max
             onPicked: function (id, mode) { root.picked(id, mode) }
             onRemoveRequested: function (id) { root.removeRequested(id) }
             onClearRequested: root.clearRequested()
             onThumbRequested: function (id) { root.thumbRequested(id) }
+            onPreviewRequested: function (id) { root.previewRequested(id) }
             onCloseRequested: root.closeRequested()
         }
 

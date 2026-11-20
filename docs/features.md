@@ -25,7 +25,11 @@ the widgets slot:
 inline actions (`>` run, `=` calculate, `/` files, `;` clipboard). The
 `wallpaper:` mode lists the library's pictures as thumbnails and the eighteen
 effects: choosing one shows that wallpaper (`vitrail wallpaper pick`) or sets
-the effect for the whole screen. Keyboard only; the clip panel is `Mod+.`.
+the effect for the whole screen. Keyboard only; the clip panel is `Mod+.`:
+hovering a history row (or moving onto it with the arrows) opens a card with
+the copy as its source styled it (font, size, weight, italics, colour,
+spacing, lists) or the image, and picking a styled entry pastes the style into
+apps that take HTML. Settings: Launcher → Clipboard.
 
 ## Capture
 

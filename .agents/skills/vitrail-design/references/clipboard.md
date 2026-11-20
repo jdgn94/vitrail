@@ -40,6 +40,24 @@ Four commands, one per entry point:
 - **History size:** `clipboardMax` (50–1000, default 100) becomes
   `-max-items` in `~/.config/cliphist/config` through `vitrail clipboard apply`.
 
+## Rich copies and the hover card
+
+- **Store:** `vitrail/richclip.py` keeps the source's `text/html` in
+  `$XDG_CACHE_HOME/vitrail/clipboard/<sha256 of the plain bytes>.html` (0600).
+  The key is the text itself, so any cliphist entry finds its style however it
+  got its id and however often it was copied; a copy younger than a minute is
+  never pruned. The sanitizer (`richclip.sanitize`) is an allow-list of tags,
+  attributes and CSS; the stored original is only ever shown sanitized.
+- **Card:** `bar/clipboard/ClipboardPreview.qml`, a `VitrailSurface` with a
+  `VitrailText` in `Text.RichText`; `rich.js` rewrites the CSS to what Qt draws
+  (px lengths, hex colours, sizes capped by `VitrailTokens.clipboard.preview`
+  and scaled so a poster still fits). Copies whose colours want a light or dark
+  page sit on a patch of the theme's own light/dark tone. It shows after the
+  tooltip delay, beside the panel on the side with room, and follows the arrow
+  keys. Sizes live in the `clipboard.preview` tokens.
+- **Re-copy:** `vitrail clipboard copy <id>` offers text and HTML at once through
+  a GTK 4 helper (`wl-copy` offers one type); `Ctrl+Enter` stays plain.
+
 ## Emojis
 
 - `assets/emoji.json` is built by `scripts/build-emoji.py` from Unicode's

@@ -25,6 +25,15 @@ The first distributable release.
   the background so only the buttons that can work are enabled, and every
   button's tooltip names its key. Settings: Bar → Capture (detection, Ask AI,
   OCR languages, Translate language).
+- Rich clipboard: a copy keeps the style of its source (font family, size,
+  weight, italics, colour, spacing, lists). The watcher keeps the source's
+  `text/html` beside cliphist's text (`~/.cache/vitrail/clipboard/`, keyed by the
+  SHA-256 of the text, capped, pruned when the history drops the entry, never
+  for password managers), picking an entry offers `text/plain` and `text/html`
+  together through a small GTK 4 helper, and hovering a row of the `Super+.`
+  history opens a glass card with the styled text (sanitized: no scripts, event
+  handlers or remote resources) or the image. Settings: Launcher → Clipboard
+  (`clipboardRich`, `clipboardPreview`).
 - Wallpaper changes animate: a random ink or outline transition chosen by the
   picture, with a length setting, and the palette waits for it to end.
 - Wallpaper effects: a picker with a preview of each effect over the picture on

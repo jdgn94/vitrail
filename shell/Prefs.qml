@@ -63,6 +63,8 @@ QtObject {
     property alias dockWidgets: dockFile.dockWidgets
     property alias clipboardMax: barFile.clipboardMax
     property alias clipboardPaste: barFile.clipboardPaste
+    property alias clipboardRich: barFile.clipboardRich
+    property alias clipboardPreview: barFile.clipboardPreview
     property alias mediaStyle: barFile.mediaStyle
     property alias trayStyle: barFile.trayStyle
     property alias barBatteryChip: barFile.barBatteryChip
@@ -243,6 +245,10 @@ QtObject {
         // pastes it into the focused window.
         property int clipboardMax: 100
         property bool clipboardPaste: false
+        // Copies keep the style of their source (HTML beside the text).
+        property bool clipboardRich: true
+        // The hover card of the clipboard panel.
+        property bool clipboardPreview: true
         // The player's look: "disc" or "cassette".
         property string mediaStyle: "disc"
         // The tray's look: "inline" folds the icons out, "popup" lists them.

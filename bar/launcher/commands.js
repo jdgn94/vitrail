@@ -78,14 +78,29 @@ function clipCopy(id) {
     return ["sh", "-c", "cliphist decode \"$1\" | wl-copy", "sh", id]
 }
 
-// One entry goes away: `delete` reads the id from stdin.
-function clipDelete(id) {
-    return ["sh", "-c", "printf '%s\\n' \"$1\" | cliphist delete", "sh", id]
+// The same pick, keeping the style of the source: when the entry has an HTML
+// variant (vitrail/richclip.py) the clipboard offers text and HTML together,
+// otherwise it is `clipCopy`. `root` is the folder that holds the `vitrail`
+// Python package.
+function clipCopyRich(id, root) {
+    return ["sh", "-c", "PYTHONPATH=\"$2\" exec python3 -m vitrail.cli clipboard copy \"$1\"", "sh", id, root]
 }
 
-// The whole history.
-function clipWipe() {
-    return ["cliphist", "wipe"]
+// One entry goes away with its styled variant: `delete` reads the id from
+// stdin, and the variant is found from the entry's own text.
+function clipDelete(id, root) {
+    return ["sh", "-c", "cliphist decode \"$1\" | PYTHONPATH=\"$2\" python3 -m vitrail.cli clipboard forget; "
+            + "printf '%s\\n' \"$1\" | cliphist delete", "sh", id, root]
+}
+
+// The whole history, and every styled variant.
+function clipWipe(root) {
+    return ["sh", "-c", "cliphist wipe; PYTHONPATH=\"$1\" python3 -m vitrail.cli clipboard clear", "sh", root]
+}
+
+// What the hover card shows for an entry (JSON).
+function clipPreview(id, root) {
+    return ["sh", "-c", "PYTHONPATH=\"$2\" exec python3 -m vitrail.cli clipboard preview \"$1\"", "sh", id, root]
 }
 
 // A pick for a terminal: the same content without its trailing newlines, so

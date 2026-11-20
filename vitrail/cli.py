@@ -13,6 +13,7 @@ from vitrail import (
     binds,
     brightness,
     clipboard,
+    richclip,
     colors,
     doctor,
     fonts,
@@ -120,6 +121,15 @@ def _parser() -> argparse.ArgumentParser:
     clip = sub.add_parser("clipboard", help="the clipboard store")
     clip_actions = clip.add_subparsers(dest="clipboard_action")
     clip_actions.add_parser("apply", help="write the history size into cliphist")
+    clip_actions.add_parser("store", help="keep the HTML of the clipboard (called by wl-paste --watch)")
+    clip_preview = clip_actions.add_parser("preview", help="JSON for the hover card of an entry")
+    clip_preview.add_argument("id")
+    clip_copy = clip_actions.add_parser("copy", help="copy an entry, styled when it has a variant")
+    clip_copy.add_argument("id")
+    clip_copy.add_argument("--trim", action="store_true", help="plain, without trailing newlines")
+    clip_actions.add_parser("forget", help="drop the variant of the text on stdin")
+    clip_actions.add_parser("prune", help="drop the variants the history no longer has")
+    clip_actions.add_parser("clear", help="drop every variant")
 
     light = sub.add_parser("brightness", help="list the monitors the OSD can dim, as JSON")
     light.add_argument("action", choices=("list",))
@@ -337,6 +347,30 @@ def _safe_mode(args: argparse.Namespace) -> int:
 
 def _clipboard(args: argparse.Namespace) -> int:
     values = prefs.read_prefs(prefs.config_dir())
+    action = args.clipboard_action
+    if action == "store":
+        sys.stdin.buffer.read()  # wl-paste pipes the HTML in; capture() reads what it needs itself
+        richclip.capture(enabled=richclip.enabled(values))
+        return 0
+    if action == "preview":
+        data = richclip.run_raw(["cliphist", "decode", args.id])
+        print(json.dumps(richclip.preview(data) if data is not None else {"kind": "binary"}, separators=(",", ":")))
+        return 0
+    if action == "copy":
+        data = richclip.run_raw(["cliphist", "decode", args.id])
+        if data is None:
+            return 1
+        richclip.copy(data, enabled=richclip.enabled(values), trim=args.trim)
+        return 0
+    if action == "forget":
+        richclip.forget(sys.stdin.buffer.read())
+        return 0
+    if action == "prune":
+        richclip.prune(richclip.history_keys())
+        return 0
+    if action == "clear":
+        richclip.clear()
+        return 0
     size = int(values.get("clipboardMax") or clipboard.DEFAULT_MAX)
     path = clipboard.apply(size)
     _say(f"{path}: -max-items {size}")

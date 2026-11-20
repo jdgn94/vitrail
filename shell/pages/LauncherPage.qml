@@ -171,6 +171,45 @@ Item {
 
                 Section {
                     Layout.fillWidth: true
+                    visible: page.tab === "general"
+                    icon: "content_paste"
+                    title: page.t("launcher.section.clipboard")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    VitrailSettingRow {
+                        icon: "format_paint"
+                        label: page.t("clipboard.rich")
+                        description: page.t("clipboard.rich.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.clipboardRich === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.clipboardRich = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "preview"
+                        label: page.t("clipboard.preview")
+                        description: page.t("clipboard.preview.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.clipboardPreview === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.clipboardPreview = value }
+                        }
+                    }
+                }
+
+                Section {
+                    Layout.fillWidth: true
                     visible: page.tab === "web"
                     icon: "language"
                     title: page.t("launcher.section.web")

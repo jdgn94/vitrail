@@ -68,6 +68,9 @@ qt6-wayland
 # The downloads watcher: notifications to the bar and the buttons they carry
 python-dbus
 python-gobject
+# GTK 4: the helper that offers a styled copy as text and HTML at once
+# (vitrail/richclip.py; wl-copy offers one type).
+gtk4
 # The file manager "Open folder" and "Open file" use (the desktop's choice is
 # read with xdg-mime; this is the fallback installed with Vitrail)
 nautilus

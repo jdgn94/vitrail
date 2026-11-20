@@ -12,6 +12,14 @@ Item {
     property var strings: ({})
     property var entries: []
     property var thumbs: ({})
+    // What the shell read for the hover card, by entry id (text entries).
+    property var previews: ({})
+    property bool previewOn: true
+    // The screen and the panel in it (scene coordinates): the card sits beside
+    // the panel, on the side with room.
+    property real screenWidth: 0
+    property real screenHeight: 0
+    property rect bounds: Qt.rect(0, 0, 0, 0)
     property bool active: false
     property int max: 100
     property string kindFilter: "all"
@@ -24,10 +32,27 @@ Item {
     signal removeRequested(string id)
     signal clearRequested()
     signal thumbRequested(string id)
+    signal previewRequested(string id)
     signal closeRequested()
 
     readonly property var unique: Clipboard.unique(root.entries)
     readonly property var shown: Clipboard.filter(root.unique, root.query, root.kindFilter)
+    // The entry the hover card is for: the one under the pointer, or the one
+    // the arrow keys are on once they were used.
+    property string previewId: ""
+    property var previewRow: null
+    property string hoveredId: ""
+    property bool navigated: false
+    readonly property var previewEntry: {
+        for (var index = 0; index < root.shown.length; index++) {
+            if (root.shown[index].id === root.previewId)
+                return root.shown[index]
+        }
+        return null
+    }
+    readonly property bool previewImage: root.previewEntry !== null && Clipboard.imageOf(root.previewEntry.preview) !== null
+    readonly property var previewData: root.previewEntry === null ? null
+        : (root.previewImage ? ({ kind: "image" }) : (root.previews[root.previewId] || null))
     readonly property int thumbSize: VitrailTokens.size("display") + VitrailTokens.gap("md")
 
     implicitHeight: content.implicitHeight
@@ -37,8 +62,88 @@ Item {
         return value === undefined ? key : value
     }
 
-    onShownChanged: if (root.selected >= root.shown.length)
-        root.selected = Math.max(0, root.shown.length - 1)
+    onShownChanged: {
+        if (root.selected >= root.shown.length)
+            root.selected = Math.max(0, root.shown.length - 1)
+        root.hidePreview()
+    }
+
+    function hidePreview() {
+        showTimer.stop()
+        root.previewId = ""
+        root.previewRow = null
+    }
+
+    // The pointer entered or left a row: the card follows after the tooltip delay.
+    function rowHover(row, over) {
+        if (!root.previewOn)
+            return
+        var id = row.modelData.id
+        if (over) {
+            root.navigated = false
+            root.hoveredId = id
+            root.previewRow = row
+            leaveTimer.stop()
+            showTimer.pending = id
+            showTimer.interval = root.previewId === "" ? VitrailTokens.duration("tooltip") : 0
+            showTimer.restart()
+        } else if (root.hoveredId === id) {
+            root.hoveredId = ""
+            leaveTimer.restart()
+        }
+    }
+
+    // The keyboard moved the selection: show that row's card (cheap: the same
+    // cached read).
+    function previewSelected() {
+        if (!root.previewOn || root.shown.length === 0)
+            return
+        root.navigated = true
+        var entry = root.shown[Math.min(root.selected, root.shown.length - 1)]
+        root.previewRow = list.itemAtIndex(root.selected)
+        showTimer.pending = entry.id
+        showTimer.interval = 0
+        showTimer.restart()
+    }
+
+    function placeCard() {
+        if (root.previewId === "" || root.screenWidth <= 0)
+            return
+        var look = VitrailTokens.clipboard.preview
+        var origin = root.mapToItem(null, 0, 0)
+        var row = root.previewRow
+        var anchor = row ? row.mapToItem(null, 0, row.height / 2).y : origin.y
+        var right = root.bounds.x + root.bounds.width + look.gap
+        var x = right + card.width <= root.screenWidth - look.margin ? right : root.bounds.x - look.gap - card.width
+        var y = Math.max(look.margin, Math.min(anchor - card.height / 2, root.screenHeight - card.height - look.margin))
+        card.x = x - origin.x
+        card.y = y - origin.y
+    }
+
+    onPreviewIdChanged: root.placeCard()
+    onPreviewDataChanged: root.placeCard()
+
+    Timer {
+        id: showTimer
+
+        property string pending: ""
+
+        onTriggered: {
+            root.previewId = showTimer.pending
+            var entry = root.previewEntry
+            if (entry !== null && !root.previewImage && !root.previews[entry.id])
+                root.previewRequested(entry.id)
+        }
+    }
+
+    // Moving from one row to the next keeps the card; leaving the list closes it.
+    Timer {
+        id: leaveTimer
+
+        interval: VitrailTokens.duration("fast")
+        onTriggered: if (root.hoveredId === "" && !root.navigated)
+            root.hidePreview()
+    }
 
     onActiveChanged: {
         if (!root.active)
@@ -47,6 +152,8 @@ Item {
         root.kindFilter = "all"
         root.selected = 0
         root.confirmingClear = false
+        root.navigated = false
+        root.hidePreview()
         search.text = ""
         search.forceActiveFocus()
     }
@@ -55,6 +162,7 @@ Item {
         if (root.shown.length === 0)
             return
         root.selected = (root.selected + delta + root.shown.length) % root.shown.length
+        root.previewSelected()
     }
 
     function pick(mode) {
@@ -214,6 +322,8 @@ Item {
 
                 HoverHandler {
                     id: rowHover
+
+                    onHoveredChanged: root.rowHover(row, rowHover.hovered)
                 }
 
                 RowLayout {
@@ -320,5 +430,16 @@ Item {
             elide: Text.ElideRight
             text: root.t("clipboard.hint")
         }
+    }
+
+    // The hover card, beside the panel (outside this item's own box).
+    ClipboardPreview {
+        id: card
+
+        z: 10
+        shown: root.previewOn && root.previewId !== ""
+        preview: root.previewData
+        image: root.previewImage ? (root.thumbs[root.previewId] || "") : ""
+        onImplicitHeightChanged: root.placeCard()
     }
 }

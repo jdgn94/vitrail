@@ -271,7 +271,7 @@ FocusScope {
             Hyprland.dispatch("focuswindow address:0x" + String(run.address).replace(/^0x/, ""))
             break
         case "clip":
-            root.detach(Commands.clipCopy(run.id))
+            root.detach(Commands.clipCopyRich(run.id, Quickshell.shellDir + "/.."))
             break
         case "wallpaper":
             root.runCli(["wallpaper", "pick", run.path])

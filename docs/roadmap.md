@@ -134,6 +134,13 @@ and whole-history delete), an emoji browser built from Unicode + CLDR data
 nine groups, and a colour tab with the last ten colours, every output format
 (HEX, HEX8, RGB, RGBA, HSL, HSLA) and a `hyprpicker` screen picker; picking a
 colour copies it at once.
+Rich copies: `wl-paste --type text/html --watch vitrail clipboard store` keeps
+the source's HTML in `~/.cache/vitrail/clipboard/<sha256 of the text>.html`
+(`vitrail/richclip.py`, 1 MiB per copy, 500 files, pruned at every bar start and
+on delete/wipe). Picking offers text and HTML at once (`vitrail clipboard copy`,
+a GTK 4 helper; the terminal pick stays plain), and hovering a row opens a
+preview card with the sanitized HTML drawn as Qt rich text, or the image.
+`clipboardRich` and `clipboardPreview` (default on) switch the two off.
 
 ### 0.5 acceptance
 

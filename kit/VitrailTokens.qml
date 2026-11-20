@@ -42,6 +42,7 @@ QtObject {
     readonly property var monitorEdit: Tokens.monitorEdit
     readonly property var desktopEdit: Tokens.desktopEdit
     readonly property var capture: Tokens.capture
+    readonly property var clipboard: Tokens.clipboard
     readonly property var field: Tokens.field
     readonly property var launcher: Tokens.launcher
     readonly property var media: Tokens.media

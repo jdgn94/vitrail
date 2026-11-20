@@ -263,6 +263,15 @@ var capture = {
     }
 }
 
+// The clipboard panel's hover preview: the card shows a copy with its own style
+// (or its image) beside the hovered row. `width` and `height` bound the card,
+// `lines` the text it shows, `maxFont` the biggest font a copied style may use
+// (bigger ones are scaled down to it), `gap` px from the panel and `margin`
+// px kept from the screen's edge.
+var clipboard = {
+    preview: { width: 420, height: 340, lines: 14, maxFont: 28, gap: 12, margin: 12, paper: 14 }
+}
+
 // The media player (bar/media). Lengths are px, times ms.
 // disc: `size` of the cover, `pad` of room around it for the ring, `marks`
 // dashes in the ring, `gap` from the cover to the ring, `dot` the mark's

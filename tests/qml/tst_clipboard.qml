@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import "../../bar/clipboard/clipboard.js" as Clipboard
+import "../../bar/clipboard/rich.js" as Rich
 
 // The clipboard panel's rules: what a preview is, what the search keeps and
 // where the card sits next to the pointer.
@@ -89,5 +90,63 @@ TestCase {
         var place = Clipboard.clamp(10, 10, 3000, 2000, 2560, 1440, 12)
         compare(place.x, 12)
         compare(place.y, 12)
+    }
+
+    function test_colours_become_hex_and_transparent_ones_disappear() {
+        compare(Rich.color("rgb(255, 0, 128)"), "#ff0080")
+        compare(Rich.color("rgba(0, 0, 255, 0.5)"), "#0000ff")
+        compare(Rich.color("rgba(0, 0, 255, 0)"), "")
+        compare(Rich.color("#abc"), "#aabbcc")
+        compare(Rich.color("transparent"), "")
+        compare(Rich.color("red"), "#ff0000")
+    }
+
+    function test_lengths_become_px() {
+        compare(Rich.px("12pt", 16), 16)
+        compare(Rich.px("2em", 16), 32)
+        compare(Rich.px("150%", 20), 30)
+        compare(Rich.px("large", 16), 18)
+        compare(Rich.px("14px", 16), 14)
+        compare(Rich.px("nonsense", 16), -1)
+    }
+
+    function test_a_style_keeps_only_what_text_can_draw() {
+        var out = Rich.reduceStyle("color: rgb(255, 0, 0); font-family: Georgia, serif; font-size: 12pt; "
+            + "font-weight: 700; font-style: oblique; letter-spacing: 0.1em; text-decoration: underline; "
+            + "position: fixed; line-height: 1.5", 1, 40)
+        compare(out, "color: #ff0000; font-family: Georgia, serif; font-size: 16px; font-weight: 700; "
+            + "font-style: italic; letter-spacing: 1.6px; text-decoration: underline; line-height: 150%")
+    }
+
+    function test_sizes_are_capped_and_scaled() {
+        compare(Rich.reduceStyle("font-size: 200px", 1, 40), "font-size: 40px")
+        compare(Rich.reduceStyle("font-size: 40px", 0.5, 40), "font-size: 20px")
+        compare(Rich.reduceStyle("font-size: 2px", 1, 40), "font-size: 6px")
+    }
+
+    function test_a_big_copy_is_scaled_to_fit_the_card() {
+        var html = '<span style="font-size: 96px">Big</span> <span style="font-size: 48px">half</span>'
+        compare(Rich.largest(html), 96)
+        var out = Rich.fit(html, 32)
+        verify(out.indexOf("font-size: 32px") >= 0)
+        verify(out.indexOf("font-size: 16px") >= 0)
+        compare(Rich.fit('<b style="font-size: 12px">x</b>', 32), '<b style="font-size: 12px">x</b>')
+    }
+
+    function test_quotes_escaped_by_the_sanitizer_are_read_back() {
+        compare(Rich.map('<p style="font-family: &#x27;DejaVu Sans Mono&#x27;,monospace">t</p>', 1, 40),
+                "<p style=\"font-family: 'DejaVu Sans Mono',monospace\">t</p>")
+    }
+
+    function test_a_style_with_nothing_drawable_is_removed() {
+        compare(Rich.map('<p style="position: fixed">t</p>', 1, 40), "<p>t</p>")
+    }
+
+    function test_text_colours_pick_the_page_they_were_written_for() {
+        compare(Rich.backdrop('<span style="color: rgb(0, 0, 0)">a</span>'), "light")
+        compare(Rich.backdrop('<span style="color: #ffffff">a</span>'), "dark")
+        compare(Rich.backdrop('<span style="color: #808080">a</span>'), "")
+        compare(Rich.backdrop("<b>none</b>"), "")
+        compare(Rich.backdrop('<span style="background-color: #000000">a</span>'), "")
     }
 }

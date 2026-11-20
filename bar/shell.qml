@@ -162,6 +162,8 @@ ShellRoot {
     property var clipboardEntries: []
     property var clipboardThumbs: ({})
     property var clipboardPending: ({})
+    // What the hover card shows for text entries, by id (cleared at every opening).
+    property var clipboardPreviews: ({})
     // The other two tabs: the emoji set, and the colour tab's state.
     property var clipboardEmojis: []
     // Loaded the first time the emoji tab opens: assets/emoji.json is 520 KB
@@ -594,6 +596,7 @@ ShellRoot {
         if (shell.clipboardMode === "emoji")
             shell.ensureEmojis()
         shell.clipboardScreen = screen
+        shell.clipboardPreviews = ({})
         shell.clipboardOpen = true
         cursorRun.run(["hyprctl", "cursorpos"], "")
         clipList.run(Commands.clipList(), "")
@@ -653,18 +656,27 @@ ShellRoot {
     }
 
     function pickClip(id, mode) {
-        var command = mode === "terminal" ? Commands.clipCopyTrimmed(id) : Commands.clipCopy(id)
+        var command = mode === "terminal" ? Commands.clipCopyTrimmed(id)
+                                          : Commands.clipCopyRich(id, Quickshell.shellDir + "/..")
         clipPick.run(command, id + "\t" + mode)
         shell.clipboardOpen = false
     }
 
+    // The hover card of a text entry: its text and, when the source offered
+    // HTML, its sanitized style.
+    function requestPreview(id) {
+        if (shell.clipboardPreviews[id])
+            return
+        previewRun.run(Commands.clipPreview(id, Quickshell.shellDir + "/.."), id)
+    }
+
     function removeClip(id) {
-        clipRemove.run(Commands.clipDelete(id), id)
+        clipRemove.run(Commands.clipDelete(id, Quickshell.shellDir + "/.."), id)
     }
 
     function clearClips() {
         shell.clipboardEntries = []
-        clipClear.run(Commands.clipWipe(), "")
+        clipClear.run(Commands.clipWipe(Quickshell.shellDir + "/.."), "")
     }
 
     // The button of a popup on a screen's bar, for popups opened without one.
@@ -1792,6 +1804,13 @@ ShellRoot {
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
     }
 
+    // Styled copies the history no longer has are dropped at every start.
+    Process {
+        running: true
+        command: ["python3", "-m", "vitrail.cli", "clipboard", "prune"]
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
     // The VPN's login rule is a systemd user unit (`vitrail-vpn-autostart.service`,
     // installed with the dotfiles), not a process of the bar: the tunnel must
     // come up after a login even when Quickshell was never started, and a bar
@@ -1996,6 +2015,26 @@ ShellRoot {
                 next[key] = shell.clipboardThumbs[key]
             next[parts[0]] = "file://" + parts[1]
             shell.clipboardThumbs = next
+        }
+    }
+
+    AsyncRun {
+        id: previewRun
+
+        onFinished: function (tag, output) {
+            var document = null
+            try {
+                document = JSON.parse(String(output))
+            } catch (error) {
+                document = null
+            }
+            if (!document)
+                return
+            var next = {}
+            for (var key in shell.clipboardPreviews)
+                next[key] = shell.clipboardPreviews[key]
+            next[tag] = document
+            shell.clipboardPreviews = next
         }
     }
 
@@ -5089,6 +5128,10 @@ ShellRoot {
                         opacityLevel: shell.barOpacity
                         entries: shell.clipboardEntries
                         thumbs: shell.clipboardThumbs
+                        previews: shell.clipboardPreviews
+                        previewOn: shell.prefBool("clipboardPreview", true)
+                        screenWidth: monitor.modelData.width
+                        screenHeight: monitor.modelData.height
                         emojis: shell.clipboardEmojis
                         recent: shell.clipboardRecent
                         color: shell.clipboardColor
@@ -5101,6 +5144,7 @@ ShellRoot {
                         onClearRequested: shell.clearClips()
                         onCloseRequested: shell.clipboardOpen = false
                         onThumbRequested: function (id) { shell.requestThumb(id) }
+                        onPreviewRequested: function (id) { shell.requestPreview(id) }
                         onEmojiPicked: function (emoji) { shell.pickEmoji(emoji) }
                         onColorCopied: function (text) { shell.copyText(text) }
                         onColorPickRequested: shell.pickColor()

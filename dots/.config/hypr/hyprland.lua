@@ -200,6 +200,10 @@ hl.on("hyprland.start", function()
     hl.exec_cmd(home .. "/.local/bin/vitrail-bar")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
     hl.exec_cmd("wl-paste --type image --watch cliphist store")
+    -- The styled variant of a copy (HTML beside the text), for the clipboard
+    -- panel's preview and for pasting with the source's style. Runs only when
+    -- the clipboard offers text/html.
+    hl.exec_cmd("wl-paste --type text/html --watch " .. home .. "/.local/bin/vitrail clipboard store")
     -- The saved monitor layout, so it survives a logout. --force: the stamp
     -- that keeps other preference writes from re-applying it does not know
     -- this is a new session.
