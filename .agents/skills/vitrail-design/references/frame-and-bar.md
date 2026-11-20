@@ -28,6 +28,15 @@
   shallower depth bends like a base fillet (sweep 1), the deeper one like a
   tab corner (sweep 0). A profile touching an end of the edge takes that
   corner.
+- Two tabs on perpendicular edges can share one corner (a top bar's end island
+  stretched into the corner, the notification panel starting from the bar's
+  inner face). The tab that runs into the corner then hands it to the
+  perpendicular edge (`Frame.corners()`): its corner region becomes a tab
+  there, so the outline steps from one inner face to the other. Left on its own
+  edge, both would round the same corner and the crossing arcs would be filled
+  as a hole — a chip cut out of the frame corner, ringed by the glass stroke.
+  A tab on the same edge that overlaps it keeps the corner: it borrows the
+  depth the tab gives it.
 - Insets/corner animate in `VitrailFrame` (`leftInset`…, `corner`); anything
   glued to the frame must follow those animated values.
 

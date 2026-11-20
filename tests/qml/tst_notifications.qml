@@ -26,8 +26,23 @@ TestCase {
     }
 
     function test_toasts_hang_from_the_top_of_that_side() {
-        compare(Notifications.stackPosition("left", "right"), "top-left")
-        compare(Notifications.stackPosition("left", "left"), "top-right")
+        compare(Notifications.stackPosition("left"), "top-left")
+        compare(Notifications.stackPosition("right"), "top-right")
+    }
+
+    function test_a_docked_bar_on_the_top_turns_the_toasts_to_the_side() {
+        // The toast leaves the frame through the notification side, below the
+        // bar, like the panel, instead of fusing with the bar's island.
+        compare(Notifications.stackEdge("right", "top", true), "right")
+        compare(Notifications.stackEdge("left", "top", true), "left")
+    }
+
+    function test_elsewhere_the_toasts_still_hang_from_the_top() {
+        compare(Notifications.stackEdge("right", "bottom", true), "top")
+        compare(Notifications.stackEdge("right", "left", true), "top")
+        compare(Notifications.stackEdge("right", "right", true), "top")
+        // A floating bar leaves the stack its own island, growing out of the bar.
+        compare(Notifications.stackEdge("right", "top", false), "top")
     }
 
     function test_the_preference_booleans_are_read_as_they_come() {

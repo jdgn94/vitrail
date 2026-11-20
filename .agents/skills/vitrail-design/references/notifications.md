@@ -16,8 +16,13 @@ history the queue still holds). A bell beside the launcher opens the centre.
   pushes; a full-screen Overlay layer (`vitrail-notifications`, mask = stack,
   `keyboardFocus: OnDemand` for replies) places the stack with
   `Frame.stackRect()`. It opens and closes with `stackLiquid` like a popup
-  (see popups.md): a liquid tab in glass, a smooth fade in solid; floating, an
-  island with a neck to the bar when the bar is on its edge.
+  (see popups.md): a liquid tab in glass, a smooth fade in solid. Docked, the
+  cards come out of `Notifications.stackEdge(side, barEdge, docked)`: their own
+  edge (the top), unless the bar is docked there too — a bar at the top — when
+  they come out of the notification side, from below the bar, so the frame
+  grows that side's tongue around them exactly as it does for the panel
+  instead of fusing them into the bar's island. Floating, the stack is an
+  island growing out of the bar when the bar is on its edge.
 
 ## Panel
 
@@ -81,8 +86,12 @@ history the queue still holds). A bell beside the launcher opens the centre.
 
 - Position pref `notificationPosition` = `top|bottom` + `-left|-center|-right`
   (default `top-right`); `notificationMax` from `tokens.ranges.notifications`.
+  Both the stack and the panel use the monitor's resolved notification side
+  (`monitor.notificationSide`, so a monitor's own side wins).
 - One container holds the cards: a frame tab when docked, a `VitrailSurface`
-  island when floating. Cards: `surfaceHigh` at the surface variant's `raised` alpha
+  island when floating. A docked tab comes out of the whole side when it is
+  the panel's (a bar at the top): no drop, no spread along the edge, only the
+  depth reveals. Cards: `surfaceHigh` at the surface variant's `raised` alpha
   (`raisedHover` hovered; opaque cards take a tint), radius
   0.85 × token, app icon in a 10 % foreground circle (`info` glyph fallback).
 - Toast card (`NotificationCard`): collapsed: title • age (`now`, `%1 min`,

@@ -150,6 +150,139 @@ function profile(bumps, lo, hi) {
     return out.length > 0 ? out : [{ s: lo, e: hi, d: 0, k: 1 }]
 }
 
+// --- corners ----------------------------------------------------------------
+// A tab spans along its edge and reaches `depth` in from that edge's hole
+// line. The two ends of an edge are its `near` one (the corner the walk leaves
+// it at, into `next`) and its `far` one (the corner it entered from, out of
+// `prev`). See holePath's walk order: left, top, right, bottom.
+function endsOf(edge, width, height, hole) {
+    var horizontal = edge === "top" || edge === "bottom"
+    var lo = horizontal ? hole.left : hole.top
+    var hi = horizontal ? width - hole.right : height - hole.bottom
+    switch (edge) {
+    case "top": return { lo: lo, hi: hi, near: hi, far: lo, next: "right", prev: "left",
+                         nearHigh: true, farHigh: false }
+    case "right": return { lo: lo, hi: hi, near: hi, far: lo, next: "bottom", prev: "top",
+                           nearHigh: true, farHigh: false }
+    case "bottom": return { lo: lo, hi: hi, near: lo, far: hi, next: "left", prev: "right",
+                            nearHigh: false, farHigh: true }
+    default: return { lo: lo, hi: hi, near: lo, far: hi, next: "top", prev: "bottom",
+                      nearHigh: false, farHigh: true }
+    }
+}
+
+// The tab's span along its own edge, low to high, in screen coordinates.
+function spanOf(tab) {
+    var r = tab.rect
+    return tab.edge === "top" || tab.edge === "bottom"
+        ? [Math.min(r.x, r.x + r.width), Math.max(r.x, r.x + r.width)]
+        : [Math.min(r.y, r.y + r.height), Math.max(r.y, r.y + r.height)]
+}
+
+// The line where a tab of depth d ends, away from its own edge.
+function innerLine(edge, d, width, height, hole) {
+    switch (edge) {
+    case "bottom": return height - hole.bottom - d
+    case "left": return hole.left + d
+    case "right": return width - hole.right - d
+    default: return hole.top + d
+    }
+}
+
+// A tab's depth from its edge's hole line: full at reveal 1, and as revealed.
+function depthsOf(tab, width, height, hole) {
+    var r = tab.rect
+    var full
+    switch (tab.edge) {
+    case "bottom": full = height - Math.min(r.y, r.y + r.height) - hole.bottom; break
+    case "left": full = Math.max(r.x, r.x + r.width) - hole.left; break
+    case "right": full = width - Math.min(r.x, r.x + r.width) - hole.right; break
+    default: full = Math.max(r.y, r.y + r.height) - hole.top
+    }
+    var base = Math.min(full, tab.base || 0)
+    var reveal = tab.reveal === undefined ? 1 : tab.reveal
+    return { full: full, d: base + (full - base) * reveal }
+}
+
+// A tab that runs into the end of its edge while a tab of the perpendicular
+// edge starts from its inner face cannot stay a tab of its own edge: its inner
+// face is no boundary there, and both edges would round the same corner, the
+// two fillets crossing into a chip cut out of the frame corner. It becomes a
+// tab of the perpendicular edge instead, whose tongue runs on past the corner,
+// so the corner steps from one inner face to the other. `near` picks the
+// corner: true for the edge's near end, false for its far one. Returns
+// { other, rect } for that tab, or null when the corner stays.
+function handedOff(tab, width, height, hole, near, tabs) {
+    var ends = endsOf(tab.edge, width, height, hole)
+    var span = spanOf(tab)
+    var dep = depthsOf(tab, width, height, hole)
+    var corner = near ? ends.near : ends.far
+    var high = near ? ends.nearHigh : ends.farHigh
+    if (high ? span[1] < corner : span[0] > corner)
+        return null
+    var nearEdge = high ? span[0] : span[1]
+    var depth = Math.abs(corner - nearEdge)
+    if (!(depth > 0.01))
+        return null
+
+    // The perpendicular edge, its corner, and the tab that starts there.
+    var other = near ? ends.next : ends.prev
+    var inner = innerLine(tab.edge, dep.full, width, height, hole)
+    var otherEnds = endsOf(other, width, height, hole)
+    var at = near ? otherEnds.far : otherEnds.near
+    var atHigh = near ? otherEnds.farHigh : otherEnds.nearHigh
+    var touches = tabs.some(function (o) {
+        if (o.edge !== other)
+            return false
+        var os = spanOf(o)
+        return Math.abs((atHigh ? os[1] : os[0]) - inner) < 0.5
+               && depthsOf(o, width, height, hole).full >= depth
+    })
+    if (!touches)
+        return null
+
+    // Another tab on this edge would lose the depth this one gives it.
+    var overlapping = tabs.some(function (o) {
+        if (o === tab || o.edge !== tab.edge)
+            return false
+        var os = spanOf(o)
+        return os[0] < span[1] - 0.5 && os[1] > span[0] + 0.5
+    })
+    if (overlapping)
+        return null
+
+    // The corner region, as a tab of the perpendicular edge.
+    var from = innerLine(tab.edge, dep.d, width, height, hole)
+    var lo = Math.max(otherEnds.lo, Math.min(at, from))
+    var hi = Math.min(otherEnds.hi, Math.max(at, from))
+    if (!(hi - lo > 0.01))
+        return null
+    var rect
+    switch (other) {
+    case "right": rect = Qt.rect(width - hole.right - depth, lo, depth, hi - lo); break
+    case "left": rect = Qt.rect(hole.left, lo, depth, hi - lo); break
+    case "bottom": rect = Qt.rect(lo, height - hole.bottom - depth, hi - lo, depth); break
+    default: rect = Qt.rect(lo, hole.top, hi - lo, depth)
+    }
+    return { other: other, rect: rect }
+}
+
+// Hole tabs with every corner hand-off resolved (see handedOff).
+function corners(width, height, hole, tabs) {
+    var out = []
+    var moved = []
+    tabs.forEach(function (tab) {
+        var hand = handedOff(tab, width, height, hole, true, tabs)
+                   || handedOff(tab, width, height, hole, false, tabs)
+        if (hand === null) {
+            out.push(tab)
+            return
+        }
+        moved.push({ edge: hand.other, rect: hand.rect, reveal: 1, swell: tab.swell || 1 })
+    })
+    return out.concat(moved)
+}
+
 // SVG outline of the content hole. Each tab { edge, rect, reveal } is the
 // screen rect of a card docked on that edge (a bar popup, the notification
 // stack, an island of the bar): the hole bends around it, so the frame grows
@@ -165,6 +298,8 @@ function holePath(width, height, hole, radius, tabs) {
     var R = radius
     var frames = {}
     var bumps = {}
+
+    tabs = corners(width, height, hole, tabs || [])
     var profiles = {}
     var out = []
 

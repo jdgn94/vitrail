@@ -3284,11 +3284,15 @@ ShellRoot {
                         // Docked, the notification stack, the OSD and the notification panel are tabs of the frame too.
                         tabs: (dockLayer.frameTab ? [dockLayer.frameTab] : [])
                               .concat(stackHolder.docked && stackLiquid.shown && stackHolder.height > 0
-                              ? [{ edge: stackHolder.place.edge, reveal: stackLiquid.look.reveal,
+                              ? [{ edge: stackHolder.edge, reveal: stackLiquid.look.reveal,
                                    swell: stackLiquid.look.swell,
-                                   rect: Frame.liquidRect(Qt.rect(stackHolder.x, stackHolder.y, stackHolder.width, stackHolder.height),
-                                                          stackHolder.place.edge, stackHolder.origin,
-                                                          stackLiquid.look.spread, 0, 0) }]
+                                   // Out of the edge it hangs from, from a drop;
+                                   // out of the side, the whole side (like the panel).
+                                   rect: stackHolder.edge === stackHolder.place.edge
+                                         ? Frame.liquidRect(Qt.rect(stackHolder.x, stackHolder.y, stackHolder.width, stackHolder.height),
+                                                            stackHolder.edge, stackHolder.origin,
+                                                            stackLiquid.look.spread, 0, 0)
+                                         : Qt.rect(stackHolder.x, stackHolder.y, stackHolder.width, stackHolder.height) }]
                               : []).concat(osd.tabs).concat(notificationLayer.tabs)
 
                         // Where the pointer is while it is on the bar: over an
@@ -4549,17 +4553,25 @@ ShellRoot {
                         // Height of the last stack shown: it keeps it while it closes.
                         property real keptHeight: 0
 
-                        readonly property string position: Notifications.stackPosition(
-                            shell.prefs.notificationPosition, shell.prefs.barEdge || "left")
+                        readonly property string position: Notifications.stackPosition(monitor.notificationSide)
                         readonly property bool docked: bar.style.docked
+                        // The edge the cards come out of: the one they hang
+                        // from, or the notification side under a bar at the top
+                        // (the panel's own edge).
+                        readonly property string edge: Notifications.stackEdge(monitor.notificationSide,
+                                                                               bar.layout.edge, stackHolder.docked)
                         readonly property var place: Frame.stackRect(stackHolder.position, parent.width, parent.height,
                                                                      stack.implicitWidth, stackHolder.height,
                                                                      bar.layout, stackHolder.docked,
                                                                      VitrailTokens.gap("md"),
                                                                      bar.showBar ? bar.islandRects : [])
-                        // It grows from a drop as wide as the bar, at its middle.
-                        readonly property var origin: Qt.rect(stackHolder.x + (stackHolder.width - VitrailTokens.bar) / 2,
-                                                              stackHolder.y, VitrailTokens.bar, stackHolder.height)
+                        // Out of its own edge, it grows from a drop as wide as
+                        // the bar, at its middle; out of the side, from the
+                        // whole side.
+                        readonly property var origin: stackHolder.edge === stackHolder.place.edge
+                                                      ? Qt.rect(stackHolder.x + (stackHolder.width - VitrailTokens.bar) / 2,
+                                                                stackHolder.y, VitrailTokens.bar, stackHolder.height)
+                                                      : null
                         // The bar or island a floating stack leaves, when the bar is on its edge.
                         readonly property var source: {
                             if (stackHolder.docked || !bar.showBar || bar.layout.edge !== stackHolder.place.edge)

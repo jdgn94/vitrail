@@ -13,9 +13,19 @@ function sideFor(position, barEdge) {
     return want
 }
 
-// Toasts hang from the top of that side; the panel fills the whole height.
-function stackPosition(position, barEdge) {
-    return "top-" + sideFor(position, barEdge)
+// Toasts hang from the top of the notification side; the panel fills the same
+// side, below the bar.
+function stackPosition(side) {
+    return "top-" + side
+}
+
+// The edge the toasts come out of. Docked, when the bar sits on the edge they
+// hang from (a bar at the top), they come out of the notification side
+// instead, below the bar: the frame grows that side's tongue around them, like
+// the panel, rather than fusing them into the bar's own island. A floating bar
+// leaves the stack its island, growing out of the bar.
+function stackEdge(side, barEdge, docked) {
+    return docked && barEdge === "top" ? side : "top"
 }
 
 // A notification is listed but never raised as a toast while the panel is

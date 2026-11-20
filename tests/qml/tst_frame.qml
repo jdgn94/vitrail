@@ -194,6 +194,28 @@ TestCase {
                 + " L184 26 A10 10 0 0 1 194 36 L194 84 A10 10 0 0 1 184 94 L46 94 A10 10 0 0 1 36 84 Z")
     }
 
+    function test_an_island_hands_the_top_right_corner_to_the_panel() {
+        // The bar's end island (top, flush with the right side) and the
+        // notification panel (right, full height from the bar's inner face):
+        // the corner steps from one inner face to the other, with no chip.
+        var island = { edge: "top", rect: Qt.rect(332, 0, 68, 36), reveal: 1 }
+        var panel = { edge: "right", rect: Qt.rect(200, 36, 194, 258), reveal: 1 }
+        compare(Frame.holePath(400, 300, tall, 10, [island, panel]),
+                "M36 16 A10 10 0 0 1 46 6 L322 6 A10 10 0 0 1 332 16"
+                + " L332 26 A10 10 0 0 1 322 36 L210 36 A10 10 0 0 0 200 46"
+                + " L200 284 A10 10 0 0 1 190 294 L46 294 A10 10 0 0 1 36 284 Z")
+    }
+
+    function test_an_island_hands_the_top_left_corner_to_the_panel() {
+        // The same, with the panel on the left and the bar's start island.
+        var island = { edge: "top", rect: Qt.rect(0, 0, 68, 36), reveal: 1 }
+        var panel = { edge: "left", rect: Qt.rect(6, 36, 194, 258), reveal: 1 }
+        compare(Frame.holePath(400, 300, tall, 10, [island, panel]),
+                "M210 294 A10 10 0 0 1 200 284 L200 46 A10 10 0 0 0 190 36"
+                + " L78 36 A10 10 0 0 1 68 26 L68 16 A10 10 0 0 1 78 6 L384 6"
+                + " A10 10 0 0 1 394 16 L394 284 A10 10 0 0 1 384 294 Z")
+    }
+
     readonly property var tall: ({ left: 36, top: 6, right: 6, bottom: 6 })
     readonly property string rest: " L184 6 A10 10 0 0 1 194 16 L194 184 A10 10 0 0 1 184 194"
                                    + " L46 194 A10 10 0 0 1 36 184 Z"
