@@ -11,16 +11,16 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 
 ### Antes de empezar
 
-- [ ] Desde la raíz del repo (los comandos `uv run` lo necesitan):
+- [s] Desde la raíz del repo (los comandos `uv run` lo necesitan):
       `cd ~/Projects/vitrail`
-- [ ] El árbol está enlazado: `ls -l ~/.local/bin/vitrail-settings ~/.local/bin/vitrail-apply-settings`
+- [x] El árbol está enlazado: `ls -l ~/.local/bin/vitrail-settings ~/.local/bin/vitrail-apply-settings`
       (deben apuntar a `bin/vitrail-settings` y `scripts/apply-settings.sh`).
-- [ ] El bar corre el código nuevo: `pkill quickshell` y vuelve a lanzarlo con
+- [x] El bar corre el código nuevo: `pkill quickshell` y vuelve a lanzarlo con
       tu atajo habitual. La ventana se abre con `./bin/vitrail-settings`.
-- [ ] El watcher está armado: `systemctl --user status vitrail-settings.path`
+- [x] El watcher está armado: `systemctl --user status vitrail-settings.path`
       → `active (waiting)`. El servicio que aplica es
       `vitrail-settings.service` (oneshot, escribe su log en el journal).
-- [ ] Los logs, en otra terminal: `journalctl --user -u vitrail-settings -f`
+- [x] Los logs, en otra terminal: `journalctl --user -u vitrail-settings -f`
 
 ### 1. Fuente del sistema (shell + GTK/Qt)
 
@@ -72,11 +72,13 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 
 ### 6. Cursor
 
-- [ ] Pestaña **Cursor**: elige un pack instalado (por ejemplo
-      `Bibata-Modern-Classic`) y tamaño `32`.
-- [ ] El puntero cambia **en el acto** (lo aplica `hyprctl setcursor`).
+- [ ] **Cursor**: elige un pack instalado (por ejemplo
+      `Bibata-Modern-Classic`) y tamaño `32`. La lista es una sola: no hay
+      pestañas Normal/Adaptativo.
+- [ ] El puntero del compositor y las apps GTK cambian **en el acto** (lo
+      aplica `hyprctl setcursor`).
 - [ ] `cat ~/.config/environment.d/20-vitrail-cursor.conf` →
-      `XCURSOR_THEME=Bibata-Modern-Classic` y `XCURSOR_SIZE=32`.
+      `XCURSOR_THEME=vitrail-cursor` y `XCURSOR_SIZE=32`.
 - [ ] Cierra sesión y vuelve a entrar: el cursor sigue siendo ese (se lee de
       `environment.d` en el arranque).
 
@@ -126,28 +128,45 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] Marca P2.2 como hecha en `docs/roadmap.md`
       (`| P2.2 Fonts, icons, cursor …` → `| ✅ P2.2 …`) y borra esta sección.
 
-## P2.10 — Cursor tintado con la paleta (2026-11-04)
+## Cursor adaptativo: una lista y dos interruptores (2026-11-14)
 
-- [ ] **Cursor → Palette tint**: elige `Vitrail · Bibata Modern Classic`.
-      Aparece en la carpeta `~/.local/share/icons/vitrail-Bibata-Modern-Classic`
-      y el puntero cambia: cuerpo claro (`on_surface`) con borde oscuro en tema
-      oscuro; cuerpo oscuro con borde claro en tema claro.
-- [ ] Mano, redimensionar y mover salen en el color de acento (`primary`).
+- [ ] **Cursor → Adaptativo** encendido: el pack elegido se escribe en
+      `~/.local/share/icons/vitrail-cursor` y se enlaza en `~/.icons/vitrail-cursor`;
+      el puntero cambia a cuerpo `primary` (el acento del sistema) en **todas**
+      las formas, con borde `surface`.
+- [ ] **Import .zip**: en el picker de cursor, importa un tema Xcursor
+      (`<tema>/index.theme` + `cursors/`). Aparece en la lista, se escribe en
+      `~/.icons/<tema>` y el mensaje dice "Pack de cursor importado".
+- [ ] **Delete pack**: elimina un pack de usuario (`~/.icons/...` o
+      `~/.local/share/icons/...`); el mensaje dice "Pack de cursor eliminado".
+      Los `vitrail-*` generados y los packs del sistema no se pueden borrar.
+- [ ] **Monocromático**: activo, todas las formas pierden el acento y usan
+      `on_surface`, con borde `surface`. Apagado, vuelven al acento. El
+      interruptor está deshabilitado mientras Adaptativo esté apagado.
+- [ ] Apaga **Adaptativo**: `vitrail-cursor/cursors` pasa a ser un symlink al
+      `cursors/` del pack y el puntero es el original, sin copias.
 - [ ] Cambia el fondo desde Wallpaper: en la siguiente aplicación de ajustes
-      (unos segundos) el cursor se retinta solo; los demás diseños no se tocan.
-- [ ] El tema generado aparece en **Cursor theme** como una entrada más
-      (`Vitrail · …`) y se puede volver a él sin repetir el tinte.
-- [ ] **X11 incluido**: con una app GTK en X11 abierta (o una ventana de
-      `xterm`/`xeyes`), cambia el diseño y comprueba que el puntero sobre ella
-      cambia sin reiniciarla. En la terminal:
-      `xrdb -query | grep Xcursor` debe responder con el tema y el tamaño, y
-      `pgrep -a xsettingsd` debe seguir vivo (se le manda SIGHUP, no se
-      reinicia).
-- [ ] **Own busy spinner**: apágalo (por defecto) y espera con una app que
-      muestre `wait` (p. ej. `sleep 3` en una terminal X11): sale el busy del
-      pack, tintado. Enciéndelo y repite: sale la forma giratoria de Vitrail en
-      el color de acento. El cambio se aplica en el siguiente `fonts apply`.
-- [ ] **Off** devuelve el cursor al pack original.
+      (unos segundos) el cursor se retinta solo, en el mismo nombre, y el
+      compositor lo recarga (cambia a Adwaita y vuelve).
+- [ ] **Sin cerrar sesión**: abre una app desde el lanzador o un atajo de
+      Hyprland y comprueba que nace con el cursor actual (`hyprctl eval` y
+      `systemctl --user set-environment` lo dejan listo).
+- [ ] **Al iniciar sesión**: el cursor ya sale adaptado, sin esperar a que se
+      aplique ningún ajuste. `cat ~/.config/hypr/vitrail-cursor.lua` muestra el
+      tema y el tamaño, y `hyprland.lua` lo carga al principio; su bloque de
+      arranque ejecuta `hyprctl setcursor`.
+- [ ] **Primer inicio tras instalar** (sin `~/.config/hypr/vitrail-cursor.lua`):
+      el bloque de arranque ejecuta `vitrail-apply-settings` una vez, crea el
+      archivo y aplica el cursor.
+- [ ] **X11 incluido**: con una app GTK en X11 abierta (o `xterm`/`xeyes`),
+      cambia el diseño; el puntero sobre ella cambia sin reiniciarla.
+      `xrdb -query | grep Xcursor` responde `vitrail-cursor`.
+- [ ] Una app XWayland/Chromium **ya abierta** (Spotify): sigue con el cursor
+      viejo hasta reiniciarla; tras reiniciarla usa el actual. Es la caché del
+      proceso, no un fallo de la aplicación de ajustes.
+- [ ] Con el split encendido, cada modo usa su pack bajo el mismo nombre:
+      `readlink ~/.local/share/icons/vitrail-cursor/cursors` cambia al cambiar
+      de tema claro/oscuro.
 - [ ] Un pack borrado a mano mientras está elegido: el log dice `refused` y el
       cursor cae en Adwaita, sin dejar el puntero sin tema.
 

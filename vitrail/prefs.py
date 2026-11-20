@@ -246,6 +246,59 @@ def _normalise_positions(config: Path) -> bool:
     return changed
 
 
+def _normalise_cursor(config: Path) -> bool:
+    """`vitrail-<pack>` cursor values become the pack plus the adaptive flag.
+
+    The stable theme's own name is not a pack and stays as it is.
+    """
+    from . import cursor as cursor_engine
+
+    text = _read_text(config / "fonts.ini")
+    if not text:
+        return False
+    values = dict(_items(text))
+    updates: dict[str, str] = {}
+    for key in ("cursorTheme", "cursorThemeLight", "cursorThemeDark"):
+        value = values.get(key, "")
+        if value.startswith(cursor_engine.PREFIX) and value != cursor_engine.STABLE:
+            updates[key] = value[len(cursor_engine.PREFIX) :]
+    if not updates:
+        return False
+    updates["cursorAdaptive"] = "true"
+    _write_keys(config, "fonts", updates)
+    return True
+
+
+def _normalise_icon(config: Path) -> bool:
+    """`vitrail-icons-<pack>[@style]` becomes the pack plus the adaptive flag.
+
+    The solid fill is the default: it paints the folder body with the system
+    colour, as the cursor does. `pack` and `light` stay available as choices.
+    """
+    from . import icons as icon_engine
+
+    text = _read_text(config / "fonts.ini")
+    if not text:
+        return False
+    values = dict(_items(text))
+    updates: dict[str, str] = {}
+    value = values.get("iconTheme", "")
+    if value.startswith(icon_engine.PREFIX):
+        pack, style = icon_engine.split_design(value)
+        if not pack:
+            return False
+        updates["iconTheme"] = pack
+        updates["iconAdaptive"] = "true"
+        if style:
+            updates["iconFill"] = style
+    if values.get("iconFill") in (None, "", "pack") and "iconFill" not in updates:
+        updates["iconFill"] = "solid"
+    if not updates:
+        return False
+    _write_keys(config, "fonts", updates)
+    return True
+
+
 def migrate(config: Path) -> bool:
     """Splits a legacy settings.ini into the per-area files, once.
 
@@ -256,6 +309,8 @@ def migrate(config: Path) -> bool:
     """
     changed = _normalise_positions(config)
     changed = _normalise_dock_magnify(config) or changed
+    changed = _normalise_cursor(config) or changed
+    changed = _normalise_icon(config) or changed
     legacy = config / LEGACY
     if not legacy.exists():
         if changed:
@@ -275,4 +330,8 @@ def migrate(config: Path) -> bool:
                 _write_keys(config, name, missing)
         os.replace(legacy, _unique(config / BACKUP))
         write_schema(config)
+    # A legacy file can carry `cursorTheme=vitrail-X`; normalise after the
+    # split so the new fonts.ini is seen in the same pass.
+    _normalise_cursor(config)
+    _normalise_icon(config)
     return True

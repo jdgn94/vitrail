@@ -53,8 +53,7 @@ class ReadWriteTests(Base):
         prefs.write_pref(self.config, "radius", "9")
         prefs.write_pref(self.config, "barSize", "40")
         prefs.write_pref(self.config, "unmapped", "x")
-        self.assertEqual(
-            prefs.read_prefs(self.config), {"radius": "9", "barSize": "40", "unmapped": "x"})
+        self.assertEqual(prefs.read_prefs(self.config), {"radius": "9", "barSize": "40", "unmapped": "x"})
 
     def test_missing_files_read_as_empty(self) -> None:
         self.assertEqual(prefs.read_prefs(self.config), {})
@@ -67,7 +66,8 @@ class ReadWriteTests(Base):
         self.config.mkdir(parents=True)
         (self.config / "misc.ini").write_text(
             '[misc]\nvpnSettings="{\\"a\\":[1,2],\\"b\\":\\"x\\\\y\\"}"\nquickNotes=["uno","dos"]\nplain=a"b"\n',
-            encoding="utf-8")
+            encoding="utf-8",
+        )
         found = prefs.read_prefs(self.config)
         self.assertEqual(found["vpnSettings"], '{"a":[1,2],"b":"x\\y"}')
         self.assertEqual(found["quickNotes"], '["uno","dos"]')
@@ -75,15 +75,13 @@ class ReadWriteTests(Base):
 
     def test_a_write_replaces_in_place_and_keeps_the_rest(self) -> None:
         self.config.mkdir(parents=True)
-        (self.config / "appearance.ini").write_text(
-            "[appearance]\nradius=14\nspacing=12\n", encoding="utf-8")
+        (self.config / "appearance.ini").write_text("[appearance]\nradius=14\nspacing=12\n", encoding="utf-8")
         prefs.write_pref(self.config, "radius", "9")
         self.assertEqual(self.read("appearance"), "[appearance]\nradius=9\nspacing=12\n")
 
     def test_values_keep_their_equals_signs_and_case(self) -> None:
         prefs.write_pref(self.config, "launcherBangs", "g*Google*https://x/?q=%s")
-        self.assertEqual(
-            prefs.read_prefs(self.config)["launcherBangs"], "g*Google*https://x/?q=%s")
+        self.assertEqual(prefs.read_prefs(self.config)["launcherBangs"], "g*Google*https://x/?q=%s")
 
     def test_remove_drops_only_that_key(self) -> None:
         prefs.write_pref(self.config, "wallpaperSeed", "#112233")
@@ -161,8 +159,7 @@ class MigrationTests(Base):
         self.assertIn("language=es", self.read("language"))
         self.assertIn("future=1", self.read("misc"))
         self.assertFalse((self.config / "settings.ini").exists())
-        self.assertEqual(
-            (self.config / "settings.ini.before-split").read_text(encoding="utf-8"), original)
+        self.assertEqual((self.config / "settings.ini.before-split").read_text(encoding="utf-8"), original)
 
     def test_it_is_idempotent(self) -> None:
         self.legacy("[appearance]\nradius=14\n")
@@ -176,8 +173,7 @@ class MigrationTests(Base):
         self.legacy("[appearance]\nradius=14\nspacing=12\n")
         (self.config / "appearance.ini").write_text("[appearance]\nradius=3\n", encoding="utf-8")
         prefs.migrate(self.config)
-        self.assertEqual(
-            prefs.read_prefs(self.config), {"radius": "3", "spacing": "12"})
+        self.assertEqual(prefs.read_prefs(self.config), {"radius": "3", "spacing": "12"})
 
     def test_an_older_backup_is_never_overwritten(self) -> None:
         self.legacy("[appearance]\nradius=1\n").rename(self.config / "settings.ini.before-split")
@@ -201,8 +197,7 @@ class MigrationTests(Base):
 
     def test_the_real_key_set_is_preserved_exactly(self) -> None:
         text = FIXTURE.read_text(encoding="utf-8")
-        expected = dict(
-            line.split("=", 1) for line in text.splitlines() if "=" in line)
+        expected = dict(line.split("=", 1) for line in text.splitlines() if "=" in line)
         self.legacy(text)
         prefs.migrate(self.config)
         self.assertEqual(prefs.read_prefs(self.config), expected)
@@ -217,6 +212,35 @@ class MigrationTests(Base):
         with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": self.tmp.name}):
             self.assertEqual(cli.main(["migrate"]), 0)
         self.assertIn("radius=14", self.read("appearance"))
+
+    def test_a_vitrail_cursor_becomes_a_pack_plus_adaptive(self) -> None:
+        self.config.mkdir(parents=True)
+        (self.config / "fonts.ini").write_text(
+            "[fonts]\ncursorTheme=vitrail-Bibata\ncursorThemeLight=vitrail-cursor\n", encoding="utf-8"
+        )
+        self.assertTrue(prefs.migrate(self.config))
+        values = prefs.read_prefs(self.config)
+        self.assertEqual(values["cursorTheme"], "Bibata")
+        self.assertEqual(values["cursorThemeLight"], "vitrail-cursor")
+        self.assertEqual(values["cursorAdaptive"], "true")
+        self.assertFalse(prefs.migrate(self.config))
+
+    def test_a_vitrail_icon_theme_becomes_a_pack_plus_adaptive(self) -> None:
+        self.config.mkdir(parents=True)
+        (self.config / "fonts.ini").write_text("[fonts]\niconTheme=vitrail-icons-Adwaita@light\n", encoding="utf-8")
+        self.assertTrue(prefs.migrate(self.config))
+        values = prefs.read_prefs(self.config)
+        self.assertEqual(values["iconTheme"], "Adwaita")
+        self.assertEqual(values["iconAdaptive"], "true")
+        self.assertEqual(values["iconFill"], "light")
+        self.assertFalse(prefs.migrate(self.config))
+
+    def test_the_default_icon_fill_is_solid(self) -> None:
+        self.config.mkdir(parents=True)
+        (self.config / "fonts.ini").write_text("[fonts]\niconTheme=Adwaita\niconFill=pack\n", encoding="utf-8")
+        self.assertTrue(prefs.migrate(self.config))
+        self.assertEqual(prefs.read_prefs(self.config)["iconFill"], "solid")
+        self.assertFalse(prefs.migrate(self.config))
 
 
 if __name__ == "__main__":
@@ -267,9 +291,7 @@ class ValidateTests(Base):
         self.assertIn("newer", issues[0])
 
     def test_the_schema_is_stamped_by_migration(self) -> None:
-        (self.config / "settings.ini").write_text(
-            "[appearance]\nappearance=dark\n", encoding="utf-8"
-        )
+        (self.config / "settings.ini").write_text("[appearance]\nappearance=dark\n", encoding="utf-8")
         prefs.migrate(self.config)
         self.assertEqual(prefs.schema_version(self.config), prefs.SCHEMA)
 
@@ -277,7 +299,5 @@ class ValidateTests(Base):
         self.write("appearance", "[appearance]\nnotAKey=1\n")
         with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": self.tmp.name}):
             self.assertEqual(cli.main(["config", "validate"]), 1)
-            (self.config / "appearance.ini").write_text(
-                "[appearance]\nappearance=dark\n", encoding="utf-8"
-            )
+            (self.config / "appearance.ini").write_text("[appearance]\nappearance=dark\n", encoding="utf-8")
             self.assertEqual(cli.main(["config", "validate"]), 0)

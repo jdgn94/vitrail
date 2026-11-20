@@ -32,6 +32,9 @@ The first distributable release.
   sharp. `dots` keeps its large dabs.
 - System colour: automatic, Material's main hues and a custom colour, as one
   row of chips; the change animation reaches ten seconds on a stepped slider.
+- Cursors: one installed-pack list, Adaptive and Monochrome switches, one
+  stable `vitrail-cursor` theme, and `.zip` import/delete, so a new app reads
+  the current pointer without a logout.
 - Icon packs: one list, Adaptive recolours only the folder icons with the
   system colour (solid by default, symbolic sizes included), and a
   Pack/Light/Solid folder fill.

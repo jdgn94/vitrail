@@ -61,10 +61,88 @@ ALIASES = {
     "crosshair": ("cross",),
     "pencil": ("nwpen",),
 }
+# The Windows scheme order: the `Schemes` registry value lists one file per
+# role in this order.
+SCHEME = (
+    "arrow",
+    "help",
+    "appstarting",
+    "wait",
+    "crosshair",
+    "ibeam",
+    "nwpen",
+    "no",
+    "sizens",
+    "sizewe",
+    "sizenwse",
+    "sizenesw",
+    "sizeall",
+    "uparrow",
+    "hand",
+    "pin",
+    "person",
+)
 
 
 def log(message: str) -> None:
     print(f"vitrail-wincursor: {message}", file=sys.stderr, flush=True)
+
+
+def scheme_names(source: Path) -> dict[str, str]:
+    """Stem -> Xcursor name from a Windows scheme `.inf`, when it describes one.
+
+    A pack such as OutLier names its files `ol_pointer.cur`, `ol_point.cur`…
+    The `.inf` registry value lists the 17 roles in Windows order; mapping them
+    is what makes the converted theme usable as a system pointer.
+    """
+    try:
+        infos = sorted(path for path in source.iterdir() if path.is_file() and path.suffix.lower() == ".inf")
+    except OSError:
+        return {}
+    for inf in infos:
+        try:
+            text = inf.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        match = re.search(
+            r'(?im)^\s*HKCU\s*,\s*"Control Panel\\Cursors\\Schemes"\s*,\s*"[^"]*"\s*,\s*,\s*"([^"]*)"',
+            text,
+        )
+        if not match:
+            continue
+        # The `.inf` can write %pointer% / %hand% instead of a literal file:
+        # resolve them from [Strings] before taking the basename.
+        strings = {key.casefold(): value for key, value in re.findall(r'(?im)^\s*([A-Za-z_]\w*)\s*=\s*"([^"]*)"', text)}
+        literal = re.sub(
+            r"%([A-Za-z_]\w*)%",
+            lambda found: strings.get(found.group(1).casefold(), found.group(0)),
+            match.group(1),
+        )
+        stems = []
+        for item in literal.split(","):
+            name = item.replace("\\", "/").rsplit("/", 1)[-1]
+            stems.append(Path(name).stem.casefold())
+        if len(stems) != len(SCHEME):
+            continue
+        return {stem: WINDOWS[role] for role, stem in zip(SCHEME, stems) if role in WINDOWS and stem}
+    return {}
+
+
+def scheme_title(source: Path) -> str:
+    """The `[Strings] SCHEME_NAME` of a Windows cursor `.inf`."""
+    try:
+        infos = sorted(path for path in source.iterdir() if path.is_file() and path.suffix.lower() == ".inf")
+    except OSError:
+        return ""
+    for inf in infos:
+        try:
+            text = inf.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        match = re.search(r'(?im)^\s*SCHEME_NAME\s*=\s*"([^"]+)"', text)
+        if match:
+            return match.group(1).strip()
+    return ""
 
 
 def _argb(red: int, green: int, blue: int, alpha: int) -> int:
@@ -424,6 +502,7 @@ def build_theme(source: Path, target: Path, name: str | None = None) -> int:
     if not files:
         raise ValueError(f"no .cur or .ani files in {source}")
     converted: dict[str, list[dict]] = {}
+    names = scheme_names(source)
     for path in files:
         try:
             images = read_cursor_file(path)
@@ -431,7 +510,7 @@ def build_theme(source: Path, target: Path, name: str | None = None) -> int:
             log(f"skipping {path.name}: {error}")
             continue
         if images:
-            converted[xcursor_name(path)] = images
+            converted[names.get(path.stem.casefold(), xcursor_name(path))] = images
     if not converted:
         raise ValueError(f"none of the cursors in {source} could be read")
 

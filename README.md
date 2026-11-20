@@ -381,22 +381,30 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   eight real cursors per theme — with a search box and the name under every
   cell (`kit/VitrailPicker.qml`); the dialog is sized by its content and the
   trigger shows the chosen one. The application-icon and cursor triggers are
-  large preview cards (the mosaic and the name) that open the same dialog. A
-  cursor-per-theme switch turns the cursor into one shared picker or two large
-  light/dark pickers; an empty choice follows the shared pack, and a
-  **Vitrail · pack** row rebuilds that pack in
-  `~/.local/share/icons/vitrail-<pack>` with the wallpaper's `on_surface` and
-  `primary` for that mode (`vitrail/cursor.py`). The authoring guide —
-  what makes a pack tint well, the Xcursor layout, and what each part of the
-  session picks up live (X11 included) — is `docs/cursors.md`.
-  On the Icons tab one picker lists both the installed packs (**Normal**) and
-  the palette-tinted Vitrail layers (**Adaptive**): each installed pack has
-  three rows there — the pack's own shading, a **light** fill and a **solid**
-  primary fill (`vitrail-icons-<pack>`, `@light`, `@solid`). Only the folders
-  are rebuilt; every other icon is inherited (`vitrail/icons.py`).
-  Each tab can import a validated `.zip` into `~/.local/share/icons` (with a
-  backup when it replaces an existing pack) or delete a pack that lives in the
-  user's own folders; `docs/icons.md` is the authoring guide.
+  large preview cards (the mosaic and the name) that open the same dialog. The
+  cursor is one list of the installed packs; outside it, **Adaptive** tints the
+  chosen pack with the wallpaper's palette and **Monochrome** drops the accent
+  (one ink for every shape, `surface` for the rim). A cursor-per-theme switch
+  turns the cursor into one shared picker or two large light/dark pickers; an
+  empty choice follows the shared pack. Every choice is applied through the one
+  name `vitrail-cursor` in `~/.local/share/icons/`, so a pack change rewrites
+  what that name contains instead of renaming it (`vitrail/cursor.py`). The
+  authoring guide — what makes a pack tint well, the Xcursor layout, and what
+  each part of the session picks up live (X11 included, and the apps that need
+  a restart) — is `docs/cursors.md`. The cursor picker imports a validated
+  `.zip` (an Xcursor theme) into `~/.icons` and deletes a user pack; the
+  generated `vitrail-*` themes and the system packs are never deleted.
+  On the Icons tab one picker lists the installed packs. **Adaptive** recolours
+  the folder icons with the palette — a **solid** accent body by default (the
+  exact system colour, for every pack), a **light** body, or the pack's own
+  shading — while every other icon is inherited
+  (`vitrail-icons-<pack>`, `@light`, `@solid`, `vitrail/icons.py`). The
+  generated theme carries the pack's directory metadata so GTK actually uses
+  it, keeps each special folder's own symbol, and gives the symbolic folder
+  icons the system colour too. The picker imports a validated `.zip` into
+  `~/.local/share/icons` (with a backup when it replaces an existing pack) or
+  deletes a pack that lives in the user's own folders; `docs/icons.md` is the
+  authoring guide.
   **Flatpak and Firefox** get the same palette: `vitrail/apps.py` grants the
   sandbox read access to the theme folders and writes Firefox's `user.js` and
   `chrome/userChrome.css`; see `docs/apps.md`.
@@ -408,7 +416,8 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   commands, so `bin/vitrail-settings` injects `python3 -m vitrail.fonts state`
   as `--fonts`; `scripts/apply-settings.sh` runs `fonts apply` when
   `fonts.ini` changes, and a value that is not installed falls back to its
-  default instead of reaching fontconfig. Palette-tinted cursors are P2.10.
+  default instead of reaching fontconfig. The palette tint is the Adaptive
+  switch on the Cursor tab.
 - **Windows:** border geometry and window opacity (focused and unfocused).
   Blur is a single global value and only exists in glass mode.
 - **Monitors:** a drag-and-drop canvas places each output at its logical

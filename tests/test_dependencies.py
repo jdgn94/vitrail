@@ -27,6 +27,7 @@ SYSTEM = {
     "env",
     "python3",
     "systemctl",
+    "dbus-update-activation-environment",
     "ip",
     "mkdir",
     "mv",

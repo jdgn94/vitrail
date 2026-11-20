@@ -7,6 +7,12 @@
 
 local home = os.getenv("HOME")
 
+-- The cursor is generated under ~/.icons/vitrail-cursor. Hyprland reads
+-- XCURSOR_THEME when it starts, before the settings watcher has run, so the
+-- values come from this generated file; the startup block below applies the
+-- compositor's own cursor with them. A missing file is not an error.
+pcall(dofile, home .. "/.config/hypr/vitrail-cursor.lua")
+
 hl.config({
     general = {
         gaps_in = 4,
@@ -156,6 +162,15 @@ hl.layer_rule({
 -- Autostart. The bar is also the notification daemon. cliphist keeps what is
 -- copied (text and images) for the launcher's clipboard mode (`;`).
 hl.on("hyprland.start", function()
+    -- The compositor reads its cursor theme at startup, before the settings
+    -- watcher: set it now so the session never shows Hyprland's default.
+    if VITRAIL_CURSOR_THEME then
+        hl.exec_cmd("hyprctl setcursor " .. VITRAIL_CURSOR_THEME .. " " .. (VITRAIL_CURSOR_SIZE or "24"))
+    else
+        -- First login after an install: build the theme and write the file the
+        -- next session loads.
+        hl.exec_cmd(home .. "/.local/bin/vitrail-apply-settings")
+    end
     hl.exec_cmd(home .. "/.local/bin/vitrail-bar")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
     hl.exec_cmd("wl-paste --type image --watch cliphist store")

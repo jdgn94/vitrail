@@ -219,6 +219,138 @@ class ThemeTests(unittest.TestCase):
         images = cursor.read_cursor(self.target / "cursors" / "watch")
         self.assertEqual([image["delay"] for image in images], [50, 100])
 
+    SCHEME_FILES = (
+        "ol_pointer",
+        "ol_help",
+        "ol_working",
+        "ol_busy",
+        "ol_precise2",
+        "ol_text",
+        "ol_pen",
+        "ol_unavailable",
+        "ol_vertical",
+        "ol_horizontal",
+        "ol_diag2",
+        "ol_diag1",
+        "ol_move",
+        "ol_alternate",
+        "ol_point",
+        "ol_pin",
+        "ol_person",
+    )
+
+    def write_inf(self) -> None:
+        files = ",".join(f"%10%\\%CUR_DIR%\\{name}.cur" for name in self.SCHEME_FILES)
+        (self.source / "Test_install.inf").write_text(
+            '[Scheme.Reg]\nHKCU,"Control Panel\\Cursors\\Schemes","%SCHEME_NAME%",,"' + files + '"\n',
+            encoding="utf-8",
+        )
+
+    def test_the_inf_scheme_maps_the_outlier_files(self) -> None:
+        self.write_inf()
+        names = wincursor.scheme_names(self.source)
+        self.assertEqual(names["ol_pointer"], "left_ptr")
+        self.assertEqual(names["ol_point"], "pointer")
+        self.assertEqual(names["ol_text"], "xterm")
+        self.assertEqual(names["ol_working"], "left_ptr_watch")
+        self.assertEqual(names["ol_busy"], "watch")
+        self.assertEqual(names["ol_alternate"], "up_arrow")
+        self.assertEqual(names["ol_person"], "person")
+
+    def test_build_theme_uses_the_inf_scheme(self) -> None:
+        self.write_inf()
+        for name in self.SCHEME_FILES:
+            (self.source / f"{name}.cur").write_bytes(cur_image([(255, 0, 0, 255)]))
+        count = wincursor.build_theme(self.source, self.target)
+        self.assertEqual(count, 17)
+        for name in (
+            "left_ptr",
+            "pointer",
+            "xterm",
+            "watch",
+            "left_ptr_watch",
+            "question_arrow",
+            "not-allowed",
+            "fleur",
+            "up_arrow",
+            "pencil",
+            "pin",
+            "person",
+            "crosshair",
+        ):
+            self.assertTrue((self.target / "cursors" / name).is_file(), name)
+        self.assertFalse((self.target / "cursors" / "ol_pointer").exists())
+
+    SIMPLIFY_FILES = (
+        "01_normal_select",
+        "02_help_select",
+        "03_working_in_background",
+        "04_busy",
+        "05_precision_select",
+        "06_text_select",
+        "07_handwriting",
+        "08_unavailable",
+        "09_vertical_resize",
+        "10_horizontal_resize",
+        "11_diagonal_resize_1",
+        "12_diagonal_resize_2",
+        "13_move",
+        "14_alternate_select",
+        "15_link_select",
+        "16_location_select",
+        "17_person_select",
+    )
+    SIMPLIFY_VARS = (
+        "pointer",
+        "help",
+        "work",
+        "busy",
+        "cross",
+        "text",
+        "hand",
+        "unavailable",
+        "vert",
+        "horz",
+        "dgn1",
+        "dgn2",
+        "move",
+        "alternate",
+        "link",
+        "pin",
+        "person",
+    )
+
+    def write_var_inf(self) -> None:
+        registry = ",".join(f"%10%\\%CUR_DIR%\\%{name}%" for name in self.SIMPLIFY_VARS)
+        strings = "\n".join(f'{var} = "{file}.cur"' for var, file in zip(self.SIMPLIFY_VARS, self.SIMPLIFY_FILES))
+        (self.source / "Test_install.inf").write_text(
+            '[Scheme.Reg]\nHKCU,"Control Panel\\Cursors\\Schemes","%SCHEME_NAME%",,"'
+            + registry
+            + '"\n\n[Strings]\nCUR_DIR = "Cursors\\Test"\nSCHEME_NAME = "Test Cursors"\n'
+            + strings
+            + "\n",
+            encoding="utf-8",
+        )
+
+    def test_an_inf_with_strings_variables_is_resolved(self) -> None:
+        self.write_var_inf()
+        names = wincursor.scheme_names(self.source)
+        self.assertEqual(names["01_normal_select"], "left_ptr")
+        self.assertEqual(names["07_handwriting"], "pencil")
+        self.assertEqual(names["15_link_select"], "pointer")
+        self.assertEqual(names["16_location_select"], "pin")
+        self.assertEqual(names["17_person_select"], "person")
+        self.assertEqual(wincursor.scheme_title(self.source), "Test Cursors")
+
+    def test_build_theme_resolves_the_strings_scheme(self) -> None:
+        self.write_var_inf()
+        for name in self.SIMPLIFY_FILES:
+            (self.source / f"{name}.cur").write_bytes(cur_image([(255, 0, 0, 255)]))
+        self.assertEqual(wincursor.build_theme(self.source, self.target), 17)
+        for name in ("left_ptr", "pointer", "pencil", "pin", "person", "crosshair"):
+            self.assertTrue((self.target / "cursors" / name).is_file(), name)
+        self.assertFalse((self.target / "cursors" / "01_normal_select").exists())
+
 
 @unittest.skipUnless(ZIP.is_file(), "the Material Design source zip is not present")
 class MaterialDesignTests(unittest.TestCase):
@@ -274,14 +406,13 @@ class MaterialDesignTests(unittest.TestCase):
             roots=[LIGHT.parent],
             cache=self.root / "cache",
             user_roots=[],
-            palette={},
         )
         for name in ("MaterialDesign-Light", "MaterialDesign-Dark"):
             self.assertIn(name, state["cursorThemes"])
             self.assertIn(name, state["cursorDesigns"])
 
         palette = {"on_surface": "#e6e0e9", "surface": "#141218", "primary": "#a8c7ff"}
-        target = self.root / "icons" / "vitrail-MaterialDesign-Light"
+        target = self.root / "icons" / cursor.STABLE
         self.assertTrue(cursor.build(LIGHT, target, palette, self.root / "cache" / "themes", spinner=False))
         self.assertTrue((target / "index.theme").is_file())
         self.assertIn("Inherits=MaterialDesign-Light", (target / "index.theme").read_text(encoding="utf-8"))

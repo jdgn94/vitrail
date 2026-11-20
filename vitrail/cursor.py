@@ -16,52 +16,42 @@ from __future__ import annotations
 
 import hashlib
 import json
+import multiprocessing
 import os
+import shutil
 import struct
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 from . import spinner as spinner_engine
 
 PREFIX = "vitrail-"
+# Tinting a shape is pure Python and a real pack carries hundreds: from this
+# many shapes on, the work is spread over the machine's cores.
+PARALLEL_FILES = 8
+# Enough to finish a pack in seconds without starting a process per shape on
+# a machine with many cores.
+MAX_PROCESSES = 16
+# The one theme the session applies. Its name never changes; what it contains
+# does. A new name on every pack change would leave old names in a running
+# process's environment and in X resources.
+STABLE = PREFIX + "cursor"
+# Bumped when `tint` changes how it reads a pack: the stamp then rebuilds the
+# themes written by the old algorithm instead of trusting them.
+TINT_VERSION = 3
 XCURSOR_IMAGE = 0xFFFD0002
 XCURSOR_COMMENT = 0xFFFE0001
-# Cursor names that are "active" — they get the accent colour.
-ACTIVE = {
-    "hand",
-    "hand1",
-    "hand2",
-    "pointer",
-    "pointing_hand",
-    "pointer_hand",
-    "sb_h_double_arrow",
-    "sb_v_double_arrow",
-    "ew-resize",
-    "ns-resize",
-    "size_hor",
-    "size_ver",
-    "size_fdiag",
-    "size_bdiag",
-    "fleur",
-    "move",
-    "all-scroll",
-    "grab",
-    "grabbing",
-    "crosshair",
-    "crossed_circle",
-}
 
 
 def log(message: str) -> None:
     print(f"vitrail-cursor: {message}", file=sys.stderr, flush=True)
 
 
-def design_name(pack: str) -> str:
-    return PREFIX + pack
-
-
 def source_of(name: str) -> str:
     """The pack a `vitrail-<pack>` theme is built from ("" otherwise)."""
+    if name == STABLE:
+        return ""
     return name[len(PREFIX) :] if name.startswith(PREFIX) and len(name) > len(PREFIX) else ""
 
 
@@ -182,18 +172,50 @@ def _premultiplied(red: int, green: int, blue: int, alpha: int) -> int:
     return (alpha << 24) | ((red * alpha // 255) << 16) | ((green * alpha // 255) << 8) | (blue * alpha // 255)
 
 
+def _interior(straight: list[tuple[int, int, int, int]], width: int, height: int) -> list[int]:
+    """How much each pixel belongs to the shape's interior.
+
+    A cursor's rim touches the transparent background; its body does not.
+    Weighting the two clusters by this instead of by pixel count keeps a dark
+    anti-aliased outline from being mistaken for the body of a white pack, and
+    a white rim from being mistaken for the body of the text beam.
+    """
+    weights: list[int] = []
+    for y in range(height):
+        row = y * width
+        for x in range(width):
+            alpha = straight[row + x][3]
+            if alpha <= 8:
+                weights.append(0)
+                continue
+            left = straight[row + x - 1][3] if x > 0 else 0
+            right = straight[row + x + 1][3] if x + 1 < width else 0
+            up = straight[(y - 1) * width + x][3] if y > 0 else 0
+            down = straight[(y + 1) * width + x][3] if y + 1 < height else 0
+            weights.append(min(alpha, left, right, up, down))
+    if not any(weights):
+        # One-pixel-wide art has no interior; alpha is the best proxy.
+        return [pixel[3] for pixel in straight]
+    return weights
+
+
 def tint(pixels: bytes, width: int, height: int, fill: str, outline: str) -> bytes:
     """Recolours an ARGB image between `outline` (rim) and `fill` (body).
 
     The pack's shape and alpha stay. The two dominant luminances are the body
-    (the bigger cluster, painted `fill`) and the rim (painted `outline`), so a
-    black-bodied pack and a white-bodied one both come out readable on the
+    (the bigger interior area, painted `fill`) and the rim (painted `outline`),
+    so a black-bodied pack and a white-bodied one both come out readable on the
     same palette. A single-colour pack becomes the fill colour.
     """
     count = width * height
     straight = [_straight(word) for word in struct.unpack_from(f"<{count}I", pixels, 0)]
     light = [sum(weight * channel for weight, channel in zip((299, 587, 114), rgba[:3])) // 1000 for rgba in straight]
-    values = [value for value, rgba in zip(light, straight) if rgba[3] > 8]
+    inside = _interior(straight, width, height)
+    values, areas = [], []
+    for value, rgba, area in zip(light, straight, inside):
+        if rgba[3] > 8:
+            values.append(value)
+            areas.append(area)
     if not values:
         return pixels
 
@@ -211,7 +233,10 @@ def tint(pixels: bytes, width: int, height: int, fill: str, outline: str) -> byt
                 below = sum(low_values) / len(low_values)
             if high_values:
                 above = sum(high_values) / len(high_values)
-        body, rim = (below, above) if len(low_values) >= len(high_values) else (above, below)
+        middle = (below + above) / 2
+        low_area = sum(area for value, area in zip(values, areas) if value < middle)
+        high_area = sum(area for value, area in zip(values, areas) if value >= middle)
+        body, rim = (below, above) if low_area >= high_area else (above, below)
 
     fill_rgb, outline_rgb = _rgb(fill), _rgb(outline)
     out = bytearray()
@@ -257,9 +282,28 @@ def update_xsettings(path: Path, theme: str, size: int) -> None:
 # --- building ----------------------------------------------------------------
 
 
-def _stamp_value(pack: str, inks: dict, spinner: bool) -> str:
-    body = json.dumps({"pack": pack, "inks": inks, "spinner": spinner}, sort_keys=True)
+def _stamp_value(pack: str, inks: dict, spinner: bool, mono: bool) -> str:
+    body = json.dumps(
+        {"pack": pack, "inks": inks, "spinner": spinner, "mono": mono, "tint": TINT_VERSION},
+        sort_keys=True,
+    )
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def _tint_file(source: Path, destination: Path, fill: str, outline: str) -> None:
+    """One shape: every image tinted, or copied when it is not an Xcursor."""
+    images = read_cursor(source)
+    if not images:
+        destination.write_bytes(source.read_bytes())
+        return
+    for image in images:
+        image["pixels"] = tint(image["pixels"], image["width"], image["height"], fill, outline)
+    write_cursor(images, destination)
+
+
+def _tint_job(job: tuple[str, str, str, str]) -> None:
+    """What a worker picks up: paths, so the job crosses the process boundary."""
+    _tint_file(Path(job[0]), Path(job[1]), job[2], job[3])
 
 
 def build(
@@ -269,6 +313,7 @@ def build(
     cache: Path,
     force: bool = False,
     spinner: bool = True,
+    mono: bool = False,
     render=spinner_engine.rasterise,
 ) -> bool:
     """Writes `target` as the tinted `pack`; False when it was already current."""
@@ -277,27 +322,39 @@ def build(
         return False
     inks = roles(palette)
     stamp = cache / "stamp"
-    current = _stamp_value(str(pack), inks, spinner)
-    if not force and (target / "index.theme").is_file() and stamp.is_file():
+    current = _stamp_value(str(pack), inks, spinner, mono)
+    target_cursors = target / "cursors"
+    # An alias is a symlink to another pack: never write through it.
+    aliased = target_cursors.is_symlink()
+    if not force and not aliased and (target / "index.theme").is_file() and stamp.is_file():
         try:
             if stamp.read_text(encoding="utf-8").strip() == current:
                 return False
         except OSError:
             pass
 
-    target_cursors = target / "cursors"
+    if target_cursors.is_symlink():
+        target_cursors.unlink()
+    elif target_cursors.is_dir():
+        # A different pack leaves no shape behind: the theme is one pack.
+        shutil.rmtree(target_cursors)
     target_cursors.mkdir(parents=True, exist_ok=True)
-    for source in sorted(cursors.iterdir()):
-        if not source.is_file():
-            continue
-        images = read_cursor(source)
-        if not images:
-            (target_cursors / source.name).write_bytes(source.read_bytes())
-            continue
-        fill = inks["accent"] if source.name in ACTIVE else inks["ink"]
-        for image in images:
-            image["pixels"] = tint(image["pixels"], image["width"], image["height"], fill, inks["paper"])
-        write_cursor(images, target_cursors / source.name)
+    # Every shape takes the system colour; monochrome drops the accent.
+    fill = inks["ink"] if mono else inks["accent"]
+    sources = sorted(source for source in cursors.iterdir() if source.is_file())
+    jobs = [(str(source), str(target_cursors / source.name), fill, inks["paper"]) for source in sources]
+    if len(jobs) >= PARALLEL_FILES:
+        workers = min(len(jobs), MAX_PROCESSES, os.cpu_count() or 1)
+        # fork: the workers inherit this process, with the pack's reader and
+        # writer already imported. The other start methods re-import the main
+        # module, which for the `vitrail` console script would run it again.
+        context = multiprocessing.get_context("fork")
+        with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:
+            # Consume the iterator: a worker's error surfaces here.
+            list(pool.map(_tint_job, jobs))
+    else:
+        for job in jobs:
+            _tint_job(job)
 
     # Our own busy cursor, drawn from the shell's shape and the accent.
     if spinner:
@@ -308,7 +365,7 @@ def build(
 
     (target / "index.theme").write_text(
         "[Icon Theme]\n"
-        f"Name=Vitrail · {pack.name}\n"
+        "Name=Vitrail · Cursor\n"
         f"Comment=Vitrail's palette applied to {pack.name}\n"
         f"Inherits={pack.name}\n",
         encoding="utf-8",
@@ -319,6 +376,111 @@ def build(
     except OSError:
         pass
     return True
+
+
+def alias(pack: Path, target: Path) -> bool:
+    """Points `target` at the pack's cursors without copying them."""
+    cursors = pack / "cursors"
+    if not cursors.is_dir():
+        return False
+    target.mkdir(parents=True, exist_ok=True)
+    link = target / "cursors"
+    same = link.is_symlink() and link.resolve() == cursors.resolve()
+    if not same:
+        if link.is_symlink():
+            link.unlink()
+        elif link.is_dir():
+            shutil.rmtree(link)
+        os.symlink(cursors, link)
+    (target / "index.theme").write_text(
+        f"[Icon Theme]\nName=Vitrail · Cursor\nComment=Vitrail's cursor: {pack.name}\nInherits={pack.name}\n",
+        encoding="utf-8",
+    )
+    return not same
+
+
+def user_root(home: Path | None = None) -> Path:
+    """Where Hyprland and Xcursor look for a user cursor theme."""
+    return (home or Path.home()) / ".icons"
+
+
+def link_user(target: Path, home: Path | None = None) -> bool:
+    """Makes `target` reachable from `~/.icons`; True when it changed.
+
+    `~/.local/share/icons` is where icon themes live, but the cursor stack
+    (Hyprland, libwayland-cursor, Xcursor) does not search it: a theme only
+    found there is silently replaced by the default one.
+    """
+    root = user_root(home)
+    root.mkdir(parents=True, exist_ok=True)
+    link = root / STABLE
+    if link.is_symlink():
+        if link.resolve() == target.resolve():
+            return False
+        link.unlink()
+    elif link.exists():
+        # A real theme with our name: leave it alone.
+        return False
+    os.symlink(target.resolve(), link)
+    return True
+
+
+def mirror_aliases(root: Path, home: Path | None = None) -> int:
+    """Puts the old `vitrail-<pack>` names where the cursor stack can see them.
+
+    The folders are generated under `root`; `~/.icons` only gets symlinks, so
+    a session whose environment still says `vitrail-<pack>` resolves to the
+    current content.
+    """
+    user = user_root(home)
+    if not (user / STABLE).exists():
+        return 0
+    mirrored = 0
+    try:
+        entries = sorted(root.iterdir())
+    except OSError:
+        return 0
+    for path in entries:
+        if path.name == STABLE or not path.name.startswith(PREFIX):
+            continue
+        if path.name.startswith("vitrail-icons-") or not (path / "cursors").is_dir():
+            continue
+        alias_path = user / path.name
+        if alias_path.is_symlink():
+            if alias_path.resolve() == (user / STABLE).resolve():
+                continue
+            alias_path.unlink()
+        elif alias_path.exists():
+            continue
+        os.symlink(STABLE, alias_path)
+        mirrored += 1
+    return mirrored
+
+
+def migrate_aliases(root: Path) -> int:
+    """Turns the old `vitrail-<pack>` folders into aliases of the stable name.
+
+    A session started before this change still has `vitrail-<pack>` in its
+    environment; resolving that name to the current theme keeps new windows
+    correct without a logout.
+    """
+    stable = root / STABLE
+    if not stable.exists():
+        return 0
+    converted = 0
+    try:
+        entries = sorted(root.iterdir())
+    except OSError:
+        return 0
+    for path in entries:
+        if path == stable or path.is_symlink() or not path.name.startswith(PREFIX):
+            continue
+        if path.name.startswith("vitrail-icons-") or not (path / "cursors").is_dir():
+            continue
+        shutil.rmtree(path)
+        os.symlink(STABLE, path)
+        converted += 1
+    return converted
 
 
 def main(
@@ -338,7 +500,7 @@ def main(
         if pack is None:
             log(f"not an installed theme: {args[1]}")
             return 2
-        design = design_name(pack.name)
+        design = STABLE
         target = (output / design) if output else (output_root() / design)
         rebuilt = build(
             pack,
