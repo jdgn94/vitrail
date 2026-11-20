@@ -255,6 +255,19 @@ the stack built against the release.
 
 ---
 
+## Waiting on Mirlo
+
+Not started until Mirlo phase 1 (the annotator, `~/Projects/mirlo/PLAN.md`) ships
+a package. Until then the capture overlay keeps `swappy`.
+
+| Task | Depends on | Done when |
+|---|---|---|
+| Move the capture overlay's Annotate action from `swappy` to `mirlo -` (image on stdin, `--early-exit`, `--output` following Vitrail's capture save scheme) | Mirlo phase 1 | Annotating a region copies and saves at native size and the window closes by itself |
+| Remove swappy: `vitrail/swappy.py`, `tests/test_swappy.py`, the annotate env, the `annotatePanel` preference with its settings row and i18n keys (all six `kit/i18n/*.json`), `packages/base.txt`, the PKGBUILDs, the README dependencies and the docs | Annotate on `mirlo` | `grep -ri swappy` finds nothing outside the changelog |
+| Add `mirlo` as a dependency: `packages/*.txt`, the README's "Runtime dependencies" table, `tests/test_dependencies.py` green | Annotate on `mirlo` | The dependency gate passes with `mirlo` declared |
+
+---
+
 ## What to take from each reference repository
 
 | Repo | Take | Do not take |
