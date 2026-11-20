@@ -141,9 +141,11 @@ hl.bind("XF86AudioStop", hl.dsp.exec_cmd("playerctl stop"), { locked = true, des
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call osd brightness up || brightnessctl --class=backlight set +5%"), { locked = true, repeating = true, description = "media/brightness-up" })
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call osd brightness down || brightnessctl --class=backlight set 5%-"), { locked = true, repeating = true, description = "media/brightness-down" })
 
--- Screenshots.
-hl.bind("PRINT", hl.dsp.exec_cmd("grim -g \"$(slurp)\" - | wl-copy"), { description = "screenshot/region" })
-hl.bind(mod .. " + PRINT", hl.dsp.exec_cmd("grim - | wl-copy"), { description = "screenshot/screen" })
+-- Screenshots: the overlay is the bar's (it freezes the screen and draws the
+-- area), so the key asks the bar for it. Super's key opens it with the whole
+-- layout already selected.
+hl.bind("PRINT", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call capture open region"), { description = "screenshot/region" })
+hl.bind(mod .. " + PRINT", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call capture open full"), { description = "screenshot/screen" })
 
 -- Vitrail's own windows (settings, gallery) run on the QML runtime, whose
 -- class is generic. They open floating, centred: the class is matched alone

@@ -212,13 +212,17 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 
 ## P3.1 + P3.2 — Capturas y grabación (2026-11-04)
 
+> Sustituida por el overlay: la lista viva es la sección "Captura — overlay con
+> área editable". Lo que queda aquí ya no se comporta así.
+
 - [ ] Abre el panel de notificaciones: la fila de captura tiene tres botones
-      (región, ventana, pantalla completa) y el de grabar.
-- [ ] **Región**: arrastra un rectángulo con slurp; aparece
-      `~/Pictures/Screenshots/Screenshot_*.png` y está en el portapapeles
+      (región, ventana, pantalla completa) y el de grabar; los tres abren el
+      overlay.
+- [ ] **Región**: arrastra el área en el overlay; `G` escribe
+      `~/Pictures/Screenshots/Screenshot_*.png` y `⏎` la copia
       (`wl-paste --type image/png | file -`). Escape cancela sin crear fichero.
-- [ ] **Ventana**: captura solo la ventana activa.
-- [ ] **Pantalla completa**: guarda y copia.
+- [ ] **Ventana**: `W` y un clic sobre la ventana la capturan.
+- [ ] **Pantalla completa**: `F` y `⏎` copian todo el layout.
 - [ ] **Grabar**: el botón se pone rojo y en el bar aparece el chip de stop;
       para desde el chip y comprueba que el `.mp4` de `~/Videos/Recordings` se
       reproduce.
@@ -226,9 +230,8 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] El audio solo se graba con el interruptor de audio encendido.
 - [ ] **Anotar**: enciende *Anotar las capturas*; al capturar se abre swappy y
       lo que guardes es lo que queda en el fichero y en el portapapeles.
-- [ ] **Grabar región**: enciende *Grabar una región*; al grabar, slurp pide
-      el rectángulo y el vídeo sale solo de esa zona (Escape cancela sin
-      grabar).
+- [ ] **Grabar región**: enciende *Grabar una región*; el botón de grabar abre
+      el overlay y `⏎`/`R` graban esa zona (Escape cancela sin grabar).
 
 ## P6.3 — Instalación sin clonar y `vitrail update` (2026-11-04)
 

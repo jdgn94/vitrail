@@ -224,6 +224,45 @@ var desktopEdit = {
     handle: 18
 }
 
+// The capture overlay: the selection's handles, its border, the guides that
+// follow the pointer, how dark the rest of the screen gets and the outline of
+// the window the window mode would take.
+// liquid: how the drawn area follows the exact selection. Each of its four
+// edges is a spring integrated by hand every frame (`spring` stiffness in
+// 1/s^2 per unit `mass`, `damping` ratio 0..1 with 1 critical, `epsilon` px at
+// which it rests) toward the exact edge, so a dragged edge overshoots and
+// wobbles to rest while trailing the pointer by only about 2 x damping x
+// speed / sqrt(spring) px. `rest` is the corner radius when still, `swell` px of extra
+// radius per px the widest edge still has to travel (surface tension), capped
+// at `max`. `bow` is how far (as a fraction of the px an edge still has to
+// travel) the middle of that edge bulges, at most `bowMax` px and a fifth of
+// the area's shorter side. `drop` px is the drop it is born as at the pointer;
+// `glide` ms is the timeline of that birth and of a jump (how long the neck
+// lasts: about 45% of it).
+// ask: `width` of the question field of "Ask AI". card: `width` of the result
+// card (translation, code) and the `lines` of text it shows. detect: ms the
+// selection must rest before it is searched for text and codes. loupe: the
+// colour picker's magnifier, `radius` source pixels each side of the one
+// picked, enlarged `zoom` times, `gap` px from the pointer. pin: the floating
+// copy of an area: wheel `zoomStep` per notch between `zoomMin` and `zoomMax`,
+// `opacityStep` per Ctrl+wheel notch down to `opacityMin`.
+var capture = {
+    handle: 12,
+    ask: { width: 360 },
+    card: { width: 360, lines: 12 },
+    detect: 300,
+    loupe: { radius: 6, zoom: 10, gap: 24 },
+    pin: { zoomMin: 0.1, zoomMax: 8, zoomStep: 1.1, opacityStep: 0.05, opacityMin: 0.2 },
+    border: 2,
+    guide: { width: 1, alpha: 0.6 },
+    dim: 0.55,
+    window: 3,
+    liquid: {
+        spring: 16000, damping: 0.65, mass: 1, epsilon: 0.25,
+        rest: 6, swell: 0.3, max: 40, bow: 0.4, bowMax: 48, drop: 14, glide: 240
+    }
+}
+
 // The media player (bar/media). Lengths are px, times ms.
 // disc: `size` of the cover, `pad` of room around it for the ring, `marks`
 // dashes in the ring, `gap` from the cover to the ring, `dot` the mark's

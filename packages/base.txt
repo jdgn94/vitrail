@@ -24,7 +24,14 @@ polkit-gnome
 grim
 wf-recorder
 swappy
-slurp
+# Local text recognition of a capture ("Extract text"); the language data are
+# separate packages, and only installed ones are used (vitrail/capture.py).
+tesseract
+tesseract-data-eng
+tesseract-data-spa
+# QR and bar codes in a capture (zbarimg) and its Translate action (trans, online).
+zbar
+translate-shell
 awww
 pciutils
 playerctl

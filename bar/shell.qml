@@ -19,6 +19,7 @@ import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "kit/wallpaper.js" as WallpaperTransition
 import "clock"
+import "capture"
 import "keyboard"
 import "keyboard/keyboard.js" as Keyboard
 import "keyboard/wtype.js" as Wtype
@@ -918,10 +919,290 @@ ShellRoot {
             return fallback
         return String(raw) !== "false" && String(raw) !== "0"
     }
-    // Screenshots and recording: the module reads the folders and flags from
-    // capture.ini, so the call carries only the mode.
-    function captureShot(mode) {
-        vitrailCli.exec(["python3", "-m", "vitrail.capture", "shot", mode])
+    // Screenshots and recording. The overlay freezes the screen, the user
+    // edits the area, and the action it reports runs afterwards (the folders
+    // and the audio flag come from capture.ini).
+    property string captureMode: "region"
+    property var capture: ({})
+    property var capturePending: null
+    property bool captureAnnotateNext: false
+
+    function openCapture(mode) {
+        shell.closePopup()
+        shell.captureMode = mode || "region"
+        shell.capturePending = null
+        // The panel was over the screen: let it finish closing first.
+        captureSettle.restart()
+    }
+
+    function captureFrozen(text) {
+        var document = ({})
+        try {
+            document = JSON.parse(text)
+        } catch (error) {
+            document = ({})
+        }
+        if (!document.monitors || document.monitors.length === 0) {
+            shell.captureFailed()
+            return
+        }
+        shell.capture = document
+        overlayLoader.active = true
+    }
+
+    function captureNotice(key, body) {
+        captureNotifier.exec(["python3", "-m", "vitrail.notify", "send", JSON.stringify({
+            app: "Vitrail",
+            icon: "screenshot_monitor",
+            summary: shell.t(key),
+            body: body || ""
+        })])
+    }
+
+    function captureFailed() {
+        shell.captureNotice("capture.failed")
+    }
+
+    function confirmCapture(selection, action, timer, text) {
+        overlayLoader.active = false
+        shell.capturePending = ({
+            action: action,
+            text: text || "",
+            geometry: Math.round(selection.w) + "x" + Math.round(selection.h)
+                + "+" + Math.round(selection.x) + "+" + Math.round(selection.y),
+            rect: ({ x: Math.round(selection.x), y: Math.round(selection.y),
+                     w: Math.round(selection.w), h: Math.round(selection.h) }),
+            // A countdown means "wait, then take that": the screen is frozen
+            // again when the time is up, so the picture is of that moment.
+            refreeze: timer > 0
+        })
+        if (timer > 0) {
+            captureDelay.interval = timer * 1000
+            captureDelay.restart()
+        } else {
+            shell.runCapture()
+        }
+    }
+
+    function runCapture() {
+        var pending = shell.capturePending
+        if (!pending)
+            return
+        if (pending.refreeze) {
+            pending.refreeze = false
+            captureRefresh.exec(["python3", "-m", "vitrail.capture", "freeze"])
+            return
+        }
+        if (pending.action === "record") {
+            captureRecord.exec(["python3", "-m", "vitrail.capture", "record", "start",
+                                "--geometry", pending.geometry])
+            return
+        }
+        if (pending.action === "pin") {
+            capturePin.exec(["python3", "-m", "vitrail.capture", "pin", "--geometry", pending.geometry])
+            return
+        }
+        if (pending.action === "ocr") {
+            captureOcr.exec(["python3", "-m", "vitrail.capture", "ocr", "--geometry", pending.geometry])
+            return
+        }
+        if (pending.action === "ask") {
+            captureAsk.exec(["python3", "-m", "vitrail.capture", "ask", "--geometry", pending.geometry,
+                             "--text", pending.text])
+            return
+        }
+        shell.captureAnnotateNext = pending.action === "annotate"
+        captureGrab.exec(["python3", "-m", "vitrail.capture", "grab", "--geometry", pending.geometry,
+                          pending.action === "copy" ? "--copy" : "--save"])
+    }
+
+    function captureGrabbed(text) {
+        var document = ({})
+        try {
+            document = JSON.parse(text)
+        } catch (error) {
+            document = ({})
+        }
+        if (document.error) {
+            shell.captureFailed()
+            return
+        }
+        if (document.copied === false) {
+            shell.captureNotice("capture.copyFailed")
+            return
+        }
+        if (shell.captureAnnotateNext && document.path) {
+            shell.captureAnnotateNext = false
+            captureAnnotate.exec(["python3", "-m", "vitrail.capture", "annotate", document.path])
+        }
+    }
+
+    // A pinned area: the picture is a file of its own now, and the pin layer
+    // (which outlives the overlay) opens a window for it where the area was.
+    function capturePinned(text) {
+        var document = ({})
+        try {
+            document = JSON.parse(text)
+        } catch (error) {
+            document = ({})
+        }
+        var pending = shell.capturePending
+        if (document.error || !document.image || !pending) {
+            shell.captureNotice("capture.pin.failed")
+            return
+        }
+        pinLayer.add(document.image, pending.rect, shell.capture.monitors || [])
+    }
+
+    // Background detection for the overlay's buttons: one process at a time,
+    // always for the newest selection (an older run is stopped).
+    property var detectNext: null
+
+    function runDetect(selection, token) {
+        shell.detectNext = ({ token: token, geometry: Math.round(selection.x) + "," + Math.round(selection.y)
+                              + "," + Math.round(selection.w) + "," + Math.round(selection.h) })
+        if (captureDetect.running)
+            captureDetect.signal(15)
+        else
+            shell.startDetect()
+    }
+
+    function startDetect() {
+        var next = shell.detectNext
+        shell.detectNext = null
+        if (!next)
+            return
+        captureDetect.token = next.token
+        captureDetect.exec(["python3", "-m", "vitrail.capture", "detect", "--geometry", next.geometry])
+    }
+
+    function captureDetected(text) {
+        var document = ({})
+        try {
+            document = JSON.parse(text)
+        } catch (error) {
+            document = ({})
+        }
+        if (overlayLoader.item)
+            overlayLoader.item.detected(captureDetect.token, document)
+    }
+
+    // Translate and QR answer on the overlay's card.
+    property string inspectKind: ""
+
+    function runInspect(kind, selection) {
+        var geometry = Math.round(selection.x) + "," + Math.round(selection.y) + ","
+            + Math.round(selection.w) + "," + Math.round(selection.h)
+        shell.inspectKind = kind
+        captureInspect.exec(["python3", "-m", "vitrail.capture", kind === "qr" ? "qr" : "translate",
+                             "--geometry", geometry])
+    }
+
+    function captureInspected(text) {
+        var document = ({})
+        try {
+            document = JSON.parse(text)
+        } catch (error) {
+            document = ({ error: "failed" })
+        }
+        var kind = shell.inspectKind
+        var card
+        if (kind === "qr") {
+            var codes = document.codes || []
+            if (document.error || codes.length === 0)
+                card = { kind: kind, phase: "error", text: "", url: "", note: shell.t("capture.qr"),
+                         message: shell.t("capture.qr.none") }
+            else
+                card = { kind: kind, phase: "done", url: document.url || "", message: "",
+                         text: codes.map(function (one) { return one.data }).join("\n"),
+                         note: shell.t(document.copied ? "capture.qr.copied" : "capture.qr") }
+        } else if (document.error || !document.text) {
+            var missing = String(document.error || "").indexOf("missing") >= 0
+            var none = document.error === "no text"
+            card = { kind: kind, phase: "error", text: "", url: "", note: shell.t("capture.translate"),
+                     message: shell.t(missing ? "capture.translate.missing"
+                                      : none ? "capture.ocr.empty" : "capture.translate.failed") }
+        } else {
+            card = { kind: kind, phase: "done", text: document.text, url: "", message: "",
+                     note: shell.t("capture.translate") }
+        }
+        if (overlayLoader.item)
+            overlayLoader.item.setCard(kind, card)
+    }
+
+    // The colour picked on the frozen screen goes where Super+. sends one: the
+    // clipboard colour history and the clipboard.
+    function captureColor(hex) {
+        overlayLoader.active = false
+        shell.useColor(hex)
+        shell.captureNotice("capture.color.copied", hex)
+    }
+
+    function captureOpen(url) {
+        overlayLoader.active = false
+        captureLink.exec(["python3", "-m", "vitrail.capture", "open", url])
+    }
+
+    // Text recognition: the text is already on the clipboard; say so, with a
+    // preview, or say that there was none.
+    function captureRead(text) {
+        var document = ({})
+        try {
+            document = JSON.parse(text)
+        } catch (error) {
+            document = ({})
+        }
+        if (document.error || document.text === undefined)
+            shell.captureNotice("capture.ocr.failed")
+        else if (document.text === "")
+            shell.captureNotice("capture.ocr.empty")
+        else if (document.copied === false)
+            shell.captureNotice("capture.ocr.copyFailed", document.preview)
+        else
+            shell.captureNotice("capture.ocr.copied", document.preview)
+    }
+
+    // Ask AI: the browser is already opening; only a failure is reported.
+    function captureAsked(text) {
+        var document = ({})
+        try {
+            document = JSON.parse(text)
+        } catch (error) {
+            document = ({})
+        }
+        if (document.error || !document.opened)
+            shell.captureNotice("capture.ask.failed")
+    }
+
+    // The window mode picks from the clients, newest focus first.
+    function loadCaptureWindows() {
+        captureClients.exec(["hyprctl", "clients", "-j"])
+    }
+
+    function readCaptureWindows(text) {
+        var found = []
+        try {
+            var clients = JSON.parse(text)
+            for (var index = 0; index < clients.length; index++) {
+                var one = clients[index]
+                if (!one || one.hidden || one.mapped === false)
+                    continue
+                if (!one.at || !one.size || one.size[0] <= 0 || one.size[1] <= 0)
+                    continue
+                found.push({
+                    x: one.at[0],
+                    y: one.at[1],
+                    w: one.size[0],
+                    h: one.size[1],
+                    focus: typeof one.focusHistoryID === "number" ? one.focusHistoryID : 999999
+                })
+            }
+        } catch (error) {
+            found = []
+        }
+        found.sort(function (left, right) { return left.focus - right.focus })
+        if (overlayLoader.item)
+            overlayLoader.item.windows = found
     }
 
     function toggleRecording() {
@@ -2506,6 +2787,172 @@ ShellRoot {
         }
     }
 
+    // Capture: freeze first, then the overlay edits, then the action runs.
+    Process {
+        id: captureFreeze
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.captureFrozen(this.text)
+        }
+    }
+
+    Process {
+        id: captureGrab
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.captureGrabbed(this.text)
+        }
+    }
+
+    Process {
+        id: capturePin
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.capturePinned(this.text)
+        }
+    }
+
+    Process {
+        id: captureDetect
+
+        // The selection the running search is for (its answer is checked
+        // against the overlay's own token).
+        property int token: 0
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.captureDetected(this.text)
+        }
+        onExited: shell.startDetect()
+    }
+
+    Process {
+        id: captureInspect
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.captureInspected(this.text)
+        }
+    }
+
+    Process {
+        id: captureLink
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
+    PinLayer {
+        id: pinLayer
+
+        t: shell.t
+    }
+
+    Process {
+        id: captureOcr
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.captureRead(this.text)
+        }
+    }
+
+    Process {
+        id: captureAsk
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.captureAsked(this.text)
+        }
+    }
+
+    Process {
+        id: captureRecord
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
+    Process {
+        id: captureAnnotate
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
+    Process {
+        id: captureClients
+
+        stdout: StdioCollector {
+            onStreamFinished: shell.readCaptureWindows(this.text)
+        }
+    }
+
+    Process {
+        id: captureNotifier
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
+    Process {
+        id: captureRefresh
+
+        // The countdown's freeze: it only refreshes the images on disk, so no
+        // stdout and no overlay; runCapture() continues when it exits.
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        onExited: shell.runCapture()
+    }
+
+    Timer {
+        id: captureSettle
+
+        // A capture opened from the panel waits for the popup to be gone, or
+        // the panel ends up inside the frozen image.
+        interval: VitrailTokens.duration("fast")
+        onTriggered: captureFreeze.exec(["python3", "-m", "vitrail.capture", "freeze"])
+    }
+
+    Timer {
+        id: captureDelay
+        onTriggered: shell.runCapture()
+    }
+
+    Loader {
+        id: overlayLoader
+
+        active: false
+        source: "capture/CaptureOverlay.qml"
+        onLoaded: {
+            item.capture = shell.capture
+            item.mode = shell.captureMode
+            item.t = shell.t
+            item.animation = shell.prefBool("captureAnimation", true)
+            item.ai = shell.prefBool("captureAi", true)
+            item.languages = shell.prefs.ocrLanguages || ""
+            item.detect = shell.prefBool("captureDetect", true)
+            item.detectRequested.connect(shell.runDetect)
+            item.inspect.connect(shell.runInspect)
+            item.copyRequested.connect(shell.copyText)
+            item.openRequested.connect(shell.captureOpen)
+            item.colorPicked.connect(shell.captureColor)
+            item.confirmed.connect(shell.confirmCapture)
+            item.cancelled.connect(function () { overlayLoader.active = false })
+            item.windowModeRequested.connect(shell.loadCaptureWindows)
+        }
+    }
+
+    IpcHandler {
+        target: "capture"
+
+        function open(mode: string): void {
+            shell.openCapture(mode)
+        }
+
+        function cancel(): void {
+            overlayLoader.active = false
+        }
+    }
+
     Process {
         id: paletteJson
 
@@ -2839,7 +3286,7 @@ ShellRoot {
                         icon: "screenshot_monitor"
                         property string tooltip: shell.t("bar.widget.capture")
                         property string tooltipDetail: shell.t("bar.widget.capture.help")
-                        onClicked: shell.captureShot("region")
+                        onClicked: shell.openCapture("region")
                         onHoveredChanged: tooltips.hover(captureButton, hovered)
                     }
                 }
@@ -3610,8 +4057,9 @@ ShellRoot {
                     airplaneOn: shell.airplaneOn
                     onQuickToggled: function (key) { shell.toggleQuick(key) }
                     recording: shell.recording
-                    onShotRequested: function (mode) { shell.captureShot(mode) }
-                    onRecordRequested: shell.toggleRecording()
+                    onShotRequested: function (mode) { shell.openCapture(mode) }
+                    onRecordRequested: shell.prefBool("captureRecordRegion", false)
+                        ? shell.openCapture("record") : shell.toggleRecording()
                     mediaStyle: shell.prefs.mediaStyle || "disc"
                     mediaPlayers: shell.mprisPlayers
                     mediaIndex: shell.mprisIndex

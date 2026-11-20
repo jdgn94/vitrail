@@ -19,6 +19,13 @@ Item {
     property var prefs
     property var strings
     property string tab: "frame"
+    // The languages Translate can write in (code, own name); "" follows the system's.
+    readonly property var translateOptions: [{ key: "", label: page.t("bar.capture.translate.system") }].concat([
+        ["en", "English"], ["es", "Español"], ["de", "Deutsch"], ["fr", "Français"], ["it", "Italiano"],
+        ["pt", "Português"], ["ru", "Русский"], ["ja", "日本語"], ["zh-CN", "中文"], ["ko", "한국어"],
+        ["ar", "العربية"], ["nl", "Nederlands"], ["pl", "Polski"], ["tr", "Türkçe"], ["hi", "हिन्दी"],
+        ["sv", "Svenska"], ["uk", "Українська"]
+    ].map(function (pair) { return { key: pair[0], label: pair[1] } }))
     // Hyprland's outputs as injected at launch; the per-monitor block below
     // only matters when there is more than one.
     property var monitors: ({ available: false, monitors: [] })
@@ -411,40 +418,12 @@ Item {
                         onTextChanged: page.prefs.captureDir = text
                     }
 
-                    VitrailSettingRow {
-                        icon: "content_copy"
-                        label: page.t("bar.capture.copy")
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailSwitch {
-                            checked: page.prefs.captureCopy
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            onToggled: function (value) { page.prefs.captureCopy = value }
-                        }
-                    }
-
                     VitrailField {
                         Layout.fillWidth: true
                         label: page.t("bar.capture.recordDir")
                         placeholder: page.t("bar.capture.dirHelp")
                         text: page.prefs.captureRecordDir
                         onTextChanged: page.prefs.captureRecordDir = text
-                    }
-
-                    VitrailSettingRow {
-                        icon: "edit"
-                        label: page.t("bar.capture.annotate")
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailSwitch {
-                            checked: page.prefs.captureAnnotate
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            onToggled: function (value) { page.prefs.captureAnnotate = value }
-                        }
                     }
 
                     VitrailSettingRow {
@@ -473,6 +452,93 @@ Item {
                             accent: page.palette.primary
                             onToggled: function (value) { page.prefs.captureRecordAudio = value }
                         }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "water_drop"
+                        label: page.t("bar.capture.animation")
+                        description: page.t("bar.capture.animation.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.captureAnimation === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.captureAnimation = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "edit"
+                        label: page.t("bar.capture.annotate")
+                        description: page.t("bar.capture.annotate.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.annotatePanel === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.annotatePanel = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "auto_awesome"
+                        label: page.t("bar.capture.ai")
+                        description: page.t("bar.capture.ai.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.captureAi === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.captureAi = value }
+                        }
+                    }
+
+                    VitrailField {
+                        Layout.fillWidth: true
+                        label: page.t("bar.capture.ocr")
+                        placeholder: page.t("bar.capture.ocr.placeholder")
+                        supportingText: page.t("bar.capture.ocr.help")
+                        text: page.prefs.ocrLanguages
+                        onTextChanged: page.prefs.ocrLanguages = text
+                    }
+
+                    VitrailSettingRow {
+                        icon: "manage_search"
+                        label: page.t("bar.capture.detect")
+                        description: page.t("bar.capture.detect.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.prefs.captureDetect === true
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.captureDetect = value }
+                        }
+                    }
+
+                    VitrailSelect {
+                        Layout.fillWidth: true
+                        label: page.t("bar.capture.translate")
+                        options: page.translateOptions
+                        current: page.prefs.translateTarget || ""
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        panel: page.palette.surfaceHigh
+                        onSelected: page.prefs.translateTarget = key
+                    }
+
+                    VitrailText {
+                        Layout.fillWidth: true
+                        variant: "label"
+                        wrapMode: Text.WordWrap
+                        text: page.t("bar.capture.translate.help")
                     }
                 }
 

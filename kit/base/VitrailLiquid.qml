@@ -15,6 +15,9 @@ QtObject {
     // Off, progress follows `open` at once (static previews set it by hand).
     property bool animated: true
     property real progress: root.open ? 1 : 0
+    // ms of the opening timeline; a short-lived drop (the capture area's)
+    // sets its own, popups keep the token.
+    property int openMs: root.tokens.open
 
     readonly property bool shown: root.open || root.progress > 0
     readonly property var tokens: VitrailTokens.glass ? VitrailTokens.motion.liquid : VitrailTokens.motion.smooth
@@ -24,6 +27,6 @@ QtObject {
     // The timeline is linear: the curves live in frame.js.
     Behavior on progress {
         enabled: root.animated
-        NumberAnimation { duration: root.open ? root.tokens.open : root.tokens.close }
+        NumberAnimation { duration: root.open ? root.openMs : root.tokens.close }
     }
 }

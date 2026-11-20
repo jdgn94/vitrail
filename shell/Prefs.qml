@@ -139,11 +139,15 @@ QtObject {
     property alias tabIcons: terminalFile.tabIcons
     property alias tabNumbers: terminalFile.tabNumbers
     property alias captureDir: captureFile.captureDir
-    property alias captureCopy: captureFile.captureCopy
-    property alias captureAnnotate: captureFile.captureAnnotate
     property alias captureRecordDir: captureFile.captureRecordDir
     property alias captureRecordAudio: captureFile.captureRecordAudio
     property alias captureRecordRegion: captureFile.captureRecordRegion
+    property alias captureAnimation: captureFile.captureAnimation
+    property alias annotatePanel: captureFile.annotatePanel
+    property alias captureAi: captureFile.captureAi
+    property alias ocrLanguages: captureFile.ocrLanguages
+    property alias captureDetect: captureFile.captureDetect
+    property alias translateTarget: captureFile.translateTarget
     property alias launcherEngine: launcherFile.launcherEngine
     property alias launcherBangs: launcherFile.launcherBangs
     property alias launcherModes: launcherFile.launcherModes
@@ -449,11 +453,19 @@ QtObject {
         category: "capture"
 
         property string captureDir: ""
-        property bool captureCopy: true
-        property bool captureAnnotate: false
         property string captureRecordDir: ""
         property bool captureRecordAudio: false
         property bool captureRecordRegion: false
+        property bool captureAnimation: true
+        property bool annotatePanel: true
+        // "Ask AI" in the overlay: off, the button and the I key are gone.
+        property bool captureAi: true
+        // tesseract codes joined with "+"; empty: system language + English.
+        property string ocrLanguages: ""
+        // Search the selection for text and codes once it rests (local).
+        property bool captureDetect: true
+        // Language code Translate writes in; empty: the system language.
+        property string translateTarget: ""
     }
 
     property Settings launcherSettings: Settings {

@@ -4,7 +4,7 @@ import "../kit"
 import "../kit/base"
 
 // Screenshots and recording for the panel's widgets slot. The commands belong
-// to the shell (`captureShot`, `toggleRecording`); this only reports the
+// to the shell (`openCapture`, `toggleRecording`); this only reports the
 // choice. Region first: it is the mode a shortcut-less panel is for.
 RowLayout {
     id: root

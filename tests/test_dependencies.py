@@ -133,8 +133,10 @@ PROVIDED_BY = {
     "grim": "grim",
     "wf-recorder": "wf-recorder",
     "swappy": "swappy",
+    "tesseract": "tesseract",
+    "zbarimg": "zbar",
+    "trans": "translate-shell",
     "btrfs": "btrfs-progs",
-    "slurp": "slurp",
 }
 
 # Shell words that start a command position but are not programs.

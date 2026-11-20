@@ -35,6 +35,8 @@ layer contract.
    - `references/launcher.md` — application launcher: modes, files, data flow.
    - `references/visualiser.md` — audio visualiser: cava JSON, base bars,
      the five looks, background wiring.
+   - `references/capture.md` — capture overlay: exact vs drawn selection, liquid
+     motion, the masked veil, `captureAnimation`.
    - `references/desktop.md` — desktop widgets: registry entries, layer,
      points, editor canvas and how to add one.
 2. Geometry goes in `kit/frame.js` (pure, tested in `tests/qml/tst_frame.qml`);

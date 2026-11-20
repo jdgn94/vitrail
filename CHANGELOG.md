@@ -11,6 +11,20 @@ The first distributable release.
   date & time, connection, plugins.
 - Theming that follows the wallpaper: GTK/Qt, kitty, palette-tinted cursors and
   icon folders, Flatpak and Firefox.
+- The capture selection moves like jelly: it is born as a drop at the pointer,
+  each edge springs to the selection and bows while it moves, window picks and
+  full-screen glide with a neck, and the dark veil has the same shape
+  (setting: Bar → Capture).
+- More capture actions: **Copy text** (`O`) reads the area with tesseract,
+  locally; **Translate** (`L`, translate-shell, online) shows the translation
+  on a card; **QR / bar code** (`Q`, zbar) copies a code's content and opens
+  links; **Colour** (`C`) picks a pixel of the frozen screen with a loupe into
+  the `Super+.` colour history; **Pin** (`P`) keeps the area as a floating
+  glass window (drag, zoom, opacity); **Ask AI** (`I`) asks Google about the
+  area in the default browser. The selection is searched for text and codes in
+  the background so only the buttons that can work are enabled, and every
+  button's tooltip names its key. Settings: Bar → Capture (detection, Ask AI,
+  OCR languages, Translate language).
 - Wallpaper changes animate: a random ink or outline transition chosen by the
   picture, with a length setting, and the palette waits for it to end.
 - Wallpaper effects: a picker with a preview of each effect over the picture on
@@ -50,5 +64,10 @@ The first distributable release.
   (the browser's included) through `GTK_USE_PORTAL=1`.
 - Screenshots (region, window, full, annotate) and screen recording from the
   panel, with the recording chip in the bar.
+- The capture overlay: the screen freezes, the area is editable with handles
+  (across monitors), and a toolbar outside it takes the picture (copied),
+  saves, annotates, records that area, counts down, picks a window or the whole
+  layout. `PRINT` opens the same overlay (`Super+PRINT`, whole layout).
+
 - Installation without cloning (`bootstrap.sh`), an AUR package, and
   `vitrail update` against the installed branch, with snapshots.

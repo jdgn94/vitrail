@@ -138,9 +138,12 @@ package to the manifest and a row here.
 | `wireplumber`, `playerctl`, `brightnessctl` | `wpctl`, `playerctl`, `brightnessctl` | media keys, laptop panel brightness |
 | `cava` | `cava` | the audio visualiser's spectrum (`vitrail/visualiser.py`), written to the background layer |
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
-| `grim`, `slurp` | `grim`, `slurp` | screenshots (region, window, full screen) |
+| `grim` | `grim` | the frozen screen of every monitor, and the area the overlay draws |
 | `wf-recorder` | `wf-recorder` | screen recording from the panel, stopped from the bar |
 | `swappy` | `swappy` | annotating a screenshot before it is copied (optional flow) |
+| `tesseract`, `tesseract-data-eng`, `tesseract-data-spa` | `tesseract` | the capture overlay's "Copy text", the text detection that enables its buttons, and Translate's reading (OCR, local only); only the installed language data are used, so add `tesseract-data-<lang>` for more |
+| `zbar` | `zbarimg` | the capture overlay's QR / bar code button: finds a code in the selection (local) and reads it |
+| `translate-shell` | `trans` | the capture overlay's Translate (`trans -b :<language>`; sends the text to Google Translate online) |
 | `pciutils` | `lspci` | GPU vendor detection in the installer and `vitrail doctor` |
 | `networkmanager`, `bluez-utils`, `wireplumber`, `power-profiles-daemon` | `nmcli`, `bluetoothctl`, `wpctl`, `powerprofilesctl` | the panel's quick toggles, the bar's network and power-profile popups, and the settings window's Connection page (networks, Bluetooth and power profile; `vitrail.network`: Wi-Fi, Bluetooth and VPN state and requests) |
 | `upower` | UPower's D-Bus service | the battery chip's charge, state and time left (Quickshell's UPower service; no process) |
@@ -331,8 +334,8 @@ the window declares it in another file, or the path unit watches another set.
 | `terminal.ini` | `terminalScheme`, `terminalPadding`, `fontSize`, `tabStyle`, `tabIcons`, `tabNumbers` |
 | `sound.ini` | `soundOutputApps`, `soundInputApps`, `soundFocusApps`, `soundStep` |
 | `colors.ini` | `colorScheme`, `colorContrast` |
-| `capture.ini` | `captureDir`, `captureCopy`, `captureAnnotate`, `captureRecordDir`, `captureRecordAudio`, `captureRecordRegion` |
 | `fonts.ini` | `fontSystem`, `fontConsole`, `uiIcons`, `iconTheme`, `iconAdaptive`, `iconFill`, `iconImport`, `iconRemove`, `cursorTheme`, `cursorThemeLight`, `cursorThemeDark`, `cursorImport`, `cursorRemove`, `cursorAdaptive`, `cursorMonochrome`, `cursorSize`, `cursorSpinner` |
+| `capture.ini` | `captureDir`, `captureRecordDir`, `captureRecordAudio`, `captureRecordRegion`, `captureAnimation` (the selection glides like a drop), `annotatePanel` (swappy's tools panel), `captureAi` (the Ask AI button and `I` key), `ocrLanguages` (tesseract codes for Copy text, e.g. `spa+eng`; empty follows the system language plus English), `captureDetect` (look for text and codes in the selection to enable Copy text, Translate and QR), `translateTarget` (Translate's language code; empty follows the system language) |
 | `launcher.ini` | `launcherEngine`, `launcherBangs`, `launcherModes`, `launcherView`, `launcherClear` |
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
@@ -412,11 +415,28 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   **Flatpak and Firefox** get the same palette: `vitrail/apps.py` grants the
   sandbox read access to the theme folders and writes Firefox's `user.js` and
   `chrome/userChrome.css`; see `docs/apps.md`.
-- **Capture:** the panel's widgets slot has three screenshot buttons (region,
-  window, full) and a recording toggle, and the bar shows a red chip while a
-  recording runs (`vitrail/capture.py`, `vitrail-capture`): `grim` with a
-  `slurp` region or the active window, `wf-recorder` to `~/Videos/Recordings`,
-  the folder and the clipboard/audio flags in `capture.ini`. The window cannot run
+- **Capture:** the bar's camera button and the panel's widgets slot open the
+  capture overlay (`vitrail/capture.py`, `vitrail-capture`): the screen is
+  frozen into one PNG per monitor, the area is dragged and resized with eight
+  handles (across monitors too) and a toolbar outside it offers the actions —
+  `Enter` copies the picture, `G` saves it, `A` annotates it in `swappy`, `R`
+  records that area with `wf-recorder` (one monitor: an area that
+  crosses outputs is cut to the monitor it starts on), `T` counts down 3 or 5 seconds, `W`
+  picks a window (a single click takes it), `F` takes the whole layout, `Esc`
+  leaves; the selection is searched in the background (local, `tesseract` and
+  `zbarimg`) so `O` copies its text, `L` translates it (`translate-shell`,
+  online) on a card beside the area, and `Q` reads a QR or bar code (copied;
+  the card opens a web link) — each only when there is text or a code; `C`
+  picks a colour from the frozen screen with a loupe into the `Super+.` colour
+  history; `P` pins the area as a floating glass window (drag, wheel zoom,
+  `Ctrl`+wheel opacity, `Esc` or double click closes); and `I` asks Google about it: a question field opens beside the
+  area and `Enter` opens the default browser on Google Lens with the picture
+  and the question (a private page of the runtime folder posts them; the
+  files are deleted after a minute). The saved file is
+  composed from the frozen images with `magick`, so it is exactly what the
+  overlay showed. The bar shows a red chip while a recording runs; the folders
+  and the audio flag live in `capture.ini`. `PRINT` opens the same overlay, and
+  `Super+PRINT` opens it with the whole layout already selected. The window cannot run
   commands, so `bin/vitrail-settings` injects `python3 -m vitrail.fonts state`
   as `--fonts`; `scripts/apply-settings.sh` runs `fonts apply` when
   `fonts.ini` changes, and a value that is not installed falls back to its

@@ -1,21 +1,35 @@
-"""Screenshots and screen recording through grim, slurp and wf-recorder.
+"""Screenshots and screen recording through grim, magick and wf-recorder.
 
-Three capture modes (full screen, active window, region) and one recording
-session, all without a helper daemon:
+The overlay's backend: freeze the screen once, then compose what the user
+selected from those images, or record it. No helper daemon:
 
-    python3 -m vitrail.capture shot full|window|region
-    python3 -m vitrail.capture record start|stop|toggle [--region]
+    python3 -m vitrail.capture freeze
+    python3 -m vitrail.capture grab --geometry X,Y,W,H [--copy|--save]
+    python3 -m vitrail.capture ocr --geometry X,Y,W,H
+    python3 -m vitrail.capture ask --geometry X,Y,W,H --text "question"
+    python3 -m vitrail.capture detect --geometry X,Y,W,H
+    python3 -m vitrail.capture qr --geometry X,Y,W,H
+    python3 -m vitrail.capture translate --geometry X,Y,W,H
+    python3 -m vitrail.capture pin --geometry X,Y,W,H
+    python3 -m vitrail.capture open <link>
+    python3 -m vitrail.capture record start|stop|toggle [--geometry WxH+X+Y]
+    python3 -m vitrail.capture window <x> <y>
+    python3 -m vitrail.capture annotate <path>
     python3 -m vitrail.capture status
 
-The bar's panel calls these; the recording state lives in
+The bar calls these; the recording state lives in
 `$XDG_RUNTIME_DIR/vitrail/record.json`, which the bar watches to light its
-indicator and to offer "stop".
+indicator and to offer "stop". The `PRINT` key asks the bar to open the
+overlay; there is no slurp path any more.
 """
 
 from __future__ import annotations
 
+import base64
+import html
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -23,9 +37,11 @@ import sys
 import time
 from pathlib import Path
 from typing import Callable
+from urllib.parse import urlencode
+from xml.etree import ElementTree
 
 Runner = Callable[[list[str]], str | None]
-Spawner = Callable[[list[str], Path], int]
+Spawner = Callable[..., int]
 
 STAMP = "%Y-%m-%d_%H-%M-%S"
 
@@ -43,19 +59,24 @@ def run_text(argv: list[str]) -> str | None:
 
 
 def run_bytes(argv: list[str], data: bytes) -> bool:
+    """Feeds `data` to a command; its output is discarded, not piped back.
+
+    `wl-copy` forks to keep the selection and the child inherits the pipes, so
+    capturing them would wait for it until something else takes the clipboard.
+    """
     try:
-        found = subprocess.run(argv, input=data, capture_output=True, check=False)
+        found = subprocess.run(argv, input=data, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
     except OSError:
         return False
     return found.returncode == 0
 
 
-def spawn(argv: list[str], log_path: Path) -> int:
-    """Starts a detached process and returns its pid."""
+def spawn(argv: list[str], log_path: Path, env: dict[str, str] | None = None) -> int:
+    """Starts a detached process (in `env` when given) and returns its pid."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with open(log_path, "ab") as log_file:
         process = subprocess.Popen(
-            argv, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL, start_new_session=True
+            argv, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL, start_new_session=True, env=env
         )
     return process.pid
 
@@ -77,6 +98,256 @@ def videos() -> str:
     return str(Path.home() / "Videos" / "Recordings")
 
 
+# --- the frozen screen -------------------------------------------------------
+
+# Where the overlay's images live inside the runtime folder, and the name grim
+# gives each one.
+FREEZE = "capture"
+
+
+def monitors(run: Runner = run_text) -> list[dict]:
+    """The layout from Hyprland: one entry per output, in its own order."""
+    answer = run(["hyprctl", "monitors", "-j"])
+    try:
+        document = json.loads(answer or "")
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(document, list):
+        return []
+    found: list[dict] = []
+    for one in document:
+        try:
+            found.append(
+                {
+                    "name": str(one["name"]),
+                    "x": int(one["x"]),
+                    "y": int(one["y"]),
+                    "scale": float(one.get("scale") or 1.0),
+                    "width": int(one["width"]),
+                    "height": int(one["height"]),
+                }
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+    return found
+
+
+def bounds_of(monitors: list[dict]) -> dict:
+    """The rectangle that contains every monitor, in layout coordinates."""
+    left = min(one["x"] for one in monitors)
+    top = min(one["y"] for one in monitors)
+    right = max(one["x"] + one["width"] for one in monitors)
+    bottom = max(one["y"] + one["height"] for one in monitors)
+    return {"x": left, "y": top, "w": right - left, "h": bottom - top}
+
+
+def _rect(selection: dict) -> dict:
+    """The selection as a positive rectangle: a reversed drag is a drag."""
+    x = int(selection.get("x") or 0)
+    y = int(selection.get("y") or 0)
+    width = int(selection.get("w") or 0)
+    height = int(selection.get("h") or 0)
+    if width < 0:
+        x, width = x + width, -width
+    if height < 0:
+        y, height = y + height, -height
+    return {"x": x, "y": y, "w": width, "h": height}
+
+
+def _clamp(rect: dict, bounds: dict) -> dict:
+    left = max(rect["x"], bounds["x"])
+    top = max(rect["y"], bounds["y"])
+    right = min(rect["x"] + rect["w"], bounds["x"] + bounds["w"])
+    bottom = min(rect["y"] + rect["h"], bounds["y"] + bounds["h"])
+    return {"x": left, "y": top, "w": max(0, right - left), "h": max(0, bottom - top)}
+
+
+def _holds(rect: dict, x: float, y: float) -> bool:
+    return (
+        rect["w"] > 0
+        and rect["h"] > 0
+        and rect["x"] <= x < rect["x"] + rect["w"]
+        and rect["y"] <= y < rect["y"] + rect["h"]
+    )
+
+
+def _monitor_rect(one: dict) -> dict:
+    return {"x": one["x"], "y": one["y"], "w": one["width"], "h": one["height"]}
+
+
+def crop_pieces(selection: dict, monitors: list[dict]) -> tuple[dict, list[dict]]:
+    """The canvas and the pieces of the frozen images that fill it.
+
+    Coordinates are physical pixels: each piece is cropped at its own monitor's
+    scale, and laid on the canvas at the scale of the monitor the selection
+    starts on (what GNOME does when a selection crosses differently scaled
+    outputs). Raises ValueError for an empty selection.
+    """
+    if not monitors:
+        raise ValueError("no monitors")
+    rect = _clamp(_rect(selection), bounds_of(monitors))
+    if rect["w"] <= 0 or rect["h"] <= 0:
+        raise ValueError("empty selection")
+    reference = next(
+        (
+            float(one.get("scale") or 1.0)
+            for one in monitors
+            if _holds(_monitor_rect(one), rect["x"] + 0.5, rect["y"] + 0.5)
+        ),
+        None,
+    )
+    pieces: list[dict] = []
+    for one in monitors:
+        hit = _clamp(rect, _monitor_rect(one))
+        if hit["w"] <= 0 or hit["h"] <= 0:
+            continue
+        if reference is None:
+            reference = float(one.get("scale") or 1.0)
+        scale = float(one.get("scale") or 1.0)
+        if not one.get("image"):
+            raise ValueError("the screen is not frozen")
+        pieces.append(
+            {
+                "image": one["image"],
+                "crop": [
+                    round((hit["x"] - one["x"]) * scale),
+                    round((hit["y"] - one["y"]) * scale),
+                    round(hit["w"] * scale),
+                    round(hit["h"] * scale),
+                ],
+                "offset": [
+                    round((hit["x"] - rect["x"]) * reference),
+                    round((hit["y"] - rect["y"]) * reference),
+                ],
+            }
+        )
+    if reference is None:
+        raise ValueError("empty selection")
+    canvas = {"w": max(1, round(rect["w"] * reference)), "h": max(1, round(rect["h"] * reference))}
+    return canvas, pieces
+
+
+def compose(
+    selection: dict,
+    monitors: list[dict],
+    runtime: Path | None = None,
+    run: Runner = run_text,
+    name: str = "selection",
+) -> dict:
+    """Composes the selection from the frozen images: {"image", "w", "h"} or {"error"}.
+
+    `name` is the file in the capture folder: background work (detection,
+    translation) composes into its own so it never races an action.
+    """
+    if shutil.which("magick") is None:
+        return {"error": "imagemagick is missing"}
+    try:
+        canvas, pieces = crop_pieces(selection, monitors)
+    except ValueError as problem:
+        return {"error": "the screen is not frozen" if "frozen" in str(problem) else "empty selection"}
+    folder = (runtime or runtime_dir()) / FREEZE
+    folder.mkdir(parents=True, exist_ok=True)
+    composed = folder / f"{name}.png"
+    command = ["magick", "-size", f"{canvas['w']}x{canvas['h']}", "xc:none"]
+    for piece in pieces:
+        x, y, width, height = piece["crop"]
+        offset_x, offset_y = piece["offset"]
+        command += [
+            "(",
+            piece["image"],
+            "-crop",
+            f"{width}x{height}+{x}+{y}",
+            "+repage",
+            ")",
+            "-geometry",
+            f"+{offset_x}+{offset_y}",
+            "-composite",
+        ]
+    command.append(str(composed))
+    if run(command) is None:
+        return {"error": "magick failed"}
+    return {"image": str(composed), "w": canvas["w"], "h": canvas["h"]}
+
+
+def grab(
+    selection: dict,
+    monitors: list[dict],
+    runtime: Path | None = None,
+    directory: str | None = None,
+    copy: bool = False,
+    run: Runner = run_text,
+    copy_run=run_bytes,
+    now: float | None = None,
+) -> dict:
+    """Composes the selection from the frozen images; {"copied"/"path"} or {"error"}."""
+    composed = compose(selection, monitors, runtime, run)
+    if "error" in composed:
+        return composed
+    image = Path(composed["image"])
+    result: dict = {}
+    if directory:
+        path = target(directory, now)
+        try:
+            shutil.copyfile(image, path)
+        except OSError:
+            return {"error": "the screenshot could not be written"}
+        result["path"] = str(path)
+    if copy:
+        try:
+            copied = copy_run(["wl-copy"], image.read_bytes())
+        except OSError:
+            copied = False
+        if not copied:
+            log("the screenshot was composed but not copied")
+        result["copied"] = bool(copied)
+    return result
+
+
+def pointer(run: Runner = run_text) -> dict | None:
+    """Where the cursor is, in layout coordinates (the overlay's start monitor)."""
+    answer = (run(["hyprctl", "cursorpos"]) or "").strip()
+    try:
+        x, y = (int(part) for part in answer.split(","))
+    except (TypeError, ValueError):
+        return None
+    return {"x": x, "y": y}
+
+
+def freeze(runtime: Path | None = None, run: Runner = run_text) -> dict:
+    """One PNG per monitor, taken before the overlay shows anything.
+
+    The selection is composed from these images, so what the overlay shows is
+    exactly what gets saved even if the screen changes behind it.
+    """
+    screens = monitors(run)
+    if not screens:
+        return {"error": "no monitors"}
+    folder = (runtime or runtime_dir()) / FREEZE
+    shutil.rmtree(folder, ignore_errors=True)
+    folder.mkdir(parents=True, exist_ok=True)
+    for one in screens:
+        image = folder / f"frozen-{one['name']}.png"
+        if run(["grim", "-o", one["name"], str(image)]) is None:
+            return {"error": "grim failed"}
+        one["image"] = str(image)
+    document = {"monitors": screens, "bounds": bounds_of(screens), "pointer": pointer(run)}
+    frozen_path(runtime).write_text(json.dumps(document, separators=(",", ":")), encoding="utf-8")
+    return document
+
+
+def frozen_path(runtime: Path | None = None) -> Path:
+    return (runtime or runtime_dir()) / FREEZE / "frozen.json"
+
+
+def read_frozen(runtime: Path | None = None) -> dict:
+    """The document `freeze` left, so `grab` keeps the images it must crop."""
+    try:
+        document = json.loads(frozen_path(runtime).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return document if isinstance(document, dict) else {}
+
+
 # --- screenshots -------------------------------------------------------------
 
 
@@ -87,56 +358,505 @@ def target(directory: str, now: float | None = None, suffix: str = "png") -> Pat
     return folder / f"Screenshot_{stamp}.{suffix}"
 
 
-def geometry(mode: str, run: Runner = run_text) -> str | None:
-    """The grim `-g` argument, "" for the whole screen, None when cancelled."""
-    if mode == "full":
-        return ""
-    if mode == "region":
-        answer = run(["slurp"])
-        return answer.strip() if answer and answer.strip() else None
-    answer = run(["hyprctl", "activewindow", "-j"])
+GEOMETRY = re.compile(
+    r"^\s*(?:(?P<w>\d+)x(?P<h>\d+)\+(?P<x>-?\d+)\+(?P<y>-?\d+)"
+    r"|(?P<x2>-?\d+),(?P<y2>-?\d+),(?P<w2>\d+),(?P<h2>\d+))\s*$"
+)
+
+
+def parse_geometry(text: str) -> dict:
+    """A rectangle from `WxH+X+Y` (grim, wf-recorder) or `X,Y,W,H` (our own)."""
+    match = GEOMETRY.match(text or "")
+    if not match:
+        raise ValueError(f"not a geometry: {text!r}")
+    groups = match.groupdict()
+    if groups["w"] is not None:
+        return {"x": int(groups["x"]), "y": int(groups["y"]), "w": int(groups["w"]), "h": int(groups["h"])}
+    return {"x": int(groups["x2"]), "y": int(groups["y2"]), "w": int(groups["w2"]), "h": int(groups["h2"])}
+
+
+def geometry_text(rect: dict) -> str:
+    """The `-g` form of a rectangle."""
+    return f"{int(rect['w'])}x{int(rect['h'])}+{int(rect['x'])}+{int(rect['y'])}"
+
+
+def window_at(x: float, y: float, run: Runner = run_text) -> dict | None:
+    """The topmost visible window under a layout point, as a rectangle."""
+    answer = run(["hyprctl", "clients", "-j"])
     try:
-        window = json.loads(answer or "")
-        x, y = window["at"]
-        width, height = window["size"]
-    except (TypeError, ValueError, KeyError):
+        clients = json.loads(answer or "")
+    except (TypeError, ValueError):
         return None
-    if width <= 0 or height <= 0:
+    if not isinstance(clients, list):
         return None
-    return f"{int(width)}x{int(height)}+{int(x)}+{int(y)}"
+    best: dict | None = None
+    best_focus = None
+    for one in clients:
+        if not isinstance(one, dict) or one.get("hidden") or one.get("mapped") is False:
+            continue
+        try:
+            left, top = (int(value) for value in one["at"])
+            width, height = (int(value) for value in one["size"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if width <= 0 or height <= 0:
+            continue
+        if not (left <= x < left + width and top <= y < top + height):
+            continue
+        focus = one.get("focusHistoryID")
+        focus = focus if isinstance(focus, int) else 1 << 30
+        if best is None or focus < best_focus:
+            best, best_focus = {"x": left, "y": top, "w": width, "h": height}, focus
+    return best
 
 
-def shot(
-    mode: str,
-    directory: str | None = None,
-    copy: bool = True,
-    annotate: bool = False,
+def wf_geometry(geometry: str, monitors: list[dict] | None = None) -> str:
+    """The `-g` form wf-recorder takes (`x,y wxh`), from `WxH+X+Y` or `X,Y,W,H`.
+
+    wf-recorder records one output: an area that crosses a monitor is cut to
+    the part on the monitor it starts on, and its log says so otherwise.
+    """
+    rect = _rect(parse_geometry(geometry))
+    if monitors:
+        start = next(
+            (one for one in monitors if _holds(_monitor_rect(one), rect["x"] + 0.5, rect["y"] + 0.5)),
+            None,
+        )
+        if start is not None:
+            rect = _clamp(rect, _monitor_rect(start))
+            if rect["w"] <= 0 or rect["h"] <= 0:
+                raise ValueError("empty selection")
+    return f"{rect['x']},{rect['y']} {rect['w']}x{rect['h']}"
+
+
+def annotate(
+    path: str | Path, runtime: Path | None = None, spawner: Spawner = spawn, values: dict | None = None
+) -> bool:
+    """Opens the file in swappy, detached; False when it is not installed.
+
+    swappy starts with its panel shown or hidden as the preference says, in the
+    Vitrail theme (see `vitrail.swappy`).
+    """
+    if shutil.which("swappy") is None:
+        log("swappy is not installed; the screenshot is unannotated")
+        return False
+    from . import swappy
+
+    env = swappy.environment(_preferences() if values is None else values)
+    spawner(["swappy", "-f", str(path)], (runtime or runtime_dir()) / "capture.log", env=env)
+    return True
+
+
+# --- text from a picture -----------------------------------------------------
+
+# The settings' language (ISO 639-1) -> the traineddata tesseract names it by.
+OCR_NAMES = {"en": "eng", "es": "spa", "de": "deu", "fr": "fra", "it": "ita", "pt": "por"}
+
+
+def installed_languages(run: Runner = run_text) -> list[str]:
+    """The traineddata tesseract can load (its `osd` helper is not a language)."""
+    answer = run(["tesseract", "--list-langs"]) or ""
+    names = [line.strip() for line in answer.splitlines()[1:]]
+    return [name for name in names if name and name != "osd"]
+
+
+def default_languages(language: str) -> str:
+    """The system language and English, as tesseract writes them (`spa+eng`)."""
+    code = OCR_NAMES.get(re.split(r"[_.@-]", (language or "").lower())[0], "eng")
+    return code if code == "eng" else f"{code}+eng"
+
+
+def wanted_languages(values: dict) -> str:
+    """`ocrLanguages` when set, else the system language plus English."""
+    return str(values.get("ocrLanguages") or "").strip() or default_languages(str(values.get("language") or ""))
+
+
+def pick_languages(wanted: str, installed: list[str]) -> str:
+    """The wanted languages that are installed, in the wanted order.
+
+    None of them installed: English, else whatever is (a reading in the wrong
+    language beats none); "" when nothing is, and tesseract's default stands.
+    """
+    chosen: list[str] = []
+    for name in re.split(r"[+,\s]+", wanted or ""):
+        if name in installed and name not in chosen:
+            chosen.append(name)
+    if not chosen and installed:
+        chosen = ["eng" if "eng" in installed else installed[0]]
+    return "+".join(chosen)
+
+
+def clean_text(raw: str) -> str:
+    """What tesseract printed, without its form feeds, trailing blanks and blank runs."""
+    lines = [line.rstrip() for line in raw.replace("\r", "").replace("\x0c", "").split("\n")]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+
+def preview(text: str, limit: int = 160) -> str:
+    """One short line of the text for a notification, escaped for its markup."""
+    line = " ".join(text.split())
+    if len(line) > limit:
+        line = line[:limit].rstrip() + "…"
+    return html.escape(line, quote=False)
+
+
+def ocr_scale(width: int, height: int) -> int:
+    """How much to enlarge the area: screen text is small for tesseract."""
+    area = width * height
+    return 3 if area < 100_000 else 2 if area < 2_000_000 else 1
+
+
+def ocr_psm(width: int, height: int) -> int:
+    """Page segmentation: a line for a thin strip, a uniform block otherwise."""
+    return 7 if height <= 48 else 6
+
+
+def ocr_image(composed: dict, wanted: str, run: Runner = run_text) -> dict:
+    """Reads a composed image with tesseract (local only): {"text", "languages"} or {"error"}."""
+    languages = pick_languages(wanted, installed_languages(run))
+    image = Path(composed["image"])
+    source = image.with_name(f"{image.stem}-ocr.png")
+    scale = ocr_scale(composed["w"], composed["h"])
+    prepare = ["magick", composed["image"], "-background", "white", "-alpha", "remove", "-colorspace", "Gray"]
+    prepare += ["-resize", f"{scale * 100}%"] if scale > 1 else []
+    if run(prepare + [str(source)]) is None:
+        return {"error": "magick failed"}
+    command = ["tesseract", str(source), "stdout", "--psm", str(ocr_psm(composed["w"], composed["h"]))]
+    raw = run(command + (["-l", languages] if languages else []))
+    source.unlink(missing_ok=True)
+    if raw is None:
+        return {"error": "tesseract failed"}
+    return {"text": clean_text(raw), "languages": languages}
+
+
+def read_text(
+    selection: dict,
+    monitors: list[dict],
+    wanted: str,
+    runtime: Path | None = None,
     run: Runner = run_text,
     copy_run=run_bytes,
-    annotate_run: Runner = run_text,
+) -> dict:
+    """Reads the selection with tesseract (local only) and copies the text.
+
+    {"text", "preview", "copied", "languages"}; `text` is "" when nothing was
+    found, and {"error"} when the area or the tools failed.
+    """
+    if shutil.which("tesseract") is None:
+        return {"error": "tesseract is missing"}
+    composed = compose(selection, monitors, runtime, run)
+    if "error" in composed:
+        return composed
+    read = ocr_image(composed, wanted, run)
+    if "error" in read:
+        return read
+    text = read["text"]
+    if not text:
+        return {"text": "", "languages": read["languages"]}
+    try:
+        copied = copy_run(["wl-copy"], text.encode("utf-8"))
+    except OSError:
+        copied = False
+    if not copied:
+        log("the text was read but not copied")
+    return {"text": text, "preview": preview(text), "copied": bool(copied), "languages": read["languages"]}
+
+
+def has_text(text: str) -> bool:
+    """Whether a reading is text and not the specks tesseract finds in a picture."""
+    return len(re.findall(r"\w", text or "")) >= 3
+
+
+# --- codes ---------------------------------------------------------------------
+
+
+def parse_codes(xml: str) -> list[dict]:
+    """The symbols of `zbarimg --xml`: [{"type", "data"}] in reading order."""
+    try:
+        root = ElementTree.fromstring(xml)
+    except ElementTree.ParseError:
+        return []
+    found: list[dict] = []
+    for symbol in root.iter():
+        if not symbol.tag.endswith("symbol"):
+            continue
+        data = next((child.text or "" for child in symbol if child.tag.endswith("data")), "")
+        found.append({"type": symbol.get("type", ""), "data": data})
+    return found
+
+
+def scan_codes(image: str, run: Runner = run_text) -> list[dict]:
+    """QR and bar codes in the image (zbar, local); none when zbar finds nothing."""
+    return parse_codes(run(["zbarimg", "--quiet", "--xml", image]) or "")
+
+
+def is_url(text: str) -> bool:
+    """A single http(s) link: the only thing the overlay offers to open."""
+    return re.fullmatch(r"https?://[^\s]+", text or "") is not None
+
+
+def open_link(url: str, log_path: Path, spawner: Spawner = spawn) -> dict:
+    """Opens a web link with the desktop's handler; anything else is refused."""
+    if not is_url(url):
+        return {"error": "not a web link"}
+    if shutil.which("xdg-open") is None:
+        return {"error": "xdg-open is missing"}
+    spawner(["xdg-open", url], log_path)
+    return {"opened": True}
+
+
+def read_codes(
+    selection: dict,
+    monitors: list[dict],
+    runtime: Path | None = None,
+    run: Runner = run_text,
+    copy_run=run_bytes,
+) -> dict:
+    """The codes in the selection; the first one's content is copied.
+
+    {"codes": [{"type", "data"}], "copied", "url"}: `url` is the first code when
+    it is a web link ("" otherwise), so the overlay can offer to open it.
+    """
+    composed = compose(selection, monitors, runtime, run, name="qr")
+    if "error" in composed:
+        return composed
+    codes = scan_codes(composed["image"], run)
+    if not codes:
+        return {"codes": [], "copied": False, "url": ""}
+    first = codes[0]["data"]
+    try:
+        copied = copy_run(["wl-copy"], first.encode("utf-8"))
+    except OSError:
+        copied = False
+    if not copied:
+        log("the code was read but not copied")
+    return {"codes": codes, "copied": bool(copied), "url": first if is_url(first) else ""}
+
+
+def detect(
+    selection: dict,
+    monitors: list[dict],
+    wanted: str,
+    runtime: Path | None = None,
+    run: Runner = run_text,
+) -> dict:
+    """What the selection holds, for the overlay's buttons: {"text": bool, "codes": n}.
+
+    Local, no clipboard, and in a file of its own. The reading is the same as
+    the Copy text action's, so a button enabled here finds the text there.
+    """
+    composed = compose(selection, monitors, runtime, run, name="detect")
+    if "error" in composed:
+        return composed
+    read = ocr_image(composed, wanted, run)
+    text = "text" in read and has_text(read["text"])
+    return {"text": text, "codes": len(scan_codes(composed["image"], run))}
+
+
+# --- translate -----------------------------------------------------------------
+
+TRANSLATE_WAIT = 20
+TARGET = re.compile(r"[A-Za-z]{2,3}(?:-[A-Za-z]{2,4})?")
+
+
+def run_limited(argv: list[str]) -> str | None:
+    """`run_text` that gives up after `TRANSLATE_WAIT` seconds (a network call)."""
+    try:
+        found = subprocess.run(argv, capture_output=True, text=True, check=False, timeout=TRANSLATE_WAIT)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return found.stdout if found.returncode == 0 else None
+
+
+def target_language(values: dict) -> str:
+    """`translateTarget`, else the system language, else English (a language code only)."""
+    for key in ("translateTarget", "language"):
+        value = str(values.get(key) or "").strip()
+        if TARGET.fullmatch(value):
+            return value
+    return "en"
+
+
+def translate(
+    selection: dict,
+    monitors: list[dict],
+    target: str,
+    wanted: str,
+    runtime: Path | None = None,
+    run: Runner = run_text,
+) -> dict:
+    """Reads the area and translates it with translate-shell (online, Google).
+
+    {"source", "text"} or {"error"}. The text goes to `trans` in a private file,
+    not on its command line.
+    """
+    if shutil.which("trans") is None:
+        return {"error": "translate-shell is missing"}
+    composed = compose(selection, monitors, runtime, run, name="translate")
+    if "error" in composed:
+        return composed
+    read = ocr_image(composed, wanted, run)
+    if "error" in read:
+        return read
+    if not has_text(read["text"]):
+        return {"error": "no text"}
+    path = Path(composed["image"]).with_name("translate.txt")
+    try:
+        _private_file(path, read["text"].encode("utf-8"))
+        answer = run(["trans", "-b", f":{target}", "-i", str(path)])
+    except OSError:
+        return {"error": "translation failed"}
+    finally:
+        path.unlink(missing_ok=True)
+    text = clean_text(answer or "")
+    if not text:
+        return {"error": "translation failed"}
+    return {"source": read["text"], "text": text}
+
+
+# --- pin -----------------------------------------------------------------------
+
+
+def pin_image(
+    selection: dict,
+    monitors: list[dict],
+    runtime: Path | None = None,
+    run: Runner = run_text,
     now: float | None = None,
 ) -> dict:
-    """Saves one screenshot; {"path"} or {"error"}."""
-    area = geometry(mode, run)
-    if area is None:
-        return {"error": "cancelled"}
-    path = target(directory or pictures(), now)
-    command = ["grim"] + (["-g", area] if area else []) + [str(path)]
-    if run(command) is None:
-        return {"error": "grim failed"}
-    if copy:
-        try:
-            copied = copy_run(["wl-copy"], path.read_bytes())
-        except OSError:
-            copied = False
-        if not copied:
-            log("the screenshot was saved but not copied")
-    if annotate:
-        if shutil.which("swappy"):
-            annotate_run(["swappy", "-f", str(path)])
-        else:
-            log("swappy is not installed; the screenshot is unannotated")
-    return {"path": str(path)}
+    """The composed area, kept as a file of its own for a pin: {"image"} or {"error"}.
+
+    Pins live in `pins/` of the runtime folder, not in `capture/`: the next
+    freeze empties that one, and a pin outlives the overlay.
+    """
+    composed = compose(selection, monitors, runtime, run, name="pin")
+    if "error" in composed:
+        return composed
+    folder = (runtime or runtime_dir()) / "pins"
+    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(folder, 0o700)
+    path = folder / f"pin-{int((time.time() if now is None else now) * 1000)}.png"
+    try:
+        _private_file(path, Path(composed["image"]).read_bytes())
+    except OSError:
+        return {"error": "the pin could not be written"}
+    return {"image": str(path)}
+
+
+# --- ask AI --------------------------------------------------------------------
+
+# Google has no documented way to open AI Mode with a picture. What works is
+# Lens' own upload form (`encoded_image`, multipart; the page behind a plain
+# POST): `q` rides along as the question, the picture and the question land in
+# one Lens search whose AI Overview answers it, and its "AI Mode" tab carries
+# both on with one click. The POST has to come from the user's browser (the
+# result's `vsrid` only resolves with the cookie that upload set; from here
+# the thumbnail breaks), and `udm=50` on the upload is ignored, so the page
+# below builds the form in the browser and submits it. Checked live in
+# Firefox, 2026-11-19. Nothing leaves the machine before the user submits,
+# and only to this address.
+LENS = "https://lens.google.com/v3/upload"
+# Longest side of the picture sent, and how long the files stay on disk.
+ASK_PIXELS = 2000
+ASK_KEEP = 60
+QUESTION_MAX = 500
+
+PAGE = """<!doctype html>
+<html><head><meta charset="utf-8"><title>Vitrail</title>
+<style>:root{{color-scheme:light dark}}body{{font:16px sans-serif;margin:2em}}</style></head>
+<body>
+<form id="f" method="post" action="{action}" enctype="multipart/form-data">
+<input type="file" name="encoded_image" id="i">
+</form>
+<p>Sending the picture to Google Lens&hellip;</p>
+<noscript>This page needs JavaScript to attach the picture.</noscript>
+<script>
+const raw = atob("{image}");
+const bytes = new Uint8Array(raw.length);
+for (let n = 0; n < raw.length; n++) bytes[n] = raw.charCodeAt(n);
+const files = new DataTransfer();
+files.items.add(new File([bytes], "vitrail.png", {{ type: "image/png" }}));
+document.getElementById("i").files = files.files;
+document.getElementById("f").submit();
+</script>
+</body></html>
+"""
+
+
+def question(text: str) -> str:
+    """The typed question on one line, capped."""
+    return " ".join((text or "").split())[:QUESTION_MAX]
+
+
+def lens_url(text: str, stamp: int) -> str:
+    """Lens' upload address; the question (when there is one) rides in `q`."""
+    query = {"re": "df", "ep": "gisbubb", "st": str(stamp)}
+    if text:
+        query["q"] = text
+    return f"{LENS}?{urlencode(query)}"
+
+
+def lens_page(png: bytes, text: str, stamp: int) -> str:
+    """A page that posts the picture (inline, as base64) to Lens from the browser."""
+    return PAGE.format(
+        action=html.escape(lens_url(text, stamp), quote=True), image=base64.b64encode(png).decode("ascii")
+    )
+
+
+def _private_file(path: Path, data: bytes) -> None:
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(descriptor, "wb") as handle:
+        os.fchmod(handle.fileno(), 0o600)
+        handle.write(data)
+
+
+def forget(paths: list[str], delay: float, sleep: Callable[[float], None] = time.sleep) -> None:
+    """Deletes the files once the browser has had time to read them."""
+    sleep(delay)
+    for path in paths:
+        Path(path).unlink(missing_ok=True)
+
+
+def ask(
+    selection: dict,
+    monitors: list[dict],
+    text: str,
+    runtime: Path | None = None,
+    run: Runner = run_text,
+    spawner: Spawner = spawn,
+    now: float | None = None,
+) -> dict:
+    """Opens the default browser on Google Lens with the area and the question.
+
+    The picture goes into a private page (0600, in the runtime folder) the
+    browser submits to Lens; both files are deleted after `ASK_KEEP` seconds.
+    {"opened": True, "page"} or {"error"}.
+    """
+    composed = compose(selection, monitors, runtime, run)
+    if "error" in composed:
+        return composed
+    if shutil.which("xdg-open") is None:
+        return {"error": "xdg-open is missing"}
+    folder = Path(composed["image"]).parent / "ask"
+    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(folder, 0o700)
+    image = folder / "ask.png"
+    if run(["magick", composed["image"], "-resize", f"{ASK_PIXELS}x{ASK_PIXELS}>", str(image)]) is None:
+        return {"error": "magick failed"}
+    os.chmod(image, 0o600)
+    stamp = int((time.time() if now is None else now) * 1000)
+    page = folder / "lens.html"
+    try:
+        _private_file(page, lens_page(image.read_bytes(), question(text), stamp).encode("utf-8"))
+    except OSError:
+        return {"error": "the page could not be written"}
+    log_path = (runtime or runtime_dir()) / "capture.log"
+    spawner(["xdg-open", page.as_uri()], log_path)
+    spawner(
+        [sys.executable, "-m", "vitrail.capture", "forget", "--after", str(ASK_KEEP), str(page), str(image)],
+        log_path,
+    )
+    return {"opened": True, "page": str(page)}
 
 
 # --- recording ---------------------------------------------------------------
@@ -173,7 +893,8 @@ def _write_status(document: dict, runtime: Path | None = None) -> None:
 def record(
     action: str,
     directory: str | None = None,
-    region: bool = False,
+    geometry: str | None = None,
+    monitors: list[dict] | None = None,
     audio: bool = False,
     runtime: Path | None = None,
     run: Runner = run_text,
@@ -205,10 +926,11 @@ def record(
         return {"recording": True, "path": current.get("path", "")}
 
     area = ""
-    if region:
-        area = geometry("region", run) or ""
-        if not area:
-            return {"error": "cancelled"}
+    if geometry:
+        try:
+            area = wf_geometry(geometry, monitors)
+        except ValueError:
+            return {"error": f"unknown geometry {geometry!r}"}
     folder = Path(directory or videos()).expanduser()
     folder.mkdir(parents=True, exist_ok=True)
     stamp = time.strftime(STAMP, time.localtime(now))
@@ -237,32 +959,131 @@ def _flag(value: object, fallback: bool) -> bool:
     return str(value).strip().lower() in ("true", "1", "yes", "on")
 
 
+USAGE = (
+    "usage: capture freeze | grab --geometry <X,Y,W,H> [--copy] [--save]"
+    " | record <start|stop|toggle> [--geometry <WxH+X+Y>] [--audio]"
+    " | ocr|detect|qr|translate|pin --geometry <X,Y,W,H> | ask --geometry <X,Y,W,H> --text <question>"
+    " | open <link>"
+    " | window <x> <y> | annotate <path> | status"
+)
+
+
+def _geometry_argument(args: list[str]) -> dict | None:
+    if "--geometry" not in args:
+        return None
+    index = args.index("--geometry")
+    if index + 1 >= len(args):
+        raise ValueError("--geometry needs a rectangle")
+    return parse_geometry(args[index + 1])
+
+
+def _background() -> None:
+    """Lowest priority and one thread for tesseract: detection must not be felt."""
+    os.environ.setdefault("OMP_THREAD_LIMIT", "1")
+    try:
+        os.nice(10)
+    except OSError:
+        pass
+
+
+def _text_argument(args: list[str]) -> str:
+    """The value after `--text` (it may itself start with dashes), "" without one."""
+    if "--text" not in args:
+        return ""
+    index = args.index("--text")
+    return args[index + 1] if index + 1 < len(args) else ""
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     values = _preferences()
-    if args[:1] == ["shot"] and len(args) >= 2:
-        result = shot(
-            args[1], directory=values.get("captureDir") or pictures(), copy=_flag(values.get("captureCopy"), True)
+    try:
+        geometry = _geometry_argument(args)
+    except ValueError as problem:
+        log(str(problem))
+        return 2
+
+    if args[:1] == ["freeze"]:
+        result = freeze()
+    elif args[:1] == ["grab"]:
+        if geometry is None:
+            log(USAGE)
+            return 2
+        saved = "--save" in args
+        frozen = read_frozen()
+        result = grab(
+            geometry,
+            frozen.get("monitors") or monitors(),
+            directory=(values.get("captureDir") or pictures()) if saved else None,
+            copy="--copy" in args or not saved,
         )
-        print(json.dumps(result, separators=(",", ":")))
-        return 0 if "path" in result else 1
-    if args[:1] == ["record"] and len(args) >= 2:
+    elif args[:1] == ["ocr"]:
+        if geometry is None:
+            log(USAGE)
+            return 2
+        result = read_text(geometry, read_frozen().get("monitors") or monitors(), wanted_languages(values))
+    elif args[:1] in (["detect"], ["qr"], ["translate"], ["pin"]):
+        if geometry is None:
+            log(USAGE)
+            return 2
+        screens = read_frozen().get("monitors") or monitors()
+        if args[0] == "detect":
+            _background()
+            result = detect(geometry, screens, wanted_languages(values))
+        elif args[0] == "qr":
+            result = read_codes(geometry, screens)
+        elif args[0] == "pin":
+            result = pin_image(geometry, screens)
+        else:
+            result = translate(geometry, screens, target_language(values), wanted_languages(values), run=run_limited)
+    elif args[:1] == ["open"]:
+        if len(args) < 2:
+            log(USAGE)
+            return 2
+        result = open_link(args[1], runtime_dir() / "capture.log")
+    elif args[:1] == ["ask"]:
+        if geometry is None:
+            log(USAGE)
+            return 2
+        if not _flag(values.get("captureAi"), True):
+            result = {"error": "ai mode is off"}
+        else:
+            result = ask(geometry, read_frozen().get("monitors") or monitors(), _text_argument(args))
+    elif args[:1] == ["forget"] and "--after" in args:
+        index = args.index("--after")
+        try:
+            forget(args[index + 2 :], float(args[index + 1]))
+        except (IndexError, ValueError):
+            log(USAGE)
+            return 2
+        return 0
+    elif args[:1] == ["window"] and len(args) >= 3:
+        try:
+            found = window_at(float(args[1]), float(args[2]))
+        except ValueError:
+            log(USAGE)
+            return 2
+        print(json.dumps(found or {}, separators=(",", ":")))
+        return 0 if found else 1
+    elif args[:1] == ["annotate"] and len(args) >= 2:
+        return 0 if annotate(args[1], values=values) else 1
+    elif args[:1] == ["record"] and len(args) >= 2:
         result = record(
             args[1],
             directory=values.get("captureRecordDir") or videos(),
-            region="--region" in args,
+            geometry=geometry_text(geometry) if geometry else None,
+            monitors=read_frozen().get("monitors"),
             audio=_flag(values.get("captureRecordAudio"), False),
         )
-        print(json.dumps(result, separators=(",", ":")))
-        return 0 if "error" not in result else 1
-    if args[:1] == ["status"]:
+    elif args[:1] == ["status"]:
         print(json.dumps(status(), separators=(",", ":")))
         return 0
-    print(
-        "usage: capture shot <full|window|region> | record <start|stop|toggle> [--region] [--audio] | status",
-        file=sys.stderr,
-    )
-    return 2
+    else:
+        print(USAGE, file=sys.stderr)
+        return 2
+
+    print(json.dumps(result, separators=(",", ":")))
+    return 0 if "error" not in result else 1
 
 
 if __name__ == "__main__":

@@ -37,7 +37,7 @@ fi
 
 for file in "$REPO"/kit/*.qml "$REPO"/kit/base/*.qml "$REPO"/kit/composed/*.qml \
     "$REPO"/shell/*.qml "$REPO"/shell/pages/*.qml "$REPO"/login/*.qml "$REPO"/lock/*.qml \
-    "$REPO"/gallery/*.qml; do
+    "$REPO"/gallery/*.qml "$REPO"/bar/capture/*.qml "$REPO"/bar/clipboard/*.qml; do
     name="qmllint $(basename "$file")"
     if output="$("$QMLLINT" "$file" 2>&1)"; then
         ok "$name"
@@ -79,6 +79,26 @@ if grep -q '^selftest=' "$settings" 2>/dev/null; then
     ok "settings are persisted"
 else
     not_ok "settings are persisted" "no selftest key in $settings"
+fi
+
+# The capture toolbar is the overlay's whole UI and loads without a Wayland
+# output; the overlay's layer surfaces need a compositor and are checked by
+# hand (docs/manual-checks.md).
+if ! command -v quickshell >/dev/null 2>&1; then
+    not_ok "capture toolbar loads in the shell" "quickshell is missing"
+else
+    mkdir -p "$tmp/capture" "$tmp/capture-runtime"
+    ln -s "$REPO/bar" "$tmp/capture/bar"
+    cp "$REPO/tests/fixtures/capture_smoke.qml" "$tmp/capture/shell.qml"
+    if XDG_CONFIG_HOME="$tmp/capture-config" XDG_CACHE_HOME="$tmp/capture-cache" \
+        XDG_RUNTIME_DIR="$tmp/capture-runtime" \
+        QT_QPA_PLATFORM=offscreen timeout 20 quickshell --path "$tmp/capture/shell.qml" \
+        >"$tmp/capture.log" 2>&1 && grep -q "capture smoke: loaded" "$tmp/capture.log"; then
+        ok "capture toolbar loads in the shell"
+    else
+        not_ok "capture toolbar loads in the shell" \
+            "$(grep -E 'ERROR|Failed|did not load|no size|timed out' "$tmp/capture.log" | head -5)"
+    fi
 fi
 
 if [[ -s "$tmp/config/vitrail/selftest.png" ]]; then

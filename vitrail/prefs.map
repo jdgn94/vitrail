@@ -187,11 +187,15 @@ sound soundStep
 
 # Screenshots and screen recording.
 capture captureDir
-capture captureCopy
-capture captureAnnotate
 capture captureRecordDir
 capture captureRecordAudio
 capture captureRecordRegion
+capture captureAnimation
+capture annotatePanel
+capture captureAi
+capture ocrLanguages
+capture captureDetect
+capture translateTarget
 
 launcher launcherEngine
 launcher launcherBangs
