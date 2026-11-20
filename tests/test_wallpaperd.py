@@ -94,6 +94,22 @@ class ShowTests(unittest.TestCase):
         # The still engine is stopped first, so both never draw at once.
         self.assertEqual(len(run.issued("awww", "kill")), 1)
 
+    def test_a_video_pauses_while_a_fullscreen_window_covers_it(self) -> None:
+        run = Fake(awww=True)
+        wallpaperd.show(self.touch("loop.mp4"), self.cache, run=run, sleep=lambda _s: None, spawn=run.spawn)
+        started = run.issued("mpvpaper")[0]
+        self.assertIn("-p", started)
+        self.assertEqual(started[started.index("-a") + 1], "FULL")
+
+    def test_the_settings_switch_keeps_the_video_playing(self) -> None:
+        run = Fake(awww=True)
+        wallpaperd.show(
+            self.touch("loop.mp4"), self.cache, run=run, sleep=lambda _s: None, spawn=run.spawn, pause=False
+        )
+        started = run.issued("mpvpaper")[0]
+        self.assertNotIn("-p", started)
+        self.assertNotIn("-a", started)
+
     def test_a_file_that_is_not_a_wallpaper_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             wallpaperd.show(self.touch("notes.txt"), self.cache, run=Fake())
@@ -105,16 +121,13 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(wallpaperd.parse_monitors("not json"), {})
         self.assertEqual(wallpaperd.parse_monitors("[]"), {})
         self.assertEqual(wallpaperd.parse_monitors('{"DP-1": 3}'), {})
-        self.assertEqual(wallpaperd.parse_monitors('{"DP-1": {}}'), {"DP-1": {"wallpaper": "", "effect": ""}})
+        self.assertEqual(wallpaperd.parse_monitors('{"DP-1": {}}'), {"DP-1": {"wallpaper": ""}})
 
-    def test_wallpaper_and_effect_are_kept(self) -> None:
+    def test_the_picture_is_kept_and_a_leftover_effect_is_dropped(self) -> None:
         text = '{"DP-1": {"wallpaper": "/w/a.png", "effect": "blur"}, "HDMI-A-1": {"wallpaper": "/w/b.png"}}'
         self.assertEqual(
             wallpaperd.parse_monitors(text),
-            {
-                "DP-1": {"wallpaper": "/w/a.png", "effect": "blur"},
-                "HDMI-A-1": {"wallpaper": "/w/b.png", "effect": ""},
-            },
+            {"DP-1": {"wallpaper": "/w/a.png"}, "HDMI-A-1": {"wallpaper": "/w/b.png"}},
         )
 
 
@@ -133,7 +146,7 @@ class MonitorShowTests(unittest.TestCase):
         path.write_bytes(b"x")
         return str(path)
 
-    def derive(self, path, name, cache, run=None, say=None):
+    def derive(self, path, name, cache, run=None, say=None, **_style):
         """A stand-in for effects.derive: the effect is in the file name."""
         self.derived.append((str(path), name))
         return Path(str(path) + "." + (name or "none") + ".png")
@@ -161,8 +174,12 @@ class MonitorShowTests(unittest.TestCase):
         state = self.show(
             self.global_image,
             run,
-            '{"DP-1": {"wallpaper": "' + self.other_image + '", "effect": "blur"}, "HDMI-A-1": {"effect": "sepia"}}',
-            effect="none",
+            '{"DP-1": {"wallpaper": "'
+            + self.other_image
+            + '"}, "HDMI-A-1": {"wallpaper": "'
+            + self.other_image
+            + '"}}',
+            effect="sepia",
         )
 
         sent = run.issued("awww", "img")
@@ -170,20 +187,20 @@ class MonitorShowTests(unittest.TestCase):
         self.assertEqual(len(sent), 3)
         self.assertNotIn("-o", sent[0])
         self.assertEqual(sent[1][:4], ["awww", "img", "-o", "DP-1"])
-        self.assertIn(self.other_image + ".blur.png", sent[1])
+        self.assertIn(self.other_image + ".sepia.png", sent[1])
         self.assertEqual(sent[2][:4], ["awww", "img", "-o", "HDMI-A-1"])
-        self.assertIn(self.global_image + ".sepia.png", sent[2])
+        self.assertIn(self.other_image + ".sepia.png", sent[2])
         self.assertEqual(
             state["outputs"],
             {
-                "DP-1": self.other_image + ".blur.png",
-                "HDMI-A-1": self.global_image + ".sepia.png",
+                "DP-1": self.other_image + ".sepia.png",
+                "HDMI-A-1": self.other_image + ".sepia.png",
             },
         )
-        self.assertIn((self.global_image, "none"), self.derived)
-        self.assertIn((self.other_image, "blur"), self.derived)
+        self.assertIn((self.global_image, "sepia"), self.derived)
+        self.assertIn((self.other_image, "sepia"), self.derived)
 
-    def test_an_output_can_borrow_the_effect_of_the_whole_screen(self) -> None:
+    def test_an_output_takes_the_effect_of_the_whole_screen(self) -> None:
         run = Fake(awww=True)
         self.show(self.global_image, run, '{"DP-1": {"wallpaper": "' + self.other_image + '"}}', effect="blur")
         sent = run.issued("awww", "img", "-o")
@@ -213,9 +230,9 @@ class MonitorShowTests(unittest.TestCase):
 
     def test_the_outputs_are_remembered_in_the_state(self) -> None:
         run = Fake(awww=True)
-        self.show(self.global_image, run, '{"DP-1": {"effect": "negate"}}')
+        self.show(self.global_image, run, '{"DP-1": {"wallpaper": "' + self.other_image + '"}}', effect="negate")
         stored = wallpaperd.read_state(self.cache)
-        self.assertEqual(stored["outputs"], {"DP-1": self.global_image + ".negate.png"})
+        self.assertEqual(stored["outputs"], {"DP-1": self.other_image + ".negate.png"})
 
 
 class StopTests(unittest.TestCase):

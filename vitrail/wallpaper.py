@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 from typing import Callable
 
-from vitrail import colors, effects, media
+from vitrail import colors, effects, fonts, media
 from vitrail.prefs import read_prefs, remove_pref, write_pref
 
 KINDS = {
@@ -91,8 +91,9 @@ def request_paths(value: str) -> list[str]:
 
 
 def parse_monitors(value: str) -> dict[str, dict[str, str]]:
-    """The per-output document of `wallpaperMonitors`: an output's picture and
-    effect, both optional. Anything malformed reads as no overrides."""
+    """The per-output document of `wallpaperMonitors`: the picture one output
+    shows instead of the global one. Anything malformed reads as no override;
+    the effect is global and applies to whichever picture the output shows."""
     try:
         data = json.loads(value)
     except (TypeError, ValueError):
@@ -104,11 +105,7 @@ def parse_monitors(value: str) -> dict[str, dict[str, str]]:
         if not isinstance(entry, dict):
             continue
         wallpaper = entry.get("wallpaper")
-        effect = entry.get("effect")
-        out[str(name)] = {
-            "wallpaper": wallpaper if isinstance(wallpaper, str) else "",
-            "effect": effect if isinstance(effect, str) else "",
-        }
+        out[str(name)] = {"wallpaper": wallpaper if isinstance(wallpaper, str) else ""}
     return out
 
 
@@ -258,6 +255,51 @@ def pick(config: Path, path: str) -> str | None:
     return path
 
 
+def _shown_copies(cache: Path, path: Path, effect: str, monitors: dict[str, dict[str, str]]) -> list[Path]:
+    """The picture files the bar draws for these prefs: the global effect copy
+    and one for every output with a picture of its own."""
+    copies = []
+    if effect not in ("", "none") and effects.is_image(path):
+        copies.append(effects.shown(cache))
+    for output, entry in monitors.items():
+        picture = Path(entry["wallpaper"])
+        if entry["wallpaper"] and effect not in ("", "none") and effects.is_image(picture):
+            copies.append(effects.shown(cache, output))
+    return copies
+
+
+def _preview_file(cache: Path, path: Path) -> list[Path]:
+    """The plain file that proves the picker's previews were published. A
+    recipe magick refuses is left out of the grid, so requiring every one of
+    them would redo the pass forever."""
+    if not effects.is_image(path):
+        return []
+    return [cache / effects.PREVIEWS / "global" / "none.png"]
+
+
+def _shown_image(
+    picture: Path,
+    effect: str,
+    cache: Path,
+    run: Callable[..., subprocess.CompletedProcess],
+    say: Say,
+    mode: str = "light",
+    detail: str = "normal",
+) -> Path | None:
+    """The picture the bar draws for one output with `effect`: the derived
+    file, or the plain picture when magick refuses it. None when the output
+    takes no copy (no effect, a video, a file that is gone)."""
+    if effect in ("", "none") or not picture.is_file():
+        return None
+    try:
+        image = effects.derive(picture, effect, cache, run=run, say=say, mode=mode, detail=detail)
+    except (subprocess.CalledProcessError, OSError):
+        say(f"The {effect} effect was refused for {picture.name}: shown as it is")
+        return picture if effects.is_image(picture) else None
+    # `derive` answers with the picture itself for a kind that takes no effect.
+    return image if effects.is_image(picture) else None
+
+
 def apply(
     config: Path,
     cache: Path,
@@ -265,10 +307,12 @@ def apply(
     force: bool = False,
     say: Say = _no_say,
 ) -> str | None:
-    """Regenerates the palette when the wallpaper, its effect or the system
-    colour changed (always, with `force`). The effect is applied to the picture
-    first: the derived file is what the palette is taken from and what the bar
-    draws.
+    """Regenerates the palette when the wallpaper, its effect, the per-output
+    pictures or the system colour changed (always, with `force`). The effect is
+    applied to the picture first: the derived file is what the palette is taken
+    from and what the bar draws — each output with a picture of its own gets
+    the same effect over it. The settings window's previews are refreshed in
+    the same pass.
 
     Returns the wallpaper it themed, or None when nothing had to change.
     """
@@ -279,29 +323,57 @@ def apply(
     if not path or kind is None or not Path(path).is_file():
         return None
     effect = prefs.get("wallpaperEffect", "none")
+    # Two effects are drawn differently in dark mode; the stamp and the cache
+    # must say so, or switching the theme would keep the old picture.
+    mode = fonts.active_mode(prefs.get("appearance", "auto"))
+    detail = prefs.get("wallpaperEffectDetail", "normal")
+    monitors_text = prefs.get("wallpaperMonitors", "")
+    monitors = parse_monitors(monitors_text)
     fixed = system_color(prefs)
     scheme, contrast = colors.scheme_settings(prefs)
-    key = f"{path}{SEPARATOR}{fixed}{SEPARATOR}{scheme}{SEPARATOR}{contrast:g}{SEPARATOR}{effect}"
+    key = (
+        f"{path}{SEPARATOR}{fixed}{SEPARATOR}{scheme}{SEPARATOR}{contrast:g}"
+        f"{SEPARATOR}{effect}{SEPARATOR}{effects.style(effect, mode, detail)}"
+        f"{SEPARATOR}{effects.VERSION}{SEPARATOR}{monitors_text}"
+    )
     stamp = cache / "wallpaper.applied"
-    if not force and stamp.exists() and stamp.read_text(encoding="utf-8") == key:
+    # A copy the bar points at may have been lost (a cleared cache): rebuild
+    # it instead of leaving the layer blank.
+    ready = _shown_copies(cache, Path(path), effect, monitors) + _preview_file(cache, Path(path))
+    if (
+        not force
+        and stamp.exists()
+        and stamp.read_text(encoding="utf-8") == key
+        and all(item.exists() for item in ready)
+    ):
         return None
 
     cache.mkdir(parents=True, exist_ok=True)
     generated = cache / "generated"
     seed = palette_seed(fixed)
-    image = effects.derive(Path(path), effect, cache, run=run, say=say)
-    if image != Path(path):
-        # The bar cannot hash: it draws the stable copy of the derived picture.
-        shutil.copyfile(image, effects.shown(cache))
-    # Per-monitor effects get their own stable copy for the bar's layer.
-    for output, entry in parse_monitors(prefs.get("wallpaperMonitors", "")).items():
-        chosen = Path(entry["wallpaper"] or path)
-        name = entry["effect"] or effect
-        if name in ("", "none") or not chosen.is_file():
+    # The bar cannot hash: it draws the stable copy of the derived picture.
+    shown = _shown_image(Path(path), effect, cache, run, say, mode, detail)
+    # A drawn style repaints the picture over a canvas, so its palette is taken
+    # from the photo itself; a recipe tints it, and the palette follows it.
+    image = Path(path) if effect in effects.STYLED or shown is None else shown
+    if shown is not None:
+        shutil.copyfile(shown, effects.shown(cache))
+    # Per-output pictures carry the same effect: their own stable copy for the
+    # bar's layer.
+    for output, entry in monitors.items():
+        if not entry["wallpaper"]:
             continue
-        one = effects.derive(chosen, name, cache, run=run, say=say)
-        if one != chosen:
+        one = _shown_image(Path(entry["wallpaper"]), effect, cache, run, say, mode, detail)
+        if one is not None:
             shutil.copyfile(one, effects.shown(cache, output))
+    # The settings window's picker: a small copy per effect of the picture the
+    # whole screen shows. A video takes none. A copy that cannot be made (a
+    # refused recipe, no font to draw with) costs the thumbnail, never the
+    # wallpaper.
+    try:
+        effects.publish(Path(path), cache, run=run, mode=mode, detail=detail)
+    except (OSError, subprocess.CalledProcessError) as error:
+        say(f"The effect previews could not be drawn: {error}")
     if kind == "video" and seed is None:
         image = cache / "wallpaper-frame.png"
         run(["ffmpeg", "-loglevel", "error", "-y", "-ss", "1", "-i", path, "-frames:v", "1", str(image)], check=True)

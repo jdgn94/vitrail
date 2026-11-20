@@ -245,6 +245,9 @@ def _wallpaper(args: argparse.Namespace) -> int:
                 cache,
                 monitors=wallpaperd.parse_monitors(chosen.get("wallpaperMonitors", "")),
                 effect=chosen.get("wallpaperEffect", "none"),
+                mode=fonts.active_mode(chosen.get("appearance", "auto")),
+                detail=chosen.get("wallpaperEffectDetail", "normal"),
+                pause=chosen.get("wallpaperPauseFullscreen", "true") != "false",
             )
         except (ValueError, OSError, subprocess.CalledProcessError) as error:
             _say(f"Could not display the wallpaper: {error}")

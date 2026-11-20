@@ -280,8 +280,10 @@ class ForceTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def run_matugen(self, *_args, **_kwargs):
+    def run_matugen(self, command, **_kwargs):
         self.calls += 1
+        if command[0] == "magick":
+            Path(command[-1]).write_bytes(b"preview")
         return SimpleNamespace(returncode=0, stdout=json.dumps(self.PALETTE), stderr="")
 
     def apply(self, **kwargs):
@@ -389,6 +391,8 @@ class SystemColorApplyTests(unittest.TestCase):
 
     def run_tools(self, command, **_kwargs):
         self.commands.append(command)
+        if command[0] == "magick":
+            Path(command[-1]).write_bytes(b"preview")
         return SimpleNamespace(returncode=0, stdout=json.dumps(THEME_JSON), stderr="")
 
     def apply(self, kind: str, extra: str = "") -> str | None:

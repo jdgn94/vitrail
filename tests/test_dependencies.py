@@ -103,6 +103,7 @@ PROVIDED_BY = {
     "awww-daemon": "awww",
     "mpvpaper": "mpvpaper",
     "fc-list": "fontconfig",
+    "fc-match": "fontconfig",
     "flatpak": "flatpak",
     "ffmpeg": "ffmpeg",
     "ffprobe": "ffmpeg",

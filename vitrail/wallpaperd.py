@@ -37,6 +37,8 @@ STILL_KINDS = ("image",)
 STATE = "wallpaper.state"
 AWWW_OPTIONS = ("--transition-type", "center", "--transition-duration", "1")
 MPV_OPTIONS = "no-audio loop hwdec=vaapi"
+# mpvpaper's own fullscreen pause: the video stops while a window covers it.
+PAUSE_OPTIONS = ("-p", "-a", "FULL")
 # mpvpaper takes one output or "*" for every connected one.
 OUTPUT = "*"
 
@@ -105,6 +107,9 @@ def show(
     attempts: int = 20,
     monitors: dict[str, dict[str, str]] | None = None,
     effect: str = "none",
+    mode: str = "light",
+    detail: str = "normal",
+    pause: bool = True,
     derive: Callable[..., Path] | None = None,
 ) -> dict:
     """Displays `path` with the engine its kind needs, and records the state.
@@ -121,7 +126,7 @@ def show(
 
     derive = derive or effects.derive
     stop(cache, run)
-    shown = str(derive(path, effect, cache, run=run))
+    shown = str(derive(path, effect, cache, run=run, mode=mode, detail=detail))
     if engine == "awww":
         if not awww_running(run):
             spawn(["awww-daemon"])
@@ -135,9 +140,9 @@ def show(
             chosen = entry.get("wallpaper") or path
             if kind_of(chosen) not in STILL_KINDS or not Path(chosen).is_file():
                 continue
-            one = str(derive(chosen, entry.get("effect") or effect, cache, run=run))
+            one = str(derive(chosen, effect, cache, run=run, mode=mode, detail=detail))
             _call(run, ["awww", "img", "-o", output, one, *AWWW_OPTIONS], check=True)
             outputs[output] = one
         return write_state(cache, engine, shown, kind, outputs)
-    _call(run, ["mpvpaper", "-f", "-o", MPV_OPTIONS, OUTPUT, shown], check=True)
+    _call(run, ["mpvpaper", "-f", *(PAUSE_OPTIONS if pause else ()), "-o", MPV_OPTIONS, OUTPUT, shown], check=True)
     return write_state(cache, engine, shown, kind)

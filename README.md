@@ -124,7 +124,7 @@ package to the manifest and a row here.
 | `networkmanager` | `nmcli` | wired profile, network popout |
 | `glib2` | `gsettings` | GTK light/dark |
 | `kitty` | `kitty` | terminal, launcher `>` mode |
-| `fontconfig` | `fc-list` | the installed font families the Fonts page offers |
+| `fontconfig` | `fc-list`, `fc-match` | the installed font families the Fonts page offers, the monospaced face the ascii effect draws with |
 | `libqalculate` | `qalc` | launcher calculator and conversions (`=`) |
 | `plocate`, `fd` | `plocate`, `fd` | launcher file search (`/`); `plocate-updatedb.timer` is enabled by the installer |
 | `cliphist`, `wl-clipboard`, `wtype`, `hyprpicker` | `cliphist`, `wl-copy`, `wl-paste`, `wtype`, `hyprpicker` | launcher clipboard history (`;`), the clipboard panel (`Mod+.`) with emojis and the colour picker, and pasting a pick into the focused window |
@@ -319,7 +319,7 @@ the window declares it in another file, or the path unit watches another set.
 | `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase`, `uiIconFill`, `cursorThemeSplit`, `launchAnimation` (the drop that grows from an icon while an app starts) |
 | `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barMonitors`, `barLayout`, `panelLayout`, `desktopLayout`, `desktopSync`, `desktopMenu`, `barDragReorder`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `mediaStyle`, `trayStyle`, `barBatteryChip`, `barBluetoothChip`, `barKeyboard`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep`, `pomodoroWork`, `pomodoroRest`, `pomodoroCycles`, `timerMinutes` |
 | `dock.ini` | `dockEnabled` (show it), `dockEdge` (`bottom`, `top`, `left` or `right`), `dockAutohide` (hide until the pointer reaches the edge), `dockAttached` (flush or floating), `dockMagnify` (`none`, `planet` or `individual`; old `scale`/`lift` read as planet), `dockMagnifyRange` (1–5, planet only), `dockMagnifyScale` (1.1–2.0), `dockPinned` (the pinned apps as one JSON array, in order) and `dockWidgets` (reserved for the next phase) |
-| `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `wallpaperEffect`, `wallpaperMonitors`, `systemColor` (`wallpaperSeed`: legacy) |
+| `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `wallpaperEffect`, `wallpaperEffectDetail`, `wallpaperPauseFullscreen`, `wallpaperTransition`, `wallpaperTransitionTime`, `wallpaperMonitors`, `systemColor` (`wallpaperSeed`: legacy) |
 | `background.ini` | `visualiserEnabled`, `visualiserVariant`, `visualiserHeight` |
 | `windows.ini` | `windowLayout`, `visibleColumns`, `followFocus`, `wrapFocus`, `borderWidth`, `opacityFocused`, `opacityUnfocused` |
 | `monitors.ini` | `monitorOverrides` |
@@ -709,13 +709,43 @@ the surface color. Choosing a wallpaper regenerates the palette (a video lends
 one frame through `ffmpeg`). Until one is chosen, any other wallpaper tool
 keeps working.
 
-**Effect** applies one of eighteen ImageMagick treatments to the picture before
-it is drawn and before its palette is taken: `none`, `b&w`, `blur`, `charcoal`,
-`edge`, `emboss`, `raise`, `sunken`, `negate`, `paint`, `posterize`, `polaroid`,
-`sepia`, `solarize`, `sharpen`, `vignette`, `vignette-black`, `zoomed`. The
-derived file is cached in `~/.cache/vitrail/effects/<hash>-<effect>.png`, so
-returning to the same picture and effect costs nothing. Only images take an
-effect: a video is shown as it is, with a notice.
+**Effect** applies one of twenty-one treatments to the picture before it is
+drawn and before its palette is taken: `none`, `ascii`, `b&w`, `blur`,
+`charcoal`, `dots`, `edge`, `emboss`, `raise`, `sunken`, `negate`, `paint`,
+`pointillism`, `posterize`, `polaroid`, `sepia`, `solarize`, `sharpen`,
+`vignette`, `vignette-black`, `zoomed`. Three of them are drawn rather than
+filtered: `dots` is a mosaic of large round dabs on a visible canvas,
+`pointillism` is the painters' version — many small, close dabs, each one a
+single colour taken from one pixel (never a mixture) and a little more
+saturated, so the picture stays sharp — and `ascii` draws it with coloured
+characters. Both paint their ground on the theme (cream in light,
+black in dark) and keep the palette of the photo itself; `charcoal` turns over
+with the mode too, white lines on black in dark. The derived file is cached in
+`~/.cache/vitrail/effects/<hash>-<effect>[-<detail>-<mode>].png`, so returning to
+the same picture and effect costs nothing. **Detail** (`wallpaperEffectDetail`:
+`fine`, `normal`, `bold`) sets the dot size and the ascii column count for the
+drawn styles. Only images take an effect: a video is shown as it is, with a
+notice.
+
+**Transition** is how a new picture arrives. `random` (the default) picks one of
+two effects for each picture — ink blobs of the new picture growing from a
+point, or its contours traced over the old one before it fills in — and `none`,
+`fade`, `ink` and `outline` fix it. A slider sets its length (0.6–3 s). The
+choice is a hash of the picture's path, so two outputs showing the same picture
+animate together, and a picture keeps its animation when it comes back. The
+palette waits for the animation to end before recolouring the interface.
+Videos change in place. An effect is derived first; the picture keeps the old
+copy until the pass's stamp names the new effect and its copy is on disk, then
+changes with the same animation. The palette waits for the pass and the
+animation.
+
+**Pause on fullscreen** (on by default) keeps the background out of a game's
+way: while a fullscreen window owns a screen, its video wallpaper pauses, the
+rotation of the selection waits, the visualiser's cava ends and a change skips
+its animation. The rotation is one selection for every output, so it waits when
+any screen is fullscreen; the video pauses only on the covered screen. A window
+that is merely maximised does not count. `vitrail wallpaper show` passes the
+same pause to `mpvpaper`.
 
 **Settings → Monitors** may give one output its own picture and effect
 (`wallpaperMonitors`: `{"DP-1": {"wallpaper": "/path", "effect": "blur"}}`).

@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import "../kit"
 import "../kit/base"
 import "../kit/args.js" as Args
+import "../kit/wallpaper.js" as WallpaperTransition
 import "search.js" as Search
 import "palette.js" as Palette
 import "pages"
@@ -40,6 +41,15 @@ Window {
     property var palettes: Args.jsonFile("--palette-file", "--palette", ({}))
     readonly property string paletteFile: Args.value("--palette-file", "")
     property bool readingPalette: false
+    // The palette waits for the wallpaper's change animation (see
+    // kit/wallpaper.js), exactly like the bar.
+    property double paletteHoldUntil: 0
+    property string palettePending: ""
+    property bool paletteSeen: false
+    readonly property string paletteWallpaper: prefs.wallpaper
+    readonly property string paletteEffect: prefs.wallpaperEffect
+    onPaletteWallpaperChanged: app.armPaletteHold()
+    onPaletteEffectChanged: app.armEffectHold()
     readonly property var plugins: Args.json("--plugins", ([]))
     // Read once at startup (the window cannot run commands): every time zone,
     // the system's zone, and whether it syncs its clock over the network.
@@ -189,10 +199,60 @@ Window {
             app.readingPalette = false
             if (!Palette.changed(app.palettes, request.responseText))
                 return
-            app.palettes = Palette.read(request.responseText)
+            app.offerPalette(request.responseText)
         }
         request.open("GET", "file://" + app.paletteFile + "?_=" + Date.now())
         request.send()
+    }
+
+    function armPaletteHold() {
+        if (!app.paletteSeen)
+            return
+        var spec = WallpaperTransition.spec(
+            prefs.wallpaper || "",
+            prefs.wallpaperTransition || "random",
+            Number(prefs.wallpaperTransitionTime) || VitrailTokens.ranges.transition.value)
+        app.paletteHoldUntil = spec.kind === "none" ? 0 : Date.now() + spec.duration + 300
+    }
+
+    // The effect is derived and a new palette written before the bar's stamp:
+    // keep the palette until the picture it belongs to has arrived.
+    function armEffectHold() {
+        if (!app.paletteSeen)
+            return
+        app.paletteHoldUntil = Date.now() + 8000
+    }
+
+    function offerPalette(text) {
+        app.palettePending = text
+        var wait = app.paletteHoldUntil - Date.now()
+        if (wait > 0) {
+            paletteHold.interval = wait
+            paletteHold.restart()
+            return
+        }
+        app.applyPalette(text)
+    }
+
+    function applyPalette(text) {
+        if (!Palette.changed(app.palettes, text))
+            return
+        app.palettes = Palette.read(text)
+        app.paletteSeen = true
+    }
+
+    Timer {
+        id: paletteHold
+
+        onTriggered: {
+            var wait = app.paletteHoldUntil - Date.now()
+            if (wait > 0) {
+                paletteHold.interval = wait
+                paletteHold.restart()
+                return
+            }
+            app.applyPalette(app.palettePending)
+        }
     }
 
     function t(key) {
@@ -632,6 +692,8 @@ Window {
                                         prefs: app.store
                                         strings: app.strings
                                         configDir: app.configDir
+                                        cacheDir: app.cacheDir
+                                        monitors: app.monitors
                                     }
                                 }
 

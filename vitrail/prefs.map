@@ -114,6 +114,14 @@ wallpaper wallpaperImport
 wallpaper wallpaperRemove
 wallpaper wallpaperSeed
 wallpaper wallpaperEffect
+# fine | normal | bold: the dot size and the ascii column count.
+wallpaper wallpaperEffectDetail
+# A fullscreen window pauses the video, the rotation and the visualiser.
+wallpaper wallpaperPauseFullscreen
+# How a new picture arrives (none | random | ink | outline | fade) and how
+# long that animation runs, in milliseconds.
+wallpaper wallpaperTransition
+wallpaper wallpaperTransitionTime
 # Per-output wallpapers, one JSON object keyed by Hyprland output name.
 wallpaper wallpaperMonitors
 wallpaper systemColor

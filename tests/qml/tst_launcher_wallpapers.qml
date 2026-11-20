@@ -65,7 +65,7 @@ TestCase {
     function test_nothing_typed_lists_everything() {
         var found = Wallpapers.filter(files(), "", t)
         compare(found.wallpapers.length, 3)
-        compare(found.effects.length, 18)
+        compare(found.effects.length, 21)
     }
 
     function test_an_unknown_query_lists_nothing() {

@@ -10,52 +10,54 @@ TestCase {
         compare(Wallpaper.stringify(Wallpaper.parse("")), "{}")
         compare(Wallpaper.stringify(Wallpaper.parse("not json")), "{}")
         compare(Wallpaper.stringify(Wallpaper.parse("[]")), "{}")
-        compare(Wallpaper.stringify(Wallpaper.parse('{"DP-1":{"effect":"blur"}}')), '{"DP-1":{"effect":"blur"}}')
+        compare(Wallpaper.stringify(Wallpaper.parse('{"DP-1":{"wallpaper":"/w/a.png"}}')), '{"DP-1":{"wallpaper":"/w/a.png"}}')
     }
 
     function test_an_output_without_an_entry_follows_the_global_choice() {
-        compare(Wallpaper.of("", "DP-1"), ({ wallpaper: "", effect: "" }))
-        compare(Wallpaper.of('{"DP-1": 3}', "DP-1"), ({ wallpaper: "", effect: "" }))
+        compare(Wallpaper.of("", "DP-1"), ({ wallpaper: "" }))
+        compare(Wallpaper.of('{"DP-1": 3}', "DP-1"), ({ wallpaper: "" }))
     }
 
-    function test_both_fields_are_readable() {
-        var text = '{"DP-1":{"wallpaper":"/w/a.png","effect":"sepia"}}'
+    function test_the_picture_is_readable() {
+        var text = '{"DP-1":{"wallpaper":"/w/a.png"}}'
         compare(Wallpaper.of(text, "DP-1").wallpaper, "/w/a.png")
-        compare(Wallpaper.of(text, "DP-1").effect, "sepia")
         compare(Wallpaper.of(text, "HDMI-A-1").wallpaper, "")
     }
 
-    function test_update_sets_one_field_and_keeps_the_other() {
-        var first = Wallpaper.update("", "DP-1", { wallpaper: "/w/a.png" })
-        var both = Wallpaper.update(first, "DP-1", { effect: "blur" })
-        compare(Wallpaper.of(both, "DP-1"), ({ wallpaper: "/w/a.png", effect: "blur" }))
-    }
-
     function test_update_keeps_the_other_outputs() {
-        var first = Wallpaper.update("", "DP-1", { effect: "blur" })
+        var first = Wallpaper.update("", "DP-1", { wallpaper: "/w/a.png" })
         var second = Wallpaper.update(first, "HDMI-A-1", { wallpaper: "/w/b.png" })
-        compare(Wallpaper.of(second, "DP-1").effect, "blur")
+        compare(Wallpaper.of(second, "DP-1").wallpaper, "/w/a.png")
         compare(Wallpaper.of(second, "HDMI-A-1").wallpaper, "/w/b.png")
     }
 
     function test_update_is_null_when_nothing_changes() {
-        var text = Wallpaper.update("", "DP-1", { effect: "blur" })
-        compare(Wallpaper.update(text, "DP-1", { effect: "blur" }), null)
-        compare(Wallpaper.update("", "DP-1", { effect: "" }), null)
+        var text = Wallpaper.update("", "DP-1", { wallpaper: "/w/a.png" })
+        compare(Wallpaper.update(text, "DP-1", { wallpaper: "/w/a.png" }), null)
+        compare(Wallpaper.update("", "DP-1", { wallpaper: "" }), null)
     }
 
-    function test_clearing_both_fields_drops_the_entry() {
+    // A document from before the effect became global still parses; the next
+    // patch drops the leftover key.
+    function test_a_leftover_effect_is_dropped_on_the_next_patch() {
+        var legacy = '{"DP-1":{"wallpaper":"/w/a.png","effect":"blur"}}'
+        compare(Wallpaper.of(legacy, "DP-1").wallpaper, "/w/a.png")
+        var text = Wallpaper.update(legacy, "DP-1", { wallpaper: "/w/b.png" })
+        compare(Wallpaper.stringify(Wallpaper.parse(text)), '{"DP-1":{"wallpaper":"/w/b.png"}}')
+    }
+
+    function test_clearing_the_picture_drops_the_entry() {
         var text = Wallpaper.update("", "DP-1", { wallpaper: "/w/a.png" })
         var cleared = Wallpaper.update(text, "DP-1", { wallpaper: "" })
         compare(Wallpaper.stringify(Wallpaper.parse(cleared)), "{}")
     }
 
     function test_remove_drops_only_that_output() {
-        var text = Wallpaper.update(Wallpaper.update("", "DP-1", { effect: "blur" }),
-                                    "HDMI-A-1", { effect: "sepia" })
+        var text = Wallpaper.update(Wallpaper.update("", "DP-1", { wallpaper: "/w/a.png" }),
+                                    "HDMI-A-1", { wallpaper: "/w/b.png" })
         var only = Wallpaper.parse(Wallpaper.remove(text, "DP-1"))
         compare(only["DP-1"], undefined)
-        compare(only["HDMI-A-1"].effect, "sepia")
+        compare(only["HDMI-A-1"].wallpaper, "/w/b.png")
         compare(Wallpaper.remove(text, "eDP-1"), null)
     }
 }

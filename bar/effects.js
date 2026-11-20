@@ -4,12 +4,27 @@
 .pragma library
 
 var NAMES = [
-    "none", "b&w", "blur", "charcoal", "edge", "emboss", "raise", "sunken", "negate",
-    "paint", "posterize", "polaroid", "sepia", "solarize", "sharpen", "vignette",
-    "vignette-black", "zoomed"
+    "none", "ascii", "b&w", "blur", "charcoal", "dots", "edge", "emboss", "raise", "sunken",
+    "negate", "paint", "pointillism", "posterize", "polaroid", "sepia", "solarize", "sharpen",
+    "vignette", "vignette-black", "zoomed"
 ]
 
 var IMAGE = /\.(png|jpe?g|webp|bmp)$/i
+
+// The effects drawn from a detail setting, in the order the picker lists them
+// (vitrail/effects.py:DETAILED).
+var DETAILED = ["dots", "pointillism", "ascii"]
+var DETAILS = ["fine", "normal", "bold"]
+
+// Whether `name` is one of the drawn styles: only those have a detail.
+function detailed(name) {
+    return DETAILED.indexOf(name) >= 0
+}
+
+// A stored detail; anything unknown reads as normal.
+function detail(raw) {
+    return DETAILS.indexOf(raw) >= 0 ? raw : "normal"
+}
 
 // Whether a picture (not an SVG or a video) can take an effect.
 function isImage(path) {

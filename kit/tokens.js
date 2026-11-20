@@ -35,6 +35,9 @@ var ranges = {
     timerMinutes: { min: 1, max: 180, step: 1, value: 10 },
     // The audio visualiser's strip: how tall it is in the background.
     visualiserHeight: { min: 48, max: 320, step: 8, value: 120 },
+    // The wallpaper's change animation: its length, in milliseconds. The
+    // slider snaps to the step, from a flick to a slow ten-second dissolve.
+    transition: { min: 200, max: 10000, step: 100, value: 1600 },
     // The pointer's size in pixels.
     cursor: { min: 16, max: 64, step: 2, value: 24 }
 }

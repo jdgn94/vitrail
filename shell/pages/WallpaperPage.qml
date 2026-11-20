@@ -6,12 +6,14 @@ import Qt.labs.folderlistmodel
 import "../../kit"
 import "../../kit/base"
 import "../../bar/effects.js" as Effects
+import "../../bar/wallpapermonitors.js" as Wallpaper
 import "../reorder.js" as Reorder
 
 // Wallpaper category: the settings shared by every kind (fit, rotation, the
-// colour of the system) on top, then the library with one folder per kind
-// (images, videos). The selection holds one kind only: several of it take
-// turns, in the order of the strip; picking another kind starts over.
+// colour of the system) on top, then one block per output for its own picture
+// and effect, then the library with one folder per kind (images, videos). The
+// selection holds one kind only: several of it take turns, in the order of the
+// strip; picking another kind starts over.
 //
 // The library is Vitrail's own folder in ~/.config, apart from the user's
 // pictures. This window cannot copy or delete files: it writes a request
@@ -24,6 +26,13 @@ Item {
     property var prefs
     property var strings
     property string configDir: ""
+    // Where apply-settings leaves the effect previews (the shell's cache).
+    property string cacheDir: ""
+    // Hyprland's outputs as injected at launch; the per-monitor block below
+    // only matters when there is more than one.
+    property var monitors: ({ available: false, monitors: [] })
+
+    readonly property var live: page.monitors && page.monitors.monitors ? page.monitors.monitors : []
 
     readonly property var fitIcons: ({ frame: "filter_frames", screen: "fullscreen" })
 
@@ -45,8 +54,16 @@ Item {
         return list.length === 0 && page.prefs.wallpaper && !/\.svg$/i.test(page.prefs.wallpaper)
                ? [page.prefs.wallpaper] : list
     }
-    // Colour presets for the system, besides the automatic one.
-    readonly property var seeds: ["#6750a4", "#0061a4", "#006a6a", "#386a20", "#8b5000", "#b3261e"]
+    // Material's main colours, one per hue (the 500 tones): a palette, not a
+    // set of steps.
+    readonly property var materialColors: [
+        "#f44336", "#e91e63", "#9c27b0", "#673ab7", "#3f51b5", "#2196f3",
+        "#03a9f4", "#00bcd4", "#009688", "#4caf50", "#8bc34a", "#cddc39",
+        "#ffeb3b", "#ffc107", "#ff9800", "#ff5722", "#795548", "#9e9e9e", "#607d8b"
+    ]
+    // A system colour that is none of the presets is the custom one.
+    readonly property bool customColor: page.prefs.systemColor !== ""
+                                        && page.materialColors.indexOf(String(page.prefs.systemColor).toLowerCase()) < 0
     property string browse: page.activeKind || "image"
     // Minutes between wallpapers; a value from an older slider stays listed.
     readonly property var intervals: [1, 5, 10, 15, 30, 60, 120, 360, 720, 1440]
@@ -88,6 +105,117 @@ Item {
         if (/\.(mp4|webm|mkv|mov|m4v|avi)$/i.test(path || ""))
             return "video"
         return path ? "image" : ""
+    }
+
+    // --- one output's own picture -------------------------------------------
+    // The library files, images first: an effect only makes sense over a
+    // picture, but a video may fill one output.
+    property bool ready: false
+
+    function syncPictures() {
+        if (!page.ready)
+            return
+        pictures.clear()
+        var models = [imageFiles, videoFiles]
+        models.forEach(function (model) {
+            for (var i = 0; i < model.count; i++)
+                pictures.append({ path: model.get(i, "filePath") })
+        })
+    }
+
+    function entryOf(name) {
+        return Wallpaper.of(page.prefs.wallpaperMonitors || "", name)
+    }
+
+    // The picture this output shows: its own, or the global one.
+    function pictureOf(name) {
+        return page.entryOf(name).wallpaper || page.prefs.wallpaper || ""
+    }
+
+    function canEffect(name) {
+        return Effects.isImage(page.pictureOf(name))
+    }
+
+    function pictureOptions(name) {
+        var out = [{ key: "", label: page.t("wallpaper.monitors.global") }]
+        var seen = {}
+        var chosen = page.entryOf(name).wallpaper
+        for (var i = 0; i < pictures.count; i++) {
+            var path = pictures.get(i).path
+            seen[path] = true
+            out.push({ key: path, label: path.split("/").pop() })
+        }
+        if (chosen !== "" && !seen[chosen])
+            out.push({ key: chosen, label: chosen.split("/").pop() })
+        return out
+    }
+
+    // The custom colour as the "#rrggbb" matugen reads.
+    function hex(color) {
+        function pair(value) {
+            var text = Math.round(Math.max(0, Math.min(1, value)) * 255).toString(16)
+            return text.length < 2 ? "0" + text : text
+        }
+        return "#" + pair(color.r) + pair(color.g) + pair(color.b)
+    }
+
+    // Bumped after a picture changes: the previews of the new one land a few
+    // seconds later and a new URL is the only way to make QML reload them.
+    property int previewRevision: 0
+
+    // The effect previews are rendered from the picture the whole screen
+    // shows; apply-settings publishes one per recipe under previews/global.
+    // The picker builds its own `file://` URL, so this is a plain path.
+    function previewArt(effect) {
+        if (page.cacheDir === "")
+            return ""
+        return page.cacheDir + "/previews/global/" + effect + ".png?v=" + page.previewRevision
+    }
+
+    function effectOptions() {
+        return Effects.NAMES.map(function (name) {
+            return {
+                key: name,
+                label: page.t("wallpaper.effect." + name),
+                icons: [page.previewArt(name)]
+            }
+        })
+    }
+
+    function setWallpaper(monitor, patch) {
+        var text = Wallpaper.update(page.prefs.wallpaperMonitors || "", monitor.name, patch)
+        if (text === null)
+            return
+        page.prefs.wallpaperMonitors = text
+    }
+
+    FolderListModel {
+        id: imageFiles
+
+        folder: "file://" + page.library + "/images"
+        nameFilters: page.kinds[0].filters
+        showDirs: false
+        sortField: FolderListModel.Name
+        onCountChanged: page.syncPictures()
+    }
+
+    FolderListModel {
+        id: videoFiles
+
+        folder: "file://" + page.library + "/videos"
+        nameFilters: page.kinds[1].filters
+        showDirs: false
+        sortField: FolderListModel.Name
+        onCountChanged: page.syncPictures()
+    }
+
+    ListModel {
+        id: pictures
+    }
+
+    Component.onCompleted: {
+        page.ready = true
+        page.syncPictures()
     }
 
     // A wallpaper's picture inside a rounded tile: the whole image fits (never
@@ -168,6 +296,104 @@ Item {
         }
     }
 
+    // Automatic: the same circle as the presets, carrying the first letter of
+    // its own name.
+    component AutoSwatch: Item {
+        id: automatic
+
+        readonly property bool chosen: page.prefs.systemColor === ""
+
+        width: 26
+        height: 26
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 13
+            color: page.palette.surfaceHigh
+            border.width: automatic.chosen ? 3 : 1
+            border.color: automatic.chosen ? page.palette.foreground : page.palette.muted
+        }
+
+        Text {
+            anchors.centerIn: parent
+            text: page.t("wallpaper.systemColor.auto").charAt(0)
+            color: page.palette.foreground
+            font.pixelSize: 12
+            font.weight: Font.DemiBold
+            font.family: VitrailTokens.fontFamily
+        }
+
+        HoverHandler {
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: page.prefs.systemColor = ""
+        }
+    }
+
+    // One Material colour: a circle, ringed when it is the one in use.
+    component Swatch: Rectangle {
+        id: swatch
+
+        property string value: ""
+
+        readonly property bool chosen: page.prefs.systemColor !== ""
+                                        && String(page.prefs.systemColor).toLowerCase() === swatch.value.toLowerCase()
+
+        width: 26
+        height: 26
+        radius: 13
+        color: swatch.value
+        border.width: swatch.chosen ? 3 : 0
+        border.color: page.palette.foreground
+
+        HoverHandler {
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: page.prefs.systemColor = swatch.value
+        }
+    }
+
+    // The custom colour: the palette glyph until one is picked, then the
+    // colour itself, ringed like a preset.
+    component CustomSwatch: Item {
+        width: 26
+        height: 26
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 13
+            color: page.customColor ? String(page.prefs.systemColor) : page.palette.surfaceHigh
+            border.width: page.customColor ? 3 : 1
+            border.color: page.customColor ? page.palette.foreground : page.palette.muted
+        }
+
+        VitrailIcon {
+            anchors.centerIn: parent
+            visible: !page.customColor
+            icon: "palette"
+            color: page.palette.foreground
+            pixelSize: 15
+        }
+
+        HoverHandler {
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: colorPicker.open()
+        }
+    }
+
     // Same kind: add or remove it (one always stays). Another kind: it
     // becomes the whole selection.
     function choose(path, kind) {
@@ -238,22 +464,144 @@ Item {
                     VitrailSettingRow {
                         icon: "auto_awesome"
                         label: page.t("wallpaper.effect")
-                        description: page.activeKind === "image" ? page.t("wallpaper.effect.help")
-                                                                 : page.t("wallpaper.effect.imageOnly")
-                        enabled: page.activeKind === "image"
+                        description: page.canEffect("") ? page.t("wallpaper.effect.help")
+                                                         : page.t("wallpaper.effect.imageOnly")
+                        enabled: page.canEffect("")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailPicker {
+                            objectName: "effectPicker"
+                            Layout.preferredWidth: 220
+                            label: page.t("wallpaper.effect")
+                            triggerPreview: false
+                            cellArtWidth: 112
+                            cellArtHeight: 64
+                            cellWidth: 132
+                            cellHeight: 108
+                            current: Effects.of(page.prefs.wallpaperEffect)
+                            options: page.effectOptions()
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            panel: page.palette.surfaceHigh
+                            onSelected: function (key) { page.prefs.wallpaperEffect = key }
+                        }
+                    }
+
+                    // Only the drawn styles have a detail to choose: how big
+                    // the dots are, how many characters span the picture.
+                    VitrailSettingRow {
+                        objectName: "effectDetailRow"
+                        visible: Effects.detailed(page.prefs.wallpaperEffect)
+                        icon: "grid_view"
+                        label: page.t("wallpaper.effectDetail")
+                        description: page.t("wallpaper.effectDetail.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            options: ["fine", "normal", "bold"].map(function (key) {
+                                return { key: key, label: page.t("wallpaper.effectDetail." + key) }
+                            })
+                            current: Effects.detail(page.prefs.wallpaperEffectDetail)
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: page.prefs.wallpaperEffectDetail = key
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        objectName: "pauseFullscreenRow"
+                        icon: "fullscreen"
+                        label: page.t("wallpaper.pauseFullscreen")
+                        description: page.t("wallpaper.pauseFullscreen.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            objectName: "pauseFullscreenSwitch"
+                            checked: page.prefs.wallpaperPauseFullscreen
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) {
+                                page.prefs.wallpaperPauseFullscreen = value
+                            }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "auto_awesome"
+                        label: page.t("wallpaper.transition")
+                        description: page.t("wallpaper.transition.help")
                         foreground: page.palette.foreground
                         muted: page.palette.muted
 
                         VitrailSelect {
                             Layout.preferredWidth: 220
-                            current: Effects.of(page.prefs.wallpaperEffect)
-                            options: Effects.NAMES.map(function (name) {
-                                return { key: name, label: page.t("wallpaper.effect." + name) }
+                            current: page.prefs.wallpaperTransition || "random"
+                            options: ["random", "none", "fade", "ink", "outline"].map(function (name) {
+                                return { key: name, label: page.t("wallpaper.transition." + name) }
                             })
                             foreground: page.palette.foreground
                             accent: page.palette.primary
                             panel: page.palette.surfaceHigh
-                            onSelected: page.prefs.wallpaperEffect = key
+                            onSelected: page.prefs.wallpaperTransition = key
+                        }
+                    }
+
+                    VitrailSlider {
+                        Layout.fillWidth: true
+                        label: page.t("wallpaper.transition.time")
+                        suffix: " ms"
+                        from: VitrailTokens.ranges.transition.min
+                        to: VitrailTokens.ranges.transition.max
+                        stepSize: VitrailTokens.ranges.transition.step
+                        snap: true
+                        value: Number(page.prefs.wallpaperTransitionTime)
+                               || VitrailTokens.ranges.transition.value
+                        enabled: (page.prefs.wallpaperTransition || "random") !== "none"
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onMoved: page.prefs.wallpaperTransitionTime = value
+                    }
+
+                    // The colour of the whole system: automatic, a Material
+                    // hue, or one of the user's own. The swatches wrap, so a
+                    // narrow window keeps them in rows.
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: VitrailTokens.gap("sm")
+
+                        VitrailSettingRow {
+                            icon: "colorize"
+                            label: page.t("wallpaper.systemColor")
+                            description: page.t("wallpaper.systemColor.help")
+                            foreground: page.palette.foreground
+                            muted: page.palette.muted
+                        }
+
+                        Flow {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 32
+                            spacing: VitrailTokens.gap("xs")
+
+                            AutoSwatch {
+                                objectName: "autoColor"
+                            }
+
+                            Repeater {
+                                model: page.materialColors
+
+                                delegate: Swatch {
+                                    required property string modelData
+
+                                    value: modelData
+                                }
+                            }
+
+                            CustomSwatch {
+                                objectName: "customColor"
+                            }
                         }
                     }
 
@@ -433,37 +781,39 @@ Item {
                         }
                     }
 
-                    VitrailSettingRow {
-                        icon: "colorize"
-                        label: page.t("wallpaper.systemColor")
-                        description: page.t("wallpaper.systemColor.help")
+                }
+
+                // One block per output, where a picture belongs: its own
+                // picture and effect, with the global choice as the default.
+                Repeater {
+                    model: page.live
+
+                    delegate: Section {
+                        required property var modelData
+
+                        Layout.fillWidth: true
+                        visible: page.live.length > 1
+                        icon: "monitor"
+                        title: modelData.name
                         foreground: page.palette.foreground
-                        muted: page.palette.muted
+                        accent: page.palette.primary
 
-                        VitrailButton {
-                            variant: page.prefs.systemColor === "" ? "inset" : "outlined"
-                            tone: "secondary"
-                            text: page.t("wallpaper.systemColor.auto")
-                            onClicked: page.prefs.systemColor = ""
-                        }
+                        VitrailSettingRow {
+                            icon: "wallpaper"
+                            label: page.t("wallpaper.monitors.wallpaper")
+                            description: page.t("wallpaper.monitors.wallpaper.help")
+                            foreground: page.palette.foreground
+                            muted: page.palette.muted
 
-                        Repeater {
-                            model: page.seeds
-
-                            delegate: Rectangle {
-                                required property string modelData
-
-                                implicitWidth: 26
-                                implicitHeight: 26
-                                radius: 13
-                                color: modelData
-                                border.width: page.prefs.systemColor === modelData ? 3 : 0
-                                border.color: page.palette.foreground
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: page.prefs.systemColor = parent.modelData
+                            VitrailSelect {
+                                Layout.preferredWidth: VitrailTokens.size("display") * 10
+                                current: page.entryOf(modelData.name).wallpaper
+                                options: page.pictureOptions(modelData.name)
+                                foreground: page.palette.foreground
+                                accent: page.palette.primary
+                                panel: page.palette.surfaceHigh
+                                onSelected: function (key) {
+                                    page.setWallpaper(modelData, { wallpaper: key })
                                 }
                             }
                         }
@@ -626,5 +976,47 @@ Item {
         onAccepted: page.prefs.wallpaperImport = page.request(picker.selectedFiles.map(function (url) {
             return decodeURIComponent(String(url).replace(/^file:\/\//, ""))
         }))
+    }
+
+    ColorDialog {
+        id: colorPicker
+
+        title: page.t("wallpaper.systemColor.custom")
+        selectedColor: page.prefs.systemColor !== "" ? String(page.prefs.systemColor)
+                                                     : String(page.palette.primary)
+        onAccepted: page.prefs.systemColor = page.hex(colorPicker.selectedColor)
+    }
+
+    // The previews of a new picture land a few seconds after the preference
+    // (apply-settings runs magick): a new revision is the only way to make QML
+    // reload a picture it already showed.
+    Timer {
+        id: previewTimer
+
+        interval: 4000
+        repeat: true
+
+        property int ticks: 0
+
+        onTriggered: {
+            page.previewRevision++
+            previewTimer.ticks++
+            if (previewTimer.ticks >= 3)
+                previewTimer.stop()
+        }
+    }
+
+    Connections {
+        target: page.prefs
+
+        function onWallpaperChanged() {
+            previewTimer.ticks = 0
+            previewTimer.restart()
+        }
+
+        function onWallpaperMonitorsChanged() {
+            previewTimer.ticks = 0
+            previewTimer.restart()
+        }
     }
 }

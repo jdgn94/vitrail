@@ -105,6 +105,10 @@ QtObject {
     property alias wallpaperImport: wallpaperFile.wallpaperImport
     property alias wallpaperRemove: wallpaperFile.wallpaperRemove
     property alias wallpaperEffect: wallpaperFile.wallpaperEffect
+    property alias wallpaperEffectDetail: wallpaperFile.wallpaperEffectDetail
+    property alias wallpaperPauseFullscreen: wallpaperFile.wallpaperPauseFullscreen
+    property alias wallpaperTransition: wallpaperFile.wallpaperTransition
+    property alias wallpaperTransitionTime: wallpaperFile.wallpaperTransitionTime
     property alias wallpaperMonitors: wallpaperFile.wallpaperMonitors
     property alias systemColor: wallpaperFile.systemColor
     property alias visualiserEnabled: backgroundFile.visualiserEnabled
@@ -296,11 +300,23 @@ QtObject {
         // Requests for `vitrail wallpaper sync`: "<nonce>|path|path…".
         property string wallpaperImport: ""
         property string wallpaperRemove: ""
-        // An ImageMagick effect over the picture ("none" = as it is); the
-        // derived file drives both the palette and what the bar draws.
+        // An effect over the picture ("none" = as it is); the derived file
+        // drives both the palette and what the bar draws. Some effects follow
+        // the light/dark mode.
         property string wallpaperEffect: "none"
-        // Per-output overrides: {"DP-1": {"wallpaper": "/path", "effect": "blur"}}.
-        // An empty field follows the global wallpaper and effect.
+        // How much of the style shows: the dot size and the ascii column count
+        // (fine | normal | bold).
+        property string wallpaperEffectDetail: "normal"
+        // A fullscreen window (a game) stops the background: the video pauses,
+        // the rotation waits and the visualiser ends.
+        property bool wallpaperPauseFullscreen: true
+        // How the picture arrives (none | random | ink | outline | fade) and
+        // how long that animation runs, in milliseconds.
+        property string wallpaperTransition: "random"
+        property int wallpaperTransitionTime: VitrailTokens.ranges.transition.value
+        // Per-output pictures: {"DP-1": {"wallpaper": "/path"}}. An empty one
+        // follows the global picture; the effect is global and applies to
+        // whichever picture the output shows.
         property string wallpaperMonitors: "{}"
         // Colour of the whole system ("" = from the wallpaper): palette seed
         // for every kind of wallpaper.

@@ -1,8 +1,8 @@
 // The per-monitor wallpapers: one JSON document in wallpaper.ini keyed by
-// Hyprland output name, {"DP-1": {"wallpaper": "/path", "effect": "blur"}}.
-// Both fields are optional: an empty one follows the global choice. Keeping
-// this pure makes it testable with qmltestrunner and shared by the settings
-// window and the bar.
+// Hyprland output name, {"DP-1": {"wallpaper": "/path"}}. An output without a
+// picture follows the global one; the effect is global and applies to whichever
+// picture the output shows. Keeping this pure makes it testable with
+// qmltestrunner and shared by the settings window and the bar.
 .pragma library
 
 // A document from its text. Anything that is not an object is empty.
@@ -24,15 +24,12 @@ function copy(value) {
     return JSON.parse(JSON.stringify(value))
 }
 
-// One output's entry, with both fields always readable.
+// One output's entry, with its picture always readable.
 function of(text, output) {
     var entry = parse(text)[output]
     if (!entry || typeof entry !== "object")
-        return { wallpaper: "", effect: "" }
-    return {
-        wallpaper: typeof entry.wallpaper === "string" ? entry.wallpaper : "",
-        effect: typeof entry.effect === "string" ? entry.effect : ""
-    }
+        return { wallpaper: "" }
+    return { wallpaper: typeof entry.wallpaper === "string" ? entry.wallpaper : "" }
 }
 
 function same(a, b) {
@@ -40,17 +37,15 @@ function same(a, b) {
 }
 
 // The new document text for one patch, or null when nothing changed. An entry
-// with neither a picture nor an effect is dropped: it follows the global one.
+// without a picture is dropped: it follows the global one. A leftover key from
+// an older document (a per-output effect) goes with it.
 function update(text, output, patch) {
     var doc = parse(text)
-    var base = doc[output] && typeof doc[output] === "object" ? copy(doc[output]) : { wallpaper: "", effect: "" }
-    var next = {
-        wallpaper: typeof base.wallpaper === "string" ? base.wallpaper : "",
-        effect: typeof base.effect === "string" ? base.effect : ""
-    }
+    var base = doc[output] && typeof doc[output] === "object" ? copy(doc[output]) : { wallpaper: "" }
+    var next = { wallpaper: typeof base.wallpaper === "string" ? base.wallpaper : "" }
     for (var key in patch)
         next[key] = patch[key]
-    if (next.wallpaper === "" && next.effect === "") {
+    if (next.wallpaper === "") {
         if (!doc[output])
             return null
         delete doc[output]

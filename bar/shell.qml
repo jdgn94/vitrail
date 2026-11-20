@@ -17,6 +17,7 @@ import "barview.js" as BarView
 import "layouts.js" as Layouts
 import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
+import "kit/wallpaper.js" as WallpaperTransition
 import "clock"
 import "keyboard"
 import "keyboard/keyboard.js" as Keyboard
@@ -991,25 +992,60 @@ ShellRoot {
     // instead of a Python spawn.
     readonly property string paletteStore: shell.generatedDir + "/palette.json"
     readonly property string wallpaperEffect: Effects.of(shell.prefs.wallpaperEffect)
+    onWallpaperEffectChanged: shell.armEffectHold()
+    // Bumped when apply-settings finishes a wallpaper pass: it stamps the change
+    // after the effect copies are on disk. The picture URL carries it because
+    // QML never retries a load that failed — without a new URL the layer keeps
+    // the blank it showed while the copy was still being written.
+    property int wallpaperRevision: 0
+    // The effect in the last applied stamp, and whether its stable copy is on
+    // disk. The bar only points at the effect copy once the pass that wrote it
+    // has finished; until then the previous picture stays on screen.
+    property string appliedEffect: ""
+    property bool effectPresent: false
+    // The first picture resolves before the first second: no animation then.
+    property bool wallpaperReady: false
     // The picture one output draws: its own override (and effect) when it has
     // one, otherwise the global wallpaper.
     function wallpaperFor(name) {
         var path = shell.prefs.wallpaper || ""
-        var effect = shell.wallpaperEffect
-        var entry = WallpaperMonitors.of(shell.prefs.wallpaperMonitors || "", name)
-        if (entry.wallpaper !== "")
-            path = entry.wallpaper
-        if (entry.effect !== "")
-            effect = Effects.of(entry.effect)
-        // The effect is baked into a stable file apply-settings writes.
-        if (effect !== "none" && Effects.isImage(path))
-            return shell.cacheDir + "/" + Effects.shown(name)
-        return path
+        var own = WallpaperMonitors.of(shell.prefs.wallpaperMonitors || "", name).wallpaper
+        var picture = own !== "" ? own : path
+        // The effect is baked into a stable copy apply-settings writes: the
+        // global one, or this output's own when it shows a picture of its own.
+        // While a new effect is being derived, keep the previous effect copy
+        // (not the plain picture) on screen; the stamp then moves the URL and
+        // the change animates. "None" shows the plain picture at once.
+        if (shell.wallpaperEffect === "none")
+            return picture
+        if (shell.appliedEffect !== "" && shell.appliedEffect !== "none" && shell.effectPresent)
+            return shell.cacheDir + "/" + Effects.shown(own !== "" ? name : "") + "?v=" + shell.wallpaperRevision
+        return picture
     }
     readonly property string wallpaperSource: shell.wallpaperFor("")
+    // A new picture starts its change animation: hold the palette until it
+    // ends, so the interface does not recolour halfway through.
+    onWallpaperSourceChanged: shell.armPaletteHold()
     readonly property int rotationCount: (shell.prefs.wallpaperSelection || "").split("|").filter(function (path) {
         return path !== ""
     }).length
+    // Whether a fullscreen window owns a screen. The wallpaper stands still
+    // while it does: no rotation, no video, no visualiser, no change animation
+    // (Settings → Wallpaper, on by default).
+    function screenFullscreen(screen) {
+        var monitor = Hyprland.monitorFor(screen)
+        return !!(monitor && monitor.activeWorkspace && monitor.activeWorkspace.hasFullscreen)
+    }
+    readonly property bool holdFullscreen: shell.prefBool("wallpaperPauseFullscreen", true)
+    readonly property bool fullscreenAnywhere: {
+        var screens = Quickshell.screens
+        for (var i = 0; i < screens.length; i++) {
+            if (shell.screenFullscreen(screens[i]))
+                return true
+        }
+        return false
+    }
+    readonly property bool wallpaperHeld: WallpaperTransition.hold(shell.holdFullscreen, shell.fullscreenAnywhere)
 
     // The bar follows the opacity of focused windows unless it has its own.
     readonly property real barOpacity: {
@@ -1070,18 +1106,14 @@ ShellRoot {
     }
 
     readonly property var notificationScreen: {
-        function fullscreen(screen) {
-            var monitor = Hyprland.monitorFor(screen)
-            return !!(monitor && monitor.activeWorkspace && monitor.activeWorkspace.hasFullscreen)
-        }
         var focused = shell.focusedScreen
-        if (!focused || !fullscreen(focused))
+        if (!focused || !shell.screenFullscreen(focused))
             return focused
-        if (shell.primaryScreen && !fullscreen(shell.primaryScreen))
+        if (shell.primaryScreen && !shell.screenFullscreen(shell.primaryScreen))
             return shell.primaryScreen
         var screens = Quickshell.screens
         for (var i = 0; i < screens.length; i++) {
-            if (!fullscreen(screens[i]))
+            if (!shell.screenFullscreen(screens[i]))
                 return screens[i]
         }
         return focused
@@ -1537,7 +1569,7 @@ ShellRoot {
     // is playing audio; when either stops, the Process ends and the supervisor
     // clears its runtime file.
     Process {
-        running: shell.visualiserEnabled && shell.audioPlaying
+        running: shell.visualiserEnabled && shell.audioPlaying && !shell.wallpaperHeld
         command: ["python3", "-m", "vitrail.visualiser", "start"]
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
     }
@@ -1967,15 +1999,94 @@ ShellRoot {
     }
 
     // The palette as a file, watched: a new wallpaper rewrites it and the bar
-    // recolours. Only a cache without it (an upgrade, a fresh profile) falls
-    // back to the Python reader, which writes it for the next start.
+    // recolours. A new picture changes with a short animation, so the file is
+    // held until the animation ends instead of recolouring halfway through.
+    // Only a cache without it (an upgrade, a fresh profile) falls back to the
+    // Python reader, which writes it for the next start.
+    property double paletteHoldUntil: 0
+    property string palettePending: ""
+    property bool paletteSeen: false
+
+    // The effect is derived and a palette written before the stamp: keep the
+    // palette until the picture that follows has arrived and animated.
+    function armEffectHold() {
+        if (!shell.paletteSeen)
+            return
+        shell.paletteHoldUntil = Date.now() + 8000
+    }
+
+    function armPaletteHold() {
+        if (!shell.paletteSeen)
+            return
+        var spec = WallpaperTransition.spec(
+            shell.prefs.wallpaper || "",
+            shell.prefs.wallpaperTransition || "random",
+            Number(shell.prefs.wallpaperTransitionTime) || VitrailTokens.ranges.transition.value)
+        shell.paletteHoldUntil = spec.kind === "none" ? 0 : Date.now() + spec.duration + 300
+    }
+
+    function offerPalettes(text) {
+        shell.palettePending = text
+        var wait = shell.paletteHoldUntil - Date.now()
+        if (wait > 0) {
+            paletteDelay.interval = wait
+            paletteDelay.restart()
+        } else {
+            shell.readPalettes(text)
+        }
+    }
+
+    Timer {
+        id: paletteDelay
+
+        onTriggered: {
+            var wait = shell.paletteHoldUntil - Date.now()
+            if (wait > 0) {
+                paletteDelay.interval = wait
+                paletteDelay.restart()
+                return
+            }
+            shell.readPalettes(shell.palettePending)
+        }
+    }
+
     FileView {
         path: shell.paletteStore
         watchChanges: true
         printErrors: false
         onFileChanged: this.reload()
-        onLoaded: shell.readPalettes(this.text())
+        onLoaded: shell.offerPalettes(this.text())
         onLoadFailed: if (!paletteJson.running) paletteJson.running = true
+    }
+
+    // The wallpaper pass stamps itself at the end, once the effect copies the
+    // layers point at exist: a failed picture load is retried with a new URL.
+    FileView {
+        path: shell.cacheDir + "/wallpaper.applied"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: this.reload()
+        onLoaded: {
+            var fields = this.text().trim().split("|")
+            shell.appliedEffect = fields.length > 4 ? fields[4] : ""
+            shell.wallpaperRevision++
+        }
+    }
+
+    // The stable effect copy the bar points at. Watching it also covers a
+    // cleared cache: until the pass rebuilds it the previous picture stays.
+    FileView {
+        path: shell.cacheDir + "/" + Effects.shown()
+        watchChanges: true
+        printErrors: false
+        onLoaded: shell.effectPresent = true
+        onLoadFailed: shell.effectPresent = false
+    }
+
+    Timer {
+        interval: 800
+        running: true
+        onTriggered: shell.wallpaperReady = true
     }
 
     function readPalettes(text) {
@@ -1984,6 +2095,7 @@ ShellRoot {
         } catch (error) {
             shell.palettes = ({})
         }
+        shell.paletteSeen = true
         shell.startupMark("palette ready")
     }
 
@@ -2463,7 +2575,9 @@ ShellRoot {
     // palette follows through apply-settings.
     Timer {
         interval: Math.max(1, Number(shell.prefs.wallpaperInterval) || 30) * 60000
-        running: shell.rotationCount > 1
+        // A fullscreen window keeps the picture: a rotation nobody sees would
+        // only cost the palette pass.
+        running: shell.rotationCount > 1 && !shell.wallpaperHeld
         repeat: true
         onTriggered: vitrailCli.exec(["python3", "-m", "vitrail.cli", "wallpaper", "next"])
     }
@@ -2541,6 +2655,9 @@ ShellRoot {
                 readonly property var hyprMonitor: Hyprland.monitorFor(monitor.modelData)
                 readonly property bool fullscreen: !!(hyprMonitor
                     && hyprMonitor.activeWorkspace && hyprMonitor.activeWorkspace.hasFullscreen)
+                // This screen's wallpaper stands still under a fullscreen
+                // window; the other screens keep theirs.
+                readonly property bool wallpaperHeld: WallpaperTransition.hold(shell.holdFullscreen, monitor.fullscreen)
                 // A fullscreen window with the bar's own switch on: the bar
                 // and the frame leave the screen alone.
                 readonly property bool hiddenFullscreen: monitor.barDocument.hideFullscreen && monitor.fullscreen
@@ -3023,6 +3140,11 @@ ShellRoot {
                         anchors.fill: parent
                         variant: shell.prefs.wallpaperMode || ""
                         source: shell.wallpaperFor(monitor.modelData.name)
+                        paused: monitor.wallpaperHeld
+                        transition: shell.wallpaperReady && !monitor.wallpaperHeld
+                                    ? (shell.prefs.wallpaperTransition || "random") : "none"
+                        transitionTime: Number(shell.prefs.wallpaperTransitionTime)
+                                        || VitrailTokens.ranges.transition.value
                         hole: bar.layout.hole
                         radius: bar.layout.radius
                     }
