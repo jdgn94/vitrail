@@ -2,12 +2,14 @@ import QtQuick
 import QtQuick.Layouts
 import "../../kit"
 import "../../kit/base"
+import "../../bar/barview.js" as BarView
 
 // Bar category: everything about the bar that is not where its elements go.
 // Placement, chips, dividers, density and the panel's widgets are edited in
 // the in-place desktop editor (right-click → Edit), so this page keeps only
 // the bar's own chrome: the frame and panels, notifications, the OSD, the
-// widget timers, the background visualiser and capture.
+// widget timers, the background visualiser and capture. One block per output
+// carries the bar overrides that only that screen uses (edge and style).
 //
 // An empty preference inherits the family default from VitrailStyle.
 Item {
@@ -17,6 +19,11 @@ Item {
     property var prefs
     property var strings
     property string tab: "frame"
+    // Hyprland's outputs as injected at launch; the per-monitor block below
+    // only matters when there is more than one.
+    property var monitors: ({ available: false, monitors: [] })
+
+    readonly property var live: page.monitors && page.monitors.monitors ? page.monitors.monitors : []
 
     onTabChanged: scroller.contentY = 0
 
@@ -29,6 +36,34 @@ Item {
         return keys.map(function (key) {
             return { key: key, icon: icons[key], label: page.t(prefix + key) }
         })
+    }
+
+    // One output's bar overrides: only the edge and the style may differ from
+    // the global bar; "" follows it.
+    function barOf(monitor) {
+        return BarView.override(BarView.document(page.prefs.barMonitors || ""), monitor.name)
+    }
+
+    function barEdgeOf(monitor) {
+        var edge = page.barEdgeOverrideOf(monitor)
+        return edge !== "" ? edge : (page.prefs.barEdge || "left")
+    }
+
+    function barEdgeOverrideOf(monitor) {
+        var entry = page.barOf(monitor)
+        return entry && typeof entry.edge === "string" ? entry.edge : ""
+    }
+
+    function barStyleOf(monitor) {
+        var entry = page.barOf(monitor)
+        return entry && typeof entry.style === "string" ? entry.style : ""
+    }
+
+    function setBar(monitor, patch) {
+        var text = BarView.update(page.prefs.barMonitors || "", monitor.name, patch)
+        if (text === null)
+            return
+        page.prefs.barMonitors = text
     }
 
     readonly property var icons: ({
@@ -142,6 +177,69 @@ Item {
                         foreground: page.palette.foreground
                         accent: page.palette.primary
                         onMoved: page.prefs.frameSize = value
+                    }
+                }
+
+                // One block per output, where the bar lives: its own edge and
+                // style, with the global bar as the default.
+                Repeater {
+                    model: page.live
+
+                    delegate: Section {
+                        required property var modelData
+
+                        Layout.fillWidth: true
+                        visible: page.tab === "frame" && page.live.length > 1
+                        icon: "monitor"
+                        title: modelData.name
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+
+                        VitrailSettingRow {
+                            icon: "dock_to_left"
+                            label: page.t("bar.monitors.edge")
+                            description: page.t("bar.monitors.help")
+                            foreground: page.palette.foreground
+                            muted: page.palette.muted
+
+                            VitrailSegmented {
+                                objectName: "barEdge." + modelData.name
+                                options: [
+                                    { key: "", label: page.t("bar.monitors.edge.global"), icon: "public" },
+                                    { key: "left", label: page.t("bar.edge.left"), icon: "left_panel_open" },
+                                    { key: "top", label: page.t("bar.edge.top"), icon: "top_panel_open" },
+                                    { key: "right", label: page.t("bar.edge.right"), icon: "right_panel_open" },
+                                    { key: "bottom", label: page.t("bar.edge.bottom"), icon: "bottom_panel_open" }
+                                ]
+                                current: page.barEdgeOverrideOf(modelData)
+                                foreground: page.palette.foreground
+                                accent: page.palette.primary
+                                onSelected: function (key) {
+                                    page.setBar(modelData, { edge: key })
+                                }
+                            }
+                        }
+
+                        VitrailSettingRow {
+                            icon: "style"
+                            label: page.t("bar.monitors.style")
+                            foreground: page.palette.foreground
+                            muted: page.palette.muted
+
+                            VitrailSelect {
+                                Layout.preferredWidth: VitrailTokens.size("display") * 8
+                                current: page.barStyleOf(modelData)
+                                foreground: page.palette.foreground
+                                accent: page.palette.primary
+                                options: [{ key: "", label: page.t("bar.monitors.style.global") }].concat(
+                                    Object.keys(VitrailVariants.bar).map(function (key) {
+                                        return { key: key, label: page.t("bar.style." + key) }
+                                    }))
+                                onSelected: function (key) {
+                                    page.setBar(modelData, { style: key })
+                                }
+                            }
+                        }
                     }
                 }
 

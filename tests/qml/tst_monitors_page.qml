@@ -39,14 +39,14 @@ TestCase {
     }
 
     VitrailPalette {
-        id: palette
+        id: theme
     }
 
     Component {
         id: pageComponent
 
         MonitorsPage {
-            palette: palette
+            palette: theme
             prefs: mockPrefs
             strings: ({})
             configDir: "/tmp/vitrail-qml-monitors"
@@ -59,7 +59,7 @@ TestCase {
     }
 
     function initTestCase() {
-        VitrailTokens.configure(palette, true, "glass", ({}))
+        VitrailTokens.configure(theme, true, "glass", ({}))
     }
 
     function init() {
@@ -97,7 +97,7 @@ TestCase {
         compare(page.selected, "HDMI-A-1")
         compare(page.selectedSpec.mode, "1920x1200@59.95")
         compare(page.selectedSpec.scale, 1.25)
-        compare(findChild(page, "details").visible, true)
+        compare(findChild(page, "rotation").current, "90", "the panel shows the output's own turn")
     }
 
     function test_discard_returns_to_the_applied_configuration() {
@@ -173,43 +173,71 @@ TestCase {
     function test_the_last_option_can_scroll_above_the_apply_bar() {
         var page = createTemporaryObject(pageComponent, testCase, { width: 900, height: 480 })
         verify(page)
-        var details = findChild(page, "details")
+        var scroll = findChild(page, "pageScroll")
         var spacer = findChild(page, "detailsSpacer")
         var bar = findChild(page, "applyBar")
         compare(spacer.height, 0, "no room is kept when there is nothing to apply")
         page.dragMonitor("DP-1", -1200, 0)
         tryVerify(function () { return bar.visible && spacer.height > 0 })
         verify(spacer.height >= bar.height, "the spacer clears the floating bar")
-        details.contentY = Math.max(0, details.contentHeight - details.height)
+        scroll.contentY = Math.max(0, scroll.contentHeight - scroll.height)
         tryVerify(function () {
-            return details.contentY >= details.contentHeight - details.height - 1
+            return scroll.contentY >= scroll.contentHeight - scroll.height - 1
         })
         var last = findChild(page, "detailsLast")
         var bottom = last.mapToItem(page, 0, last.height).y
         verify(bottom <= bar.y, "the last row sits above the floating card")
     }
 
-    function test_the_bar_edge_control_offers_global_and_clears_the_override() {
-        mockPrefs.barMonitors = '{"DP-1":{"edge":"top"}}'
-        var page = make()
-        compare(page.barEdgeOf(testCase.first), "top")
-        compare(page.barEdgeOverrideOf(testCase.first), "top")
-        var control = findChild(page, "barEdge")
-        verify(control)
-        compare(control.current, "top")
-        control.selected("")
-        compare(page.barEdgeOverrideOf(testCase.first), "")
-        compare(mockPrefs.barMonitors, "{}")
-        compare(page.barEdgeOf(testCase.first), "left")
-        compare(control.current, "")
+    function test_the_canvas_and_the_settings_share_one_scroll() {
+        var page = createTemporaryObject(pageComponent, testCase, { width: 900, height: 480 })
+        verify(page)
+        var scroll = findChild(page, "pageScroll")
+        var canvas = findChild(page, "canvas")
+        verify(scroll && canvas)
+        tryVerify(function () { return scroll.contentHeight > scroll.height })
+        scroll.contentY = scroll.contentHeight - scroll.height
+        verify(canvas.mapToItem(page, 0, 0).y < 0, "the canvas leaves the top")
     }
 
-    function test_global_keeps_a_monitor_style_override() {
-        mockPrefs.barMonitors = '{"DP-1":{"edge":"top","style":"floating"}}'
+    function test_the_canvas_frame_holds_still_while_dragging() {
         var page = make()
-        findChild(page, "barEdge").selected("")
-        compare(JSON.parse(mockPrefs.barMonitors), { "DP-1": { style: "floating" } })
-        compare(page.barEdgeOf(testCase.first), "left")
-        compare(page.barStyleOf(testCase.first), "floating")
+        page.beginDrag()
+        var scale = page.frameFor(900, 300).scale
+        page.dragMonitor("DP-1", -4000, 2000)
+        compare(page.frameFor(900, 300).scale, scale, "the scale does not follow the drag")
+        page.endDrag()
+        verify(page.dragFrame === null)
+        verify(page.frameFor(900, 300).scale !== scale, "it re-fits once the drag ends")
+    }
+
+    function test_a_pointer_drag_moves_the_output_by_the_pixels_travelled() {
+        var page = createTemporaryObject(pageComponent, testCase, { width: 900, height: 640 })
+        verify(page)
+        var canvas = findChild(page, "canvas")
+        var tile = findChild(page, "canvasMonitor.DP-1")
+        var scroll = findChild(page, "pageScroll")
+        verify(canvas && tile)
+        tryVerify(function () { return tile.width > 0 })
+        var scale = page.canvasFit(canvas.width, canvas.height).scale
+        var from = View.position(page.draftDoc["DP-1"])
+        var at = tile.mapToItem(testCase, tile.width / 2, tile.height / 2)
+        mousePress(testCase, at.x, at.y)
+        mouseMove(testCase, at.x + 24, at.y)
+        compare(View.position(page.draftDoc["DP-1"]).x, from.x + Math.round(24 / scale))
+        verify(scroll.contentY === 0, "dragging a monitor does not scroll the page")
+        mouseRelease(testCase, at.x + 24, at.y)
+    }
+
+    function test_the_rotation_control_is_the_monitor_turned() {
+        var page = make()
+        page.select("HDMI-A-1")
+        var control = findChild(page, "rotation")
+        verify(control)
+        compare(control.current, "90")
+        compare(control.options[1].rotation, 90)
+        control.selected("270")
+        compare(page.draftDoc["HDMI-A-1"].transform, 3)
+        compare(page.dirty, true)
     }
 }

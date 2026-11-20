@@ -160,6 +160,18 @@ bound to `repeater.itemAt(currentIndex)` geometry and animate x / width
 (`base`); `settled` skips the animation on first layout. Reuse that pattern
 for any single-choice control (the settings rail does the same).
 
+## Monitors page
+
+The canvas and the selected output's settings share **one scroll**: the canvas
+leaves the top when the settings come up (no pinned strip). Dragging freezes
+the canvas frame (`page.dragFrame`): the scale must not change under the
+pointer; it re-fits once on release, with `View.snap` landing the output on its
+neighbour's edges. Every physical output shows a `MonitorEditLayer` card at the
+top centre while the page is open — the output's name, the same on every
+screen; the old accent frame around the screen is gone, and the canvas
+ring stays as the selection. The output's picture and bar overrides live in
+their own categories (Wallpaper, Bar), one block per monitor.
+
 ## Settings window (shell/main.qml)
 
 Frameless, floated + centred by the Hyprland rule `vitrail-float` (class

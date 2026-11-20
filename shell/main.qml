@@ -706,6 +706,7 @@ Window {
                                         prefs: app.store
                                         strings: app.strings
                                         tab: Args.value("--tab", "frame")
+                                        monitors: app.monitors
                                     }
                                 }
 

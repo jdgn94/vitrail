@@ -61,6 +61,9 @@ layer contract.
 - `Item` already has FINAL `top` / `bottom` / `left` / `right`: name custom
   properties otherwise (`atBottom`, `begin`, `stop`).
 - A `Behavior` cannot target a `readonly` property.
+- `PanelWindow` already has `screen`: declaring a `required property var screen`
+  on the component shadows it, the surface stays on the default output, and
+  every layer overlaps there. Name it `output` and bind `screen: root.output`.
 - `qml6` swallows load errors here: run with `QT_FORCE_STDERR_LOGGING=1`.
 - Icons are Material Symbols ligature names; no Nerd Font code points. An icon
   is declared with `icon:` (`VitrailIcon` or `VitrailText variant: "icon"`) and

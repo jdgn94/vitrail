@@ -1,19 +1,15 @@
 import QtQuick
 import QtQuick.Layouts
-import Qt.labs.folderlistmodel
 import Qt.labs.settings 1.1
 import "../../kit"
 import "../../kit/base"
-import "../../bar/effects.js" as Effects
-import "../../bar/barview.js" as BarView
 import "../monitorsview.js" as View
-import "../../bar/wallpapermonitors.js" as Wallpaper
 
 // Monitors: a Windows-style canvas at the outputs' logical positions, with the
-// selected output's settings underneath. Nothing reaches monitors.ini while
-// the user drags or edits: the page keeps a draft, and the floating bar writes
-// it only on Apply. Discard restores the applied document; a refused apply
-// keeps the draft and shows why.
+// selected output's settings underneath, all in one scroll. Nothing reaches
+// monitors.ini while the user drags or edits: the page keeps a draft, and the
+// floating bar writes it only on Apply. Discard restores the applied document;
+// a refused apply keeps the draft and shows why.
 //
 // The window cannot run commands: `bin/vitrail-settings` injects the live
 // state as `--monitors`, and `vitrail-monitors apply` rewrites
@@ -21,6 +17,9 @@ import "../../bar/wallpapermonitors.js" as Wallpaper
 // apply-settings.sh). The page polls that file while it waits, then adopts it.
 // The one JSON document is `monitorOverrides` in monitors.ini; an output
 // without an entry follows Hyprland's defaults.
+//
+// The picture and the bar of one output live in their own categories
+// (Wallpaper and Bar): this page owns only the output itself.
 Item {
     id: page
 
@@ -139,6 +138,23 @@ Item {
 
     function canvasFit(width, height) {
         return View.fit(page.canvasBounds, width, height, VitrailTokens.gap("lg"))
+    }
+
+    // The canvas frame stays put while a monitor is dragged: re-fitting on
+    // every move changes the scale under the pointer, and the output slips
+    // away from it. It re-fits once, when the drag ends.
+    property var dragFrame: null
+
+    function frameFor(width, height) {
+        return page.dragFrame !== null ? page.dragFrame : page.canvasFit(width, height)
+    }
+
+    function beginDrag() {
+        page.dragFrame = page.canvasFit(canvas.width, canvas.height)
+    }
+
+    function endDrag() {
+        page.dragFrame = null
     }
 
     // --- the applied document ------------------------------------------------
@@ -278,325 +294,219 @@ Item {
         }
     }
 
-    // --- the wallpaper of one output -----------------------------------------
-    readonly property string library: page.prefs.wallpaperDir || page.configDir + "/wallpapers"
-    readonly property var imageFilters: ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp"]
-    readonly property var videoFilters: ["*.mp4", "*.webm", "*.mkv", "*.mov", "*.m4v", "*.avi"]
-
-    // The pictures of the library, images first: a per-monitor effect only
-    // makes sense over a picture, but a video may fill one output. A folder
-    // may report its first count while the page is still being built.
+    // The live state can arrive while the page is still being built; the
+    // draft needs the outputs, so the first read waits for this.
     property bool ready: false
-
-    function syncPictures() {
-        if (!page.ready)
-            return
-        pictures.clear()
-        var models = [imageFiles, videoFiles]
-        models.forEach(function (model) {
-            for (var i = 0; i < model.count; i++)
-                pictures.append({ path: model.get(i, "filePath") })
-        })
-    }
-
-    function entryOf(name) {
-        return Wallpaper.of(page.prefs.wallpaperMonitors || "", name)
-    }
-
-    // The picture this output shows: its own, or the global one.
-    function pictureOf(name) {
-        return page.entryOf(name).wallpaper || page.prefs.wallpaper || ""
-    }
-
-    function canEffect(name) {
-        return Effects.isImage(page.pictureOf(name))
-    }
-
-    function pictureOptions(name) {
-        var out = [{ key: "", label: page.t("wallpaper.monitors.global") }]
-        var seen = {}
-        var chosen = page.entryOf(name).wallpaper
-        for (var i = 0; i < pictures.count; i++) {
-            var path = pictures.get(i).path
-            seen[path] = true
-            out.push({ key: path, label: path.split("/").pop() })
-        }
-        if (chosen !== "" && !seen[chosen])
-            out.push({ key: chosen, label: chosen.split("/").pop() })
-        return out
-    }
-
-    function effectOptions() {
-        var out = [{ key: "", label: page.t("wallpaper.monitors.effect.global") }]
-        Effects.NAMES.forEach(function (name) {
-            out.push({ key: name, label: page.t("wallpaper.effect." + name) })
-        })
-        return out
-    }
-
-    function setWallpaper(monitor, patch) {
-        var text = Wallpaper.update(page.prefs.wallpaperMonitors || "", monitor.name, patch)
-        if (text === null)
-            return
-        page.prefs.wallpaperMonitors = text
-    }
-
-    FolderListModel {
-        id: imageFiles
-
-        folder: "file://" + page.library + "/images"
-        nameFilters: page.imageFilters
-        showDirs: false
-        sortField: FolderListModel.Name
-        onCountChanged: page.syncPictures()
-    }
-
-    FolderListModel {
-        id: videoFiles
-
-        folder: "file://" + page.library + "/videos"
-        nameFilters: page.videoFilters
-        showDirs: false
-        sortField: FolderListModel.Name
-        onCountChanged: page.syncPictures()
-    }
-
-    ListModel {
-        id: pictures
-    }
-
-    // The bar's own overrides: one JSON object keyed by output name. Only the
-    // edge and the style may differ from the global bar.
-    function barOf(monitor) {
-        return BarView.override(BarView.document(page.prefs.barMonitors || ""), monitor.name)
-    }
-
-    function barEdgeOf(monitor) {
-        var edge = page.barEdgeOverrideOf(monitor)
-        return edge !== "" ? edge : (page.prefs.barEdge || "left")
-    }
-
-    // The edge this monitor sets for itself; "" follows the global bar.
-    function barEdgeOverrideOf(monitor) {
-        var entry = page.barOf(monitor)
-        return entry && typeof entry.edge === "string" ? entry.edge : ""
-    }
-
-    function barStyleOf(monitor) {
-        var entry = page.barOf(monitor)
-        return entry && typeof entry.style === "string" ? entry.style : ""
-    }
-
-    function setBar(monitor, patch) {
-        var text = BarView.update(page.prefs.barMonitors || "", monitor.name, patch)
-        if (text === null)
-            return
-        page.prefs.barMonitors = text
-    }
 
     Component.onCompleted: {
         page.ready = true
-        page.syncPictures()
         page.refreshDraft()
         page.syncIndicator()
     }
 
-    ColumnLayout {
-        id: content
+    // One scroll for the whole page: the canvas leaves the top as the output's
+    // settings come up, instead of staying pinned over them.
+    Flickable {
+        id: pageScroll
 
+        objectName: "pageScroll"
         anchors.fill: parent
-        enabled: !page.pending
-        spacing: VitrailTokens.gap("lg")
+        contentHeight: pageColumn.implicitHeight
+        boundsBehavior: Flickable.StopAtBounds
+        clip: true
 
-        VitrailText {
-            Layout.fillWidth: true
-            variant: "body"
-            text: page.t("monitors.help")
-            color: page.palette.muted
-            wrapMode: Text.WordWrap
-        }
+        ColumnLayout {
+            id: pageColumn
 
-        VitrailText {
-            Layout.fillWidth: true
-            visible: !page.available
-            variant: "label"
-            text: page.t("monitors.unavailable")
-            color: page.palette.muted
-            wrapMode: Text.WordWrap
-        }
+            width: parent.width
+            enabled: !page.pending
+            spacing: VitrailTokens.gap("lg")
 
-        // The canvas: each output at its logical place, dragged with the
-        // pointer and snapped to the others on release.
-        Item {
-            id: canvas
-
-            objectName: "canvas"
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.max(VitrailTokens.size("display") * 4, page.height * 0.34)
-            clip: true
-
-            Rectangle {
-                anchors.fill: parent
-                radius: VitrailTokens.radius
-                color: Qt.rgba(page.palette.surfaceHigh.r, page.palette.surfaceHigh.g,
-                               page.palette.surfaceHigh.b, 0.35)
+            VitrailText {
+                Layout.fillWidth: true
+                variant: "body"
+                text: page.t("monitors.help")
+                color: page.palette.muted
+                wrapMode: Text.WordWrap
             }
 
             VitrailText {
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.margins: VitrailTokens.gap("sm")
+                Layout.fillWidth: true
+                visible: !page.available
                 variant: "label"
-                text: page.t("monitors.canvas.help")
+                text: page.t("monitors.unavailable")
                 color: page.palette.muted
+                wrapMode: Text.WordWrap
             }
 
-            Repeater {
-                model: page.canvasRects
+            // The canvas: each output at its logical place, dragged with the
+            // pointer and snapped to the others on release.
+            Item {
+                id: canvas
 
-                delegate: Item {
-                    id: screen
+                objectName: "canvas"
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.max(VitrailTokens.size("display") * 4, page.height * 0.34)
+                clip: true
 
-                    required property var modelData
+                Rectangle {
+                    anchors.fill: parent
+                    radius: VitrailTokens.radius
+                    color: Qt.rgba(page.palette.surfaceHigh.r, page.palette.surfaceHigh.g,
+                                   page.palette.surfaceHigh.b, 0.35)
+                }
 
-                    readonly property var frame: page.canvasFit(canvas.width, canvas.height)
-                    readonly property bool chosen: screen.modelData.name === page.selected
-                    readonly property var spec: View.override(page.draftDoc, screen.modelData.name)
-                                              || View.seed(screen.modelData.monitor)
+                VitrailText {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.margins: VitrailTokens.gap("sm")
+                    variant: "label"
+                    text: page.t("monitors.canvas.help")
+                    color: page.palette.muted
+                }
 
-                    x: screen.frame.x + screen.modelData.x * screen.frame.scale
-                    y: screen.frame.y + screen.modelData.y * screen.frame.scale
-                    width: Math.max(28, screen.modelData.width * screen.frame.scale)
-                    height: Math.max(24, screen.modelData.height * screen.frame.scale)
-                    z: screen.chosen ? 2 : 1
+                Repeater {
+                    model: page.canvasRects
 
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Math.min(VitrailTokens.radius, height / 2)
-                        color: Qt.rgba(page.palette.surfaceHigh.r, page.palette.surfaceHigh.g,
-                                       page.palette.surfaceHigh.b, screen.chosen ? 0.9 : 0.62)
-                        border.width: screen.chosen ? 2 : 1
-                        border.color: screen.chosen
-                                      ? page.palette.primary
-                                      : Qt.rgba(page.palette.foreground.r, page.palette.foreground.g,
-                                                page.palette.foreground.b, 0.22)
-                        opacity: screen.modelData.disabled ? 0.45 : 1
-                    }
+                    delegate: Item {
+                        id: screen
 
-                    VitrailIcon {
-                        anchors.top: parent.top
-                        anchors.right: parent.right
-                        anchors.margins: VitrailTokens.gap("xs")
-                        visible: screen.modelData.primary
-                        icon: "star"
-                        size: "sm"
-                        color: page.palette.primary
-                    }
+                        required property var modelData
 
-                    Column {
-                        anchors.fill: parent
-                        anchors.margins: VitrailTokens.gap("xs")
-                        spacing: 0
+                        objectName: "canvasMonitor." + screen.modelData.name
+                        readonly property var frame: page.frameFor(canvas.width, canvas.height)
+                        readonly property bool chosen: screen.modelData.name === page.selected
+                        readonly property var spec: View.override(page.draftDoc, screen.modelData.name)
+                                                  || View.seed(screen.modelData.monitor)
 
-                        VitrailText {
-                            width: parent.width
-                            variant: "label"
-                            text: screen.modelData.name
-                            color: screen.chosen ? page.palette.primary : page.palette.foreground
-                            elide: Text.ElideRight
+                        x: screen.frame.x + screen.modelData.x * screen.frame.scale
+                        y: screen.frame.y + screen.modelData.y * screen.frame.scale
+                        width: Math.max(28, screen.modelData.width * screen.frame.scale)
+                        height: Math.max(24, screen.modelData.height * screen.frame.scale)
+                        z: screen.chosen ? 2 : 1
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: Math.min(VitrailTokens.radius, height / 2)
+                            color: Qt.rgba(page.palette.surfaceHigh.r, page.palette.surfaceHigh.g,
+                                           page.palette.surfaceHigh.b, screen.chosen ? 0.9 : 0.62)
+                            border.width: screen.chosen ? 2 : 1
+                            border.color: screen.chosen
+                                          ? page.palette.primary
+                                          : Qt.rgba(page.palette.foreground.r, page.palette.foreground.g,
+                                                    page.palette.foreground.b, 0.22)
+                            opacity: screen.modelData.disabled ? 0.45 : 1
                         }
 
-                        VitrailText {
-                            width: parent.width
-                            variant: "label"
-                            visible: screen.chosen
-                            text: page.t("monitors.selected")
+                        VitrailIcon {
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            anchors.margins: VitrailTokens.gap("xs")
+                            visible: screen.modelData.primary
+                            icon: "star"
+                            size: "sm"
                             color: page.palette.primary
-                            elide: Text.ElideRight
                         }
 
-                        VitrailText {
-                            width: parent.width
-                            variant: "label"
-                            visible: !screen.chosen && screen.modelData.mirror !== ""
-                            text: page.t("monitors.mirror") + " " + screen.modelData.mirror
-                            color: page.palette.muted
-                            elide: Text.ElideRight
+                        Column {
+                            anchors.fill: parent
+                            anchors.margins: VitrailTokens.gap("xs")
+                            spacing: 0
+
+                            VitrailText {
+                                width: parent.width
+                                variant: "label"
+                                text: screen.modelData.name
+                                color: screen.chosen ? page.palette.primary : page.palette.foreground
+                                elide: Text.ElideRight
+                            }
+
+                            VitrailText {
+                                width: parent.width
+                                variant: "label"
+                                visible: screen.chosen
+                                text: page.t("monitors.selected")
+                                color: page.palette.primary
+                                elide: Text.ElideRight
+                            }
+
+                            VitrailText {
+                                width: parent.width
+                                variant: "label"
+                                visible: !screen.chosen && screen.modelData.mirror !== ""
+                                text: page.t("monitors.mirror") + " " + screen.modelData.mirror
+                                color: page.palette.muted
+                                elide: Text.ElideRight
+                            }
+                        }
+
+                        MouseArea {
+                            id: dragArea
+
+                            property real pressX: 0
+                            property real pressY: 0
+                            property real originX: 0
+                            property real originY: 0
+                            property bool dragged: false
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            // The page scrolls; a press on a monitor belongs to it.
+                            preventStealing: true
+
+                            onPressed: function (mouse) {
+                                page.select(screen.modelData.name)
+                                page.beginDrag()
+                                var at = dragArea.mapToItem(canvas, mouse.x, mouse.y)
+                                dragArea.pressX = at.x
+                                dragArea.pressY = at.y
+                                var place = View.position(screen.spec)
+                                dragArea.originX = place.auto ? screen.modelData.monitor.x : place.x
+                                dragArea.originY = place.auto ? screen.modelData.monitor.y : place.y
+                                dragArea.dragged = false
+                            }
+
+                            onPositionChanged: function (mouse) {
+                                if (!dragArea.pressed)
+                                    return
+                                var at = dragArea.mapToItem(canvas, mouse.x, mouse.y)
+                                var fit = page.frameFor(canvas.width, canvas.height)
+                                var dx = (at.x - dragArea.pressX) / fit.scale
+                                var dy = (at.y - dragArea.pressY) / fit.scale
+                                if (Math.abs(dx) + Math.abs(dy) > 1)
+                                    dragArea.dragged = true
+                                page.dragMonitor(screen.modelData.name, dragArea.originX + dx,
+                                                 dragArea.originY + dy)
+                            }
+
+                            onReleased: {
+                                if (dragArea.dragged)
+                                    page.dropMonitor(screen.modelData.name)
+                                page.endDrag()
+                                page.select(screen.modelData.name)
+                            }
+
+                            onCanceled: page.endDrag()
+                            onClicked: page.select(screen.modelData.name)
                         }
                     }
+                }
 
-                    MouseArea {
-                        id: dragArea
-
-                        property real pressX: 0
-                        property real pressY: 0
-                        property real originX: 0
-                        property real originY: 0
-                        property bool dragged: false
-
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-
-                        onPressed: function (mouse) {
-                            page.select(screen.modelData.name)
-                            var at = dragArea.mapToItem(canvas, mouse.x, mouse.y)
-                            dragArea.pressX = at.x
-                            dragArea.pressY = at.y
-                            var place = View.position(screen.spec)
-                            dragArea.originX = place.auto ? screen.modelData.monitor.x : place.x
-                            dragArea.originY = place.auto ? screen.modelData.monitor.y : place.y
-                            dragArea.dragged = false
-                        }
-
-                        onPositionChanged: function (mouse) {
-                            if (!dragArea.pressed)
-                                return
-                            var at = dragArea.mapToItem(canvas, mouse.x, mouse.y)
-                            var fit = page.canvasFit(canvas.width, canvas.height)
-                            var dx = (at.x - dragArea.pressX) / fit.scale
-                            var dy = (at.y - dragArea.pressY) / fit.scale
-                            if (Math.abs(dx) + Math.abs(dy) > 1)
-                                dragArea.dragged = true
-                            page.dragMonitor(screen.modelData.name, dragArea.originX + dx,
-                                             dragArea.originY + dy)
-                        }
-
-                        onReleased: {
-                            if (dragArea.dragged)
-                                page.dropMonitor(screen.modelData.name)
-                            page.select(screen.modelData.name)
-                        }
-
-                        onClicked: page.select(screen.modelData.name)
-                    }
+                VitrailText {
+                    anchors.centerIn: parent
+                    visible: page.canvasRects.length === 0
+                    variant: "body"
+                    text: page.t("monitors.none")
+                    color: page.palette.muted
                 }
             }
 
-            VitrailText {
-                anchors.centerIn: parent
-                visible: page.canvasRects.length === 0
-                variant: "body"
-                text: page.t("monitors.none")
-                color: page.palette.muted
-            }
-        }
-
-        // The selected output's settings, below the canvas.
-        Flickable {
-            id: details
-
-            objectName: "details"
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            contentHeight: detailsColumn.implicitHeight
-            boundsBehavior: Flickable.StopAtBounds
-            clip: true
-
+            // The selected output's settings, below the canvas in the same scroll.
             ColumnLayout {
                 id: detailsColumn
 
-                width: parent.width
+                Layout.fillWidth: true
                 spacing: VitrailTokens.gap("xl")
 
                 Section {
@@ -671,18 +581,20 @@ Item {
                             }
                         }
 
-                        VitrailSelect {
-                            Layout.preferredWidth: VitrailTokens.size("display") * 8
-                            label: page.t("monitors.rotation")
+                        VitrailSegmented {
+                            objectName: "rotation"
+                            Layout.alignment: Qt.AlignVCenter
+                            // The icon of each choice is the monitor itself,
+                            // turned to the angle the choice applies.
+                            options: [
+                                { key: "0", label: "0°", icon: "monitor" },
+                                { key: "90", label: "90°", icon: "monitor", rotation: 90 },
+                                { key: "180", label: "180°", icon: "monitor", rotation: 180 },
+                                { key: "270", label: "270°", icon: "monitor", rotation: 270 }
+                            ]
                             current: page.selectedSpec ? String(View.degreesOf(page.selectedSpec.transform)) : "0"
                             foreground: page.palette.foreground
                             accent: page.palette.primary
-                            options: [
-                                { key: "0", label: "0°" },
-                                { key: "90", label: "90°" },
-                                { key: "180", label: "180°" },
-                                { key: "270", label: "270°" }
-                            ]
                             onSelected: function (key) {
                                 page.patch(page.selected, { transform: View.transformOf(key) })
                             }
@@ -696,6 +608,9 @@ Item {
                         from: 0.5
                         to: 3.0
                         stepSize: 0.25
+                        // A monitor scale is a stepped value, not a continuum.
+                        snap: true
+                        decimals: 2
                         value: page.selectedSpec ? page.selectedSpec.scale : 1
                         enabled: page.selectedSpec && !page.selectedSpec.disabled
                                  && page.selectedSpec.mirror === ""
@@ -785,103 +700,6 @@ Item {
                             }))
                         onSelected: function (key) {
                             page.patch(page.selected, { mirror: key })
-                        }
-                    }
-
-                    VitrailSettingRow {
-                        icon: "wallpaper"
-                        label: page.t("wallpaper.monitors.wallpaper")
-                        description: page.t("wallpaper.monitors.wallpaper.help")
-                        enabled: page.selectedSpec && !page.selectedSpec.disabled
-                        opacity: !page.selectedSpec || page.selectedSpec.disabled ? 0.35 : 1
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailSelect {
-                            Layout.preferredWidth: VitrailTokens.size("display") * 10
-                            current: page.entryOf(page.selected).wallpaper
-                            options: page.pictureOptions(page.selected)
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            panel: page.palette.surfaceHigh
-                            onSelected: function (key) {
-                                page.setWallpaper(page.selectedMonitor, { wallpaper: key })
-                            }
-                        }
-                    }
-
-                    VitrailSettingRow {
-                        icon: "auto_awesome"
-                        label: page.t("wallpaper.monitors.effect")
-                        description: page.canEffect(page.selected) ? ""
-                                     : page.t("wallpaper.monitors.effect.imageOnly")
-                        enabled: page.selectedSpec && !page.selectedSpec.disabled
-                                 && page.canEffect(page.selected)
-                        opacity: !page.selectedSpec || page.selectedSpec.disabled
-                                 || !page.canEffect(page.selected) ? 0.35 : 1
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailSelect {
-                            Layout.preferredWidth: VitrailTokens.size("display") * 10
-                            current: page.entryOf(page.selected).effect
-                            options: page.effectOptions()
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            panel: page.palette.surfaceHigh
-                            onSelected: function (key) {
-                                page.setWallpaper(page.selectedMonitor, { effect: key })
-                            }
-                        }
-                    }
-
-                    VitrailSettingRow {
-                        icon: "dock_to_left"
-                        label: page.t("bar.monitors.edge")
-                        description: page.t("bar.monitors.help")
-                        enabled: page.selectedSpec && !page.selectedSpec.disabled
-                        opacity: !page.selectedSpec || page.selectedSpec.disabled ? 0.35 : 1
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailSegmented {
-                            objectName: "barEdge"
-                            options: [
-                                { key: "", label: page.t("bar.monitors.edge.global"), icon: "public" },
-                                { key: "left", label: page.t("bar.edge.left"), icon: "left_panel_open" },
-                                { key: "top", label: page.t("bar.edge.top"), icon: "top_panel_open" },
-                                { key: "right", label: page.t("bar.edge.right"), icon: "right_panel_open" },
-                                { key: "bottom", label: page.t("bar.edge.bottom"), icon: "bottom_panel_open" }
-                            ]
-                            current: page.selectedMonitor ? page.barEdgeOverrideOf(page.selectedMonitor) : ""
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            onSelected: function (key) {
-                                page.setBar(page.selectedMonitor, { edge: key })
-                            }
-                        }
-                    }
-
-                    VitrailSettingRow {
-                        icon: "style"
-                        label: page.t("bar.monitors.style")
-                        enabled: page.selectedSpec && !page.selectedSpec.disabled
-                        opacity: !page.selectedSpec || page.selectedSpec.disabled ? 0.35 : 1
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailSelect {
-                            Layout.preferredWidth: VitrailTokens.size("display") * 10
-                            current: page.selectedMonitor ? page.barStyleOf(page.selectedMonitor) : ""
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            options: [{ key: "", label: page.t("bar.monitors.style.global") }].concat(
-                                Object.keys(VitrailVariants.bar).map(function (key) {
-                                    return { key: key, label: page.t("bar.style." + key) }
-                                }))
-                            onSelected: function (key) {
-                                page.setBar(page.selectedMonitor, { style: key })
-                            }
                         }
                     }
 

@@ -3573,11 +3573,11 @@ ShellRoot {
                     sliderSize: shell.prefs.osdSize || VitrailTokens.osd.size
                 }
 
-                // The settings window marks the output it is editing.
+                // The settings window identifies every output on its own
+                // screen (the selection itself is the canvas ring).
                 MonitorEditLayer {
-                    screen: monitor.modelData
+                    output: monitor.modelData
                     state: shell.monitorEdit
-                    strings: shell.strings
                     opacityLevel: shell.barOpacity
                 }
 

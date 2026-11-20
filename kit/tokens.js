@@ -206,12 +206,12 @@ var osd = {
     card: 300
 }
 
-// The indicator the settings window leaves on the monitor being configured:
-// a thin accent frame, and a card with the output's name and "Configuring".
+// The badge the settings window leaves on every output while it is open: the
+// output's name at the top of each screen, and the card's width and distance
+// from the top edge.
 var monitorEdit = {
-    frame: 3,
     label: 320,
-    labelGap: "xl"
+    top: "xl"
 }
 
 // The in-place desktop editor: the right-click menu's width, the palette's

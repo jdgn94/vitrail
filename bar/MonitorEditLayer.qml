@@ -5,30 +5,29 @@ import QtQuick.Layouts
 import "kit"
 import "kit/base"
 
-// The monitor the settings window is editing, marked on its own screen: a
-// thin accent frame and a card with the output's name and "Configuring".
+// Every output is marked while the settings window is open: a card at the top
+// centre with the output's name, so the canvas and the physical screens meet.
 //
-// The window takes no input (an empty mask) and appears only on the output
-// named by ~/.cache/vitrail/system/monitor-edit.ini, the small file the
-// Monitors page writes while it is open.
+// `output` is the Quickshell screen this layer belongs to. The PanelWindow's
+// own `screen` is bound to it below: a property named `screen` on this type
+// would shadow the window's, and every layer would end up on the default
+// output.
+//
+// The window takes no input (an empty mask) and appears on every output while
+// the Monitors page is open, named by ~/.cache/vitrail/system/monitor-edit.ini
+// (the small file the page writes).
 PanelWindow {
     id: root
 
-    required property var screen
+    required property var output
     property var state: ({})
-    property var strings: ({})
     property real opacityLevel: VitrailTokens.opacity
 
     readonly property bool active: root.state && root.state.active === true
-                                   && root.state.name === root.screen.name
-    readonly property color accent: VitrailTokens.color("primary", "#a8c7fa")
-
-    function t(key) {
-        var value = root.strings[key]
-        return value === undefined ? key : value
-    }
+    readonly property color accent: VitrailTokens.color("muted", "#c4c6d0")
 
     visible: root.active
+    screen: root.output
     anchors {
         top: true
         bottom: true
@@ -42,21 +41,12 @@ PanelWindow {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     mask: Region {}
 
-    // The frame: an accent line just inside the screen's edge.
-    Rectangle {
-        anchors.fill: parent
-        color: "transparent"
-        border.width: VitrailTokens.monitorEdit.frame
-        border.color: root.accent
-        opacity: root.opacityLevel
-    }
-
     VitrailSurface {
         id: card
 
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: VitrailTokens.gap(VitrailTokens.monitorEdit.labelGap)
+        anchors.top: parent.top
+        anchors.topMargin: VitrailTokens.gap(VitrailTokens.monitorEdit.top)
         width: Math.min(root.width - 2 * VitrailTokens.gap("lg"),
                         VitrailTokens.monitorEdit.label)
         height: body.implicitHeight + 2 * VitrailTokens.gap("md")
@@ -76,20 +66,10 @@ PanelWindow {
                 color: root.accent
             }
 
-            Column {
-                spacing: 0
-
-                VitrailText {
-                    variant: "body"
-                    text: root.screen.name
-                    color: VitrailTokens.color("foreground", "#e2e2e9")
-                }
-
-                VitrailText {
-                    variant: "label"
-                    text: root.t("monitors.editing")
-                    color: root.accent
-                }
+            VitrailText {
+                variant: "body"
+                text: root.output ? root.output.name : ""
+                color: VitrailTokens.color("foreground", "#e2e2e9")
             }
         }
     }
