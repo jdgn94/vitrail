@@ -20,8 +20,14 @@ TestCase {
         property string cursorTheme: "Adwaita"
         property string cursorThemeLight: ""
         property string cursorThemeDark: ""
+        property string cursorImport: ""
+        property string cursorRemove: ""
         property bool cursorThemeSplit: false
+        property bool cursorAdaptive: true
+        property bool cursorMonochrome: false
         property string iconTheme: "Adwaita"
+        property bool iconAdaptive: true
+        property string iconFill: "pack"
         property string fontSystem: "Roboto"
         property string fontConsole: "Hack"
         property int cursorSize: 24
@@ -40,8 +46,9 @@ TestCase {
                 iconThemes: ["Adwaita", "Papirus", "vitrail-icons-Adwaita"],
                 iconDesigns: ["Adwaita", "Papirus"],
                 iconUser: ["vitrail-icons-Adwaita"],
-                cursorThemes: ["Adwaita", "Bibata", "vitrail-Adwaita"],
+                cursorThemes: ["Adwaita", "Bibata", "vitrail-Adwaita", "vitrail-cursor"],
                 cursorDesigns: ["Adwaita", "Bibata"],
+                cursorUser: ["Adwaita"],
                 iconPreviews: {
                     Adwaita: ["base.svg"],
                     "vitrail-icons-Adwaita@light": ["light.svg"],
@@ -56,59 +63,84 @@ TestCase {
         tryCompare(page, "status", Loader.Ready)
     }
 
-    function test_adaptive_icons_are_only_vitrail_icons() {
-        var rows = page.item.adaptiveIconOptions("")
-        verify(rows.length > 0)
-        for (var i = 0; i < rows.length; i++)
-            compare(rows[i].key.indexOf("vitrail-icons-"), 0)
-    }
-
-    function test_each_fill_variant_shows_its_own_previews() {
-        var rows = page.item.adaptiveIconOptions("")
-        function iconOf(key) {
-            for (var i = 0; i < rows.length; i++) {
-                if (rows[i].key === key)
-                    return rows[i].icons[0]
-            }
-            return ""
-        }
-        compare(iconOf("vitrail-icons-Adwaita@light"), "light.svg")
-        compare(iconOf("vitrail-icons-Adwaita@solid"), "solid.svg")
-        compare(iconOf("vitrail-icons-Adwaita"), "base.svg")
-    }
-
-    function test_each_adaptive_icon_pack_has_three_fill_variants() {
-        var keys = page.item.adaptiveIconOptions("").map(function (row) {
-            return row.key
-        })
-        verify(keys.indexOf("vitrail-icons-Adwaita") >= 0)
-        verify(keys.indexOf("vitrail-icons-Adwaita@light") >= 0)
-        verify(keys.indexOf("vitrail-icons-Adwaita@solid") >= 0)
-    }
-
-    function test_normal_icons_exclude_vitrail_icons() {
-        var rows = page.item.normalIconOptions("Adwaita")
+    function test_the_icon_list_is_one_list_of_packs() {
+        var rows = page.item.iconOptions("")
         verify(rows.length > 0)
         for (var i = 0; i < rows.length; i++)
             compare(rows[i].key.indexOf("vitrail-icons-"), -1)
+        var keys = rows.map(function (row) { return row.key })
+        verify(keys.indexOf("Adwaita") >= 0)
+        verify(keys.indexOf("Papirus") >= 0)
     }
 
-    function test_adaptive_cursors_are_only_vitrail_layers() {
-        var rows = page.item.cursorOptions("", true).filter(function (row) {
-            return row.tab === "adaptive"
-        })
-        verify(rows.length > 0)
-        for (var i = 0; i < rows.length; i++)
-            compare(rows[i].key.indexOf("vitrail-"), 0)
+    function test_the_icon_picker_has_no_tabs() {
+        page.item.tab = "icons"
+        wait(50)
+        var picker = findObject(page.item, "iconThemePicker")
+        verify(picker !== null)
+        compare(picker.tabs.length, 0)
     }
 
-    function test_normal_cursors_exclude_vitrail_layers() {
-        var rows = page.item.cursorOptions("", true).filter(function (row) {
-            return row.tab === "normal"
-        })
+    function test_the_icon_switches_write_the_preferences() {
+        page.item.tab = "icons"
+        wait(50)
+        var adaptive = findObject(page.item, "iconAdaptiveSwitch")
+        var fill = findObject(page.item, "iconFillSelect")
+        verify(adaptive !== null && fill !== null)
+        adaptive.toggled(false)
+        compare(prefs.iconAdaptive, false)
+        compare(fill.enabled, false)
+        adaptive.toggled(true)
+        compare(prefs.iconAdaptive, true)
+        compare(fill.enabled, true)
+        fill.selected("light")
+        compare(prefs.iconFill, "light")
+    }
+
+    function test_the_cursor_list_is_one_list_of_packs() {
+        var rows = page.item.cursorOptions("", false)
         verify(rows.length > 0)
-        for (var i = 0; i < rows.length; i++)
+        for (var i = 0; i < rows.length; i++) {
             compare(rows[i].key.indexOf("vitrail-"), -1)
+            compare(rows[i].tab, undefined)
+        }
+    }
+
+    function test_the_cursor_picker_has_no_tabs() {
+        prefs.cursorThemeSplit = false
+        page.item.tab = "cursor"
+        wait(50)
+        var card = findObject(page.item, "cursorSharedCard")
+        var picker = findObject(card, "cursorThemePicker")
+        compare(picker.tabs.length, 0)
+    }
+
+    function test_the_cursor_picker_can_import_and_delete() {
+        prefs.cursorThemeSplit = false
+        page.item.tab = "cursor"
+        wait(50)
+        var card = findObject(page.item, "cursorSharedCard")
+        var picker = findObject(card, "cursorThemePicker")
+        compare(picker.actions.length, 2)
+        compare(picker.actions[0].key, "import")
+        compare(picker.actions[1].key, "delete")
+        compare(picker.actions[1].enabled, true)
+    }
+
+    function test_the_switches_write_the_preferences() {
+        page.item.tab = "cursor"
+        wait(50)
+        var adaptive = findObject(page.item, "cursorAdaptiveSwitch")
+        var mono = findObject(page.item, "cursorMonochromeSwitch")
+        verify(adaptive !== null && mono !== null)
+        adaptive.toggled(false)
+        compare(prefs.cursorAdaptive, false)
+        compare(mono.enabled, false)
+        adaptive.toggled(true)
+        compare(prefs.cursorAdaptive, true)
+        compare(mono.enabled, true)
+        mono.toggled(true)
+        compare(prefs.cursorMonochrome, true)
     }
 
     function test_the_inherit_row_is_only_offered_for_a_split() {

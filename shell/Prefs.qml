@@ -88,11 +88,17 @@ QtObject {
     property alias fontConsole: fontsFile.fontConsole
     property alias uiIcons: fontsFile.uiIcons
     property alias iconTheme: fontsFile.iconTheme
+    property alias iconAdaptive: fontsFile.iconAdaptive
+    property alias iconFill: fontsFile.iconFill
     property alias iconImport: fontsFile.iconImport
     property alias iconRemove: fontsFile.iconRemove
     property alias cursorTheme: fontsFile.cursorTheme
     property alias cursorThemeLight: fontsFile.cursorThemeLight
     property alias cursorThemeDark: fontsFile.cursorThemeDark
+    property alias cursorImport: fontsFile.cursorImport
+    property alias cursorRemove: fontsFile.cursorRemove
+    property alias cursorAdaptive: fontsFile.cursorAdaptive
+    property alias cursorMonochrome: fontsFile.cursorMonochrome
     property alias cursorSize: fontsFile.cursorSize
     property alias cursorSpinner: fontsFile.cursorSpinner
     property alias wallpaper: wallpaperFile.wallpaper
@@ -421,11 +427,17 @@ QtObject {
         property string fontConsole: "JetBrainsMono Nerd Font"
         property string uiIcons: "rounded"
         property string iconTheme: "Adwaita"
+        property bool iconAdaptive: true
+        property string iconFill: "solid"
         property string iconImport: ""
         property string iconRemove: ""
         property string cursorTheme: "Adwaita"
         property string cursorThemeLight: ""
         property string cursorThemeDark: ""
+        property string cursorImport: ""
+        property string cursorRemove: ""
+        property bool cursorAdaptive: true
+        property bool cursorMonochrome: false
         property int cursorSize: VitrailTokens.ranges.cursor.value
         property bool cursorSpinner: false
     }

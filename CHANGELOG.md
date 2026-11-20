@@ -32,6 +32,10 @@ The first distributable release.
   sharp. `dots` keeps its large dabs.
 - System colour: automatic, Material's main hues and a custom colour, as one
   row of chips; the change animation reaches ten seconds on a stepped slider.
+- One picker for every choice made by sight: the same mosaic dialog behind the
+  icon and cursor cards, the font fields and the wallpaper effects (whose cells
+  are a wide preview of the picture); the font and effect triggers are a select
+  field with a chevron.
 - Cursors: one installed-pack list, Adaptive and Monochrome switches, one
   stable `vitrail-cursor` theme, and `.zip` import/delete, so a new app reads
   the current pointer without a logout.

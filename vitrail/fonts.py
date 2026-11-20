@@ -13,7 +13,6 @@ offers what fontconfig and the theme folders report.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
@@ -39,8 +38,12 @@ READ_TIMEOUT = 5
 DEFAULT_FONT = "Roboto"
 DEFAULT_CONSOLE = "JetBrainsMono Nerd Font"
 DEFAULT_ICON_THEME = "Adwaita"
+DEFAULT_ICON_ADAPTIVE = True
+DEFAULT_ICON_FILL = "solid"
 DEFAULT_CURSOR = "Adwaita"
 DEFAULT_CURSOR_SIZE = 24
+DEFAULT_CURSOR_ADAPTIVE = True
+DEFAULT_CURSOR_MONO = False
 CURSOR_SIZES = (16, 64)
 # The shell draws its icons as Material Symbol ligatures: only these three
 # families keep every glyph name.
@@ -343,46 +346,11 @@ def cursor_previews(theme: Path, cache: Path) -> list[str]:
     return found
 
 
-def styled_previews(files: list[str], style: str, palette: dict, cache: Path) -> list[str]:
-    """The base pack's SVG previews, tinted with `style`, in the cache.
-
-    PNG previews are skipped: the picker can still show the base pack for
-    them, but only vector previews can be recoloured without an image
-    dependency.
-    """
-    if style not in ("light", "solid") or not palette.get("primary"):
-        return []
-    root = cache / "icon-styles"
-    styled: list[str] = []
-    for name in files:
-        source = Path(name)
-        if source.suffix.lower() != ".svg":
-            continue
-        try:
-            text = source.read_text(encoding="utf-8", errors="replace")
-            modified = source.stat().st_mtime_ns
-        except OSError:
-            continue
-        digest = hashlib.sha256(
-            f"{source}:{modified}:{style}:{palette.get('primary', '')}".encode("utf-8")
-        ).hexdigest()[:12]
-        target = root / f"{source.stem}-{style}-{digest}.svg"
-        try:
-            if not target.is_file():
-                root.mkdir(parents=True, exist_ok=True)
-                target.write_text(icon_engine.tint_svg(text, palette, style), encoding="utf-8")
-        except OSError:
-            continue
-        styled.append(str(target))
-    return styled
-
-
 def state(
     run: Runner = run_text,
     roots: list[Path] | None = None,
     cache: Path | None = None,
     user_roots: list[Path] | None = None,
-    palette: dict | None = None,
 ) -> dict:
     """The lists the settings window offers: fonts, packs and cursors."""
     roots = list(roots) if roots is not None else DEFAULT_ROOTS
@@ -409,18 +377,6 @@ def state(
     designs = [name for name in cursors if not name.startswith(cursor_engine.PREFIX)]
     icon_designs = [name for name in icons if not name.startswith(icon_engine.PREFIX)]
 
-    # The picker must show what @light and @solid look like before applying
-    # them: tint the base pack's vector previews once per palette and cache.
-    inks = palette if palette is not None else active_palette()
-    for pack in icon_designs:
-        base = icon_files.get(pack)
-        if not base:
-            continue
-        for style in ("light", "solid"):
-            key = icon_engine.design_name(pack, style)
-            if key not in icon_files:
-                icon_files[key] = styled_previews(base, style, inks, cache) or base
-
     return {
         "fonts": families(text),
         "monospace": monospace(text),
@@ -429,6 +385,12 @@ def state(
         "cursorDesigns": designs,
         "iconDesigns": icon_designs,
         "iconUser": [name for name in icons if any((root / name / "index.theme").is_file() for root in writable)],
+        "cursorUser": [
+            name
+            for name in cursors
+            if not name.startswith(cursor_engine.PREFIX)
+            and any((root / name / "index.theme").is_file() for root in writable)
+        ],
         "iconPreviews": icon_files,
         "cursorPreviews": cursor_files,
     }
@@ -470,6 +432,36 @@ def console_family(name: str, run: Runner = run_text) -> str:
 def _truthy(value: object) -> bool:
     """A stored boolean, which arrives as a string from the INI files."""
     return str(value if value is not None else "").strip().lower() in ("true", "1", "yes", "on")
+
+
+def _flag(values: dict, key: str, default: bool) -> bool:
+    """A preference that is missing until the settings window writes it."""
+    return _truthy(values[key]) if key in values else default
+
+
+def cursor_env(theme: str, size: int) -> str:
+    """The Lua Hyprland evaluates to give its next children the theme.
+
+    0.56 with a Lua config dropped `hyprctl setenv`; `hl.env` is its
+    replacement and only reaches processes spawned afterwards.
+    """
+    return f'hl.env("XCURSOR_THEME", {json.dumps(theme)}); hl.env("XCURSOR_SIZE", "{size}")'
+
+
+def cursor_startup(theme: str, size: int) -> str:
+    """The Lua `hyprland.lua` loads at session start.
+
+    Hyprland reads `XCURSOR_THEME` when it starts, before the settings watcher
+    has run. The generated file sets the environment for its children and
+    leaves the values the startup block passes to `hyprctl setcursor`.
+    """
+    return (
+        "-- Generated by Vitrail; `vitrail fonts apply` rewrites it.\n"
+        f"VITRAIL_CURSOR_THEME = {json.dumps(theme)}\n"
+        f'VITRAIL_CURSOR_SIZE = "{size}"\n'
+        'hl.env("XCURSOR_THEME", VITRAIL_CURSOR_THEME)\n'
+        'hl.env("XCURSOR_SIZE", VITRAIL_CURSOR_SIZE)\n'
+    )
 
 
 def active_mode(appearance: str | None = None) -> str:
@@ -530,13 +522,28 @@ def _write_icons_result(cache: Path, result: dict) -> None:
         pass
 
 
-def _write_fonts_state(run: Runner, roots: list[Path], cache: Path, data_home: Path | None) -> None:
-    """Refreshes the file the settings window reads after an icon change."""
+def _write_cursor_result(cache: Path, result: dict) -> None:
+    path = cache.parent / "cursors-result.json"
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(result, separators=(",", ":")), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _write_fonts_state(
+    run: Runner,
+    roots: list[Path],
+    cache: Path,
+    data_home: Path | None,
+    home: Path | None = None,
+) -> None:
+    """Refreshes the file the settings window reads after a theme change."""
     live = state(
         run=run,
         roots=roots,
         cache=cache,
-        user_roots=icon_engine.user_roots(data_home),
+        user_roots=icon_engine.user_roots(data_home, home),
     )
     try:
         path = cache.parent / "fonts-state.json"
@@ -606,6 +613,69 @@ def _apply_icon_requests(
     return handled, failed
 
 
+def _apply_cursor_requests(
+    values: dict,
+    config: Path,
+    run: Runner,
+    roots: list[Path],
+    cache: Path,
+    data_home: Path | None,
+    home: Path | None,
+) -> tuple[bool, bool]:
+    """(handled, failed): imports or deletes the cursor pack the window asked for."""
+    import_nonce, imports = _request_parts(values.get("cursorImport"))
+    remove_nonce, removals = _request_parts(values.get("cursorRemove"))
+    if not imports and not removals:
+        return False, False
+    handled = True
+    failed = False
+    prefs_dir = config / "vitrail"
+    user_icons = cursor_engine.user_root(home)
+    if imports:
+        try:
+            target = icon_engine.import_zip(imports, cursors=True, root=user_icons)
+        except (OSError, ValueError) as error:
+            failed = True
+            log(f"cursor import failed: {error}")
+            _write_cursor_result(
+                cache,
+                {"action": "import", "ok": False, "nonce": import_nonce, "message": str(error)},
+            )
+        else:
+            log(f"cursor theme installed {target.name}")
+            _write_cursor_result(
+                cache,
+                {"action": "import", "ok": True, "nonce": import_nonce, "name": target.name, "message": ""},
+            )
+        try:
+            prefs.write_pref(prefs_dir, "cursorImport", "")
+        except OSError:
+            pass
+    if removals:
+        data_root = (data_home / "icons") if data_home is not None else cursor_engine.output_root()
+        try:
+            target = icon_engine.remove_pack(removals, cursors=True, roots=[user_icons, data_root])
+        except (OSError, ValueError) as error:
+            failed = True
+            log(f"cursor removal failed: {error}")
+            _write_cursor_result(
+                cache,
+                {"action": "remove", "ok": False, "nonce": remove_nonce, "message": str(error)},
+            )
+        else:
+            log(f"cursor theme removed: {target.name}")
+            _write_cursor_result(
+                cache,
+                {"action": "remove", "ok": True, "nonce": remove_nonce, "name": target.name, "message": ""},
+            )
+        try:
+            prefs.write_pref(prefs_dir, "cursorRemove", "")
+        except OSError:
+            pass
+    _write_fonts_state(run, roots, cache, data_home, home=home)
+    return handled, failed
+
+
 def apply(
     values: dict,
     config: Path,
@@ -618,6 +688,7 @@ def apply(
     x11: bool | None = None,
     render=None,
     mode: str | None = None,
+    cursor_home: Path | None = None,
 ) -> int:
     """Applies `fonts.ini` system-wide.
 
@@ -639,6 +710,8 @@ def apply(
         if data_root not in roots:
             roots = [*roots, data_root]
     _requests, request_failed = _apply_icon_requests(values, config, run, roots, cache, data_home)
+    _cursor_requests, cursor_failed = _apply_cursor_requests(values, config, run, roots, cache, data_home, cursor_home)
+    request_failed = request_failed or cursor_failed
     live = state(run=run, roots=roots, cache=cache)
     if not live["fonts"]:
         log("refused: fc-list listed no families; nothing was applied")
@@ -659,62 +732,96 @@ def apply(
     # A group whose own list is empty cannot be validated: it is skipped and
     # the other groups still apply.
     icons = ""
-    if live["iconThemes"]:
-        icon_designs = [
-            icon_engine.design_name(name, style) for name in live.get("iconDesigns", []) for style in icon_engine.STYLES
-        ]
-        icons = pick(values.get("iconTheme"), live["iconThemes"] + icon_designs, DEFAULT_ICON_THEME, "icon theme")
-        pack, style = icon_engine.split_design(icons)
-        if pack:
-            source = theme_dir(pack, roots or DEFAULT_ROOTS)
-            if source is None:
-                log(f"refused: the pack {pack!r} of {icons!r} is not installed")
-                icons = DEFAULT_ICON_THEME
-                replaced = True
-            else:
-                target = ((data_home / "icons") if data_home else icon_engine.output_root()) / icons
-                icon_engine.build(
-                    source,
-                    target,
-                    palette if palette is not None else active_palette(),
-                    cache / "icon-themes",
-                    roots or DEFAULT_ROOTS,
-                    style=style,
-                )
+    if live["iconDesigns"]:
+        adaptive = _flag(values, "iconAdaptive", DEFAULT_ICON_ADAPTIVE)
+        fill = values.get("iconFill", DEFAULT_ICON_FILL)
+        if fill not in ("pack", "light", "solid"):
+            fill = DEFAULT_ICON_FILL
+        style = "" if fill == "pack" else fill
+        requested = values.get("iconTheme")
+        # A value written before this change names the generated layer.
+        if isinstance(requested, str) and requested.startswith(icon_engine.PREFIX):
+            legacy_pack, legacy_style = icon_engine.split_design(requested)
+            requested = legacy_pack
+            adaptive = True
+            if legacy_style:
+                style = legacy_style
+        pack_name = pick(requested, live["iconDesigns"], DEFAULT_ICON_THEME, "icon theme")
+        icons = pack_name
+        source = theme_dir(pack_name, roots or DEFAULT_ROOTS)
+        if source is None:
+            log(f"refused: the pack {pack_name!r} is not installed")
+            icons = DEFAULT_ICON_THEME
+            replaced = True
+        elif adaptive:
+            design = icon_engine.design_name(pack_name, style)
+            target = ((data_home / "icons") if data_home else icon_engine.output_root()) / design
+            icon_engine.build(
+                source,
+                target,
+                palette if palette is not None else active_palette(),
+                cache / "icon-themes",
+                roots or DEFAULT_ROOTS,
+                style=style,
+            )
+            # A pack without folder SVGs builds nothing: keep the pack itself,
+            # or the desktop would look for a theme that does not exist.
+            if (target / "index.theme").is_file():
+                icons = design
     else:
         log("skipped: no icon theme found")
     cursor = ""
-    designs = [cursor_engine.design_name(name) for name in live.get("cursorDesigns", [])]
-    if live["cursorThemes"] or designs:
+    cursor_changed = False
+    if live["cursorDesigns"]:
         active = active_mode() if mode not in ("light", "dark") else mode
+        adaptive = _flag(values, "cursorAdaptive", DEFAULT_CURSOR_ADAPTIVE)
+        monochrome = adaptive and _flag(values, "cursorMonochrome", DEFAULT_CURSOR_MONO)
         requested = values.get("cursorTheme")
         if _truthy(values.get("cursorThemeSplit")):
             # The split can leave one mode empty: that mode follows the shared
             # pack again, and the active mode decides which row is in force.
             requested = values.get("cursorThemeLight" if active == "light" else "cursorThemeDark") or requested
-        cursor = pick(
-            requested,
-            live["cursorThemes"] + designs,
-            DEFAULT_CURSOR,
-            f"cursor theme ({active})",
-        )
-        pack = cursor_engine.source_of(cursor)
-        if pack:
+        # A value written before this change carried the generated prefix.
+        if isinstance(requested, str) and requested.startswith(cursor_engine.PREFIX):
+            if requested != cursor_engine.STABLE:
+                requested = cursor_engine.source_of(requested)
+                adaptive = True
+        pack = pick(requested, live["cursorDesigns"], DEFAULT_CURSOR, f"cursor theme ({active})")
+        source = theme_dir(pack, roots or DEFAULT_ROOTS)
+        if source is None:
+            log(f"refused: the pack {pack!r} is not installed")
+            pack = DEFAULT_CURSOR
             source = theme_dir(pack, roots or DEFAULT_ROOTS)
-            if source is None:
-                log(f"refused: the pack {pack!r} of {cursor!r} is not installed")
-                cursor = DEFAULT_CURSOR
-                replaced = True
-            else:
-                target = ((data_home / "icons") if data_home else cursor_engine.output_root()) / cursor
-                cursor_engine.build(
+            replaced = True
+        applied = pack
+        if source is not None:
+            target = ((data_home / "icons") if data_home else cursor_engine.output_root()) / cursor_engine.STABLE
+            if adaptive:
+                cursor_changed = cursor_engine.build(
                     source,
                     target,
                     palette if palette is not None else active_palette(),
                     cache / "themes",
                     spinner=False,
+                    mono=monochrome,
                     render=render,
                 )
+                # The name never changes, and an up-to-date build (the stamp
+                # matched) still has the tinted theme to apply: falling back to
+                # the source pack would undo the palette on every second apply.
+                if (target / "cursors").is_dir():
+                    applied = cursor_engine.STABLE
+            else:
+                cursor_changed = cursor_engine.alias(source, target)
+                if cursor_changed:
+                    applied = cursor_engine.STABLE
+            # A session started before the stable name still has an old
+            # `vitrail-<pack>` in its environment.
+            cursor_engine.migrate_aliases(target.parent)
+            # Hyprland and Xcursor read `~/.icons`, not `~/.local/share/icons`.
+            cursor_changed = cursor_engine.link_user(target, cursor_home) or cursor_changed
+            cursor_engine.mirror_aliases(target.parent, cursor_home)
+        cursor = applied
     else:
         log("skipped: no cursor theme found")
     size, replaced_size = _cursor_size(values.get("cursorSize", DEFAULT_CURSOR_SIZE))
@@ -734,6 +841,9 @@ def apply(
         env = config / "environment.d" / "20-vitrail-cursor.conf"
         env.parent.mkdir(parents=True, exist_ok=True)
         env.write_text(f"XCURSOR_THEME={cursor}\nXCURSOR_SIZE={size}\n", encoding="utf-8")
+        # Hyprland starts before the path unit: the config itself must carry
+        # the cursor the session begins with.
+        take_file(config / "hypr" / "vitrail-cursor.lua", cursor_startup(cursor, size))
         # X11: the theme for the X server's own cursor, GTK's settings, and the
         # XSETTINGS daemon GTK apps on X11 watch.
         resources = config / "X11" / "vitrail-cursor.Xresources"
@@ -749,10 +859,20 @@ def apply(
     if cursor:
         run(["gsettings", "set", "org.gnome.desktop.interface", "cursor-theme", cursor])
         run(["gsettings", "set", "org.gnome.desktop.interface", "cursor-size", str(size)])
+        # A process started later by systemd or D-Bus must not read a stale
+        # XCURSOR_THEME from the session that started the shell.
+        run(["systemctl", "--user", "set-environment", f"XCURSOR_THEME={cursor}", f"XCURSOR_SIZE={size}"])
+        run(["dbus-update-activation-environment", "--systemd", "XCURSOR_THEME", "XCURSOR_SIZE"])
         if hyprland is None:
             hyprland = bool(os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")) and bool(shutil.which("hyprctl"))
         if hyprland:
+            if cursor_changed:
+                # Hyprland caches a theme by name: switching away and back
+                # reloads the files from disk.
+                run(["hyprctl", "setcursor", DEFAULT_CURSOR, str(size)])
             run(["hyprctl", "setcursor", cursor, str(size)])
+            # The compositor's own children read this, not its own environment.
+            run(["hyprctl", "eval", cursor_env(cursor, size)])
         # X11 clients: the X server's resources carry the theme for new cursors,
         # and xsettingsd (when it runs) tells GTK apps without a restart.
         if x11 is None:

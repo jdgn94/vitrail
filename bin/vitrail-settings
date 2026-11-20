@@ -82,7 +82,7 @@ if command -v python3 >/dev/null 2>&1; then
             mv -- "${CACHE_DIR}/fonts-state.json.part" "${CACHE_DIR}/fonts-state.json"
         else
             rm -f -- "${CACHE_DIR}/fonts-state.json.part"
-            printf '{"fonts":[],"monospace":[],"iconThemes":[],"cursorThemes":[],"iconDesigns":[],"iconUser":[],"iconPreviews":{},"cursorPreviews":{}}' \
+            printf '{"fonts":[],"monospace":[],"iconThemes":[],"cursorThemes":[],"cursorDesigns":[],"iconDesigns":[],"iconUser":[],"cursorUser":[],"iconPreviews":{},"cursorPreviews":{}}' \
                 >"${CACHE_DIR}/fonts-state.json"
         fi
     } &

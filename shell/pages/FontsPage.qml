@@ -20,13 +20,17 @@ Item {
                            cursorDesigns: [], iconDesigns: [], iconUser: [],
                            iconPreviews: {}, cursorPreviews: {} })
     property string tab: "text"
-    // The two tabs of the one app-icon picker, and the import/delete feedback.
-    property string iconTab: "normal"
-    property string cursorTab: "normal"
+    // The import/delete feedback.
     property string iconMessage: ""
     property string iconState: "idle"
     property var iconNonce: 0
     property int iconPolls: 0
+    // The cursor picker's import/delete feedback and which pref it targets.
+    property string cursorMessage: ""
+    property string cursorState: "idle"
+    property var cursorNonce: 0
+    property int cursorPolls: 0
+    property string cursorTarget: "shared"
     // The state file the launcher injected, and the result beside it.
     property string fontsFile: ""
 
@@ -37,97 +41,32 @@ Item {
         return value === undefined ? key : value
     }
 
-    // A generated cursor is "Vitrail · <pack>"; an installed one keeps its
-    // own name.
-    function cursorLabel(name) {
-        var pack = name.indexOf("vitrail-") === 0 ? name.substring(8) : ""
-        if (pack === "")
-            return name
-        return page.t("fonts.vitrail") + " · " + pack.replace(/-/g, " ")
-    }
-
-    // One icon-pack row: the eight previews the mosaic draws, its name, and
-    // the tab it belongs to. A pack without previews still gets a glyph, so
-    // every installed name can be chosen.
-    function iconRow(name, label, icons, tab) {
-        var pictures = icons || []
-        return {
-            key: name,
-            label: label,
-            icons: pictures,
-            glyph: pictures.length === 0 ? "apps" : "",
-            tab: tab
-        }
-    }
-
-    function iconLabel(name) {
-        if (name.indexOf("vitrail-icons-") !== 0)
-            return name
-        var rest = name.substring(14)
-        var at = rest.lastIndexOf("@")
-        var style = at > 0 ? rest.substring(at + 1) : ""
-        var pack = at > 0 && (style === "light" || style === "solid") ? rest.substring(0, at) : rest
-        var label = page.t("fonts.vitrail") + " · " + pack.replace(/-/g, " ")
-        return style === "" ? label
-                            : label + " · " + page.t("fonts.iconTheme." + style)
-    }
-
-    // The installed packs, one row each; the stored value stays selectable.
-    function normalIconOptions(current) {
-        var names = (page.fonts.iconThemes || []).filter(function (name) {
-            return name.indexOf("vitrail-icons-") !== 0
-        }).sort(function (a, b) { return a.localeCompare(b) })
-        var rows = names.map(function (name) {
-            return page.iconRow(name, page.iconLabel(name),
-                                (page.fonts.iconPreviews || {})[name] || [], "normal")
-        })
-        if (current && rows.every(function (row) { return row.key !== current; })
-                && current.indexOf("vitrail-icons-") !== 0)
-            rows.unshift(page.iconRow(current, page.iconLabel(current),
-                                      (page.fonts.iconPreviews || {})[current] || [], "normal"))
-        return rows
-    }
-
-    // The generated Vitrail layers plus three rows per pack: the pack's own
-    // shading, a light body and a solid one. Choosing a row writes its full
-    // name (`@light` / `@solid`) and apply builds that style.
-    function adaptiveIconOptions(current) {
+    // The installed packs, one row each. Adaptive is a switch on the chosen
+    // pack, not a second set of generated rows.
+    function iconOptions(current) {
+        var previews = page.fonts.iconPreviews || {}
         var rows = []
         var seen = Object.create(null)
-        var previews = page.fonts.iconPreviews || {}
-        function add(name, icons) {
+        function add(name) {
             if (seen[name])
                 return
             seen[name] = true
-            rows.push(page.iconRow(name, page.iconLabel(name), icons || [], "adaptive"))
+            var pictures = previews[name] || []
+            rows.push({
+                key: name,
+                label: name,
+                icons: pictures,
+                glyph: pictures.length === 0 ? "apps" : ""
+            })
         }
-        ;(page.fonts.iconThemes || []).forEach(function (name) {
-            if (name.indexOf("vitrail-icons-") !== 0 || seen[name])
-                return
-            var rest = name.substring(14)
-            var at = rest.lastIndexOf("@")
-            var pack = at > 0 ? rest.substring(0, at) : rest
-            add(name, previews[name] || previews[pack])
-        })
-        ;(page.fonts.iconDesigns || []).forEach(function (pack) {
-            var base = "vitrail-icons-" + pack
-            add(base, previews[base] || previews[pack])
-            add(base + "@light", previews[base + "@light"] || previews[pack] || previews[base])
-            add(base + "@solid", previews[base + "@solid"] || previews[pack] || previews[base])
-        })
-        if (current && current.indexOf("vitrail-icons-") === 0)
-            add(current, previews[current])
+        ;(page.fonts.iconDesigns || []).forEach(add)
+        if (current)
+            add(current)
         rows.sort(function (a, b) { return a.label.localeCompare(b.label) })
         return rows
     }
 
-    function iconInTab(name, tab) {
-        return tab === "adaptive" ? name.indexOf("vitrail-icons-") === 0
-                                  : name.indexOf("vitrail-icons-") !== 0
-    }
-
-    readonly property bool iconDeletable: page.iconInTab(page.prefs.iconTheme || "", page.iconTab)
-                                          && (page.fonts.iconUser || []).indexOf(page.prefs.iconTheme) >= 0
+    readonly property bool iconDeletable: (page.fonts.iconUser || []).indexOf(page.prefs.iconTheme) >= 0
     readonly property var iconActions: [
         { key: "import", label: page.t("fonts.iconTheme.import"), icon: "upload_file",
           variant: "tonal", tone: "secondary" },
@@ -186,8 +125,7 @@ Item {
         if (result.action === "remove" && page.prefs.iconTheme === result.name)
             page.prefs.iconTheme = "Adwaita"
         if (result.action === "import")
-            page.iconTab = String(result.name || "").indexOf("vitrail-icons-") === 0
-                         ? "adaptive" : "normal"
+            page.prefs.iconTheme = String(result.name || "")
         page.readJson(page.fontsFile, function (state) {
             if (state && state.iconThemes)
                 page.fonts = state
@@ -208,8 +146,7 @@ Item {
         })
     }
 
-    function onIconAction(key, tab) {
-        page.iconTab = tab || page.iconTab
+    function onIconAction(key) {
         if (key === "import") {
             importDialog.open()
             return
@@ -221,45 +158,111 @@ Item {
         }
     }
 
-    // Cursor rows split exactly like the icon pack: installed packs are
-    // Normal, the generated `vitrail-*` layers (and the targets that build
-    // them) are Adaptive. The first row is the shared pack, only when a split
-    // asks for a per-theme override.
+    function cursorValue(target) {
+        if (target === "light")
+            return page.prefs.cursorThemeLight
+        if (target === "dark")
+            return page.prefs.cursorThemeDark
+        return page.prefs.cursorTheme
+    }
+
+    function setCursorTheme(target, name) {
+        if (target === "light")
+            page.prefs.cursorThemeLight = name
+        else if (target === "dark")
+            page.prefs.cursorThemeDark = name
+        else
+            page.prefs.cursorTheme = name
+    }
+
+    function onCursorAction(key, current, target) {
+        page.cursorTarget = target || "shared"
+        if (key === "import") {
+            cursorImportDialog.open()
+            return
+        }
+        if (key === "delete" && (page.fonts.cursorUser || []).indexOf(current) >= 0) {
+            var nonce = Date.now()
+            page.prefs.cursorRemove = page.request([current], nonce)
+            page.beginCursorRequest(nonce)
+        }
+    }
+
+    function beginCursorRequest(nonce) {
+        page.cursorMessage = ""
+        page.cursorState = "pending"
+        page.cursorNonce = nonce || Date.now()
+        page.cursorPolls = 0
+        cursorPoll.start()
+    }
+
+    function pollCursorRequest() {
+        page.cursorPolls += 1
+        if (page.cursorPolls > 20) {
+            cursorPoll.stop()
+            page.cursorMessage = page.t("fonts.cursor.failed")
+            return
+        }
+        page.readJson(page.dirname(page.fontsFile) + "/cursors-result.json", function (result) {
+            if (!result || String(result.nonce) !== String(page.cursorNonce))
+                return
+            page.finishCursorRequest(result)
+        })
+    }
+
+    function finishCursorRequest(result) {
+        cursorPoll.stop()
+        page.cursorState = "done"
+        if (!result.ok) {
+            page.cursorMessage = page.t("fonts.cursor.failed") + " " + (result.message || "")
+            return
+        }
+        page.cursorMessage = result.action === "remove"
+                          ? page.t("fonts.cursor.removed") : page.t("fonts.cursor.imported")
+        if (result.action === "import") {
+            page.setCursorTheme(page.cursorTarget, String(result.name || ""))
+        } else if (page.cursorValue(page.cursorTarget) === result.name) {
+            page.setCursorTheme(page.cursorTarget,
+                                page.cursorTarget === "shared" ? "Adwaita" : "")
+        }
+        page.readJson(page.fontsFile, function (state) {
+            if (state && state.cursorThemes)
+                page.fonts = state
+        })
+    }
+
+    // Cursor rows: the installed packs, one list. Adaptive is a switch on the
+    // chosen pack, not a separate set of rows. The first row is the shared
+    // pack, only when a split asks for a per-theme override.
     function cursorOptions(current, inherit) {
         var previews = page.fonts.cursorPreviews || {}
         var shared = page.prefs.cursorTheme || "Adwaita"
         var rows = []
         var seen = Object.create(null)
-        function add(name, icons, tab) {
+        function add(name, icons) {
             if (seen[name])
                 return
             seen[name] = true
             var pictures = icons || []
             rows.push({
                 key: name,
-                label: page.cursorLabel(name),
+                label: name,
                 icons: pictures,
-                glyph: pictures.length === 0 ? "mouse" : "",
-                tab: tab
+                glyph: pictures.length === 0 ? "mouse" : ""
             })
         }
         if (inherit)
             rows.push({
                 key: "",
-                label: page.t("fonts.cursor.inherit").replace("%1", page.cursorLabel(shared)),
+                label: page.t("fonts.cursor.inherit").replace("%1", shared),
                 icons: previews[shared] || [],
-                glyph: (previews[shared] || []).length === 0 ? "mouse" : "",
-                tab: "normal"
+                glyph: (previews[shared] || []).length === 0 ? "mouse" : ""
             })
-        ;(page.fonts.cursorThemes || []).forEach(function (name) {
-            add(name, previews[name], name.indexOf("vitrail-") === 0 ? "adaptive" : "normal")
-        })
-        ;(page.fonts.cursorDesigns || []).forEach(function (pack) {
-            var name = "vitrail-" + pack
-            add(name, previews[name] || previews[pack], "adaptive")
+        ;(page.fonts.cursorDesigns || []).forEach(function (name) {
+            add(name, previews[name])
         })
         if (current)
-            add(current, previews[current], current.indexOf("vitrail-") === 0 ? "adaptive" : "normal")
+            add(current, previews[current])
         rows.sort(function (a, b) {
             return a.key === "" ? -1 : b.key === "" ? 1 : a.label.localeCompare(b.label)
         })
@@ -285,8 +288,18 @@ Item {
         property string current: ""
         property bool inherit: false
         property string pickerName: ""
+        property string target: "shared"
 
         signal selected(string key)
+
+        readonly property var actions: [
+            { key: "import", label: page.t("fonts.cursor.import"), icon: "upload_file",
+              variant: "tonal", tone: "secondary" },
+            { key: "delete", label: page.t("fonts.cursor.delete"),
+              confirm: page.t("fonts.cursor.deleteConfirm"), icon: "delete",
+              variant: "outlined", tone: "error",
+              enabled: (page.fonts.cursorUser || []).indexOf(card.current) >= 0 }
+        ]
 
         spacing: VitrailTokens.gap("sm")
 
@@ -318,18 +331,14 @@ Item {
             cellColumns: 4
             cellWidth: 176
             cellHeight: 184
-            tabs: [
-                { key: "normal", icon: "apps", label: page.t("fonts.cursor.normal") },
-                { key: "adaptive", icon: "palette", label: page.t("fonts.cursor.adaptive") }
-            ]
-            currentTab: page.cursorTab
             emptyText: page.t("fonts.cursor.empty")
             current: card.current
             options: page.cursorOptions(card.current, card.inherit)
+            actions: card.actions
             foreground: page.palette.foreground
             accent: page.palette.primary
             panel: page.palette.surfaceHigh
-            onCurrentTabChanged: page.cursorTab = currentTab
+            onActionTriggered: function (key) { page.onCursorAction(key, card.current, card.target) }
             onSelected: card.selected(key)
         }
 
@@ -484,6 +493,46 @@ Item {
                         }
                     }
 
+                    VitrailSettingRow {
+                        icon: "palette"
+                        label: page.t("fonts.iconTheme.adaptive")
+                        description: page.t("fonts.iconTheme.adaptive.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            objectName: "iconAdaptiveSwitch"
+                            checked: page.prefs.iconAdaptive
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.iconAdaptive = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "tonality"
+                        label: page.t("fonts.iconTheme.fill")
+                        description: page.t("fonts.iconTheme.fill.help")
+                        enabled: page.prefs.iconAdaptive
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            objectName: "iconFillSelect"
+                            enabled: page.prefs.iconAdaptive
+                            opacity: page.prefs.iconAdaptive ? 1 : 0.45
+                            options: [
+                                { key: "pack", label: page.t("fonts.iconTheme.pack") },
+                                { key: "light", label: page.t("fonts.iconTheme.light") },
+                                { key: "solid", label: page.t("fonts.iconTheme.solid") }
+                            ]
+                            current: page.prefs.iconFill
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: function (key) { page.prefs.iconFill = key }
+                        }
+                    }
+
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: VitrailTokens.gap("md")
@@ -539,22 +588,13 @@ Item {
                                 cellWidth: 176
                                 cellHeight: 184
                                 current: page.prefs.iconTheme
-                                options: page.normalIconOptions(page.prefs.iconTheme)
-                                                .concat(page.adaptiveIconOptions(page.prefs.iconTheme))
-                                tabs: [
-                                    { key: "normal", icon: "apps",
-                                      label: page.t("fonts.iconTheme.normal") },
-                                    { key: "adaptive", icon: "palette",
-                                      label: page.t("fonts.iconTheme.adaptive") }
-                                ]
-                                currentTab: page.iconTab
+                                options: page.iconOptions(page.prefs.iconTheme)
                                 actions: page.iconActions
                                 emptyText: page.t("fonts.iconTheme.empty")
                                 foreground: page.palette.foreground
                                 accent: page.palette.primary
                                 panel: page.palette.surfaceHigh
-                                onCurrentTabChanged: page.iconTab = currentTab
-                                onActionTriggered: function (key, tab) { page.onIconAction(key, tab) }
+                                onActionTriggered: function (key) { page.onIconAction(key) }
                                 onSelected: page.prefs.iconTheme = key
                             }
 
@@ -600,6 +640,40 @@ Item {
                         }
                     }
 
+                    VitrailSettingRow {
+                        icon: "palette"
+                        label: page.t("fonts.cursor.adaptive")
+                        description: page.t("fonts.cursor.adaptive.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            objectName: "cursorAdaptiveSwitch"
+                            checked: page.prefs.cursorAdaptive
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.cursorAdaptive = value }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        icon: "tonality"
+                        label: page.t("fonts.cursor.monochrome")
+                        description: page.t("fonts.cursor.monochrome.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            objectName: "cursorMonochromeSwitch"
+                            enabled: page.prefs.cursorAdaptive
+                            opacity: page.prefs.cursorAdaptive ? 1 : 0.45
+                            checked: page.prefs.cursorMonochrome
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) { page.prefs.cursorMonochrome = value }
+                        }
+                    }
+
                     RowLayout {
                         Layout.fillWidth: true
                         visible: !page.prefs.cursorThemeSplit
@@ -616,6 +690,7 @@ Item {
                             note: page.t("fonts.cursor.shared.help")
                             current: page.prefs.cursorTheme
                             inherit: false
+                            target: "shared"
                             onSelected: function (key) { page.prefs.cursorTheme = key }
                         }
 
@@ -674,6 +749,7 @@ Item {
                                 note: page.t("fonts.cursor.light.note")
                                 current: page.prefs.cursorThemeLight
                                 inherit: true
+                                target: "light"
                                 onSelected: function (key) { page.prefs.cursorThemeLight = key }
                             }
 
@@ -686,6 +762,7 @@ Item {
                                 note: page.t("fonts.cursor.dark.note")
                                 current: page.prefs.cursorThemeDark
                                 inherit: true
+                                target: "dark"
                                 onSelected: function (key) { page.prefs.cursorThemeDark = key }
                             }
                         }
@@ -720,6 +797,20 @@ Item {
                             onSelected: page.prefs.cursorSize = Number(key)
                         }
                     }
+
+                    VitrailText {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: VitrailTokens.gap("md")
+                        Layout.rightMargin: VitrailTokens.gap("md")
+                        visible: page.cursorMessage !== ""
+                        variant: "label"
+                        text: page.cursorMessage
+                        color: page.cursorState === "done" && page.cursorMessage.indexOf(
+                                   page.t("fonts.cursor.failed")) === 0
+                               ? (page.palette.error || page.palette.foreground)
+                               : page.palette.muted
+                        wrapMode: Text.WordWrap
+                    }
                 }
             }
         }
@@ -733,6 +824,14 @@ Item {
         onTriggered: page.pollIconRequest()
     }
 
+    Timer {
+        id: cursorPoll
+
+        interval: 700
+        repeat: true
+        onTriggered: page.pollCursorRequest()
+    }
+
     FileDialog {
         id: importDialog
 
@@ -744,6 +843,20 @@ Item {
             var nonce = Date.now()
             page.prefs.iconImport = page.request([path], nonce)
             page.beginIconRequest(nonce)
+        }
+    }
+
+    FileDialog {
+        id: cursorImportDialog
+
+        title: page.t("fonts.cursor.import")
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Cursor themes (*.zip)"]
+        onAccepted: {
+            var path = decodeURIComponent(String(cursorImportDialog.selectedFile).replace(/^file:\/\//, ""))
+            var nonce = Date.now()
+            page.prefs.cursorImport = page.request([path], nonce)
+            page.beginCursorRequest(nonce)
         }
     }
 }

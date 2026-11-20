@@ -327,8 +327,8 @@ the window declares it in another file, or the path unit watches another set.
 | `terminal.ini` | `terminalScheme`, `terminalPadding`, `fontSize`, `tabStyle`, `tabIcons`, `tabNumbers` |
 | `sound.ini` | `soundOutputApps`, `soundInputApps`, `soundFocusApps`, `soundStep` |
 | `colors.ini` | `colorScheme`, `colorContrast` |
-| `fonts.ini` | `fontSystem`, `fontConsole`, `uiIcons`, `iconTheme`, `iconImport`, `iconRemove`, `cursorTheme`, `cursorThemeLight`, `cursorThemeDark`, `cursorSize`, `cursorSpinner` |
 | `capture.ini` | `captureDir`, `captureCopy`, `captureAnnotate`, `captureRecordDir`, `captureRecordAudio`, `captureRecordRegion` |
+| `fonts.ini` | `fontSystem`, `fontConsole`, `uiIcons`, `iconTheme`, `iconAdaptive`, `iconFill`, `iconImport`, `iconRemove`, `cursorTheme`, `cursorThemeLight`, `cursorThemeDark`, `cursorImport`, `cursorRemove`, `cursorAdaptive`, `cursorMonochrome`, `cursorSize`, `cursorSpinner` |
 | `launcher.ini` | `launcherEngine`, `launcherBangs`, `launcherModes`, `launcherView`, `launcherClear` |
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |

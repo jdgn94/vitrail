@@ -159,6 +159,9 @@ fonts fontSystem
 fonts fontConsole
 fonts uiIcons
 fonts iconTheme
+# The palette recolours the folder icons; pack keeps the pack's own fill.
+fonts iconAdaptive
+fonts iconFill
 # The Icons page asks for a .zip import or a user-pack removal; apply-settings
 # runs it once and clears the key ("<nonce>|path" / "<nonce>|name").
 fonts iconImport
@@ -167,6 +170,12 @@ fonts iconRemove
 fonts cursorTheme
 fonts cursorThemeLight
 fonts cursorThemeDark
+# The Cursor page asks for a .zip import or a user-pack removal, like the icons.
+fonts cursorImport
+fonts cursorRemove
+# The palette tints the chosen pack; monochrome drops the accent ink.
+fonts cursorAdaptive
+fonts cursorMonochrome
 fonts cursorSize
 fonts cursorSpinner
 
