@@ -3,9 +3,10 @@ import QtQuick.Layouts
 import "base"
 
 // Single-choice segmented control. One pill marks the choice and slides to
-// the new one when it changes. An option is { key, label, icon }: `icon` is an
-// optional Material Symbol before the label (alone when the label is empty),
-// drawn in the label's colour — the accent ink on the pill, never filled.
+// the new one when it changes. An option is { key, label, icon, rotation }:
+// `icon` is an optional Material Symbol before the label (alone when the label
+// is empty), drawn in the label's colour — the accent ink on the pill, never
+// filled — and `rotation` turns that icon (degrees, the label stays upright).
 //
 // When the options do not fit the width the control was given, the row scrolls
 // sideways under the pill (wheel, drag or touch): the pill keeps its size and
@@ -137,6 +138,9 @@ Rectangle {
                             icon: segment.modelData.icon || ""
                             color: segment.ink
                             pixelSize: 18
+                            // A turned glyph, e.g. the monitor icon of a
+                            // rotation choice; the label always stays upright.
+                            rotation: segment.modelData.rotation || 0
 
                             Behavior on color { ColorAnimation { duration: VitrailTokens.duration("base") } }
                         }

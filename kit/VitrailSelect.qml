@@ -7,9 +7,13 @@ import "shapes.js" as Shapes
 
 // Dropdown for a list of { key, label, icon? } entries, in the look of
 // VitrailField: an outlined box with the label in the notch, the current
-// value and a chevron that turns when the menu is open. The menu grows from
-// the box with a fade and a slight scale; its rows are pills like the tray
-// menu's, with a check on the current one.
+// value and a chevron that turns when the menu is open.
+//
+// The menu is born on the field: the current option sits at the field's
+// height, the ones before it above and the rest below, so opening it never
+// cuts the list against the window. It is as wide as its longest option and
+// slides back inside the window's margin when it would not fit. Its rows are
+// pills like the tray menu's, with a check on the current one.
 //
 // Keys (box focused): Down / Up / Enter / Space open it; with it open, Up /
 // Down / Home / End move the highlight, Enter picks, Escape closes, and
@@ -48,10 +52,52 @@ FocusScope {
     readonly property color ring: root.active ? root.accent : VitrailTokens.color("muted")
     readonly property int maxRows: 8
     readonly property var surface: VitrailVariants.surface[VitrailTokens.surfaceMode] || VitrailVariants.surface.glass
+    // The menu is born on the field: the current option sits at the field's
+    // height, the options before it above and the rest below. Its width comes
+    // from the longest option and both sides stop at the window's margin.
+    readonly property real popupPad: VitrailTokens.gap("xs")
+    readonly property real menuMargin: VitrailTokens.gap("sm")
+    readonly property real rowHeight: VitrailTokens.size("body") + 2 * VitrailTokens.gap("sm")
+                                      + VitrailTokens.gap("xs")
+    readonly property int anchorIndex: Math.max(0, root.currentIndex)
+    readonly property real windowWidth: root.Window.window ? root.Window.window.width : 600
+    readonly property real windowHeight: root.Window.window ? root.Window.window.height : 600
+    readonly property real widestRow: {
+        var widest = 0
+        for (var i = 0; i < root.options.length; i++) {
+            var label = root.options[i].label === undefined ? "" : String(root.options[i].label)
+            widest = Math.max(widest, rowMetrics.advanceWidth(label))
+        }
+        return widest + 2 * root.iconPx + 2 * VitrailTokens.gap("sm") + 2 * VitrailTokens.gap("md")
+    }
+    readonly property real menuWidth: {
+        var limit = root.windowWidth - 2 * root.menuMargin
+        return Math.min(limit, Math.max(root.width, root.widestRow + 2 * root.popupPad))
+    }
+    readonly property real menuHeight: {
+        var rows = Math.min(root.options.length, root.maxRows)
+        var fit = Math.floor((root.windowHeight - 2 * root.menuMargin) / root.rowHeight)
+        return Math.max(1, Math.min(rows, fit)) * root.rowHeight
+    }
+    // Where the current row ends up inside the menu: the list is scrolled to
+    // centre it (ListView.Center) and stops at the ends, so a long list still
+    // puts the option in use on the field. Mirrors ListView's clamps.
+    readonly property real anchorOffset: {
+        var total = root.options.length * root.rowHeight
+        var at = root.anchorIndex * root.rowHeight
+        if (total <= root.menuHeight)
+            return at
+        var scroll = Math.max(0, Math.min(total - root.menuHeight,
+                                          at - (root.menuHeight - root.rowHeight) / 2))
+        return at - scroll
+    }
 
     // 0 = label resting in the box, 1 = floating on the border.
     property real labelLift: root.floated ? 1 : 0
     property string typed: ""
+    // Bumped when the menu opens, so its position is measured against where
+    // the field is now (a page may have scrolled since the last time).
+    property int menuEpoch: 0
 
     function indexOfKey(key) {
         for (var i = 0; i < root.options.length; i++) {
@@ -65,7 +111,39 @@ FocusScope {
         if (root.expanded || root.options.length === 0)
             return
         root.highlighted = Math.max(0, root.currentIndex)
+        root.menuEpoch += 1
         popup.open()
+    }
+
+    // The popup's y so that the current row is centred on the field, then
+    // clamped to stay inside the window. `epoch` is the binding's trigger.
+    function menuY(epoch) {
+        var wanted = root.boxHeight / 2
+                     - (root.popupPad + root.anchorOffset + root.rowHeight / 2)
+        var top = root.mapToItem(null, 0, 0).y
+        var limit = root.windowHeight - root.menuMargin - root.menuHeight - 2 * root.popupPad - top
+        return Math.max(root.menuMargin - top, Math.min(wanted, limit))
+    }
+
+    // Left edges flush; a menu wider than the space to its right slides back
+    // until both sides are inside the window.
+    function menuX(epoch) {
+        var left = root.mapToItem(null, 0, 0).x
+        var limit = root.windowWidth - root.menuMargin - root.menuWidth - left
+        return Math.max(root.menuMargin - left, Math.min(0, limit))
+    }
+
+    // Once the menu is placed, the list scrolls so the current row sits on the
+    // field even when the window forced the menu above it; the ends of the
+    // list are as far as it goes. Runs after the popup is on screen.
+    function placeList() {
+        if (root.options.length === 0)
+            return
+        var total = root.options.length * root.rowHeight
+        var maxScroll = Math.max(0, total - root.menuHeight)
+        var offset = root.boxHeight / 2 - popup.y
+        var wanted = root.popupPad + root.anchorIndex * root.rowHeight + root.rowHeight / 2 - offset
+        list.contentY = Math.max(0, Math.min(maxScroll, wanted))
     }
 
     function close() {
@@ -142,6 +220,13 @@ FocusScope {
         id: labelMetrics
 
         font.pixelSize: VitrailTokens.size("label")
+        font.family: VitrailTokens.fontFamily
+    }
+
+    FontMetrics {
+        id: rowMetrics
+
+        font.pixelSize: VitrailTokens.size("body")
         font.family: VitrailTokens.fontFamily
     }
 
@@ -296,14 +381,20 @@ FocusScope {
     Popup {
         id: popup
 
-        y: box.height + VitrailTokens.gap("xs")
-        width: box.width
-        padding: VitrailTokens.gap("xs")
+        objectName: "popup"
+        x: root.menuX(root.menuEpoch)
+        y: root.menuY(root.menuEpoch)
+        width: root.menuWidth
+        padding: root.popupPad
         focus: false
         closePolicy: Popup.CloseOnPressOutsideParent | Popup.CloseOnEscape
-        transformOrigin: Popup.Top
-        implicitHeight: Math.min(list.contentHeight, list.rowHeight * root.maxRows) + topPadding + bottomPadding
-        onAboutToShow: root.expanded = true
+        transformOrigin: Popup.Center
+        implicitHeight: root.menuHeight + 2 * root.popupPad
+        onAboutToShow: {
+            root.expanded = true
+            // The list scrolls to the option in use once the menu is placed.
+            Qt.callLater(root.placeList)
+        }
         onAboutToHide: root.expanded = false
 
         enter: Transition {
@@ -325,7 +416,7 @@ FocusScope {
         contentItem: ListView {
             id: list
 
-            readonly property real rowHeight: VitrailTokens.size("body") + 2 * VitrailTokens.gap("sm") + VitrailTokens.gap("xs")
+            readonly property real rowHeight: root.rowHeight
 
             objectName: "options"
             model: root.options

@@ -68,6 +68,10 @@ gap each side (`tokens.slider`: `sm 8 / md 16 / lg 28`, `handle`, `gap`).
   accepts only Mouse by default: set `acceptedDevices: Mouse | TouchPad` on any
   new one. QtTest's `mouseWheel` sends a mouse, so it cannot catch this; only a
   real wheel over a real layer-shell surface does.
+- `snap` forces every `moved` value onto the grid `from + k * stepSize`
+  (`snapped(v)`), for values that are steps rather than a continuum (a monitor
+  scale); a free slider keeps the pixel value. `decimals` sets the readout's
+  digits (0: whole numbers), so a 1.25 × scale reads `1.25×`, not `1×`.
 - `fillOpacity` (0..1) dims the fill as an opaque pre-tinted colour; 0 hides it.
 - Outer ends are pills, ends at the handle nearly square (per-corner radii).
 
@@ -124,7 +128,13 @@ waits (polkit check, connecting).
   a few options (`mediaStyle`, a power mode, a unit). The choice is data, not
   navigation.
 - **Select** (`VitrailSelect`) opens a list when the options do not fit or are
-  many; the current value stays visible.
+  many; the current value stays visible. Its menu is born on the field: the
+  current option sits at the field's height, the options before it above and
+  the rest below, so it never gets cut against the window. The menu is as wide
+  as its longest option (never narrower than the field) and slides back inside
+  the window's margin; past `maxRows` it scrolls so the current option stays on
+  the field (as far as the list's ends allow). Reopening after picking another
+  value re-scrolls to the new one — the list keeps no stale scroll.
 - Rule of thumb: a section with a title and a body is tabs; a labelled setting
   is segmented.
 
@@ -136,12 +146,14 @@ is current; the underline spans icon and label. Every settings tab carries one
 (a page's tab reuses its section's glyph). One keyboard stop, Left / Right move
 the tab, a ring shows the focus.
 
-`VitrailSegmented` options are `{ key, label, icon }`: the optional `icon`
-(Material Symbol) sits before the label in the label's colour and fills when
-chosen; an empty label makes the segment icon-only. Every segmented control in
-the settings pages carries icons (theme `light_mode` / `dark_mode` / `contrast`,
-alignment `align_horizontal_*` / `vertical_align_*`, bar edge `*_panel_open`…).
-Icon tables written as `icons: ({ … })` are checked by `tests/test_icons.py`.
+`VitrailSegmented` options are `{ key, label, icon, rotation }`: the optional
+`icon` (Material Symbol) sits before the label in the label's colour and fills
+when chosen; an empty label makes the segment icon-only, and `rotation` (degrees)
+turns that icon alone (the monitor's turn: 0° / 90° / 180° / 270°). Every
+segmented control in the settings pages carries icons (theme `light_mode` /
+`dark_mode` / `contrast`, alignment `align_horizontal_*` / `vertical_align_*`,
+bar edge `*_panel_open`…). Icon tables written as `icons: ({ … })` are checked
+by `tests/test_icons.py`.
 
 `VitrailSegmented` (pill) and `VitrailTabs` (underline) draw ONE indicator
 bound to `repeater.itemAt(currentIndex)` geometry and animate x / width
@@ -161,6 +173,20 @@ more than one topic splits them into `VitrailTabs` subcategories
 (`property string tab`, sections `visible: page.tab === key`, scroll reset
 on tab change); single-topic pages (Colors, Language) have none. Date & time
 (zone / clock) and Plugins (media / installed) are tabbed too.
+
+### Every choice made by sight is one picker
+
+`VitrailPicker` is the field that opens a mosaic: icon packs, cursor packs,
+system/console fonts, and the wallpaper effects all use it. Two triggers:
+`large` is the approved card for the icon and cursor pages (the whole mosaic
+over the name, a real radius); the default is a select field — the value, an
+optional thumbnail and a chevron — which reads like `VitrailSelect` and is what
+the font and effect rows use. The dialog is always the same `GridView` mosaic
+with the name under each cell, a search box (`searchHint`), tabs and buttons
+under the grid (`actions`). Variants are the cells: `cellPreview` for a square
+mosaic (icons, cursors), `family` for "Aa" (fonts), and
+`cellArtWidth`/`cellArtHeight` for one wide, rounded picture (an effect
+preview). Adding a picker to a row is one control, not a new dialog.
 
 ## Pages that act on the system (ConnectionPage)
 

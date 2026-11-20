@@ -262,4 +262,41 @@ TestCase {
         state = Wheel.advance(state.acc, -1, 5, 1, state.value, 0, 100)
         compare(state.value, 95)
     }
+
+    function test_a_stepped_slider_lands_on_whole_steps() {
+        var item = make({ width: 200, from: 0.5, to: 3.0, stepSize: 0.25, snap: true, value: 1 })
+        spy.target = item
+        spy.clear()
+        mousePress(item, 80, item.height / 2)
+        mouseMove(item, 137, item.height / 2)
+        mouseRelease(item, 137, item.height / 2)
+        verify(spy.count > 0)
+        var steps = (item.value - 0.5) / 0.25
+        verify(Math.abs(steps - Math.round(steps)) < 1e-6, "the value left the step grid: " + item.value)
+        mousePress(item, 137, item.height / 2)
+        mouseMove(item, 63, item.height / 2)
+        mouseRelease(item, 63, item.height / 2)
+        steps = (item.value - 0.5) / 0.25
+        verify(Math.abs(steps - Math.round(steps)) < 1e-6, "the value left the step grid: " + item.value)
+    }
+
+    function test_the_snap_rounds_to_the_step_grid() {
+        var item = make({ width: 200, from: 0.5, to: 3.0, stepSize: 0.25, snap: true, value: 1 })
+        compare(item.snapped(1.31), 1.25)
+        compare(item.snapped(1.38), 1.5)
+        compare(item.snapped(2.99), 3.0)
+        compare(item.snapped(0.1), 0.5)
+    }
+
+    function test_without_snap_a_value_is_kept_as_it_is() {
+        var item = make({ width: 200, from: 0.5, to: 3.0, stepSize: 0.25, value: 1 })
+        compare(item.snapped(1.31), 1.31)
+    }
+
+    function test_the_readout_follows_the_decimals() {
+        var item = make({ width: 200, decimals: 2, suffix: "×", value: 1.25 })
+        var readout = findChild(item, "readout")
+        verify(readout)
+        compare(readout.text, "1.25×")
+    }
 }

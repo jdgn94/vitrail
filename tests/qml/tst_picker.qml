@@ -85,6 +85,25 @@ TestCase {
     }
 
     Component {
+        id: artComponent
+
+        VitrailPicker {
+            width: 220
+            triggerPreview: false
+            cellArtWidth: 112
+            cellArtHeight: 64
+            cellWidth: 132
+            cellHeight: 108
+            label: "Effect"
+            current: "a"
+            options: [
+                { key: "a", label: "Alpha", icons: ["/tmp/none.png"] },
+                { key: "b", label: "Beta", icons: ["/tmp/none.png"] }
+            ]
+        }
+    }
+
+    Component {
         id: actionComponent
 
         VitrailPicker {
@@ -108,7 +127,11 @@ TestCase {
         signalName: "actionTriggered"
     }
 
+    // A drawn label: a hidden branch (the trigger the picker is not using)
+    // does not count.
     function findText(item, value) {
+        if (item.visible !== undefined && item.visible === false)
+            return null
         for (var i = 0; i < item.children.length; i++) {
             var child = item.children[i]
             if (child.text !== undefined && child.text === value)
@@ -202,9 +225,10 @@ TestCase {
         VitrailTokens.iconContainer = false
     }
 
-    function test_neither_trigger_draws_a_chevron() {
+    // The select field carries a chevron; the large card does not.
+    function test_only_the_field_trigger_draws_a_chevron() {
         var compact = createTemporaryObject(pickerComponent, testCase)
-        compare(findText(compact, "expand_more"), null)
+        verify(findText(compact, "expand_more") !== null)
         var large = createTemporaryObject(largeComponent, testCase)
         compare(findText(large, "expand_more"), null)
     }
@@ -220,6 +244,17 @@ TestCase {
         var picker = createTemporaryObject(largeComponent, testCase)
         mouseClick(picker, picker.width / 2, picker.height / 2)
         tryCompare(picker, "expanded", true)
+    }
+
+    // An effect is one wide picture per cell instead of a square mosaic.
+    function test_a_cell_can_hold_one_wide_picture() {
+        var picker = createTemporaryObject(artComponent, testCase)
+        compare(picker.cellArtWidth, 112)
+        compare(picker.cellArtHeight, 64)
+        compare(picker.triggerPreview, false)
+        picker.open()
+        tryCompare(picker, "expanded", true)
+        compare(picker.matched.length, 2)
     }
 
     function test_the_dialog_opens_on_the_tab_of_the_chosen_row() {

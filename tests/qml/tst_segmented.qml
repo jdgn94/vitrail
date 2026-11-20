@@ -122,4 +122,32 @@ TestCase {
         compare(spy.count, 1)
         compare(spy.signalArguments[0][0], "c")
     }
+
+    function glyphOf(item) {
+        for (var i = 0; i < item.children.length; i++) {
+            var child = item.children[i]
+            if (child.icon !== undefined && child.icon !== "")
+                return child
+            var found = glyphOf(child)
+            if (found)
+                return found
+        }
+        return null
+    }
+
+    function test_an_option_turns_only_its_icon() {
+        var box = make()
+        box.options = [
+            { key: "0", label: "0°", icon: "monitor" },
+            { key: "90", label: "90°", icon: "monitor", rotation: 90 }
+        ]
+        box.current = "0"
+        var row = box.currentItem.parent.children
+        var upright = glyphOf(row[0])
+        var turned = glyphOf(row[1])
+        verify(upright && turned)
+        compare(upright.rotation, 0)
+        compare(turned.rotation, 90)
+        compare(textOf(row[1], false).rotation, 0, "the label stays upright")
+    }
 }

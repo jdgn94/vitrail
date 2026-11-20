@@ -1,18 +1,20 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 import QtQuick.Layouts
 import "base"
 
 // A field that shows what is chosen and opens a mosaic of everything else.
 //
-// It is the pickers of the Fonts page in one component: an option may carry a
-// set of pictures (`icons`, an icon pack's or a cursor's) or a font family
-// (`family`, drawn as "Aa" in that family). The compact trigger is a field
-// with four pictures at 24 px. `large` turns it into the approved preview
-// card: the whole mosaic over the name, a real radius and the accent ring on
-// focus; clicking it still opens the same dialog. The dialog shows every
-// picture with the name underneath, like KDE's theme pickers, and is sized by
-// its content.
+// It is one picker for every choice made by sight: an icon pack, a cursor
+// pack, a font family (drawn as "Aa" in that family), an effect (a wide
+// preview of the picture) or a plain label. The trigger comes in two shapes:
+// a select field — the value, an optional thumbnail and a chevron — or, with
+// `large`, the approved card: the whole mosaic over the name and a real
+// radius, for the icon and cursor pages. The dialog is always the same mosaic
+// of cells with the name underneath, like KDE's theme pickers. The cells are
+// sized by `cellPreview` (a square) or `cellArtWidth`/`cellArtHeight` (a wide
+// preview); tabs, a search box and the buttons under the grid are shared.
 FocusScope {
     id: root
 
@@ -29,16 +31,21 @@ FocusScope {
     property string emptyText: ""
     // A search box appears in the dialog when this has text.
     property string searchHint: ""
-    // What the trigger draws; a cursor reads better alone at 24 px.
+    // What the trigger draws: the option's pictures at `triggerSize` px, in a
+    // `triggerColumns` grid (0 pictures hides it).
+    property bool triggerPreview: true
     property int triggerShown: 4
     property int triggerColumns: 2
     property int triggerSize: 24
-    // The dialog's cells: a font needs only "Aa", an icon pack a large mosaic.
+    // The dialog's cells: a font needs only "Aa", an icon pack a mosaic. A
+    // `cellArtWidth` over 0 draws one wide picture instead (an effect).
     property int cellPreview: 84
     property int cellColumns: 3
     property int cellWidth: 148
     property int cellHeight: 148
-    // The big card used by the application-icon and cursor pickers.
+    property real cellArtWidth: 0
+    property real cellArtHeight: 0
+    // The card trigger used by the application-icon and cursor pickers.
     property bool large: false
     property string variant: ""
     property color foreground: VitrailTokens.color("foreground")
@@ -196,7 +203,7 @@ FocusScope {
         }
     }
 
-    // The same preview in the trigger, the grid and (scaled) the dialog.
+    // The same preview in the trigger, the grid and the dialog.
     component Preview: Item {
         id: preview
 
@@ -205,9 +212,14 @@ FocusScope {
         property int columns: 2
         // 0 draws every picture the option has.
         property int maxShown: 4
+        // A single wide picture (an effect preview) instead of the mosaic.
+        property real artWidth: 0
+        property real artHeight: 0
 
         readonly property var icons: preview.option && preview.option.icons ? preview.option.icons : []
+        readonly property bool wide: preview.artWidth > 0 && preview.artHeight > 0
         readonly property int count: preview.icons.length === 0 ? 0
+                                     : preview.wide ? 1
                                      : (preview.maxShown > 0 ? Math.min(preview.maxShown,
                                                                         preview.icons.length)
                                                              : preview.icons.length)
@@ -219,14 +231,14 @@ FocusScope {
             (preview.size - (preview.columns - 1) * preview.gap) / Math.max(1, preview.columns),
             (preview.size - (preview.rows - 1) * preview.gap) / Math.max(1, preview.rows)))
 
-        implicitWidth: size
-        implicitHeight: size
+        implicitWidth: preview.wide ? preview.artWidth : preview.size
+        implicitHeight: preview.wide ? preview.artHeight : preview.size
 
         Grid {
             id: pack
 
             anchors.centerIn: parent
-            visible: preview.count > 0
+            visible: preview.count > 0 && !preview.wide
             columns: preview.columns
             spacing: preview.gap
 
@@ -244,11 +256,51 @@ FocusScope {
             }
         }
 
+        // A wide picture, cropped to its rounded tile.
+        Item {
+            id: artwork
+
+            anchors.fill: parent
+            visible: false
+            layer.enabled: true
+
+            Image {
+                anchors.fill: parent
+                source: preview.wide && preview.icons.length > 0 ? "file://" + preview.icons[0] : ""
+                fillMode: Image.PreserveAspectCrop
+                sourceSize: Qt.size(artwork.width * 2, artwork.height * 2)
+                asynchronous: true
+            }
+        }
+
+        MultiEffect {
+            anchors.fill: artwork
+            visible: preview.wide
+            source: artwork
+            maskEnabled: true
+            maskSource: artMask
+        }
+
+        Item {
+            id: artMask
+
+            anchors.fill: artwork
+            visible: false
+            layer.enabled: true
+
+            Rectangle {
+                anchors.fill: parent
+                radius: VitrailTokens.radius * 0.6
+                color: "black"
+            }
+        }
+
         VitrailIcon {
             id: glyph
 
             anchors.fill: parent
-            visible: preview.count === 0 && !!preview.option && !!preview.option.glyph
+            visible: preview.count === 0 && !preview.wide && !!preview.option
+                     && !!preview.option.glyph
             // The chosen cell only changes colour; icons are never filled.
             pixelSize: Math.min(preview.size, VitrailTokens.size("title"))
             icon: visible ? preview.option.glyph : ""
@@ -256,7 +308,7 @@ FocusScope {
 
         VitrailText {
             anchors.fill: parent
-            visible: preview.count === 0 && !glyph.visible && !!preview.option
+            visible: preview.count === 0 && !preview.wide && !glyph.visible && !!preview.option
                      && !!preview.option.family
             variant: preview.size >= 40 ? "title" : "label"
             family: preview.option && preview.option.family ? preview.option.family : ""
@@ -271,21 +323,33 @@ FocusScope {
         id: box
 
         anchors.fill: parent
+        visible: !root.large
         radius: root.radius
-        color: Qt.rgba(root.panel.r, root.panel.g, root.panel.b,
-                       root.large ? root.surface.raised : root.style.fill)
+        color: {
+            var fill = VitrailTokens.color(root.style.role) || root.panel
+            return Qt.rgba(fill.r, fill.g, fill.b, root.style.fill)
+        }
         border.width: root.activeFocus ? root.style.focus : root.style.border
-        border.color: root.activeFocus ? root.accent : Qt.rgba(root.foreground.r, root.foreground.g,
-                                                               root.foreground.b, root.surface.edge)
+        border.color: root.activeFocus ? root.accent
+                                       : triggerHover.hovered ? root.foreground
+                                                              : VitrailTokens.color("muted")
+
+        Behavior on border.width { NumberAnimation { duration: root.duration; easing.type: Easing.OutCubic } }
+
+        HoverHandler {
+            id: triggerHover
+
+            cursorShape: Qt.PointingHandCursor
+        }
 
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: VitrailTokens.gap("md")
-            anchors.rightMargin: VitrailTokens.gap("sm")
-            visible: !root.large
+            anchors.rightMargin: VitrailTokens.gap("md")
             spacing: VitrailTokens.gap("sm")
 
             Preview {
+                visible: root.triggerPreview && root.triggerSize > 0
                 Layout.preferredWidth: root.triggerSize
                 Layout.preferredHeight: root.triggerSize
                 option: root.currentOption
@@ -300,12 +364,37 @@ FocusScope {
                 text: root.currentLabel
                 elide: Text.ElideRight
             }
+
+            VitrailIcon {
+                icon: "expand_more"
+                color: root.activeFocus ? root.accent : VitrailTokens.color("muted")
+                pixelSize: VitrailTokens.size("subtitle")
+            }
         }
+
+        TapHandler {
+            onTapped: {
+                root.forceActiveFocus()
+                root.open()
+            }
+        }
+    }
+
+    // The card trigger: the whole mosaic over the name, for the icon and
+    // cursor pages.
+    Rectangle {
+        anchors.fill: parent
+        visible: root.large
+        radius: root.radius
+        color: Qt.rgba(root.panel.r, root.panel.g, root.panel.b, root.surface.raised)
+        border.width: root.activeFocus ? root.style.focus : root.style.border
+        border.color: root.activeFocus ? root.accent
+                                       : Qt.rgba(root.foreground.r, root.foreground.g,
+                                                 root.foreground.b, root.surface.edge)
 
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: VitrailTokens.gap("md")
-            visible: root.large
             spacing: VitrailTokens.gap("sm")
 
             Preview {
@@ -486,12 +575,16 @@ FocusScope {
 
                         Preview {
                             Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: root.cellPreview
-                            Layout.preferredHeight: root.cellPreview
+                            Layout.preferredWidth: root.cellArtWidth > 0 ? root.cellArtWidth
+                                                                         : root.cellPreview
+                            Layout.preferredHeight: root.cellArtHeight > 0 ? root.cellArtHeight
+                                                                           : root.cellPreview
                             option: cell.modelData
                             size: root.cellPreview
                             columns: root.cellColumns
                             maxShown: 0
+                            artWidth: root.cellArtWidth
+                            artHeight: root.cellArtHeight
                         }
 
                         VitrailText {

@@ -29,6 +29,10 @@ import "slider.js" as SliderShape
 //                     to the parent, so a slider in a scrolling page does not
 //                     steal its scrolling); wheel up / right is more. The owner
 //                     follows `moved`, as with a drag
+//   snap              the value lands on whole multiples of stepSize counted
+//                     from `from`: a stepped value (a monitor scale), not a
+//                     free continuum
+//   decimals          digits the readout shows (0: whole numbers)
 ColumnLayout {
     id: root
 
@@ -38,6 +42,8 @@ ColumnLayout {
     property real to: 10
     property real stepSize: 1
     property real value: 0
+    property bool snap: false
+    property int decimals: 0
     property color foreground: VitrailTokens.color("foreground", "#e2e2e9")
     property color accent: VitrailTokens.color("primary", "#a8c7fa")
     // Icon colour where it sits on the filled part.
@@ -105,6 +111,20 @@ ColumnLayout {
         return root.bands[root.bands.length - 1].color
     }
 
+    // The value on the step grid, counted from `from`; untouched when the
+    // slider is free.
+    function snapped(value) {
+        if (!root.snap || root.stepSize <= 0)
+            return value
+        var steps = Math.round((value - root.from) / root.stepSize)
+        return Math.max(root.from, Math.min(root.to, root.from + steps * root.stepSize))
+    }
+
+    // The readout: `decimals` digits, without trailing zeros.
+    readonly property string readout: (root.decimals > 0
+                                       ? String(Number(root.value.toFixed(root.decimals)))
+                                       : String(Math.round(root.value))) + root.suffix
+
     spacing: 4
 
     RowLayout {
@@ -120,7 +140,8 @@ ColumnLayout {
         }
 
         Text {
-            text: Math.round(root.value) + root.suffix
+            objectName: "readout"
+            text: root.readout
             color: root.foreground
             opacity: 0.65
             font.pixelSize: 12
@@ -150,14 +171,14 @@ ColumnLayout {
                 var angle = event.angleDelta.y !== 0 ? event.angleDelta.y : -event.angleDelta.x
                 var pixels = event.pixelDelta.y !== 0 ? event.pixelDelta.y : -event.pixelDelta.x
                 var turned = Wheel.notches(angle, pixels, VitrailTokens.slider.wheelAngle, VitrailTokens.slider.wheelPixels)
-                var base = wheelHold.running ? root.wheelValue : root.value
+                var base = wheelHold.running ? root.wheelValue : root.snapped(root.value)
                 var state = Wheel.advance(wheelHold.running ? root.wheelRest : 0, turned, root.wheelStep,
                                           root.stepSize, base, root.from, root.to)
                 root.wheelRest = state.acc
                 wheelHold.restart()
                 if (state.value !== base) {
                     root.wheelValue = state.value
-                    root.moved(state.value)
+                    root.moved(root.snapped(state.value))
                 } else {
                     root.wheelValue = base
                 }
@@ -205,7 +226,14 @@ ColumnLayout {
             to: root.to
             stepSize: root.stepSize
             value: root.value
-            onMoved: root.moved(slider.value)
+            onMoved: {
+                // A stepped slider hands the owner the grid value (and the
+                // handle lands there too).
+                var next = root.snapped(slider.value)
+                if (next !== slider.value)
+                    slider.value = next
+                root.moved(next)
+            }
 
             Behavior on handleWidth { NumberAnimation { duration: VitrailTokens.duration("fast"); easing.type: Easing.OutCubic } }
 
