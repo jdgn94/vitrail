@@ -23,8 +23,9 @@ PanelWindow {
     }
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
-    // The shell's glass rule covers this namespace; the drop draws no surface.
-    WlrLayershell.namespace: "vitrail-osd"
+    // The glass rule blurs this namespace (the drop is translucent) and
+    // `vitrail-droplet` has no layer fade: the burst is only 250 ms long.
+    WlrLayershell.namespace: "vitrail-droplet"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     mask: Region {}

@@ -2,8 +2,8 @@
 // icon into the space a launching window will take.
 //
 // Pure, no QML types: the shell owns the request, this file decides when it
-// starts, what space it holds, when the new window replaces that space and
-// when it gives up. Geometry is screen-local; `local()` converts Hyprland's
+// starts, what space it holds, when it hands over to the new window (which
+// animates itself) and when it gives up. Geometry is screen-local; `local()` converts Hyprland's
 // global window rect for the monitor that asked.
 .pragma library
 
@@ -37,17 +37,182 @@ function rect(value) {
     }
 }
 
-// The last rect a window of this app/class had, or null. A dock/launcher launch
-// reserves that real space instead of inventing a centred block.
-function lastRect(app, rects) {
-    var wanted = text(app && (app.id || app.desktop || app.name))
-    var map = rects || ({})
-    for (var address in map) {
-        var window = map[address]
-        if (window && matchesClass(window.class, wanted))
-            return rect(window.rect)
+// Hyprland's answer to `getoption` for the settings dwindle placement reads:
+// one JSON object per option. Returns the numbers and layout `predict()` needs,
+// or null when nothing parsable came back.
+function parseOptions(output) {
+    var values = ({})
+    var lines = text(output).split("\n")
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim()
+        if (line === "")
+            continue
+        var option = null
+        try {
+            option = JSON.parse(line)
+        } catch (error) {
+            continue
+        }
+        if (!option || typeof option.option !== "string")
+            continue
+        var value = option.int !== undefined ? option.int
+                    : option.float !== undefined ? option.float
+                    : option.str !== undefined ? option.str
+                    : option.css !== undefined ? text(option.css).trim().split(/\s+/)[0]
+                    : undefined
+        if (value !== undefined)
+            values[option.option] = value
+    }
+    if (Object.keys(values).length === 0)
+        return null
+    return {
+        layout: text(values["general:layout"]),
+        gapsIn: number(values["general:gaps_in"], 5),
+        gapsOut: number(values["general:gaps_out"], 20),
+        border: number(values["general:border_size"], 1),
+        splitWidth: number(values["dwindle:split_width_multiplier"], 1),
+        forceSplit: number(values["dwindle:force_split"], 0)
+    }
+}
+
+// `hyprctl -j cursorpos`: the global pointer, or null.
+function parseCursor(output) {
+    try {
+        var point = JSON.parse(text(output))
+        if (point && isFinite(Number(point.x)) && isFinite(Number(point.y)))
+            return { x: Number(point.x), y: Number(point.y) }
+    } catch (error) {
     }
     return null
+}
+
+function contains(box, point) {
+    return point.x >= box.x && point.x < box.x + box.width
+           && point.y >= box.y && point.y < box.y + box.height
+}
+
+function sameAddress(left, right) {
+    return text(left).replace(/^0x/, "") === text(right).replace(/^0x/, "")
+}
+
+// Where Hyprland's dwindle layout will put the next tiled window, in global
+// coordinates, or null when it cannot be foretold (another layout, a
+// fullscreen window). Mirrors onWindowCreatedTiling: the window under the
+// pointer (else the focused one, else the first) is split in half along its
+// longer side; the newcomer takes the half the pointer is not in.
+//   input: layout, area, windows ({x, y, width, height, address?, fullscreen?}
+//   of the tiled windows on the workspace), focused (address or rect), cursor,
+//   gapsIn, gapsOut, border, splitWidth, forceSplit.
+function predict(input) {
+    var source = input || ({})
+    if (source.layout !== "dwindle")
+        return null
+    var windows = source.windows || []
+    for (var f = 0; f < windows.length; f++) {
+        if (windows[f] && windows[f].fullscreen)
+            return null
+    }
+    var area = rect(source.area)
+    var outer = number(source.gapsOut, 0) + number(source.border, 0)
+    var inner = number(source.gapsIn, 0) + number(source.border, 0)
+    if (windows.length === 0)
+        return { x: Math.round(area.x + outer), y: Math.round(area.y + outer),
+                 width: Math.round(area.width - 2 * outer),
+                 height: Math.round(area.height - 2 * outer) }
+
+    var cursor = source.cursor && isFinite(Number(source.cursor.x))
+                 && isFinite(Number(source.cursor.y)) ? source.cursor : null
+    var chosen = null
+    if (cursor && contains(area, cursor)) {
+        for (var c = 0; c < windows.length && !chosen; c++) {
+            if (contains(rect(windows[c]), cursor))
+                chosen = windows[c]
+        }
+    }
+    var focus = source.focused
+    for (var k = 0; k < windows.length && !chosen && focus; k++) {
+        var same = typeof focus === "object" ? sameRect(rect(windows[k]), rect(focus))
+                                             : sameAddress(windows[k].address, focus)
+        if (same)
+            chosen = windows[k]
+    }
+    if (!chosen)
+        chosen = windows[0]
+
+    var box = rect(chosen)
+    var pad = {
+        left: Math.abs(box.x - outer - area.x) <= 1 ? outer : inner,
+        top: Math.abs(box.y - outer - area.y) <= 1 ? outer : inner,
+        right: Math.abs(box.x + box.width + outer - (area.x + area.width)) <= 1 ? outer : inner,
+        bottom: Math.abs(box.y + box.height + outer - (area.y + area.height)) <= 1 ? outer : inner
+    }
+    var node = { x: box.x - pad.left, y: box.y - pad.top,
+                 width: box.width + pad.left + pad.right,
+                 height: box.height + pad.top + pad.bottom }
+    var sideBySide = node.width > node.height * number(source.splitWidth, 1)
+    var force = number(source.forceSplit, 0)
+    var first = force === 1 ? true
+                : force === 2 ? false
+                : !cursor ? false
+                : sideBySide ? cursor.x < node.x + node.width / 2
+                : cursor.y < node.y + node.height / 2
+    if (sideBySide) {
+        var half = node.width / 2
+        return {
+            x: Math.round((first ? node.x : node.x + half) + (first ? pad.left : inner)),
+            y: Math.round(node.y + pad.top),
+            width: Math.round(half - (first ? pad.left : inner) - (first ? inner : pad.right)),
+            height: Math.round(node.height - pad.top - pad.bottom)
+        }
+    }
+    var tall = node.height / 2
+    return {
+        x: Math.round(node.x + pad.left),
+        y: Math.round((first ? node.y : node.y + tall) + (first ? pad.top : inner)),
+        width: Math.round(node.width - pad.left - pad.right),
+        height: Math.round(tall - (first ? pad.top : inner) - (first ? inner : pad.bottom))
+    }
+}
+
+// The rect the next window takes on a monitor's active workspace, from
+// Hyprland's own objects: `monitor` and each toplevel's IPC data. Null when
+// the layout cannot be foretold or the monitor is unknown.
+function forecast(options, toplevels, monitor, cursor) {
+    var ipc = monitor && monitor.lastIpcObject
+    if (!options || !ipc || !ipc.activeWorkspace)
+        return null
+    var reserved = ipc.reserved || [0, 0, 0, 0]
+    var scale = number(ipc.scale, 1) > 0 ? number(ipc.scale, 1) : 1
+    var area = {
+        x: number(ipc.x, 0) + number(reserved[0], 0),
+        y: number(ipc.y, 0) + number(reserved[1], 0),
+        width: number(ipc.width, 0) / scale - number(reserved[0], 0) - number(reserved[2], 0),
+        height: number(ipc.height, 0) / scale - number(reserved[1], 0) - number(reserved[3], 0)
+    }
+    var workspace = ipc.activeWorkspace
+    var windows = []
+    var list = toplevels || []
+    for (var i = 0; i < list.length; i++) {
+        var data = list[i] && list[i].lastIpcObject
+        var found = windowOf(list[i])
+        if (!data || !found || data.mapped === false || data.hidden === true
+                || !data.workspace || data.workspace.id !== workspace.id)
+            continue
+        var fullscreen = number(data.fullscreen, 0) > 0 || data.fullscreen === true
+        if (data.floating === true && !fullscreen)
+            continue
+        windows.push({ x: found.rect.x, y: found.rect.y, width: found.rect.width,
+                       height: found.rect.height, address: found.address,
+                       fullscreen: fullscreen })
+    }
+    var last = monitor.activeWorkspace && monitor.activeWorkspace.lastIpcObject
+    var input = copy(options, {
+        area: area,
+        windows: windows,
+        focused: last ? text(last.lastwindow) : null,
+        cursor: cursor
+    })
+    return predict(input)
 }
 
 // An app that already has a window only takes the focus: no drop.
@@ -158,6 +323,15 @@ function windowOf(top) {
     }
 }
 
+// Two rects (same space) within `tolerance` px on every side.
+function near(left, right, tolerance) {
+    var a = rect(left)
+    var b = rect(right)
+    var slack = number(tolerance, 0)
+    return Math.abs(a.x - b.x) <= slack && Math.abs(a.y - b.y) <= slack
+           && Math.abs(a.width - b.width) <= slack && Math.abs(a.height - b.height) <= slack
+}
+
 // The first window Hyprland gained since the launch started, on the monitor
 // that asked for it. A class matching the app wins over the first newcomer.
 function arrival(request, toplevels, known, screen) {
@@ -225,18 +399,6 @@ function settle(request, toplevels, now) {
     return copy(request, { pending: current })
 }
 
-// The local origin of a keyboard launch: the pointer, converted to the monitor
-// that will draw the drop.
-function pointerOrigin(point, screen) {
-    var source = point || ({})
-    return {
-        x: number(source.x, 0) - (screen ? number(screen.x, 0) : 0),
-        y: number(source.y, 0) - (screen ? number(screen.y, 0) : 0),
-        width: 2,
-        height: 2
-    }
-}
-
 // The monitor whose bounds contain a global point.
 function screenFor(point, screens) {
     var x = number(point && point.x, 0)
@@ -251,9 +413,9 @@ function screenFor(point, screens) {
     return null
 }
 
-// Window bookkeeping: every live toplevel's rect, plus what appeared and what
-// closed since the previous read. A window without usable geometry keeps its
-// previous entry so a transient IPC gap is not mistaken for a close.
+// Window bookkeeping: every live toplevel's rect, plus what closed since the
+// previous read. A window without usable geometry keeps its previous entry so a
+// transient IPC gap is not mistaken for a close.
 function sync(previous, toplevels) {
     var before = previous || ({})
     var rects = ({})
@@ -269,17 +431,12 @@ function sync(previous, toplevels) {
         else if (before[address])
             rects[address] = before[address]
     }
-    var added = []
     var closed = []
-    for (var open in rects) {
-        if (!before[open])
-            added.push(rects[open])
-    }
     for (var gone in before) {
         if (!rects[gone])
             closed.push(before[gone])
     }
-    return { rects: rects, added: added, closed: closed }
+    return { rects: rects, closed: closed }
 }
 
 // Vitrail's own windows (the settings window, the bar's helpers) do not close
@@ -288,27 +445,17 @@ function own(window) {
     return keyOf(window && window.class).indexOf("vitrail") >= 0
 }
 
-// A window disappeared: puff its last rect a little and fade. `box` is already
-// local to the monitor that will draw it; the burst particles are computed from
-// the same rect by burst.js.
-function closing(box, now, screen, puff) {
+// A window disappeared: a ring of droplets leaves its last rect while the
+// window itself shrinks natively. `box` is already local to the monitor that
+// will draw it; the burst particles are computed from the same rect by burst.js.
+function closing(box, now, screen) {
     var source = rect(box)
     var at = number(now, 0)
-    var grow = number(puff, 1)
-    if (!(grow > 0))
-        grow = 1
-    var width = source.width * grow
-    var height = source.height * grow
     return {
         id: "close",
         app: ({}),
         origin: source,
-        target: {
-            x: Math.round(source.x - (width - source.width) / 2),
-            y: Math.round(source.y - (height - source.height) / 2),
-            width: Math.round(width),
-            height: Math.round(height)
-        },
+        target: source,
         phase: "closing",
         started: at,
         deadline: at,
@@ -350,15 +497,8 @@ function copy(source, changes) {
     return out
 }
 
-// The window settled: move to its final space while still opaque. The shell
-// holds it for a beat before calling fade().
-function arrive(request, target, now) {
-    if (!request)
-        return null
-    return copy(request, { target: rect(target), phase: "placing", placedAt: number(now, 0) })
-}
-
-// The final space has been held: now the drop fades away from it.
+// The window mapped and its rect is known: hand over to it. The drop fades
+// away from the space it holds while the window plays its own opening motion.
 function fade(request, now) {
     if (!request)
         return null

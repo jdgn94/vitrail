@@ -31,3 +31,18 @@ function particles(count, reach, duration, size) {
     }
     return out
 }
+
+// Where a ray from the rect's centre at `angle` (radians) leaves it: the ring
+// starts on the closing window's edge, not inside the window that is fading.
+function edge(rect, angle) {
+    var w = Math.max(0, number(rect && rect.width, 0))
+    var h = Math.max(0, number(rect && rect.height, 0))
+    var cx = number(rect && rect.x, 0) + w / 2
+    var cy = number(rect && rect.y, 0) + h / 2
+    var dx = Math.cos(angle)
+    var dy = Math.sin(angle)
+    var tx = Math.abs(dx) > 1e-9 ? (w / 2) / Math.abs(dx) : Infinity
+    var ty = Math.abs(dy) > 1e-9 ? (h / 2) / Math.abs(dy) : Infinity
+    var t = Math.min(tx, ty)
+    return { x: cx + dx * t, y: cy + dy * t }
+}

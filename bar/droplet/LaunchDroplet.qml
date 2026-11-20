@@ -6,9 +6,10 @@ import "../kit/frame.js" as Frame
 import "burst.js" as Burst
 
 // The drop itself: a gooey mass born at the icon or pointer, stretched toward
-// the space the window will take by a liquid neck, then expanded over its final
-// rect. It stays opaque on that space, fades when the window maps, and a closing
-// window gets the reverse: a quick puff and a ring of droplets bursting out.
+// the space the window will take by a liquid neck, then expanded over it. It
+// stays opaque on that space and fades when the window maps (the window plays
+// its own opening motion); a closing window gets only a ring of droplets
+// bursting out while it shrinks natively.
 // It is a plain Item so the state can be tested offscreen; the layer supplies
 // the request.
 Item {
@@ -20,17 +21,16 @@ Item {
     readonly property var current: root.request && root.request.screen === root.screen
                                      ? root.request : null
 
-    // The first request grows from its origin; a later one (the window mapped
-    // or the timeout fired) moves straight to its new target. `placing` keeps
-    // the drop opaque over the final rect; only `fading` lets it fade away.
+    // The first request grows from its origin; a later one (the prediction
+    // arrived) moves straight to its new target. Only `fading` lets the drop
+    // fade away.
     property bool grown: false
     property real started: -1
     readonly property bool fading: root.current !== null && root.current.phase === "fading"
     readonly property bool closing: root.current !== null && root.current.phase === "closing"
     readonly property bool opening: root.current !== null
                                   && (root.current.phase === "hold"
-                                      || root.current.phase === "settling"
-                                      || root.current.phase === "placing")
+                                      || root.current.phase === "settling")
     readonly property real opacityLevel: VitrailTokens.opacity * VitrailTokens.droplet.tint
     readonly property var originRect: root.current ? root.current.origin : Qt.rect(0, 0, 0, 0)
     readonly property var massRect: Qt.rect(drop.x, drop.y, drop.width, drop.height)
@@ -61,9 +61,20 @@ Item {
                                VitrailTokens.droplet.burst.duration,
                                VitrailTokens.droplet.burst.size)
     }
-    readonly property var burstCentre: {
-        var o = root.originRect
-        return { x: o.x + o.width / 2, y: o.y + o.height / 2 }
+    // The overlay layer appears with the request and needs a moment before it
+    // is on screen: the burst starts then, alongside the window's own shrink.
+    property bool mapped: false
+    onClosingChanged: {
+        root.mapped = false
+        if (root.closing)
+            mapTimer.restart()
+    }
+
+    Timer {
+        id: mapTimer
+
+        interval: VitrailTokens.droplet.map
+        onTriggered: root.mapped = true
     }
 
     function reach() {
@@ -98,7 +109,7 @@ Item {
             drop.width = origin.width
             drop.height = origin.height
             drop.radius = Math.min(origin.width, origin.height) / 2
-            drop.opacity = root.opacityLevel
+            drop.opacity = root.closing ? 0 : root.opacityLevel
             Qt.callLater(root.reach)
             return
         }
@@ -112,7 +123,7 @@ Item {
         id: drop
 
         objectName: "dropletMass"
-        visible: root.current !== null
+        visible: root.current !== null && !root.closing
         opacity: 0
         property real radius: 0
 
@@ -166,12 +177,13 @@ Item {
             kind: "circle"
             fill: index % 2 === 0 ? VitrailTokens.color("primary")
                                   : VitrailTokens.color("info")
-            x: root.burstCentre.x - width / 2
-            y: root.burstCentre.y - height / 2
+            readonly property var start: Burst.edge(root.originRect, modelData.angle)
+            x: start.x - width / 2
+            y: start.y - height / 2
             opacity: 0
 
             SequentialAnimation {
-                running: true
+                running: root.mapped
 
                 PauseAnimation { duration: speck.modelData.delay }
 
@@ -179,7 +191,7 @@ Item {
                     NumberAnimation {
                         target: speck
                         property: "x"
-                        to: root.burstCentre.x
+                        to: speck.start.x
                             + Math.cos(speck.modelData.angle) * speck.modelData.distance
                             - speck.width / 2
                         duration: speck.modelData.duration
@@ -188,7 +200,7 @@ Item {
                     NumberAnimation {
                         target: speck
                         property: "y"
-                        to: root.burstCentre.y
+                        to: speck.start.y
                             + Math.sin(speck.modelData.angle) * speck.modelData.distance
                             - speck.height / 2
                         duration: speck.modelData.duration

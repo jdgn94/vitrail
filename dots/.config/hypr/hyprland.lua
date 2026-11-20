@@ -57,10 +57,21 @@ hl.config({
     },
 })
 
--- Animations live with the style, as the design system requires.
+-- Animations live with the style, as the design system requires. The windows
+-- carry their own open/close motion (the shell draws a drop only to reserve the
+-- slot of a bar launch): a popin with a slight overshoot in, a quick shrink out.
+-- Speeds are Hyprland's tenths of a second, matching kit/tokens.js `motion`
+-- (slow 260 ms -> 2.6, fast 120 ms -> 1.2): in = slow + fast, out = base,
+-- move = slow.
 hl.curve("vitrail", { type = "bezier", points = { { 0.2, 0 }, { 0.2, 1 } } })
+hl.curve("vitrail-pop", { type = "bezier", points = { { 0.34, 1.45 }, { 0.64, 1 } } })
 hl.animation({ leaf = "windows", enabled = true, speed = 5, bezier = "vitrail" })
+hl.animation({ leaf = "windowsIn", enabled = true, speed = 3.8, bezier = "vitrail-pop", style = "popin 82%" })
+hl.animation({ leaf = "windowsOut", enabled = true, speed = 1.8, bezier = "vitrail", style = "popin 85%" })
+hl.animation({ leaf = "windowsMove", enabled = true, speed = 2.6, bezier = "vitrail" })
 hl.animation({ leaf = "fade", enabled = true, speed = 5, bezier = "vitrail" })
+hl.animation({ leaf = "fadeIn", enabled = true, speed = 2.6, bezier = "vitrail" })
+hl.animation({ leaf = "fadeOut", enabled = true, speed = 1.8, bezier = "vitrail" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "vitrail" })
 
 -- Monitors: let Hyprland use its defaults until the panel manages them.
@@ -158,9 +169,17 @@ hl.window_rule({
 -- when the surface style is solid.
 hl.layer_rule({
     name = "vitrail-glass",
-    match = { namespace = "^vitrail-(bar|popup|notifications|dialog|session|tooltip|launcher|osd|clipboard|keyboard)$" },
+    match = { namespace = "^vitrail-(bar|popup|notifications|dialog|session|tooltip|launcher|osd|clipboard|keyboard|capture|pin|droplet)$" },
     blur = true,
     ignore_alpha = 0.01,
+})
+
+-- The launch drop and the close burst are short: the compositor's layer fade
+-- (500 ms) would hide them.
+hl.layer_rule({
+    name = "vitrail-droplet",
+    match = { namespace = "^vitrail-droplet$" },
+    no_anim = true,
 })
 
 

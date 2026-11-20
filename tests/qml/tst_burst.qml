@@ -45,6 +45,20 @@ TestCase {
         }
     }
 
+    function test_the_ring_starts_on_the_edge_of_the_closing_rect() {
+        var box = { x: 100, y: 50, width: 400, height: 200 }
+        var right = Burst.edge(box, 0)
+        compare(right.x, 500)
+        compare(right.y, 150)
+        var down = Burst.edge(box, Math.PI / 2)
+        compare(Math.round(down.x), 300)
+        compare(down.y, 250)
+        var diagonal = Burst.edge(box, Math.PI / 4)
+        compare(Math.round(diagonal.x), 400)
+        compare(Math.round(diagonal.y), 250)
+        compare(Burst.edge(null, 1).x, 0)
+    }
+
     function test_no_particles_for_an_empty_burst() {
         compare(Burst.particles(0, 100, 250, 7).length, 0)
     }

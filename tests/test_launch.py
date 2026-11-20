@@ -87,43 +87,46 @@ class DropletWiringTests(unittest.TestCase):
         track = function_body(shell, "trackLaunch")
         self.assertIn("DropletJS.watch(", track)
         self.assertIn("DropletJS.settle(", track)
-        self.assertIn("request.final", track)
 
-    def test_a_dock_launch_reserves_its_last_rect_or_the_icon(self) -> None:
+    def test_a_dock_launch_reserves_the_predicted_slot_or_the_icon(self) -> None:
         shell = SHELL.read_text(encoding="utf-8")
         begin = function_body(shell, "beginLaunch")
-        self.assertIn("DropletJS.lastRect(", begin)
-        self.assertIn("DropletJS.local(last", begin)
+        self.assertNotIn("DropletJS.lastRect(", begin)
         self.assertNotIn("DropletJS.fallback(", begin)
+        self.assertIn("hyprctl", begin)
+        self.assertIn("cursorpos", begin)
+        predict = function_body(shell, "predictLaunch")
+        self.assertIn('request.phase !== "hold"', predict)
+        self.assertIn("DropletJS.forecast(", predict)
+        self.assertIn("DropletJS.local(", predict)
         droplet = (ROOT / "bar" / "droplet" / "droplet.js").read_text(encoding="utf-8")
         tokens = (ROOT / "kit" / "tokens.js").read_text(encoding="utf-8")
+        self.assertNotIn("function lastRect(", droplet)
         self.assertNotIn("function fallback(", droplet)
         self.assertNotIn("fallbackWidth", tokens)
 
-    def test_a_keyboard_launch_reserves_the_window_rect(self) -> None:
-        shell = SHELL.read_text(encoding="utf-8")
-        keyboard = function_body(shell, "keyboardPointer")
-        self.assertIn("DropletJS.local(window.rect, screen)", keyboard)
-        self.assertNotIn("DropletJS.fallback(", keyboard)
-
-    def test_the_final_rect_is_held_before_fading(self) -> None:
+    def test_a_mapped_window_gets_the_drop_handed_over_at_once(self) -> None:
         shell = SHELL.read_text(encoding="utf-8")
         track = function_body(shell, "trackLaunch")
-        self.assertIn("launchHold.restart()", track)
-        self.assertIn("launchFade.stop()", track)
-        self.assertIn("DropletJS.fade(request, Date.now())", shell)
-        self.assertIn('2 * VitrailTokens.duration("slow")', shell)
-        self.assertIn("launchHold.stop()", function_body(shell, "endLaunch"))
+        self.assertIn("DropletJS.near(", track)
+        self.assertIn("VitrailTokens.droplet.match", track)
+        self.assertEqual(track.count("shell.handOver("), 2)
+        hand = function_body(shell, "handOver")
+        self.assertIn("DropletJS.fade(", hand)
+        self.assertIn("launchFade.restart()", function_body(shell, "finishLaunch"))
+        for gone in ("launchHold", "DropletJS.arrive(", '"placing"'):
+            self.assertNotIn(gone, shell)
 
-    def test_a_keyboard_launch_starts_at_the_pointer(self) -> None:
+    def test_only_the_bar_gives_a_window_a_drop_everything_else_animates_natively(self) -> None:
         shell = SHELL.read_text(encoding="utf-8")
-        sync = function_body(shell, "syncToplevels")
-        keyboard = function_body(shell, "keyboardPointer")
-        self.assertIn("hyprctl", sync + keyboard)
-        self.assertIn("cursorpos", sync + keyboard)
-        self.assertIn("DropletJS.pointerOrigin(", keyboard)
-        self.assertIn("DropletJS.screenFor(", keyboard)
-        self.assertIn("DropletJS.watch(", keyboard)
+        droplet = (ROOT / "bar" / "droplet" / "droplet.js").read_text(encoding="utf-8")
+        for gone in ("keyboardPointer", "pointerRun", "result.added"):
+            self.assertNotIn(gone, shell)
+        for gone in ("function pointerOrigin(", "function claim(", "function arrive("):
+            self.assertNotIn(gone, droplet)
+        lua = (ROOT / "dots" / ".config" / "hypr" / "hyprland.lua").read_text(encoding="utf-8")
+        for leaf in ("windowsIn", "windowsOut", "windowsMove", "fadeIn", "fadeOut"):
+            self.assertIn(f'leaf = "{leaf}"', lua)
 
     def test_a_closed_window_keeps_its_last_rect_for_the_drop(self) -> None:
         shell = SHELL.read_text(encoding="utf-8")
@@ -147,7 +150,7 @@ class DropletWiringTests(unittest.TestCase):
     def test_the_close_burst_uses_the_burst_tokens(self) -> None:
         shell = SHELL.read_text(encoding="utf-8")
         close = function_body(shell, "beginClose")
-        self.assertIn("VitrailTokens.droplet.burst.puff", close)
+        self.assertNotIn("puff", close)
         self.assertIn("VitrailTokens.droplet.burst.duration", shell)
         tokens = (ROOT / "kit" / "tokens.js").read_text(encoding="utf-8")
         self.assertIn("burst: {", tokens)
@@ -176,7 +179,6 @@ class DropletWiringTests(unittest.TestCase):
     def test_the_droplet_ignores_edit_mode(self) -> None:
         shell = SHELL.read_text(encoding="utf-8")
         self.assertIn("shell.editMode", function_body(shell, "syncToplevels"))
-        self.assertIn("shell.editMode", function_body(shell, "keyboardPointer"))
         self.assertIn("shell.editMode", function_body(shell, "beginLaunch"))
 
 

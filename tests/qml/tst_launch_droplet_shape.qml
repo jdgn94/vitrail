@@ -5,8 +5,8 @@ import "../../bar/droplet/droplet.js" as Droplet
 import "../../bar/kit"
 
 // The drop's shape: a liquid neck joins it to its birth point while it opens,
-// the final rect stays opaque until the fade, and a closing window bursts into
-// droplets. The state machine is tested in tst_launch_droplet.
+// the held space stays opaque until the fade, and a closing window bursts into
+// droplets (the window itself shrinks natively). The state machine is tested in tst_launch_droplet.
 TestCase {
     id: testCase
 
@@ -18,7 +18,6 @@ TestCase {
 
     readonly property var origin: ({ x: 20, y: 100, width: 40, height: 40 })
     readonly property var first: ({ x: 100, y: 100, width: 200, height: 150 })
-    readonly property var final: ({ x: 0, y: 0, width: 300, height: 200 })
     readonly property real tint: VitrailTokens.opacity * VitrailTokens.droplet.tint
 
     Component {
@@ -48,7 +47,7 @@ TestCase {
         verify(shape.goo.path.indexOf("C") >= 0)
     }
 
-    function test_the_final_rect_stays_opaque_until_the_fade() {
+    function test_the_held_space_stays_opaque_until_the_fade() {
         var shape = createTemporaryObject(dropletComponent, testCase, { screen: "DP-1" })
         verify(shape)
         var drop = findChild(shape, "dropletMass")
@@ -58,11 +57,6 @@ TestCase {
         tryCompare(drop, "width", first.width, 1000)
         tryVerify(function () { return Math.abs(drop.opacity - testCase.tint) < 0.01 }, 1000)
 
-        request = Droplet.arrive(request, final, 1200)
-        shape.request = request
-        tryCompare(drop, "width", final.width, 1000)
-        tryVerify(function () { return Math.abs(drop.opacity - testCase.tint) < 0.01 }, 1000)
-        compare(request.phase, "placing")
         tryVerify(function () { return shape.goo.neck === null }, 1000)
         compare(shape.goo.path, shape.goo.massPath)
         verify(shape.goo.massPath.indexOf("C") >= 0)
@@ -70,7 +64,7 @@ TestCase {
         request = Droplet.fade(request, 1500)
         shape.request = request
         tryCompare(drop, "opacity", 0, 1000)
-        compare(drop.width, final.width)
+        compare(drop.width, first.width)
     }
 
     function test_the_loader_runs_only_while_waiting_for_the_window() {
@@ -88,9 +82,6 @@ TestCase {
         compare(request.phase, "settling")
         compare(loader.running, true)
 
-        request = Droplet.arrive(request, final, 1300)
-        shape.request = request
-        compare(loader.running, false)
         request = Droplet.fade(request, 1500)
         shape.request = request
         compare(loader.running, false)
@@ -101,16 +92,16 @@ TestCase {
         verify(shape)
         var drop = findChild(shape, "dropletMass")
         var last = { x: 100, y: 100, width: 300, height: 200 }
-        shape.request = Droplet.closing(last, 1000, "DP-1", 1.12)
+        shape.request = Droplet.closing(last, 1000, "DP-1")
         tryVerify(function () { return shape.closing }, 1000)
         tryVerify(function () { return shape.burstParticles.length >= 5
                                       && shape.burstParticles.length <= 8 }, 1000)
         var speck = findChild(shape, "burstParticle0")
         verify(speck)
         var startX = speck.x
-        wait(100)
-        verify(speck.x !== startX)
-        tryCompare(drop, "width", 336, 1000)
+        tryVerify(function () { return speck.x !== startX }, 1000)
+        // Only the ring is drawn: the window shrinks by itself.
+        compare(drop.visible, false)
         tryVerify(function () { return drop.opacity < 0.01 }, 1000)
         tryCompare(speck, "opacity", 0, 1000)
         verify(shape.goo.massPath.indexOf("C") >= 0)

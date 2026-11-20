@@ -233,6 +233,21 @@ document, no manual Hyprland editing, gallery and tests green.
 
 ---
 
+## Waiting on Hyprland 0.57
+
+Not started until the 0.57 package reaches the repositories (Manjaro had 0.56.2
+on 2026-11-19). `hyprland-git` was rejected as a shortcut: its -git libraries
+would break `hyprlock`, `hypridle`, `xdg-desktop-portal-hyprland` and the rest of
+the stack built against the release.
+
+| Task | Depends on | Done when |
+|---|---|---|
+| Native window wobble when dragging with Super+click: 0.57 ships Compiz-style wobble, on by default | Hyprland 0.57 | Enabled and tuned in `dots/.config/hypr/hyprland.lua`, with the option names checked in the 0.57 release notes |
+| Re-check the open/close curves (`vitrail-pop`, the `windowsIn` / `windowsOut` popin) in `dots/.config/hypr/hyprland.lua` | wobble | They still look right with wobble on |
+| `no_wobble` (per-window rule) for Vitrail's own floating windows | wobble | Applied only if the settings window, dialogs and panels look wrong while moving |
+
+---
+
 ## What to take from each reference repository
 
 | Repo | Take | Do not take |

@@ -7,7 +7,7 @@ import "../bar/droplet/burst.js" as Burst
 
 // A frozen frame of the launch droplet for the gallery: the gooey opening
 // (`phase: "open"`) joined to its origin by a liquid neck, or the closing
-// bubble (`phase: "burst"`) puffing while its ring of droplets leaves.
+// ring of droplets (`phase: "burst"`) leaving a closing window's last rect.
 Item {
     id: root
 
@@ -30,12 +30,6 @@ Item {
         var grow = root.phase === "open" ? root.look.grow : 1
         var w = root.origin.width + (root.target.width - root.origin.width) * grow
         var h = root.origin.height + (root.target.height - root.origin.height) * grow
-        if (root.phase === "burst") {
-            w = root.target.width * VitrailTokens.droplet.burst.puff
-            h = root.target.height * VitrailTokens.droplet.burst.puff
-            return Qt.rect(root.target.x + (root.target.width - w) / 2,
-                           root.target.y + (root.target.height - h) / 2, w, h)
-        }
         return Qt.rect(root.origin.x + (root.target.x - root.origin.x) * grow,
                        root.origin.y + (root.target.y - root.origin.y) * grow, w, h)
     }
@@ -50,24 +44,17 @@ Item {
                                VitrailTokens.droplet.burst.duration,
                                VitrailTokens.droplet.burst.size)
     }
-    readonly property var centre: {
-        return { x: root.target.x + root.target.width / 2,
-                 y: root.target.y + root.target.height / 2 }
-    }
-
     readonly property var goo: Frame.goo(root.origin, root.mass,
                                          root.phase === "open" ? root.look.bond : 0,
-                                         root.phase === "burst"
-                                         ? Math.min(root.mass.width, root.mass.height) / 2
-                                         : Math.min(VitrailTokens.radius * root.look.swell,
-                                                    Math.min(root.mass.width, root.mass.height) / 2),
+                                         Math.min(VitrailTokens.radius * root.look.swell,
+                                                  Math.min(root.mass.width, root.mass.height) / 2),
                                          root.look.swell)
 
     Shape {
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
-        opacity: root.phase === "burst" ? root.level * (1 - root.burstProgress * 0.6)
-                                        : root.level * root.look.fade
+        visible: root.phase === "open"
+        opacity: root.level * root.look.fade
 
         ShapePath {
             fillColor: VitrailTokens.color("primary")
@@ -90,9 +77,10 @@ Item {
             kind: "circle"
             fill: index % 2 === 0 ? VitrailTokens.color("primary")
                                   : VitrailTokens.color("info")
-            x: root.centre.x + Math.cos(modelData.angle) * modelData.distance
+            readonly property var start: Burst.edge(root.target, modelData.angle)
+            x: start.x + Math.cos(modelData.angle) * modelData.distance
                * root.burstProgress - width / 2
-            y: root.centre.y + Math.sin(modelData.angle) * modelData.distance
+            y: start.y + Math.sin(modelData.angle) * modelData.distance
                * root.burstProgress - height / 2
             opacity: 1 - root.burstProgress
         }

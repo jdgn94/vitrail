@@ -1267,21 +1267,6 @@ ShellRoot {
         onTriggered: shell.trackLaunch()
     }
 
-    // Move to the final rect while opaque, keep it for a beat, then fade: the
-    // slow motion twice (travel + hold) plus a frame.
-    Timer {
-        id: launchHold
-
-        interval: 2 * VitrailTokens.duration("slow") + VitrailTokens.droplet.settle
-        onTriggered: {
-            var request = shell.launchRequest
-            if (!request || request.phase !== "placing")
-                return
-            shell.launchRequest = DropletJS.fade(request, Date.now())
-            launchFade.restart()
-        }
-    }
-
     // The drop's own fade plus a frame, so the request is cleared only after
     // the overlay finished fading.
     Timer {
@@ -1296,7 +1281,7 @@ ShellRoot {
     Timer {
         id: closeFade
 
-        interval: VitrailTokens.droplet.burst.duration + VitrailTokens.droplet.settle
+        interval: VitrailTokens.droplet.map + VitrailTokens.droplet.burst.duration + VitrailTokens.droplet.settle
         onTriggered: shell.endClose()
     }
 
@@ -1326,9 +1311,9 @@ ShellRoot {
         function onValuesChanged() { shell.syncToplevels() }
     }
 
-    // A window appeared or vanished since the last read. New windows from the
-    // dock/launcher belong to their own request; anything else was opened by a
-    // keybind, so the drop comes from the pointer. A close keeps its rect.
+    // A window vanished since the last read: its ring of droplets leaves its last
+    // rect while the window shrinks natively. Windows are never given a drop on
+    // opening unless the dock/launcher asked for one: Hyprland animates them.
     function syncToplevels() {
         var values = Hyprland.toplevels.values
         var result = DropletJS.sync(shell.liveRects, values)
@@ -1345,14 +1330,6 @@ ShellRoot {
         if (animate) {
             for (var c = 0; c < result.closed.length; c++)
                 shell.beginClose(result.closed[c])
-        }
-        if (!animate || shell.launchRequest)
-            return
-        for (var a = 0; a < result.added.length; a++) {
-            // Several windows can map in the same tick; the newest answer wins
-            // in the pointer read, so start with the first one.
-            pointerRun.run(["hyprctl", "cursorpos"], result.added[a].address)
-            break
         }
     }
 
@@ -1381,45 +1358,9 @@ ShellRoot {
         if (!screen)
             return
         var request = DropletJS.closing(DropletJS.local(window.rect, screen),
-                                        Date.now(), screen.name,
-                                        VitrailTokens.droplet.burst.puff)
+                                        Date.now(), screen.name)
         shell.closeQueue = DropletJS.enqueueClose(shell.closeQueue, request)
         shell.pumpClose()
-    }
-
-    // A keybind opened this window: the drop starts at the pointer and holds
-    // the space until its geometry settles on the final (tiled) rect.
-    function keyboardPointer(tag, output) {
-        var window = shell.liveRects[String(tag || "")]
-        if (!window || shell.editMode || shell.launchRequest)
-            return
-        var parts = String(output || "").trim().split(",")
-        if (parts.length !== 2)
-            return
-        var pointer = { x: Number(parts[0]), y: Number(parts[1]) }
-        if (!isFinite(pointer.x) || !isFinite(pointer.y))
-            return
-        var centre = { x: window.rect.x + window.rect.width / 2,
-                       y: window.rect.y + window.rect.height / 2 }
-        var screen = DropletJS.screenFor(centre, Quickshell.screens)
-        if (!screen)
-            return
-        // The window already exists: reserve its own rect from the start.
-        var space = DropletJS.local(window.rect, screen)
-        var request = DropletJS.request(window, DropletJS.pointerOrigin(pointer, screen),
-                                        space, Date.now(),
-                                        VitrailTokens.droplet.timeout, screen.name)
-        if (!request)
-            return
-        request = DropletJS.watch(request, window, Date.now(),
-                                  VitrailTokens.droplet.stabilize)
-        shell.launchKnown = []
-        shell.launchScreen = screen
-        shell.launchRequest = request
-        Hyprland.refreshToplevels()
-        launchHold.stop()
-        launchFade.stop()
-        launchPoll.restart()
     }
 
     // Reserve the real space and grow the drop before running the desktop entry.
@@ -1440,11 +1381,8 @@ ShellRoot {
                      ? rect
                      : { x: Math.round(target.width / 2),
                          y: Math.round(target.height / 2), width: 2, height: 2 }
-        var last = DropletJS.lastRect(app, shell.liveRects)
-        var space = last && DropletJS.onScreen(last, target)
-                    ? DropletJS.local(last, target) : origin
         var started = Date.now()
-        var request = DropletJS.request(app, origin, space, started,
+        var request = DropletJS.request(app, origin, origin, started,
                                         VitrailTokens.droplet.timeout, target.name)
         if (!request) {
             if (entry)
@@ -1456,13 +1394,32 @@ ShellRoot {
         var launchAt = started + VitrailTokens.duration("slow")
         shell.launchRequest = DropletJS.schedule(request, entry || null, launchAt)
         Hyprland.refreshToplevels()
-        launchHold.stop()
         launchFade.stop()
         launchPoll.restart()
+        // The drop starts on the icon; once the pointer is known it moves to
+        // the slot the new window will take (predictLaunch).
+        launchCursorRun.run(["hyprctl", "-j", "cursorpos"], String(started))
     }
 
-    // Launch only after the opening animation, then wait for the window to map
-    // and settle before fading from its final rect.
+    // The pointer answered: reserve the slot dwindle will give the new window,
+    // unless the request moved on or the layout cannot be foretold.
+    function predictLaunch(tag, output) {
+        var request = shell.launchRequest
+        if (!request || request.phase !== "hold" || String(request.started) !== tag
+                || !shell.launchScreen)
+            return
+        var predicted = DropletJS.forecast(shell.layoutOptions, Hyprland.toplevels.values,
+                                           Hyprland.monitorFor(shell.launchScreen),
+                                           DropletJS.parseCursor(output))
+        if (predicted)
+            shell.launchRequest = DropletJS.copy(
+                request, { target: DropletJS.local(predicted, shell.launchScreen) })
+    }
+
+    // Launch only after the opening animation, then wait for the window to map.
+    // The window animates itself (Hyprland's windowsIn), so the drop hands over
+    // as soon as the new window's rect is known: at once when it landed on the
+    // predicted slot, after it stopped moving otherwise.
     function trackLaunch() {
         var request = shell.launchRequest
         if (!request) {
@@ -1472,41 +1429,46 @@ ShellRoot {
         var now = Date.now()
         request = DropletJS.launch(request, now)
         shell.launchRequest = request
-        if (request.phase === "fading" || request.phase === "placing"
-                || request.phase === "closing")
+        if (request.phase === "fading" || request.phase === "closing")
             return
         if (request.phase === "settling") {
             request = DropletJS.settle(request, Hyprland.toplevels.values, now)
-            if (request.phase === "settled") {
-                shell.launchRequest = DropletJS.arrive(
-                    request, DropletJS.local(request.final, shell.launchScreen), now)
-                launchPoll.stop()
-                launchFade.stop()
-                launchHold.restart()
-            } else {
+            if (request.phase === "settled")
+                shell.handOver(request)
+            else
                 shell.launchRequest = request
-            }
             return
         }
         var found = DropletJS.arrival(request, Hyprland.toplevels.values, shell.launchKnown,
                                       shell.launchScreen)
         if (found) {
-            shell.launchRequest = DropletJS.watch(request, found, now,
-                                                  VitrailTokens.droplet.stabilize)
+            if (DropletJS.near(DropletJS.local(found.rect, shell.launchScreen), request.target,
+                               VitrailTokens.droplet.match))
+                shell.handOver(request)
+            else
+                shell.launchRequest = DropletJS.watch(request, found, now,
+                                                      VitrailTokens.droplet.stabilize)
             return
         }
-        if (DropletJS.expired(request, now))
+        if (DropletJS.expired(request, now)) {
             shell.launchRequest = DropletJS.timeout(request, now)
-        else
-            return
+            shell.finishLaunch()
+        }
+    }
+
+    // The window took over: the drop fades from the space it held.
+    function handOver(request) {
+        shell.launchRequest = DropletJS.fade(request, Date.now())
+        shell.finishLaunch()
+    }
+
+    function finishLaunch() {
         launchPoll.stop()
-        launchHold.stop()
         launchFade.restart()
     }
 
     function endLaunch() {
         launchPoll.stop()
-        launchHold.stop()
         launchFade.stop()
         shell.launchRequest = null
         shell.launchScreen = null
@@ -1705,11 +1667,39 @@ ShellRoot {
         }
     }
 
-    // The pointer of a keybind launch: `tag` names the window that appeared.
-    AsyncRun {
-        id: pointerRun
+    // The gaps, border and dwindle options the launch drop predicts with. Read
+    // at startup and again a beat after the layout or border preference changes
+    // (apply-settings rewrites them asynchronously).
+    readonly property string layoutKey: String(shell.prefs.windowLayout)
+                                        + "|" + String(shell.prefs.borderWidth)
+    property var layoutOptions: null
+    onLayoutKeyChanged: layoutDelay.restart()
 
-        onFinished: function (tag, output) { shell.keyboardPointer(tag, output) }
+    Timer {
+        id: layoutDelay
+
+        interval: VitrailTokens.droplet.refresh
+        running: true
+        onTriggered: layoutRun.run(["hyprctl", "-j", "--batch",
+            "getoption general:gaps_in; getoption general:gaps_out; "
+            + "getoption general:border_size; getoption general:layout; "
+            + "getoption dwindle:force_split; getoption dwindle:split_width_multiplier"], "")
+    }
+
+    AsyncRun {
+        id: layoutRun
+
+        onFinished: function (tag, output) {
+            var options = DropletJS.parseOptions(output)
+            if (options)
+                shell.layoutOptions = options
+        }
+    }
+
+    AsyncRun {
+        id: launchCursorRun
+
+        onFinished: function (tag, output) { shell.predictLaunch(tag, output) }
     }
 
     AsyncRun {

@@ -48,7 +48,7 @@ TestCase {
         verify(Droplet.request(app({ open: false }), icon(), space, 1000, 4000, "DP-1") !== null)
     }
 
-    function test_the_mapping_window_places_the_final_rect_before_fading() {
+    function test_the_mapping_window_settles_and_the_drop_hands_over_by_fading() {
         var request = Droplet.request(app(), icon(), space, 1000, 4000, "DP-1")
         var floating = windowOf("0xabc", "firefox", 2200, 300, 900, 600)
         var found = Droplet.arrival(request, [floating], ["0x111"], screen)
@@ -74,30 +74,162 @@ TestCase {
         compare(local.x, 0)
         compare(local.y, 0)
 
-        request = Droplet.arrive(request, local, 1500)
-        compare(request.phase, "placing")
-        compare(request.target.x, 0)
-        compare(request.target.width, 960)
-
+        // The window animates itself: the drop only fades, over the space it held.
         request = Droplet.fade(request, 1800)
         compare(request.phase, "fading")
-        compare(request.target.width, 960)
+        compare(request.target.x, space.x)
+        compare(request.target.width, space.width)
     }
 
-    function test_an_app_reserves_its_last_known_rect() {
-        var rects = {
-            "0x1": { address: "0x1", class: "Google-chrome",
-                     rect: { x: 981, y: 16, width: 923, height: 1048 } },
-            "0x2": { address: "0x2", class: "kitty",
-                     rect: { x: 0, y: 0, width: 400, height: 300 } }
+    function test_a_window_on_the_predicted_slot_is_near_and_a_far_one_is_not() {
+        var slot = { x: 16, y: 46, width: 1258, height: 1316 }
+        verify(Droplet.near({ x: 18, y: 44, width: 1260, height: 1314 }, slot, 24))
+        verify(Droplet.near(slot, slot, 0))
+        verify(!Droplet.near({ x: 1286, y: 46, width: 1258, height: 1316 }, slot, 24))
+        verify(!Droplet.near({ x: 16, y: 46, width: 900, height: 600 }, slot, 24))
+    }
+
+    // The live session: 2560x1440 at 0,0, reserved [6, 36, 6, 68], gaps_in 4,
+    // gaps_out 8, border 2, dwindle.
+    readonly property var live: ({
+        layout: "dwindle", gapsIn: 4, gapsOut: 8, border: 2, splitWidth: 1, forceSplit: 0,
+        area: { x: 6, y: 36, width: 2548, height: 1336 }
+    })
+    readonly property var lone: ({ x: 16, y: 46, width: 2528, height: 1316 })
+
+    function plan(extra) {
+        var input = {}
+        for (var key in live)
+            input[key] = live[key]
+        for (var change in extra)
+            input[change] = extra[change]
+        return input
+    }
+
+    function expectRect(box, x, y, width, height) {
+        verify(box !== null)
+        compare(box.x, x)
+        compare(box.y, y)
+        compare(box.width, width)
+        compare(box.height, height)
+    }
+
+    function test_an_empty_workspace_gives_the_whole_area_inside_the_gaps() {
+        expectRect(Droplet.predict(plan({ windows: [], cursor: null })), 16, 46, 2528, 1316)
+    }
+
+    function test_a_lone_window_splits_side_by_side_by_the_cursor_half() {
+        var windows = [lone]
+        expectRect(Droplet.predict(plan({ windows: windows, cursor: { x: 718, y: 1240 } })),
+                   16, 46, 1258, 1316)
+        expectRect(Droplet.predict(plan({ windows: windows, cursor: { x: 2000, y: 700 } })),
+                   1286, 46, 1258, 1316)
+        // No pointer: the newcomer goes second.
+        expectRect(Droplet.predict(plan({ windows: windows, cursor: null })),
+                   1286, 46, 1258, 1316)
+    }
+
+    function test_a_tall_node_splits_top_and_bottom() {
+        var tall = { x: 1286, y: 46, width: 1258, height: 1316 }
+        var windows = [{ x: 16, y: 46, width: 1258, height: 1316 }, tall]
+        var top = Droplet.predict(plan({ windows: windows, cursor: { x: 1500, y: 100 } }))
+        expectRect(top, 1286, 46, 1258, 652)
+        var bottom = Droplet.predict(plan({ windows: windows, cursor: { x: 1500, y: 1300 } }))
+        expectRect(bottom, 1286, 710, 1258, 652)
+    }
+
+    function test_without_a_window_under_the_cursor_the_focused_one_is_split() {
+        var left = { x: 16, y: 46, width: 1258, height: 1316, address: "0xa" }
+        var right = { x: 1286, y: 46, width: 1258, height: 1316, address: "0xb" }
+        var outside = { x: 5000, y: 5000 }
+        expectRect(Droplet.predict(plan({ windows: [left, right], focused: "b", cursor: outside })),
+                   1286, 710, 1258, 652)
+        expectRect(Droplet.predict(plan({ windows: [left, right], focused: left, cursor: null })),
+                   16, 710, 1258, 652)
+        // Nothing focused: the first window.
+        expectRect(Droplet.predict(plan({ windows: [left, right], cursor: null })),
+                   16, 710, 1258, 652)
+    }
+
+    function test_force_split_decides_the_side_over_the_cursor() {
+        var windows = [lone]
+        expectRect(Droplet.predict(plan({ windows: windows, forceSplit: 1,
+                                          cursor: { x: 2000, y: 700 } })),
+                   16, 46, 1258, 1316)
+        expectRect(Droplet.predict(plan({ windows: windows, forceSplit: 2,
+                                          cursor: { x: 718, y: 1240 } })),
+                   1286, 46, 1258, 1316)
+    }
+
+    function test_another_layout_or_a_fullscreen_window_cannot_be_foretold() {
+        compare(Droplet.predict(plan({ layout: "master", windows: [], cursor: null })), null)
+        compare(Droplet.predict(plan({ windows: [lone], cursor: null,
+                                       layout: "scrolling" })), null)
+        var full = { x: 0, y: 0, width: 2560, height: 1440, fullscreen: true }
+        compare(Droplet.predict(plan({ windows: [full], cursor: null })), null)
+        compare(Droplet.predict(null), null)
+    }
+
+    function test_hyprland_options_are_read_from_the_batch_answer() {
+        var output = '{"option": "general:gaps_in", "css": "4 4 4 4", "set": true }\n\n\n'
+                     + '{"option": "general:gaps_out", "css": "8 8 8 8", "set": true }\n\n\n'
+                     + '{"option": "general:border_size", "int": 2, "set": true }\n\n\n'
+                     + '{"option": "general:layout", "str": "dwindle", "set": true }\n\n\n'
+                     + '{"option": "dwindle:force_split", "int": 0, "set": false }\n\n\n'
+                     + '{"option": "dwindle:split_width_multiplier", "float": 1.500000, "set": false }\n\n'
+        var options = Droplet.parseOptions(output)
+        compare(options.gapsIn, 4)
+        compare(options.gapsOut, 8)
+        compare(options.border, 2)
+        compare(options.layout, "dwindle")
+        compare(options.forceSplit, 0)
+        compare(options.splitWidth, 1.5)
+        compare(Droplet.parseOptions("garbage\nnot json"), null)
+        compare(Droplet.parseOptions(""), null)
+    }
+
+    function test_the_pointer_is_read_from_the_json_answer() {
+        var point = Droplet.parseCursor('{\n    "x": 718,\n    "y": 1240\n}\n')
+        compare(point.x, 718)
+        compare(point.y, 1240)
+        compare(Droplet.parseCursor("718, 1240"), null)
+        compare(Droplet.parseCursor(""), null)
+    }
+
+    function workspaceWindow(address, workspace, x, y, width, height, extra) {
+        var top = windowOf(address, "kitty", x, y, width, height)
+        top.lastIpcObject.workspace = { id: workspace }
+        top.lastIpcObject.mapped = true
+        for (var key in (extra || {}))
+            top.lastIpcObject[key] = extra[key]
+        return top
+    }
+
+    function monitor() {
+        return {
+            lastIpcObject: { x: 0, y: 0, width: 2560, height: 1440, scale: 1,
+                             reserved: [6, 36, 6, 68], activeWorkspace: { id: 3 } },
+            activeWorkspace: { lastIpcObject: { lastwindow: "0xb" } }
         }
-        var last = Droplet.lastRect(app({ id: "google-chrome.desktop" }), rects)
-        compare(last.x, 981)
-        compare(last.y, 16)
-        compare(last.width, 923)
-        compare(last.height, 1048)
-        compare(Droplet.lastRect(app({ id: "spotify.desktop" }), rects), null)
-        compare(Droplet.lastRect(app(), {}), null)
+    }
+
+    function test_the_forecast_uses_the_monitors_active_workspace_windows() {
+        var options = { layout: "dwindle", gapsIn: 4, gapsOut: 8, border: 2,
+                        splitWidth: 1, forceSplit: 0 }
+        var cursor = { x: 718, y: 1240 }
+        expectRect(Droplet.forecast(options, [], monitor(), cursor), 16, 46, 2528, 1316)
+        // Other workspaces, floating and unmapped windows do not take space.
+        var tops = [
+            workspaceWindow("0xa", 2, 16, 46, 1000, 1000),
+            workspaceWindow("0xc", 3, 100, 100, 300, 300, { floating: true }),
+            workspaceWindow("0xd", 3, 100, 100, 300, 300, { mapped: false }),
+            workspaceWindow("0xb", 3, 16, 46, 2528, 1316)
+        ]
+        expectRect(Droplet.forecast(options, tops, monitor(), cursor), 16, 46, 1258, 1316)
+        tops.push(workspaceWindow("0xe", 3, 0, 0, 2560, 1440, { fullscreen: 2 }))
+        compare(Droplet.forecast(options, tops, monitor(), cursor), null)
+        compare(Droplet.forecast(null, tops, monitor(), cursor), null)
+        compare(Droplet.forecast(options, tops, null, cursor), null)
     }
 
     function test_the_settle_window_takes_the_last_rect_while_it_moves() {
@@ -153,18 +285,6 @@ TestCase {
         verify(!Droplet.active(null))
     }
 
-    function test_a_keyboard_launch_starts_at_the_pointer() {
-        var pointer = { x: 2000, y: 400 }
-        var origin = Droplet.pointerOrigin(pointer, screen)
-        compare(origin.x, 80)
-        compare(origin.y, 400)
-        compare(origin.width, 2)
-        compare(origin.height, 2)
-        var request = Droplet.request(app(), origin, space, 1000, 4000, "DP-1")
-        compare(request.origin.x, 80)
-        compare(request.origin.y, 400)
-    }
-
     function test_the_pointer_picks_the_monitor_that_holds_it() {
         var screens = [screen, { x: 0, y: 0, width: 1920, height: 1080 }]
         compare(Droplet.screenFor({ x: 2500, y: 500 }, screens).x, 1920)
@@ -172,31 +292,26 @@ TestCase {
         compare(Droplet.screenFor({ x: -10, y: 500 }, screens), null)
     }
 
-    function test_a_closing_window_puffs_from_its_last_rect() {
+    function test_a_closing_window_bursts_from_its_last_rect() {
         var last = { x: 200, y: 100, width: 800, height: 600 }
-        var close = Droplet.closing(last, 2000, "DP-1", 1.12)
+        var close = Droplet.closing(last, 2000, "DP-1")
         compare(close.phase, "closing")
         compare(close.screen, "DP-1")
         compare(close.origin.x, 200)
         compare(close.origin.width, 800)
-        compare(close.target.x, 152)
-        compare(close.target.y, 64)
-        compare(close.target.width, 896)
-        compare(close.target.height, 672)
+        compare(close.target.x, 200)
+        compare(close.target.width, 800)
         verify(!Droplet.closingDone(close, 2199, 250))
         verify(Droplet.closingDone(close, 2250, 250))
     }
 
-    function test_the_live_map_reports_open_and_closed_windows() {
+    function test_the_live_map_reports_closed_windows() {
         var first = Droplet.sync({}, [windowOf("0x1", "kitty", 0, 0, 400, 300)])
-        compare(first.added.length, 1)
         compare(first.closed.length, 0)
         compare(first.rects["0x1"].rect.width, 400)
 
         var second = Droplet.sync(first.rects,
                                   [windowOf("0x2", "firefox", 100, 100, 800, 600)])
-        compare(second.added.length, 1)
-        compare(second.added[0].address, "0x2")
         compare(second.closed.length, 1)
         compare(second.closed[0].address, "0x1")
         compare(second.closed[0].rect.width, 400)
@@ -210,8 +325,8 @@ TestCase {
     }
 
     function test_back_to_back_closes_wait_in_fifo_order() {
-        var first = Droplet.closing({ x: 0, y: 0, width: 400, height: 300 }, 1000, "DP-1", 1.12)
-        var second = Droplet.closing({ x: 500, y: 100, width: 300, height: 200 }, 1010, "DP-1", 1.12)
+        var first = Droplet.closing({ x: 0, y: 0, width: 400, height: 300 }, 1000, "DP-1")
+        var second = Droplet.closing({ x: 500, y: 100, width: 300, height: 200 }, 1010, "DP-1")
         var queue = Droplet.enqueueClose([], first)
         queue = Droplet.enqueueClose(queue, second)
         compare(queue.length, 2)

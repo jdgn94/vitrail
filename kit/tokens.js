@@ -419,7 +419,9 @@ var dock = {
 // before the drop gives up, how long it takes to fade once it does (ms), how
 // often the shell looks for the new window, how long a mapped window may keep
 // moving before its rect is taken anyway, how often the live rect map refreshes
-// (ms), and the tint of the shape.
+// (ms), the tint of the shape, and `match` px a mapped window may differ from
+// the predicted slot for the drop to hand over to it at once, and `map` ms the
+// overlay layer needs to appear before an animation on it can be seen.
 var droplet = {
     timeout: 4000,
     fade: 240,
@@ -428,16 +430,17 @@ var droplet = {
     stabilize: 250,
     refresh: 1000,
     tint: 0.7,
-    // Closing: the main shape puffs by this factor and the ring of droplets
-    // reaches `reach` of the last rect's longer side (at least `reachMin` px),
-    // each at `size` px, all gone within `duration` ms.
+    match: 24,
+    map: 90,
+    // Closing: the ring of droplets (the window shrinks natively) leaves the
+    // last rect's edge and travels `reach` of its longer side (at least
+    // `reachMin` px), each at `size` px, all gone within `duration` ms.
     burst: {
         count: 7,
         duration: 250,
-        puff: 1.12,
-        reach: 0.18,
-        reachMin: 28,
-        size: 7
+        reach: 0.08,
+        reachMin: 36,
+        size: 14
     }
 }
 
