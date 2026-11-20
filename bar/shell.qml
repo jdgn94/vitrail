@@ -4675,7 +4675,10 @@ ShellRoot {
                 }
 
                 // One invisible panel per edge reserves the space the frame
-                // covers, so windows never slide under it.
+                // covers, so windows never slide under it. On the dock's edge
+                // the band the dock covers is added: the dock layer draws
+                // outside the exclusive zones (so its coordinates stay screen
+                // coordinates) and cannot reserve its own space.
                 Variants {
                     model: ["left", "top", "right", "bottom"]
 
@@ -4694,6 +4697,8 @@ ShellRoot {
                             implicitHeight: 1
                             color: "transparent"
                             exclusiveZone: bar.reserve[modelData]
+                                           + (dockLayer.reserving && dockLayer.edge === modelData
+                                              ? dockLayer.reserved : 0)
                             mask: Region {}
                             WlrLayershell.namespace: "vitrail-reserve"
                         }

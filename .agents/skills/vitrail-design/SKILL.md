@@ -61,6 +61,11 @@ layer contract.
 - `Item` already has FINAL `top` / `bottom` / `left` / `right`: name custom
   properties otherwise (`atBottom`, `begin`, `stop`).
 - A `Behavior` cannot target a `readonly` property.
+- A `PanelWindow` with `ExclusionMode.Normal` is arranged inside the *usable*
+  area: the bar's and the frame's exclusive zones shift and shrink it, so its
+  item coordinates are **not** screen coordinates. Anything that publishes a
+  screen rect (a frame tab, a tooltip origin) needs `ExclusionMode.Ignore` and
+  its zone carried by a separate 1 px panel in `shell.qml`'s reserve set.
 - `PanelWindow` already has `screen`: declaring a `required property var screen`
   on the component shadows it, the surface stays on the default output, and
   every layer overlaps there. Name it `output` and bind `screen: root.output`.

@@ -41,16 +41,20 @@ PanelWindow {
                                  : root.metrics.icon * (root.magnifyScale - 1)
     readonly property real band: (root.vertical ? dock.implicitWidth : dock.implicitHeight)
                                  + 2 * root.margin + root.growth
-    // The card plus its margin is what the compositor reserves; the room that
-    // hover magnification needs stays free.
+    // The card plus its margin is what the shell's reserve panel claims; the
+    // room that hover magnification needs stays free.
     readonly property real reserved: (root.vertical ? dock.implicitWidth : dock.implicitHeight)
                                      + 2 * root.margin
     readonly property bool active: root.enabled && !root.hidden && dock.count > 0
     readonly property bool shown: dock.shown
+    // Only a dock that stays out and is attached to the edge reserves the
+    // pixels it covers; floating and auto-hidden docks leave the windows alone.
+    // The shell's reserve panels carry the zone (see `exclusionMode`).
+    readonly property bool reserving: root.active && root.attached && !root.autohide
     // The dock's card only, in screen coordinates: the frame rises into an
     // island under the content, like the islands of the navigation bar, while
-    // the rest of the edge stays thin. The layer is only the edge band, so its
-    // own origin is added.
+    // the rest of the edge stays thin. The layer spans the whole output, so
+    // the card's own position is already a screen position.
     readonly property var tabRect: {
         if (!dock)
             return null
@@ -89,11 +93,13 @@ PanelWindow {
     implicitWidth: root.vertical ? root.band : root.screen.width
     implicitHeight: root.vertical ? root.screen.height : root.band
     color: "transparent"
-    // Only a dock that stays out and is attached to the edge reserves the
-    // pixels it covers; floating and auto-hidden docks leave the windows alone.
-    exclusionMode: root.active && root.attached && !root.autohide ? ExclusionMode.Normal
-                                                                   : ExclusionMode.Ignore
-    exclusiveZone: root.reserved
+    // The layer stays outside the compositor's exclusive zones. Anchored
+    // inside the usable area, the bar's and the frame's reservations would
+    // shift and shrink it, and the card would no longer sit centred on the
+    // screen: `dock.x` below is only a screen coordinate when the layer spans
+    // the whole output. The shell's reserve panels carry the dock's zone
+    // (`reserving`/`reserved`).
+    exclusionMode: ExclusionMode.Ignore
     // The bar's namespace: the compositor's glass rule blurs the dock with the
     // rest of the shell instead of leaving an unblurred rectangle.
     WlrLayershell.namespace: "vitrail-bar"
