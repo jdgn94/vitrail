@@ -32,6 +32,9 @@ The first distributable release.
   sharp. `dots` keeps its large dabs.
 - System colour: automatic, Material's main hues and a custom colour, as one
   row of chips; the change animation reaches ten seconds on a stepped slider.
+- Icon packs: one list, Adaptive recolours only the folder icons with the
+  system colour (solid by default, symbolic sizes included), and a
+  Pack/Light/Solid folder fill.
 - Screenshots (region, window, full, annotate) and screen recording from the
   panel, with the recording chip in the bar.
 - Installation without cloning (`bootstrap.sh`), an AUR package, and

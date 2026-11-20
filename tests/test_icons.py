@@ -15,6 +15,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 from vitrail import icons
 
@@ -115,6 +116,23 @@ class TintStyleTests(unittest.TestCase):
             icons.tint_svg(self.SVG, {"primary": "#ff0000"}),
         )
 
+    def test_a_symbolic_folder_takes_the_primary(self) -> None:
+        svg = (
+            "<svg><style>.ColorScheme-Text { color:#444444; }</style>"
+            '<path style="fill:currentColor" class="ColorScheme-Text" d="M0 0h1v1z"/></svg>'
+        )
+        tinted = icons.tint_svg(svg, {"primary": "#854b70"})
+        self.assertIn("fill:#854b70", tinted)
+        self.assertNotIn("fill:currentColor", tinted)
+
+    def test_a_special_folder_keeps_its_dark_symbol(self) -> None:
+        svg = '<svg><path fill="#5294e2"/><path fill="#4877b1"/><path fill="#1d344f"/><path fill="#e4e4e4"/></svg>'
+        tinted = icons.tint_svg(svg, {"primary": "#854b70"}, "solid")
+        colours = icons.colours(tinted)
+        self.assertEqual(colours[0], "#854b70")
+        self.assertIn("#1d344f", colours)
+        self.assertIn("#e4e4e4", colours)
+
 
 class BuildStyleTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -126,7 +144,8 @@ class BuildStyleTests(unittest.TestCase):
             '<svg><path style="fill:#5294e2"/><path style="fill:#2b2b2b"/></svg>', encoding="utf-8"
         )
         (self.pack / "index.theme").write_text(
-            "[Icon Theme]\nDirectories=48x48/places\n\n[48x48/places]\nSize=48\n", encoding="utf-8"
+            "[Icon Theme]\nDirectories=48x48/places\n\n[48x48/places]\nSize=48\nContext=Places\nType=Threshold\n",
+            encoding="utf-8",
         )
         self.cache = self.root / "cache"
 
@@ -152,6 +171,62 @@ class BuildStyleTests(unittest.TestCase):
         self.assertTrue(self.build("light", target))
         second = (target / "48x48" / "places" / "folder.svg").read_text(encoding="utf-8")
         self.assertNotEqual(first, second)
+
+    def test_the_generated_index_keeps_the_directory_metadata(self) -> None:
+        target = self.root / "icons" / "vitrail-icons-Acme"
+        self.assertTrue(self.build("", target))
+        text = (target / "index.theme").read_text(encoding="utf-8")
+        self.assertIn("[48x48/places]", text)
+        self.assertIn("Size=48", text)
+        self.assertIn("Context=Places", text)
+        self.assertIn("Type=Threshold", text)
+
+    def test_a_missing_directory_section_gets_a_fallback(self) -> None:
+        (self.pack / "index.theme").write_text("[Icon Theme]\nDirectories=48x48/places\n", encoding="utf-8")
+        target = self.root / "icons" / "vitrail-icons-Acme"
+        self.assertTrue(self.build("", target))
+        text = (target / "index.theme").read_text(encoding="utf-8")
+        self.assertIn("[48x48/places]", text)
+        self.assertIn("Size=48", text)
+
+    def test_a_new_build_version_forces_a_rebuild(self) -> None:
+        target = self.root / "icons" / "vitrail-icons-Acme"
+        self.assertTrue(self.build("", target))
+        with mock.patch.object(icons, "ICON_VERSION", icons.ICON_VERSION + 1):
+            self.assertTrue(self.build("", target))
+
+    def test_the_pack_special_folder_wins_over_a_parent_generic(self) -> None:
+        parent = self.root / "icons" / "Parent"
+        (parent / "places" / "48").mkdir(parents=True)
+        (parent / "places" / "48" / "folder-documents.svg").write_text(
+            '<svg><path style="fill:#123456"/></svg>', encoding="utf-8"
+        )
+        (parent / "index.theme").write_text(
+            "[Icon Theme]\nDirectories=places/48\n\n[places/48]\nSize=48\n", encoding="utf-8"
+        )
+        (self.pack / "48x48" / "places" / "folder-documents.svg").write_text(
+            '<svg><path style="fill:#5294e2"/><path style="fill:#ff00ff"/></svg>', encoding="utf-8"
+        )
+        (self.pack / "index.theme").write_text(
+            "[Icon Theme]\nInherits=Parent\nDirectories=48x48/places\n\n[48x48/places]\nSize=48\n",
+            encoding="utf-8",
+        )
+        target = self.root / "icons" / "vitrail-icons-Acme"
+        self.assertTrue(self.build("solid", target))
+        self.assertTrue((target / "48x48" / "places" / "folder-documents.svg").is_file())
+        self.assertFalse((target / "places" / "48" / "folder-documents.svg").exists())
+        text = (target / "index.theme").read_text(encoding="utf-8")
+        self.assertIn("[48x48/places]", text)
+        self.assertNotIn("[places/48]", text)
+
+    def test_a_rebuild_removes_stale_files(self) -> None:
+        target = self.root / "icons" / "vitrail-icons-Acme"
+        self.assertTrue(self.build("", target))
+        stale = target / "places" / "48" / "folder.svg"
+        stale.parent.mkdir(parents=True)
+        stale.write_text("<svg/>", encoding="utf-8")
+        self.assertTrue(self.build("light", target))
+        self.assertFalse(stale.exists())
 
 
 class IconTests(unittest.TestCase):
@@ -224,6 +299,15 @@ class IconZipTests(unittest.TestCase):
                 f"{name}/index.theme": f"[Icon Theme]\nName={name}\nDirectories=48x48/apps\n",
                 f"{name}/48x48/apps/editor.svg": "<svg/>",
                 f"{name}/48x48/apps/folder.png": b"png",
+            }
+        )
+
+    def valid_cursor_zip(self, name: str = "AcmeCursors") -> Path:
+        return self.make_zip(
+            {
+                f"{name}/index.theme": f"[Icon Theme]\nName={name}\n",
+                f"{name}/cursors/left_ptr": b"Xcur",
+                f"{name}/cursors/hand2": b"Xcur",
             }
         )
 
@@ -316,6 +400,31 @@ class IconZipTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "name"):
             icons.remove_pack("../usr/share/icons/Adwaita", data_home=self.data_home, home=self.home)
 
+    def test_a_cursor_zip_installs_under_the_cursor_root(self) -> None:
+        root = self.home / ".icons"
+        target = icons.import_zip(self.valid_cursor_zip(), cursors=True, root=root)
+        self.assertEqual(target, root / "AcmeCursors")
+        self.assertTrue((target / "index.theme").is_file())
+        self.assertEqual((target / "cursors" / "left_ptr").read_bytes(), b"Xcur")
+
+    def test_a_cursor_zip_without_cursors_is_refused(self) -> None:
+        path = self.make_zip({"AcmeCursors/index.theme": "[Icon Theme]\n"})
+        with self.assertRaisesRegex(ValueError, "cursors"):
+            icons.import_zip(path, cursors=True, root=self.home / ".icons")
+        self.assertFalse((self.home / ".icons" / "AcmeCursors").exists())
+
+    def test_a_cursor_pack_is_removed_from_the_cursor_root(self) -> None:
+        target = self.home / ".icons" / "AcmeCursors"
+        (target / "cursors").mkdir(parents=True)
+        (target / "index.theme").write_text("[Icon Theme]\n", encoding="utf-8")
+        removed = icons.remove_pack("AcmeCursors", cursors=True, roots=[self.home / ".icons"])
+        self.assertEqual(removed, target)
+        self.assertFalse(target.exists())
+
+    def test_a_generated_cursor_theme_is_never_removed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "generated"):
+            icons.remove_pack("vitrail-cursor", cursors=True, roots=[self.home / ".icons"])
+
     def test_apply_runs_an_import_request_and_refreshes_the_state(self) -> None:
         import json
 
@@ -342,6 +451,42 @@ class IconZipTests(unittest.TestCase):
         state = json.loads((cache.parent / "fonts-state.json").read_text(encoding="utf-8"))
         self.assertIn("Acme", state["iconThemes"])
         self.assertIn("Acme", state["iconUser"])
+
+    def test_apply_runs_a_cursor_import_request(self) -> None:
+        import json
+
+        from vitrail import fonts
+
+        config = self.root / "config"
+        cache = self.root / "cache" / "fonts"
+        pack = self.valid_cursor_zip()
+        code = fonts.apply(
+            {
+                "fontSystem": "Roboto",
+                "cursorTheme": "AcmeCursors",
+                "cursorAdaptive": "false",
+                "cursorImport": f"456|{pack}",
+                "cursorSize": 24,
+            },
+            config,
+            run=lambda argv: "Roboto\t80\n",
+            roots=[self.data_home / "icons", self.home / ".icons"],
+            hyprland=False,
+            x11=False,
+            data_home=self.data_home,
+            cache=cache,
+            cursor_home=self.home,
+        )
+        self.assertEqual(code, 0)
+        target = self.home / ".icons" / "AcmeCursors"
+        self.assertTrue((target / "cursors" / "left_ptr").is_file())
+        self.assertIn("cursorImport=\n", (config / "vitrail" / "fonts.ini").read_text(encoding="utf-8"))
+        result = json.loads((cache.parent / "cursors-result.json").read_text(encoding="utf-8"))
+        self.assertEqual((result["action"], result["ok"], result["nonce"]), ("import", True, "456"))
+        self.assertEqual(result["name"], "AcmeCursors")
+        state = json.loads((cache.parent / "fonts-state.json").read_text(encoding="utf-8"))
+        self.assertIn("AcmeCursors", state["cursorThemes"])
+        self.assertIn("AcmeCursors", state["cursorUser"])
 
 
 if __name__ == "__main__":

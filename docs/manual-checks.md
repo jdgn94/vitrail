@@ -151,20 +151,30 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] Un pack borrado a mano mientras está elegido: el log dice `refused` y el
       cursor cae en Adwaita, sin dejar el puntero sin tema.
 
-## P2.10b — Iconos adaptativos: carpetas (2026-11-04)
+## Iconos adaptativos: carpetas (2026-11-14)
 
-- [ ] **Icons → Palette tint**: elige `Vitrail · Papirus`. Se crea
-      `~/.local/share/icons/vitrail-icons-Papirus` con solo las carpetas.
-- [ ] Abre el gestor de archivos (Nautilus): las carpetas salen con el color
-      de acento de la paleta, con la misma sombra y el mismo papel blanco del
+- [ ] **Icons → Adaptativo** encendido y **Folder fill → Solid** (por defecto):
+      se crea `~/.local/share/icons/vitrail-icons-<pack>@solid` con solo las
+      carpetas. El cuerpo de **todas** las carpetas (genéricas y especiales:
+      Documentos, Música, Descargas…) es exactamente el `primary` del sistema;
+      el contorno y los símbolos siguen siendo del pack.
+- [ ] **Folder fill → Light** / **Pack**: cuerpo claro o el sombreado del pack
+      con el tono movido al sistema. El picker es **una sola lista** de packs.
+- [ ] El `index.theme` generado lleva las secciones `[64x64/places]`, etc.
+      (`Size`, `Type`, `Context`); sin ellas GTK ignora el tema y vuelve al
       pack original.
-- [ ] Una app nueva sin reiniciar el sistema usa el tema; una ventana GTK ya
-      abierta puede seguir con los iconos viejos (los temas de iconos no se
-      recargan en caliente).
+- [ ] Las carpetas especiales del pack (Documents, Downloads, Music, Pictures,
+      Desktop, Home…) conservan su símbolo; solo cambia el color del cuerpo.
+      Un tema padre solo aporta los nombres que el pack no tiene
+      (`folder-open`), nunca sustituye a `folder-documents`/`folder-download`.
+- [ ] Los iconos simbólicos de 16x16 (`fill:currentColor`) también toman el
+      `primary`; ya no se quedan grises/azules.
+- [ ] Apaga **Adaptativo**: se aplica el pack original sin capa generada.
+- [ ] Abre el gestor de archivos (Nautilus u Orca): las carpetas salen con el
+      color de acento exacto. Si la app ya estaba abierta, reiníciala: los temas
+      de iconos no se recargan en caliente.
 - [ ] `gsettings get org.gnome.desktop.interface icon-theme` →
-      `'vitrail-icons-Papirus'`; `qt6ct.conf` lleva el mismo nombre.
-- [ ] El tema generado aparece en **App icon pack** y se puede volver a él.
-- [ ] **Off** devuelve el pack original.
+      `'vitrail-icons-<pack>@solid'`; `qt6ct.conf` lleva el mismo nombre.
 
 ## P2.8 — Flatpak y Firefox siguen la paleta (2026-11-04)
 

@@ -71,21 +71,32 @@ stamp per pack and palette skips the work otherwise.
 
 From the window:
 
-1. the Icons tab's **Adaptive** section writes
-   `iconTheme = vitrail-icons-<pack>` (or `@light` / `@solid`) to `fonts.ini`;
+1. the Icons tab writes `iconTheme = <pack>`, `iconAdaptive` and `iconFill`
+   (`solid` by default, `light` or `pack`) to `fonts.ini`;
 2. `scripts/apply-settings.sh` runs `python3 -m vitrail.fonts apply`;
-3. `apply` builds the layer for that style and sets
+3. `apply` builds `vitrail-icons-<pack>` (or `@light` / `@solid`) and sets
    `org.gnome.desktop.interface icon-theme`, `gtk-icon-theme-name` and qt6ct's
    `icon_theme` to the generated name.
 
-The plain row keeps each folder shade with its hue moved to `primary`. `@light`
-paints the body at L≈0.85 with a moderate saturation; `@solid` paints it as
-`primary`. Both keep the original outline and any symbol outside the folder
-body hue, so the folder still reads as the pack's own art.
+**Solid** (the default) paints the folder body with `primary` exactly, so every
+folder of any pack uses the system colour; the outline and the symbols stay the
+pack's. **Light** paints the body at L≈0.85 with a moderate saturation; **Pack**
+keeps the pack's own shading and only moves its hue to `primary`.
 
-The generated theme is a normal installed theme: it appears in **App icon
-pack**, in `vitrail-fonts state`, and in any other program's theme list. Its
-previews are its own tinted folders.
+The pack's own special folders keep their symbol: the tint only touches the
+body shades around the anchor, never the dark or neutral symbol/outline. A
+parent theme supplies only the folder stems the pack lacks (`folder-open`), so
+a generic parent folder can never shadow `folder-documents`, `folder-download`
+or `user-home`.
+
+The generated theme copies the pack's `index.theme` directory sections
+(`Size`, `Type`, `Context`): GTK ignores directories without them and would
+fall back to `Inherits`, showing the pack's original colours. Folder SVGs that
+fill with `currentColor` (the symbolic small sizes) take `primary` as well.
+
+The generated theme is a normal installed theme: it appears in the system's
+theme lists and in `vitrail-fonts state`. The picker itself lists the packs,
+because the generated name is derived from the chosen pack and fill.
 
 ## What the session does with it
 
