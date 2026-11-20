@@ -183,4 +183,6 @@ hl.on("hyprland.start", function()
     -- that keeps other preference writes from re-applying it does not know
     -- this is a new session.
     hl.exec_cmd(home .. "/.local/bin/vitrail-monitors apply --force")
+    -- Remote access: wayvnc on the Tailscale IP only (~/.config/wayvnc/config).
+    hl.exec_cmd("systemctl --user start wayvnc")
 end)
