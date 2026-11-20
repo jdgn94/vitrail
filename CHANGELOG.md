@@ -36,6 +36,9 @@ The first distributable release.
   icon and cursor cards, the font fields and the wallpaper effects (whose cells
   are a wide preview of the picture); the font and effect triggers are a select
   field with a chevron.
+- The OSD's cards open with a right click on their slider and carry the
+  settings gear at the top right; the brightness card opens with a single
+  monitor and says so.
 - Cursors: one installed-pack list, Adaptive and Monochrome switches, one
   stable `vitrail-cursor` theme, and `.zip` import/delete, so a new app reads
   the current pointer without a logout.

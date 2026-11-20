@@ -552,10 +552,6 @@
   "osd.inputs": "Input devices",
   "osd.apps": "Apps playing audio",
   "osd.micApps": "Apps using the microphone",
-  "osd.settings": "Settings",
-  "osd.settings.volume": "Volume settings",
-  "osd.settings.mic": "Microphone settings",
-  "osd.settings.brightness": "Brightness settings",
   "osd.displays": "Displays",
   "osd.brightnessAccess": "Brightness needs access to the monitors' i2c bus. Run the installer, then log out and back in.",
   "osd.brightnessMissing": "Install ddcutil to control the brightness of external monitors.",
@@ -979,4 +975,5 @@
   "fonts.cursor.imported": "Cursor pack imported",
   "fonts.cursor.removed": "Cursor pack removed",
   "wallpaper.systemColor.custom": "Custom color",
+  "osd.displays.one": "Only one monitor"
 }

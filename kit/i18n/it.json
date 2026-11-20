@@ -552,10 +552,6 @@
   "osd.inputs": "Dispositivi di ingresso",
   "osd.apps": "App che riproducono audio",
   "osd.micApps": "App che usano il microfono",
-  "osd.settings": "Impostazioni",
-  "osd.settings.volume": "Impostazioni del volume",
-  "osd.settings.mic": "Impostazioni del microfono",
-  "osd.settings.brightness": "Impostazioni della luminosità",
   "osd.displays": "Schermi",
   "osd.brightnessAccess": "La luminosità richiede l'accesso al bus i2c dei monitor. Esegui l'installer, poi esci e rientra.",
   "osd.brightnessMissing": "Installa ddcutil per controllare la luminosità dei monitor esterni.",
@@ -979,4 +975,5 @@
   "fonts.cursor.imported": "Pack del cursore importato",
   "fonts.cursor.removed": "Pack del cursore eliminato",
   "wallpaper.systemColor.custom": "Colore personalizzato",
+  "osd.displays.one": "C'è un solo monitor"
 }

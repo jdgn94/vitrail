@@ -20,9 +20,10 @@ import "brightness.js" as Light
 //   hot zone, the panel and its card takes input.
 // - A media key (or a change from outside, see OsdController) shows only that
 //   slider for `osd.key` ms, on the focused monitor.
-// - Hovering a slider of the full panel opens a card beside it, toward the
-//   screen interior: the output devices, the input devices, or one brightness
-//   slider per monitor (only when there is more than one).
+// - Hovering a slider of the full panel shows what it is; a right click opens
+//   its card beside it, toward the screen interior: the output devices, the
+//   input devices, or the brightness of each display. The card carries its
+//   gear at the top right (settings of that slider).
 // - Docked, the panel is a tab of the frame (`tabs`, for VitrailBar.tabs); a
 //   floating bar gets an island. Both open like the popups (VitrailLiquid).
 Scope {
@@ -57,14 +58,12 @@ Scope {
     property string keyKind: ""
     property var kinds: root.all
     // The kind whose card is open, and the last one (it keeps its content
-    // while the card closes).
+    // while the card closes). The card opens on a right click and the gear
+    // inside it leads to those settings.
     property string extKind: ""
     property string shownExt: ""
     property string hoverKind: ""
     property string pressedKind: ""
-    // The kind whose gear is hovered: its settings tooltip shows instead of
-    // opening the card.
-    property string settingsKind: ""
 
     readonly property var all: ["volume", "mic", "brightness"]
     readonly property bool side: Osd.vertical(root.edge)
@@ -77,13 +76,16 @@ Scope {
         thickness: root.thickness,
         length: VitrailTokens.osd.length,
         icon: root.thickness,
-        gear: root.thickness,
         textWide: Math.round(VitrailTokens.size("label") * 3.2),
         textTall: VitrailTokens.size("label") + VitrailTokens.gap("xs"),
         pad: VitrailTokens.gap("sm"),
         spacing: VitrailTokens.gap("sm"),
         inner: VitrailTokens.gap("xs")
     })
+    // The card's own heading: what its body lists.
+    readonly property string cardTitle: root.shownExt === "brightness" ? root.t("osd.displays")
+                                        : root.shownExt === "volume" ? root.t("osd.outputs")
+                                                                     : root.t("osd.inputs")
     readonly property var wantSize: Osd.panelSize(root.edge, root.kinds.length, root.metrics)
     // The panel with all three sliders: the hot zone is as long as this one.
     readonly property var fullRect: Osd.panelRect(root.edge, window.width, window.height,
@@ -128,8 +130,22 @@ Scope {
 
     function extAvailable(kind) {
         var c = root.controller
-        return kind === "brightness" ? c.light.enabled && c.light.devices.length > 1
+        return kind === "brightness" ? c.light.enabled && c.light.devices.length >= 1
                                      : (kind === "volume" ? c.sinks.length : c.sources.length) > 0
+    }
+
+    // A right click on a slider opens its card (another one switches); the
+    // same slider again closes it.
+    function toggleCard(kind) {
+        if (root.mode !== "full" || !root.extAvailable(kind))
+            return
+        if (root.extKind === kind) {
+            root.extKind = ""
+            return
+        }
+        root.shownExt = kind
+        root.extKind = kind
+        extTimer.stop()
     }
 
     // A media key: only that slider, then it goes. A full panel stays as is.
@@ -159,30 +175,6 @@ Scope {
         }
     }
 
-    onHoverKindChanged: {
-        if (root.settingsKind !== "")
-            return
-        if (root.hoverKind !== "" && root.mode === "full" && root.extAvailable(root.hoverKind)) {
-            root.extKind = root.hoverKind
-            root.shownExt = root.hoverKind
-            extTimer.stop()
-        } else if (root.hoverKind === "") {
-            extTimer.restart()
-        }
-    }
-
-    // The gear's tooltip replaces the card: hovering it never opens one.
-    onSettingsKindChanged: {
-        if (root.settingsKind !== "") {
-            root.extKind = ""
-            extTimer.stop()
-        } else if (root.hoverKind !== "" && root.mode === "full" && root.extAvailable(root.hoverKind)) {
-            root.extKind = root.hoverKind
-            root.shownExt = root.hoverKind
-            extTimer.stop()
-        }
-    }
-
     Connections {
         target: root.controller
 
@@ -200,11 +192,10 @@ Scope {
             root.mode = "hidden"
             root.extKind = ""
             root.hoverKind = ""
-            root.settingsKind = ""
         }
     }
 
-    // The card outlives the pointer's walk from its slider to the card.
+    // The card closes after the pointer left it.
     Timer {
         id: extTimer
 
@@ -349,12 +340,6 @@ Scope {
                             else if (root.hoverKind === cell.modelData)
                                 root.hoverKind = ""
                         }
-                        onSettingsHoveredChanged: {
-                            if (cell.settingsHovered)
-                                root.settingsKind = cell.modelData
-                            else if (root.settingsKind === cell.modelData)
-                                root.settingsKind = ""
-                        }
                         onPressedChanged: {
                             if (cell.pressed)
                                 root.pressedKind = cell.modelData
@@ -362,7 +347,7 @@ Scope {
                                 root.pressedKind = ""
                         }
                         onMoved: function (value) { root.move(cell.modelData, value) }
-                        onSettingsRequested: root.openSettings(cell.modelData)
+                        onCardRequested: root.toggleCard(cell.modelData)
                         onMuteRequested: {
                             if (cell.modelData === "volume")
                                 root.controller.toggleMute()
@@ -392,7 +377,7 @@ Scope {
 
             readonly property real margin: VitrailTokens.gap("md")
             readonly property var size: ({ width: VitrailTokens.osd.card + 2 * card.margin,
-                                           height: body.implicitHeight + 2 * card.margin })
+                                           height: column.implicitHeight + 2 * card.margin })
             readonly property var cell: Osd.cellRect(root.edge, root.panel, Math.max(0, root.kinds.indexOf(root.shownExt)),
                                                      root.metrics)
             readonly property var origin: Qt.rect(card.cell.x, card.cell.y, card.cell.width, card.cell.height)
@@ -416,14 +401,44 @@ Scope {
                 onHoveredChanged: if (!cardHover.hovered) extTimer.restart()
             }
 
-            Loader {
-                id: body
+            // The card's own heading, with the gear that leads to the settings
+            // of the slider it belongs to.
+            ColumnLayout {
+                id: column
 
                 x: card.margin
                 y: card.margin
                 width: card.width - 2 * card.margin
-                opacity: extLiquid.look.content
-                sourceComponent: root.shownExt === "brightness" ? lightCard : deviceCard
+                spacing: VitrailTokens.gap("sm")
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: VitrailTokens.gap("xs")
+
+                    VitrailText {
+                        Layout.fillWidth: true
+                        variant: "label"
+                        text: root.cardTitle
+                        elide: Text.ElideRight
+                    }
+
+                    VitrailButton {
+                        objectName: "osdCardSettings"
+                        variant: "plain"
+                        tone: "secondary"
+                        size: "sm"
+                        icon: "settings"
+                        onClicked: root.openSettings(root.shownExt)
+                    }
+                }
+
+                Loader {
+                    id: body
+
+                    Layout.fillWidth: true
+                    opacity: extLiquid.look.content
+                    sourceComponent: root.shownExt === "brightness" ? lightCard : deviceCard
+                }
             }
         }
 
@@ -441,12 +456,9 @@ Scope {
 
             x: tip.at.x
             y: tip.at.y
-            text: root.settingsKind !== "" ? root.t("osd.settings")
-                                           : (root.hoverKind !== "" ? root.specOf(root.hoverKind).tooltip : "")
-            detail: root.settingsKind !== "" ? root.t("osd.settings." + root.settingsKind)
-                                             : (root.hoverKind !== "" ? root.specOf(root.hoverKind).detail : "")
-            active: (root.settingsKind !== "" || root.hoverKind !== "") && root.extKind === ""
-                    && root.mode !== "hidden"
+            text: root.hoverKind !== "" ? root.specOf(root.hoverKind).tooltip : ""
+            detail: root.hoverKind !== "" ? root.specOf(root.hoverKind).detail : ""
+            active: root.hoverKind !== "" && root.extKind === "" && root.mode !== "hidden"
             edge: root.edge
             opacityLevel: root.opacityLevel
         }

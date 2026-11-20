@@ -552,10 +552,6 @@
   "osd.inputs": "Eingabegeräte",
   "osd.apps": "Apps, die Ton abspielen",
   "osd.micApps": "Apps, die das Mikrofon benutzen",
-  "osd.settings": "Einstellungen",
-  "osd.settings.volume": "Lautstärkeeinstellungen",
-  "osd.settings.mic": "Mikrofoneinstellungen",
-  "osd.settings.brightness": "Helligkeitseinstellungen",
   "osd.displays": "Bildschirme",
   "osd.brightnessAccess": "Die Helligkeit braucht Zugriff auf den i2c-Bus der Monitore. Installer ausführen, dann ab- und wieder anmelden.",
   "osd.brightnessMissing": "Installiere ddcutil, um die Helligkeit externer Monitore zu steuern.",
@@ -979,4 +975,5 @@
   "fonts.cursor.imported": "Cursor-Paket importiert",
   "fonts.cursor.removed": "Cursor-Paket entfernt",
   "wallpaper.systemColor.custom": "Eigene Farbe",
+  "osd.displays.one": "Nur ein Monitor"
 }

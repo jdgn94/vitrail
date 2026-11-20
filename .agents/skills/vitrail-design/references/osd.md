@@ -43,9 +43,11 @@ brightness.py` (ddcutil / brightnessctl, `tests/test_brightness.py`), tokens
 - Mouse wheel over a slider moves it `osd.step` % a notch (up / right more),
   in the panel and in the brightness card: `VitrailSlider.wheelStep` (opt-in;
   0 leaves the wheel to the parent page). Hovering keeps the panel open.
-- Hover a slider: a card opens beside it toward the screen interior (liquid
-  skin joined to the panel by a neck): output devices (sets the default sink),
-  input devices, or one slider per monitor (only with more than one).
+- A right click on a slider opens its card beside it toward the screen
+  interior (liquid skin joined to the panel by a neck): output devices (sets
+  the default sink), input devices, or the brightness of each display. Another
+  right click on the same slider closes it; the card closes when the pointer
+  leaves it. Hovering a slider only explains it (`tooltip`).
 - The volume and microphone cards also list **one row per app with an open
   stream** (playback for output, capture for input): the app icon focuses its
   window, the speaker button mutes every stream of that app, and the slider is
@@ -54,10 +56,13 @@ brightness.py` (ddcutil / brightnessctl, `tests/test_brightness.py`), tokens
   the general is never written, and the app's percentage does not move when the
   general changes. Streams of one app (browser tabs) are one row; its percentage
   is the mean. `bar/osd/audio.js` groups them, tested in `tst_osd.qml`.
-- Every cell ends with a **settings gear** (after the percentage): volume and
-  microphone open Settings → Sound → Output / Input, brightness opens Bar → OSD.
-  Hovering the gear clears the card and shows `osd.settings` in the panel's
-  tooltip. The OSD's behaviour (keys, duration, hot zone, size, steps) and the
+- Every card carries its heading (`osd.outputs`, `osd.inputs`, `osd.displays`)
+  and the **settings gear** at the top right: volume and microphone open
+  Settings → Sound → Output / Input, brightness opens Bar → OSD. The slider
+  itself has no gear; `OsdCell.cardRequested` is its right click. With a single
+  monitor the brightness card still opens and says `osd.displays.one` ("Solo
+  hay un monitor") beside its gear, since the main slider already moves it.
+  The OSD's behaviour (keys, duration, hot zone, size, steps) and the
   app lists live in those two settings places (`sound.ini`, `bar.ini`).
 - Media key / `osd` IPC / a change from outside (`wpctl`, headset keys): only
   that slider, `osd.key` ms, on the focused monitor (`OsdController.keyed`).

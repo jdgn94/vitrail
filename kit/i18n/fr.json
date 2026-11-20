@@ -552,10 +552,6 @@
   "osd.inputs": "Périphériques d'entrée",
   "osd.apps": "Applications qui lisent de l'audio",
   "osd.micApps": "Applications qui utilisent le microphone",
-  "osd.settings": "Paramètres",
-  "osd.settings.volume": "Paramètres du volume",
-  "osd.settings.mic": "Paramètres du microphone",
-  "osd.settings.brightness": "Paramètres de la luminosité",
   "osd.displays": "Écrans",
   "osd.brightnessAccess": "La luminosité nécessite l'accès au bus i2c des écrans. Lancez l'installateur, puis rouvrez votre session.",
   "osd.brightnessMissing": "Installez ddcutil pour régler la luminosité des écrans externes.",
@@ -979,4 +975,5 @@
   "fonts.cursor.imported": "Pack de curseurs importé",
   "fonts.cursor.removed": "Pack de curseurs supprimé",
   "wallpaper.systemColor.custom": "Couleur personnalisée",
+  "osd.displays.one": "Un seul moniteur"
 }

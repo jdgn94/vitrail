@@ -552,10 +552,6 @@
   "osd.inputs": "Dispositivos de entrada",
   "osd.apps": "Apps reproduciendo audio",
   "osd.micApps": "Apps usando el micrófono",
-  "osd.settings": "Configuración",
-  "osd.settings.volume": "Configuración de volumen",
-  "osd.settings.mic": "Configuración del micrófono",
-  "osd.settings.brightness": "Configuración de brillo",
   "osd.displays": "Pantallas",
   "osd.brightnessAccess": "El brillo necesita acceso al bus i2c de los monitores. Ejecuta el instalador y vuelve a iniciar sesión.",
   "osd.brightnessMissing": "Instala ddcutil para controlar el brillo de los monitores externos.",
@@ -979,4 +975,5 @@
   "fonts.cursor.imported": "Pack de cursor importado",
   "fonts.cursor.removed": "Pack de cursor eliminado",
   "wallpaper.systemColor.custom": "Color personalizado",
+  "osd.displays.one": "Solo hay un monitor"
 }

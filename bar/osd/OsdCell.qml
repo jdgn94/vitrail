@@ -35,11 +35,11 @@ Item {
 
     signal moved(real value)
     signal muteRequested()
-    signal settingsRequested()
+    // The pointer asked for this slider's card with a right click.
+    signal cardRequested()
 
     readonly property bool hovered: hover.hovered
     readonly property bool pressed: slider.pressed || mute.pressed
-    readonly property bool settingsHovered: gear.hovered
     readonly property var size: Osd.cell(root.vertical, root.metrics)
 
     implicitWidth: root.size.width
@@ -111,24 +111,11 @@ Item {
             variant: "label"
             text: root.available ? Math.round(root.value) + "%" : "–"
         }
+    }
 
-        // The gear: the settings of this slider (the layer picks the page).
-        Item {
-            Layout.preferredWidth: root.metrics.gear || root.metrics.icon
-            Layout.preferredHeight: root.metrics.gear || root.metrics.icon
-            Layout.alignment: Qt.AlignCenter
-
-            VitrailButton {
-                id: gear
-
-                objectName: "osdSettings"
-                anchors.fill: parent
-                variant: "plain"
-                tone: "secondary"
-                size: "md"
-                icon: "settings"
-                onClicked: root.settingsRequested()
-            }
-        }
+    // A right click asks for this slider's card (devices, or the displays).
+    TapHandler {
+        acceptedButtons: Qt.RightButton
+        onTapped: root.cardRequested()
     }
 }

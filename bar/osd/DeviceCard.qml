@@ -30,13 +30,6 @@ ColumnLayout {
         return value === undefined ? key : value
     }
 
-    VitrailText {
-        Layout.fillWidth: true
-        Layout.leftMargin: VitrailTokens.gap("sm")
-        variant: "label"
-        text: root.t(root.output ? "osd.outputs" : "osd.inputs")
-    }
-
     Scroller {
         Repeater {
             model: root.devices
