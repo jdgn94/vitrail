@@ -1,6 +1,9 @@
 # Base system: terminal, audio, generic Wayland and Qt for Vitrail.
 base-devel
 git
+# Pending repository updates for the bar's updates snapshot (checkupdates);
+# it uses a temporary package database and needs no root.
+pacman-contrib
 zsh
 starship
 fzf
