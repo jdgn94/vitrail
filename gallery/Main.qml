@@ -568,6 +568,32 @@ Window {
 
         VitrailText {
             variant: "title"
+            text: "VitrailColorPicker · size × colour"
+        }
+
+        RowLayout {
+            spacing: VitrailTokens.gap("xl")
+
+            Repeater {
+                model: [
+                    { size: "sm", color: "#f44336" },
+                    { size: "md", color: "#2196f3" },
+                    { size: "lg", color: "#9fd8a3" }
+                ]
+
+                delegate: VitrailColorPicker {
+                    required property var modelData
+
+                    Layout.alignment: Qt.AlignTop
+                    size: modelData.size
+                    color: modelData.color
+                    placeholder: "Hex code"
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
             text: "VitrailIcon · size × tone"
         }
 

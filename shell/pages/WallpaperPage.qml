@@ -1,10 +1,12 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import QtQuick.Effects
 import Qt.labs.folderlistmodel
 import "../../kit"
 import "../../kit/base"
+import "../../kit/composed"
 import "../../bar/effects.js" as Effects
 import "../../bar/wallpapermonitors.js" as Wallpaper
 import "../reorder.js" as Reorder
@@ -148,15 +150,6 @@ Item {
         if (chosen !== "" && !seen[chosen])
             out.push({ key: chosen, label: chosen.split("/").pop() })
         return out
-    }
-
-    // The custom colour as the "#rrggbb" matugen reads.
-    function hex(color) {
-        function pair(value) {
-            var text = Math.round(Math.max(0, Math.min(1, value)) * 255).toString(16)
-            return text.length < 2 ? "0" + text : text
-        }
-        return "#" + pair(color.r) + pair(color.g) + pair(color.b)
     }
 
     // Bumped after a picture changes: the previews of the new one land a few
@@ -390,7 +383,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: colorPicker.open()
+            onClicked: colorDialog.show()
         }
     }
 
@@ -978,13 +971,98 @@ Item {
         }))
     }
 
-    ColorDialog {
-        id: colorPicker
+    // The custom system colour: the kit's colour picker in a modal over the page.
+    Popup {
+        id: colorDialog
 
-        title: page.t("wallpaper.systemColor.custom")
-        selectedColor: page.prefs.systemColor !== "" ? String(page.prefs.systemColor)
-                                                     : String(page.palette.primary)
-        onAccepted: page.prefs.systemColor = page.hex(colorPicker.selectedColor)
+        function show() {
+            colorPick.adopt(page.prefs.systemColor !== "" ? String(page.prefs.systemColor)
+                                                       : String(page.palette.primary))
+            colorDialog.open()
+        }
+
+        function accept() {
+            if (!colorPick.valid)
+                return
+            page.prefs.systemColor = colorPick.hex
+            colorDialog.close()
+        }
+
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        // No scrim: the platform style's dim washes a dark window white.
+        dim: false
+        padding: VitrailTokens.gap("lg")
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        width: VitrailTokens.colorPicker.dialog + 2 * colorDialog.padding
+        height: contentItem.implicitHeight + 2 * colorDialog.padding
+
+        onOpened: colorPick.focusCode()
+
+        enter: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: VitrailTokens.motion.smooth.scale; to: 1; duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic }
+        }
+
+        exit: Transition {
+            NumberAnimation { property: "opacity"; to: 0; duration: VitrailTokens.duration("fast") }
+        }
+
+        background: Rectangle {
+            radius: VitrailTokens.radius
+            color: page.palette.surfaceHigh
+            border.width: 1
+            border.color: Qt.rgba(page.palette.foreground.r, page.palette.foreground.g, page.palette.foreground.b, 0.12)
+        }
+
+        contentItem: ColumnLayout {
+            spacing: VitrailTokens.gap("md")
+
+            Keys.onReturnPressed: colorDialog.accept()
+            Keys.onEnterPressed: colorDialog.accept()
+
+            VitrailText {
+                Layout.fillWidth: true
+                variant: "subtitle"
+                text: page.t("wallpaper.systemColor.custom")
+                elide: Text.ElideRight
+            }
+
+            VitrailColorPicker {
+                id: colorPick
+
+                Layout.fillWidth: true
+                placeholder: page.t("wallpaper.systemColor.hex")
+                onEscaped: colorDialog.close()
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: VitrailTokens.gap("sm")
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                VitrailButton {
+                    variant: "outlined"
+                    tone: "secondary"
+                    size: "sm"
+                    text: page.t("dialog.cancel")
+                    onClicked: colorDialog.close()
+                }
+
+                VitrailButton {
+                    variant: "flat"
+                    size: "sm"
+                    enabled: colorPick.valid
+                    text: page.t("wallpaper.systemColor.use")
+                    onClicked: colorDialog.accept()
+                }
+            }
+        }
     }
 
     // The previews of a new picture land a few seconds after the preference

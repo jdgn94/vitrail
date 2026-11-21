@@ -1062,5 +1062,7 @@
   "fonts.cursor.imported": "Cursor pack imported",
   "fonts.cursor.removed": "Cursor pack removed",
   "wallpaper.systemColor.custom": "Custom color",
+  "wallpaper.systemColor.hex": "Hex code",
+  "wallpaper.systemColor.use": "Use",
   "osd.displays.one": "Only one monitor"
 }

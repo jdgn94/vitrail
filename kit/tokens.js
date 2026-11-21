@@ -188,6 +188,24 @@ var slider = {
     wheelPixels: 60
 }
 
+// The colour picker (kit/composed/VitrailColorPicker). Per size: the wheel's
+// `wheel` diameter, the tone track's `track` thickness and the `marker` that
+// sits on both (the colour it holds, inside a `ring`). The marker grows by
+// `grow` while the pointer holds it. `lightness` is the lightness the wheel is
+// drawn at, `edge` px the soft rim of the wheel, `step` how far an arrow key
+// moves the tone (0..1), `dialog` the width of a dialog that holds the picker.
+var colorPicker = {
+    wheel: { sm: 132, md: 176, lg: 224 },
+    track: { sm: 12, md: 16, lg: 20 },
+    marker: { sm: 20, md: 24, lg: 28 },
+    ring: 3,
+    grow: 1.15,
+    lightness: 0.5,
+    edge: 1.5,
+    step: 0.02,
+    dialog: 320
+}
+
 // The OSD of volume, microphone and brightness (bar/osd). `size` is the
 // slider's, `length` how long each is, `hot` how far the invisible hot zone
 // reaches past the frame border, `hide` and `extension` the pointer's grace

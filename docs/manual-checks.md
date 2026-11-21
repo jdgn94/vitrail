@@ -230,6 +230,10 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] El audio solo se graba con el interruptor de audio encendido.
 - [ ] **Anotar**: enciende *Anotar las capturas*; al capturar se abre swappy y
       lo que guardes es lo que queda en el fichero y en el portapapeles.
+- [ ] **Color propio**: en el editor, el color propio abre la rueda de color,
+      la barra de tono y el código hex; mover uno mueve los otros, un código
+      inválido pone el campo en error y `⏎` usa el color. Lo mismo en
+      Ajustes → Fondo → Color del sistema → personalizado.
 - [ ] **Grabar región**: enciende *Grabar una región*; el botón de grabar abre
       el overlay y `⏎`/`R` graban esa zona (Escape cancela sin grabar).
 

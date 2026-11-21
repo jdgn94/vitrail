@@ -24,7 +24,7 @@ layer contract.
    - `references/popups.md` — bar popup placement and the docked tab shape.
    - `references/notifications.md` — toast stack, queue, positions, actions.
    - `references/components.md` — type, icons, button variants, indicators,
-     slider, settings window layout, popup rows.
+     slider, colour picker, settings window layout, popup rows.
    - `references/wallpapers.md` — library, wallpaper kinds, colour pipeline.
    - `references/dialogs.md` — polkit and Hyprland dialogs in the bar.
    - `references/datetime.md` — time zone world map, NTP, system language.

@@ -119,6 +119,37 @@ out and stops its timers when not running. `VitrailButton { busy }` swaps the
 icon (or starts the label) with it and ignores clicks; use it for anything that
 waits (polkit check, connecting).
 
+## VitrailColorPicker (`kit/composed`, built from `kit/base`)
+
+The one colour picker: a wheel, a tone slider and a hex field that are one colour
+and follow each other. Used by the capture editor's custom colour and by the
+settings window's system colour (`WallpaperPage`).
+
+- `VitrailColorWheel` (base): every hue around the circle, saturation from the
+  centre (grey) to the rim, painted by `kit/shaders/color-wheel.frag` at the
+  token lightness (`colorPicker.lightness`); a press or drag picks (beyond the
+  rim is the rim); the marker holds the picker's colour. The shader needs a real
+  RHI backend: the `offscreen` platform uses the software one and draws no wheel,
+  so look at it under `QT_QPA_PLATFORM=wayland` (pointer maths is tested anyway).
+- `VitrailToneSlider` (base), not `VitrailSlider`: the whole track is the colour's
+  own tones, black to the hue and saturation (middle) to white, repainted as the
+  wheel moves; Left / Right step by `colorPicker.step`.
+- `VitrailColorPicker` keeps hue / saturation / lightness (so a black or a grey
+  does not lose the hue the wheel is on). `color` adopts a code from outside,
+  `adopt(text)` does it by call (a reopened dialog whose `color` did not change),
+  `hex` / `valid` read it back, `edited(hex)` reports the user's changes, `size`
+  sm / md / lg. The field takes #RGB and #RRGGBB, with or without `#`; what was
+  typed is not rewritten while typing. A field takes Escape (`escaped`) but not
+  Return: it reaches the dialog's own key handler, so do not also forward an
+  `accepted` signal or the dialog accepts twice.
+- Maths (HSL, hex, wheel point <-> hue/saturation, one angle convention shared
+  with the shader) is `kit/color.js`, tested in `tst_color.qml`; sizes are the
+  `colorPicker` tokens. The wheel's `.qsb` is baked with `scripts/build-shaders.sh`.
+- In a settings page put it in a `Popup { parent: Overlay.overlay; modal; dim:
+  false }` like `VitrailPicker` (see the system colour dialog in `WallpaperPage`);
+  in a layer-shell card use the card's own `EditorDialog` (a `Popup` is not used
+  there).
+
 ## Which selector when
 
 - **Tabs** (`VitrailTabs`) navigate: they switch which section is shown, the

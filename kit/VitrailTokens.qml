@@ -38,6 +38,7 @@ QtObject {
     readonly property var icon: Tokens.icon
     readonly property var motion: Tokens.motion
     readonly property var slider: Tokens.slider
+    readonly property var colorPicker: Tokens.colorPicker
     readonly property var osd: Tokens.osd
     readonly property var monitorEdit: Tokens.monitorEdit
     readonly property var desktopEdit: Tokens.desktopEdit

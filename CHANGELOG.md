@@ -26,6 +26,11 @@ The first distributable release.
   the background so only the buttons that can work are enabled, and every
   button's tooltip names its key. Settings: Bar → Capture (detection, Ask AI,
   OCR languages, palette size, Translate language).
+- A colour picker of the kit: a colour wheel (hue around, saturation from the
+  centre), a tone slider painted with the colour's own tones and a hex code that
+  follow each other. It replaces the editor's hue / saturation / lightness
+  sliders and the system colour's plain Qt dialog (Wallpaper → System colour →
+  custom).
 - Capture keys and notices: `Ctrl`+`C` copies the picture (it used to open the
   palette), `Ctrl`+`S` saves it, and letter shortcuts ignore Ctrl/Alt/Meta; on a
   card `Ctrl`+`C` copies its content. Every action says what it did in a
