@@ -36,7 +36,7 @@ apps that take HTML. Settings: Launcher → Clipboard.
 The bar's camera button opens the capture overlay (`vitrail/capture.py`): the
 screen freezes, the area can be dragged and resized with its eight handles —
 even across monitors — and a toolbar outside it offers the actions. `Enter`
-takes the picture and copies it, `G` saves it under `~/Pictures/Screenshots`,
+or `Ctrl`+`C` takes the picture and copies it (in record mode `Enter` records and `Ctrl`+`C` still copies), `G` or `Ctrl`+`S` saves it under `~/Pictures/Screenshots`,
 `A` opens it in `swappy`, `R` records that area with `wf-recorder` — one monitor per
 recording — (a red chip in the bar stops it), `T` sets a 3 or 5 second countdown, `W` picks a window
 (a click takes it), `F` takes the whole layout and `Esc` leaves; the toolbar
@@ -66,7 +66,12 @@ pins, and they outlive the overlay. `I`
 browser on Google Lens with the picture and the question (its AI Overview
 answers it, and the AI Mode tab continues with both). Nothing is sent before
 `Enter`, only to Google, and the Bar → Capture switch removes the button and the
-key. `PRINT` opens the
+key. Letters are plain keys: with `Ctrl`, `Alt` or `Meta` they do nothing, except `Ctrl`+`C` and
+`Ctrl`+`S`; on a card `Ctrl`+`C` copies its content (the colours, the QR content or
+the translation). Every action says what it did in a notification: screenshot
+copied (its size) or saved (its path), annotator opened, area pinned, countdown
+started, recording started and saved (the file) and Ask AI opening Google.
+`PRINT` opens the
 same overlay (and `Super+PRINT` with the whole layout selected). The folders and
 the recording flags live in `capture.ini` (Bar → Capture).
 

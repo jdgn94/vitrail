@@ -26,6 +26,12 @@ The first distributable release.
   the background so only the buttons that can work are enabled, and every
   button's tooltip names its key. Settings: Bar → Capture (detection, Ask AI,
   OCR languages, palette size, Translate language).
+- Capture keys and notices: `Ctrl`+`C` copies the picture (it used to open the
+  palette), `Ctrl`+`S` saves it, and letter shortcuts ignore Ctrl/Alt/Meta; on a
+  card `Ctrl`+`C` copies its content. Every action says what it did in a
+  notification: copied, saved (with the path), annotator opened, pinned,
+  countdown started, recording started and saved, Ask AI opening, QR and
+  translation copied.
 - Rich clipboard: a copy keeps the style of its source (font family, size,
   weight, italics, colour, spacing, lists). The watcher keeps the source's
   `text/html` beside cliphist's text (`~/.cache/vitrail/clipboard/`, keyed by the

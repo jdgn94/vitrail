@@ -986,6 +986,16 @@ ShellRoot {
         shell.captureNotice("capture.failed")
     }
 
+    // A body is StyledText: a path or a size may hold & or <.
+    function captureEscape(text) {
+        return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    }
+
+    // "1280 × 720", the way the overlay's size label writes it.
+    function captureSize(rect) {
+        return rect ? Math.round(rect.w) + " × " + Math.round(rect.h) : ""
+    }
+
     function confirmCapture(selection, action, timer, text) {
         overlayLoader.active = false
         shell.capturePending = ({
@@ -1000,6 +1010,8 @@ ShellRoot {
             refreeze: timer > 0
         })
         if (timer > 0) {
+            shell.captureNotice("capture.timer.started",
+                                shell.t("capture.timer.in") + " " + shell.t("capture.timer." + timer))
             captureDelay.interval = timer * 1000
             captureDelay.restart()
         } else {
@@ -1030,6 +1042,7 @@ ShellRoot {
             return
         }
         if (pending.action === "ask") {
+            shell.captureNotice("capture.ask.opening")
             captureAsk.exec(["python3", "-m", "vitrail.capture", "ask", "--geometry", pending.geometry,
                              "--text", pending.text])
             return
@@ -1054,10 +1067,47 @@ ShellRoot {
             shell.captureNotice("capture.copyFailed")
             return
         }
+        var pending = shell.capturePending
         if (shell.captureAnnotateNext && document.path) {
             shell.captureAnnotateNext = false
             captureAnnotate.exec(["python3", "-m", "vitrail.capture", "annotate", document.path])
+            shell.captureNotice("capture.annotate.opened", shell.captureSize(pending && pending.rect))
+        } else if (document.path) {
+            shell.captureNotice("capture.save.saved", shell.captureEscape(document.path))
+        } else if (document.copied) {
+            shell.captureNotice("capture.shot.copied", shell.captureSize(pending && pending.rect))
         }
+    }
+
+    // Recording: started with the file it writes, and saved when it stops.
+    function captureRecorded(text) {
+        var document = ({})
+        try {
+            document = JSON.parse(text)
+        } catch (error) {
+            document = ({})
+        }
+        if (document.error || !document.path)
+            shell.captureNotice("capture.record.failed")
+        else
+            shell.captureNotice("capture.record.started", shell.captureEscape(document.path))
+    }
+
+    function captureStopped(text) {
+        var document = ({})
+        try {
+            document = JSON.parse(text)
+        } catch (error) {
+            document = ({})
+        }
+        if (document.recording === false && document.path)
+            shell.captureNotice("capture.record.saved", shell.captureEscape(document.path))
+    }
+
+    // The card's copy button (and Ctrl+C): the translation or the QR content.
+    function captureCopied(text) {
+        shell.copyText(text)
+        shell.captureNotice(shell.inspectKind === "qr" ? "capture.qr.copyDone" : "capture.translate.copied")
     }
 
     // A pinned area: the picture is a file of its own now, and the pin layer
@@ -1075,6 +1125,7 @@ ShellRoot {
             return
         }
         pinLayer.add(document.image, pending.rect, shell.capture.monitors || [])
+        shell.captureNotice("capture.pin.done", shell.captureSize(pending.rect))
     }
 
     // Background detection for the overlay's buttons: one process at a time,
@@ -1246,7 +1297,7 @@ ShellRoot {
     }
 
     function toggleRecording() {
-        vitrailCli.exec(["python3", "-m", "vitrail.capture", "record", "toggle"])
+        captureStop.exec(["python3", "-m", "vitrail.capture", "record", "toggle"])
     }
 
     function readRecordStatus(text) {
@@ -2919,6 +2970,18 @@ ShellRoot {
 
     Process {
         id: captureOcr
+        stdout: StdioCollector {
+            onStreamFinished: shell.captureRecorded(this.text)
+        }
+    }
+
+    Process {
+        id: captureStop
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.captureStopped(this.text)
+        }
 
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
         stdout: StdioCollector {
@@ -2999,7 +3062,7 @@ ShellRoot {
             item.detect = shell.prefBool("captureDetect", true)
             item.detectRequested.connect(shell.runDetect)
             item.inspect.connect(shell.runInspect)
-            item.copyRequested.connect(shell.copyText)
+            item.copyRequested.connect(shell.captureCopied)
             item.openRequested.connect(shell.captureOpen)
             item.colorChosen.connect(shell.captureColor)
             item.colorsChosen.connect(shell.captureColors)

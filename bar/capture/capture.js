@@ -206,6 +206,41 @@ function shareLabel(share) {
     return percent < 1 ? "<1%" : percent + "%"
 }
 
+// What a key does in the overlay, as the name of an action ("" for none).
+// Letters are plain: with Ctrl, Alt or Meta they do nothing, except Ctrl+C
+// (copy the picture, or the card's content while a card is shown) and Ctrl+S
+// (save). Enter confirms (it records in record mode); Shift is only for
+// nudging and Tab.
+function shortcut(key, modifiers, mode, card) {
+    if (key === Qt.Key_Escape)
+        return "escape"
+    if (key === Qt.Key_Return || key === Qt.Key_Enter)
+        return mode === "record" ? "record" : "copy"
+    if (key === Qt.Key_Left || key === Qt.Key_Right || key === Qt.Key_Up || key === Qt.Key_Down)
+        return "nudge"
+    if (key === Qt.Key_Tab)
+        return "handle"
+    if (modifiers & (Qt.AltModifier | Qt.MetaModifier))
+        return ""
+    if (modifiers & Qt.ControlModifier)
+        return key === Qt.Key_C ? (card ? "copyCard" : "copy") : key === Qt.Key_S ? "save" : ""
+    switch (key) {
+    case Qt.Key_G: return "save"
+    case Qt.Key_A: return "annotate"
+    case Qt.Key_P: return "pin"
+    case Qt.Key_O: return "ocr"
+    case Qt.Key_L: return "translate"
+    case Qt.Key_Q: return "qr"
+    case Qt.Key_C: return "palette"
+    case Qt.Key_I: return "ask"
+    case Qt.Key_R: return "record"
+    case Qt.Key_T: return "timer"
+    case Qt.Key_W: return "window"
+    case Qt.Key_F: return "full"
+    default: return ""
+    }
+}
+
 function label(rect) {
     if (!rect)
         return ""

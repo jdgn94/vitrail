@@ -308,42 +308,47 @@ Item {
         root.handle = names[index]
     }
 
+    // Ctrl+C on a card: the palette's colours or the card's text, as its own
+    // copy button does.
+    function copyCard() {
+        if (!root.card || root.card.phase !== "done")
+            return
+        if (root.card.kind === "palette")
+            root.colorsChosen(root.card.colors.map(function (one) { return one.hex }))
+        else
+            root.copyRequested(root.card.text)
+    }
+
     function key(event) {
         // The question field owns the keyboard; it reports Enter and Escape.
         if (root.asking)
             return
-        if (event.key === Qt.Key_Escape) {
+        switch (Capture.shortcut(event.key, event.modifiers, root.mode, root.card !== null)) {
+        case "escape":
             if (root.card)
                 root.closeCard()
             else
                 root.cancelled()
-            return
-        }
-        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            root.activate(root.mode === "record" ? "record" : "copy")
-            return
-        }
-        if (event.key === Qt.Key_Left || event.key === Qt.Key_Right || event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
-            root.nudge(event)
-            return
-        }
-        switch (event.key) {
-        case Qt.Key_G: root.activate("save"); break
-        case Qt.Key_A: root.activate("annotate"); break
-        case Qt.Key_P: root.activate("pin"); break
-        case Qt.Key_O:
+            break
+        case "nudge": root.nudge(event); break
+        case "handle": root.cycleHandle(event.modifiers & Qt.ShiftModifier); break
+        case "copy": root.activate("copy"); break
+        case "copyCard": root.copyCard(); break
+        case "save": root.activate("save"); break
+        case "annotate": root.activate("annotate"); break
+        case "pin": root.activate("pin"); break
+        case "ocr":
             if (!root.selection || root.textReady)
                 root.activate("ocr")
             break
-        case Qt.Key_L: root.startInspect("translate"); break
-        case Qt.Key_Q: root.startInspect("qr"); break
-        case Qt.Key_C: root.startPalette(); break
-        case Qt.Key_I: root.beginAsk(); break
-        case Qt.Key_R: root.activate("record"); break
-        case Qt.Key_T: root.cycleTimer(); break
-        case Qt.Key_W: root.toggleWindowMode(); break
-        case Qt.Key_F: root.selectAll(); break
-        case Qt.Key_Tab: root.cycleHandle(event.modifiers & Qt.ShiftModifier); break
+        case "translate": root.startInspect("translate"); break
+        case "qr": root.startInspect("qr"); break
+        case "palette": root.startPalette(); break
+        case "ask": root.beginAsk(); break
+        case "record": root.activate("record"); break
+        case "timer": root.cycleTimer(); break
+        case "window": root.toggleWindowMode(); break
+        case "full": root.selectAll(); break
         default: break
         }
     }

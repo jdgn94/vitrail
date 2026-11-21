@@ -133,5 +133,22 @@ so the veil is not the cost.
   glass layer rule. Files are deleted on close (`forget --after 0`); a bar
   restart leaves its pins' files in the tmpfs until logout.
 
+## Keys and notices
+
+`Capture.shortcut(key, modifiers, mode, card)` (capture.js, tested) maps a key to an
+action name and `key()` only dispatches. Letters are plain: with Ctrl, Alt or Meta
+they do nothing, except `Ctrl+C` = copy (`copyCard` while a card is shown: the
+palette's colours, the QR content or the translation, as the card's copy button) and
+`Ctrl+S` = save. Enter confirms (records in record mode); `Ctrl+C` always copies the
+picture, even in record mode. Every action tells what it did through
+`shell.captureNotice(key, body)`: copy (size), save (path), annotate, pin, timer,
+record start (path, from `captureRecord`'s stdout) and stop (path, from
+`captureStop`: the chip and the panel stop it through `toggleRecording`), Ask AI
+opening, QR / translation copy, plus colour, palette, OCR and the failures. Bodies are
+StyledText: paths go through `captureEscape`. `vitrail.notify send` is one-shot and has
+no action listener, so a notice carries no buttons ("Open folder" would need a
+daemon). The notification toast lasts 5 s whatever the countdown, so the timer notice
+can show in a picture taken 3 s later.
+
 Every number lives in `kit/tokens.js` `capture.liquid` (and `capture.ask`); geometry in
 `bar/capture/capture.js` (tests `tst_capture_geometry.qml`).

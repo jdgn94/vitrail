@@ -420,7 +420,7 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   capture overlay (`vitrail/capture.py`, `vitrail-capture`): the screen is
   frozen into one PNG per monitor, the area is dragged and resized with eight
   handles (across monitors too) and a toolbar outside it offers the actions —
-  `Enter` copies the picture, `G` saves it, `A` annotates it in `swappy`, `R`
+  `Enter` or `Ctrl`+`C` copies the picture (`Enter` records instead in record mode), `G` or `Ctrl`+`S` saves it, `A` annotates it in `swappy`, `R`
   records that area with `wf-recorder` (one monitor: an area that
   crosses outputs is cut to the monitor it starts on), `T` counts down 3 or 5 seconds, `W`
   picks a window (a single click takes it), `F` takes the whole layout, `Esc`
@@ -438,7 +438,9 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   files are deleted after a minute). The saved file is
   composed from the frozen images with `magick`, so it is exactly what the
   overlay showed. The bar shows a red chip while a recording runs; the folders
-  and the audio flag live in `capture.ini`. `PRINT` opens the same overlay, and
+  and the audio flag live in `capture.ini`. Letters are plain keys (`Ctrl`+`C` is copy, never the palette; on a card it copies the card's
+  content), and every action says what it did in a notification: screenshot copied (with its size) or saved (with its path), annotator opened, area pinned, countdown started,
+  recording started and saved (with the file), Ask AI opening Google, plus the existing colour, text, QR and translation ones. `PRINT` opens the same overlay, and
   `Super+PRINT` opens it with the whole layout already selected. The window cannot run
   commands, so `bin/vitrail-settings` injects `python3 -m vitrail.fonts state`
   as `--fonts`; `scripts/apply-settings.sh` runs `fonts apply` when

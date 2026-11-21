@@ -303,6 +303,17 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
       está en el portapapeles (`wl-paste -t image/png > /tmp/a.png`).
 - [ ] `G`: aparece `Screenshot_<fecha>.png` en la carpeta de `capture.ini`, y
       el portapapeles no cambia.
+- [ ] `Ctrl`+`C` copia la imagen igual que `⏎` (no abre la paleta) y sale la
+      notificación «Captura copiada» con el tamaño; `Ctrl`+`S` guarda igual que
+      `G` y la notificación «Captura guardada» trae la ruta completa. `C` sin
+      modificadores sigue abriendo la paleta; `Ctrl`+`G` y `Alt`+letra no hacen nada.
+- [ ] Con una tarjeta (paleta, QR, traducción) `Ctrl`+`C` copia su contenido
+      y avisa («Colores copiados», «Contenido del QR copiado», «Traducción copiada»).
+- [ ] Cada acción avisa de lo que hizo: `A` («Anotación abierta»), `P` («Área
+      fijada»), `T` y una captura («Temporizador iniciado: Capturando en 3 s»; el
+      aviso no debe salir en la imagen), `R` («Grabación iniciada» con la ruta del
+      vídeo) y el chip rojo («Grabación guardada» con la ruta), `I` + `⏎`
+      («Abriendo Google…»). `W` y `F` no avisan.
 - [ ] `A`: se abre `swappy` con esa captura.
 - [ ] `R`: graban las mismas coordenadas; el chip rojo de la barra la para.
 - [ ] `T` dos veces (3 s, 5 s) y `G`: la captura sale 3 o 5 s más tarde, sin la
