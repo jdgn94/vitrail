@@ -138,6 +138,7 @@ PROVIDED_BY = {
     "wpctl": "wireplumber",
     "pw-dump": "pipewire",
     "pactl": "libpulse",
+    "pw-cli": "pipewire",
     "playerctl": "playerctl",
     "cava": "cava",
     "brightnessctl": "brightnessctl",

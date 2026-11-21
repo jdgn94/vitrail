@@ -139,7 +139,7 @@ package to the manifest and a row here.
 | `gtk4`, `python-gobject` | `gi.repository.Gdk` | the clipboard's styled re-copy (`vitrail/richclip.py`): a small helper owns the clipboard with text and HTML together, since `wl-copy` offers one type |
 | `python-dbus`, `python-gobject` | — | the downloads watcher (`vitrail/downloads.py`): a notification per download and the buttons that cancel, delete or open it |
 | `wireplumber`, `playerctl`, `brightnessctl` | `wpctl`, `playerctl`, `brightnessctl` | media keys, laptop panel brightness |
-| `pipewire`, `libpulse` | `pw-dump`, `pactl` | the volume popup's snapshot of sinks, sources and playback streams (`vitrail/audio.py`), and moving a stream to another output |
+| `pipewire`, `libpulse` | `pw-dump`, `pw-cli`, `pactl` | the volume popup's snapshot of sinks, sources and playback streams (`vitrail/audio.py`), moving a stream to another output, and the privacy snapshot (`vitrail/privacy.py`): which application captures the microphone, the camera or the screen, and cutting a stream off |
 | `cava` | `cava` | the audio visualiser's spectrum (`vitrail/visualiser.py`), written to the background layer |
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
 | `hyprsunset` | `hyprsunset` | night light (colour temperature and schedule) in the brightness popup |
