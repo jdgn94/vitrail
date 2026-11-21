@@ -120,6 +120,7 @@ PROVIDED_BY = {
     "hyprpicker": "hyprpicker",
     "bluetoothctl": "bluez-utils",
     "powerprofilesctl": "power-profiles-daemon",
+    "upower": "upower",
     "wl-copy": "wl-clipboard",
     "wl-paste": "wl-clipboard",
     "xdg-open": "xdg-utils",

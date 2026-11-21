@@ -146,7 +146,7 @@ package to the manifest and a row here.
 | `translate-shell` | `trans` | the capture overlay's Translate (`trans -b :<language>`; sends the text to Google Translate online) |
 | `pciutils` | `lspci` | GPU vendor detection in the installer and `vitrail doctor` |
 | `networkmanager`, `bluez-utils`, `wireplumber`, `power-profiles-daemon` | `nmcli`, `bluetoothctl`, `wpctl`, `powerprofilesctl` | the panel's quick toggles, the bar's network and power-profile popups, and the settings window's Connection page (networks, Bluetooth and power profile; `vitrail.network`: Wi-Fi, Bluetooth and VPN state and requests) |
-| `upower` | UPower's D-Bus service | the battery chip's charge, state and time left (Quickshell's UPower service; no process) |
+| `upower` | UPower's D-Bus service and `upower` | the battery chip's charge, state and time left (Quickshell's UPower service), and the peripherals' batteries (`vitrail/battery.py`: `upower -e`, `upower -i`) |
 | `awww`, `mpvpaper` | `awww`, `awww-daemon`, `mpvpaper` | still wallpapers with transitions (awww) and animated ones (mpvpaper with VA-API) |
 
 `vitrail-vpn` comes from the VPN module (`vpn/`), not from the manifest.
