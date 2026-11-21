@@ -9,7 +9,7 @@ var ranges = {
     radius: { min: 0, max: 32, step: 1, value: 14 },
     blur: { min: 0, max: 12, step: 1, value: 6 },
     opacity: { min: 0.30, max: 1.00, step: 0.01, value: 0.90 },
-    // Screen frame thickness, system bar thickness and side panel depth.
+    // Screen frame thickness, system bar thickness and notification panel depth.
     frame: { min: 0, max: 24, step: 1, value: 6 },
     bar: { min: 24, max: 64, step: 1, value: 36 },
     panel: { min: 240, max: 720, step: 8, value: 384 },

@@ -54,7 +54,6 @@ bar barOpacityFollow
 bar frameStyle
 bar frameSize
 bar panelSize
-bar panelPush
 bar notificationPosition
 bar notificationMax
 bar notificationDnd

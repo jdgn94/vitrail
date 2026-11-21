@@ -82,13 +82,6 @@ QtObject {
         floatingIslands: { docked: false, islands: true, gap: "sm", motion: "base" }
     })
 
-    // Side panels: full grows out of the frame along a whole edge; overlay
-    // floats above the wallpaper and the windows without moving anything.
-    readonly property var panel: ({
-        full: { attached: true, gap: "md", motion: "slow" },
-        overlay: { attached: false, gap: "md", motion: "slow" }
-    })
-
     // The dock: flush against the screen edge (square outer corners, no
     // margin) or floating above it (round corners and a margin).
     readonly property var dock: ({

@@ -13,14 +13,14 @@ layer contract.
 
 ## When to Use
 
-- Changing how the frame, bar, popups or side panels look or sit.
+- Changing how the frame, bar, popups or the notification panel look or sit.
 - Adding a variant or porting a reference screenshot into the kit.
 - Not for i18n strings or settings-window page logic.
 
 ## Procedure
 
 1. Read the relevant reference before editing:
-   - `references/frame-and-bar.md` — frame hole, docked vs floating bar, panels.
+   - `references/frame-and-bar.md` — frame hole, docked vs floating bar, docked cards.
    - `references/popups.md` — bar popup placement and the docked tab shape.
    - `references/notifications.md` — toast stack, queue, positions, actions.
    - `references/components.md` — type, icons, button variants, indicators,

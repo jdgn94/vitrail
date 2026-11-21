@@ -337,7 +337,7 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
       «Buscando los colores principales…» se convierte en una cuadrícula de
       muestras con su código y su porcentaje, la más usada primero y sin tonos
       casi iguales repetidos. Un clic en una muestra la copia, aparece «Color
-      copiado» y el color está en la pestaña de colores de `Super+.`; el botón
+      copiado» y el color está en la pestaña de colores de `Super+P`; el botón
       de copiar de la tarjeta toma todas (`wl-paste` da un código por línea y
       salen en el historial). `Esc` vuelve a la barra de iconos con el área
       intacta. Ajustes → Barra → Captura → *Colores en la paleta* cambia cuántas
@@ -371,7 +371,7 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] Copia texto con estilos de una página (Firefox: `Ctrl+A`, `Ctrl+C`);
       aparece un `.html` en `~/.cache/vitrail/clipboard/`. Copiar desde un
       gestor de contraseñas no guarda nada.
-- [ ] `Super+.` y pasa el puntero por la fila: tras el retardo del tooltip sale
+- [ ] `Super+V` y pasa el puntero por la fila: tras el retardo del tooltip sale
       una tarjeta junto al panel con la fuente, tamaño, peso, cursiva, color y
       listas del origen; una imagen muestra la imagen; texto plano, texto plano.
       Las flechas del teclado muestran la tarjeta de la fila elegida.

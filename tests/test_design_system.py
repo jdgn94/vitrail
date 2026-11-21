@@ -84,8 +84,7 @@ class VariantContractTests(unittest.TestCase):
         self.assertEqual(variant_names("frame"), {"full", "corners", "none"})
         self.assertEqual(variant_names("bar"), {"docked", "floating", "islands", "floatingIslands"})
 
-    def test_panel_and_wallpaper_variants_exist(self) -> None:
-        self.assertEqual(variant_names("panel"), {"full", "overlay"})
+    def test_wallpaper_variants_exist(self) -> None:
         self.assertEqual(variant_names("wallpaper"), {"frame", "screen"})
 
     def test_the_five_visualiser_looks_exist(self) -> None:

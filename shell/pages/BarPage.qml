@@ -252,27 +252,11 @@ Item {
 
                 Section {
                     Layout.fillWidth: true
-                    visible: page.tab === "frame"
-                    icon: "view_sidebar"
-                    title: page.t("bar.section.panels")
+                    visible: page.tab === "notifications"
+                    icon: "notifications"
+                    title: page.t("bar.section.notifications")
                     foreground: page.palette.foreground
                     accent: page.palette.primary
-
-                    VitrailSettingRow {
-                        icon: "open_in_full"
-                        label: page.t("bar.panelPush")
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailSwitch {
-                            checked: page.prefs.panelPush
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            onToggled: function (value) {
-                                page.prefs.panelPush = value
-                            }
-                        }
-                    }
 
                     VitrailSlider {
                         Layout.fillWidth: true
@@ -286,15 +270,6 @@ Item {
                         accent: page.palette.primary
                         onMoved: page.prefs.panelSize = value
                     }
-                }
-
-                Section {
-                    Layout.fillWidth: true
-                    visible: page.tab === "notifications"
-                    icon: "notifications"
-                    title: page.t("bar.section.notifications")
-                    foreground: page.palette.foreground
-                    accent: page.palette.primary
 
                     // "top-right" and friends: one segment picks the edge, the
                     // other where along it.

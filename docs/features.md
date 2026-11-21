@@ -25,7 +25,7 @@ the widgets slot:
 inline actions (`>` run, `=` calculate, `/` files, `;` clipboard). The
 `wallpaper:` mode lists the library's pictures as thumbnails and the eighteen
 effects: choosing one shows that wallpaper (`vitrail wallpaper pick`) or sets
-the effect for the whole screen. Keyboard only; the clip panel is `Mod+.`:
+the effect for the whole screen. Keyboard only; the clip panel is `Mod+V` (`Mod+.` emojis, `Mod+P` colours, `Mod+Shift+P` pick from screen):
 hovering a history row (or moving onto it with the arrows) opens a card with
 the copy as its source styled it (font, size, weight, italics, colour,
 spacing, lists) or the image, and picking a styled entry pastes the style into
@@ -56,7 +56,7 @@ content and, for a web link, the card offers to open it. **Colour
 palette** (`C`) shows the area's main colours on a card (swatch, hex and share,
 loading and error states): ImageMagick quantizes the area locally and similar
 shades merge. A click on a swatch puts that colour in the clipboard and in the
-colour history of `Super+.`; the card's copy button takes them all, one hex per
+colour history of `Super+P`; the card's copy button takes them all, one hex per
 line. The number of colours is Bar → Capture → *Colours in the palette*. **Pin** (`P`) keeps
 the area on screen as a floating glass window on its monitor: drag it, zoom with
 the wheel, change its opacity with `Ctrl`+wheel or the bar that appears on

@@ -8,9 +8,6 @@ import "../frame.js" as Frame
 // run left to right when the bar is horizontal and top to bottom when it is
 // vertical. Fill the whole screen with it; the frame draws around the edges.
 //
-// It also hosts the side panel that opens from the bar edge: a full panel is
-// the frame growing along that edge, an overlay panel slides out from under
-// the bar as a floating island.
 Item {
     id: root
 
@@ -22,13 +19,8 @@ Item {
     property string density: "comfortable"
     // False draws only the frame, for screens that do not carry the bar.
     property bool showBar: true
-    // Frame, bar and overlay panel opacity.
+    // Frame and bar opacity.
     property real opacityLevel: VitrailTokens.opacity
-
-    property string panelVariant: ""
-    property bool panelOpen: false
-    // Whether an open full panel takes space from the windows.
-    property bool panelPush: false
 
     // Screen rect of the bar popup. A docked bar grows the frame around it; a
     // floating bar leaves the popup to draw its own island.
@@ -45,7 +37,6 @@ Item {
     property alias start: startSlot.data
     property alias center: centerSlot.data
     property alias end: endSlot.data
-    property alias panelContent: panelSlot.data
 
     readonly property var style: VitrailStyle.resolve("bar", root.variant)
     readonly property real densityScale: VitrailTokens.density[root.density] === undefined
@@ -62,12 +53,7 @@ Item {
             bar: VitrailTokens.bar,
             gap: root.gap,
             radius: VitrailTokens.radius
-        }, {
-            variant: root.panelStyle,
-            extent: root.panelOpen && root.showBar ? VitrailTokens.panel : 0,
-            push: root.panelPush
         })
-    readonly property var panelStyle: VitrailStyle.resolve("panel", root.panelVariant)
     readonly property bool vertical: root.layout.edge === "left" || root.layout.edge === "right"
     // Space other windows must leave free, per screen edge.
     readonly property var reserve: root.layout.reserve
@@ -78,8 +64,6 @@ Item {
     readonly property Item startMask: startMask
     readonly property Item centerMask: centerMask
     readonly property Item endMask: endMask
-    // The open panel rectangle, for input masks; null while closed.
-    readonly property Item panelArea: root.panelOpen && root.showBar ? panel : null
     readonly property int duration: VitrailTokens.duration(root.style.motion)
 
     // Islands bar: the screen rect of each non-empty slot group's island,
@@ -125,72 +109,6 @@ Item {
         radius: root.layout.radius
         tabs: (root.popupTab ? [root.popupTab] : []).concat(root.islandTabs).concat(root.tabs)
         opacityLevel: root.opacityLevel
-    }
-
-    Item {
-        id: panel
-
-        readonly property bool attached: root.panelStyle.attached
-        readonly property real start: root.layout.panel.start
-        readonly property real depth: VitrailTokens.panel
-        readonly property int duration: VitrailTokens.duration(root.panelStyle.motion)
-        readonly property int gap: VitrailTokens.gap(root.panelStyle.gap)
-        readonly property var hole: root.layout.hole
-        // Overlay distance from the screen edge; closed, it hides under the bar.
-        readonly property real reach: root.panelOpen ? start : start - depth - gap
-        readonly property var rect: attached ? panel.attachedRect() : panel.overlayRect()
-
-        // Grows with the frame's animated insets, so it never lags the curve.
-        function attachedRect() {
-            var l = frame.leftInset, t = frame.topInset, r = frame.rightInset, b = frame.bottomInset
-            switch (root.layout.edge) {
-            case "right": return Qt.rect(root.width - r, t, Math.max(0, r - start), root.height - t - b)
-            case "top": return Qt.rect(l, start, root.width - l - r, Math.max(0, t - start))
-            case "bottom": return Qt.rect(l, root.height - b, root.width - l - r, Math.max(0, b - start))
-            default: return Qt.rect(start, t, Math.max(0, l - start), root.height - t - b)
-            }
-        }
-
-        function overlayRect() {
-            var across = root.vertical ? root.height - hole.top - hole.bottom - 2 * gap
-                                       : root.width - hole.left - hole.right - 2 * gap
-            switch (root.layout.edge) {
-            case "right": return Qt.rect(root.width - reach - depth, hole.top + gap, depth, across)
-            case "top": return Qt.rect(hole.left + gap, reach, across, depth)
-            case "bottom": return Qt.rect(hole.left + gap, root.height - reach - depth, across, depth)
-            default: return Qt.rect(reach, hole.top + gap, depth, across)
-            }
-        }
-
-        // Attached content sits on the frame; an overlay slides from below it.
-        z: attached ? 1 : -1
-        visible: root.showBar
-        x: rect.x
-        y: rect.y
-        width: rect.width
-        height: rect.height
-        opacity: root.panelOpen ? 1 : 0
-        clip: true
-
-        Behavior on x { enabled: !panel.attached; NumberAnimation { duration: panel.duration; easing.type: Easing.OutCubic } }
-        Behavior on y { enabled: !panel.attached; NumberAnimation { duration: panel.duration; easing.type: Easing.OutCubic } }
-        Behavior on opacity { NumberAnimation { duration: panel.duration; easing.type: Easing.OutCubic } }
-
-        VitrailSurface {
-            anchors.fill: parent
-            visible: !panel.attached
-            style: VitrailTokens.surfaceMode
-            radius: VitrailTokens.radius
-            tint: VitrailTokens.color("surface")
-            opacityLevel: root.opacityLevel
-        }
-
-        Item {
-            id: panelSlot
-
-            anchors.fill: parent
-            anchors.margins: panel.gap
-        }
     }
 
     // Floating islands: one pill per slot group.

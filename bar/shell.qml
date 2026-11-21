@@ -59,8 +59,8 @@ import "session/actions.js" as Session
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
 //
-//   vitrail-bar ipc call panel toggle full      (or overlay)
-//   vitrail-bar ipc call panel close
+//   vitrail-bar ipc call clipboard toggle       (emoji, colors, pick, close)
+//   vitrail-bar ipc call notifications toggle   (close)
 ShellRoot {
     id: shell
 
@@ -1212,7 +1212,7 @@ ShellRoot {
             overlayLoader.item.setCard(kind, card)
     }
 
-    // A colour of the area's palette goes where Super+. sends one: the
+    // A colour of the area's palette goes where Super+P sends one: the
     // clipboard colour history and the clipboard.
     function captureColor(hex) {
         overlayLoader.active = false
@@ -1336,10 +1336,6 @@ ShellRoot {
     }
     property var palettes: ({})
     property date now: new Date()
-    // Last panel variant opened; it is kept while the panel closes so the
-    // closing animation matches the opening one.
-    property string panelKind: ""
-    property bool panelOpen: false
 
     readonly property string cacheDir: (Quickshell.env("XDG_CACHE_HOME")
                                         || Quickshell.env("HOME") + "/.cache") + "/vitrail"
@@ -1425,9 +1421,6 @@ ShellRoot {
                                                            : shell.prefs.opacityFocused
         return raw === undefined || raw === "" ? VitrailTokens.opacity : Number(raw)
     }
-    // A framed wallpaper always makes room; a screen one only if asked to.
-    readonly property bool panelPush: (shell.prefs.wallpaperMode || VitrailStyle.defaults.wallpaper) === "frame"
-                                      || shell.prefs.panelPush === "true"
 
     // Wayland has no primary output: the top-left monitor plays that role.
     readonly property var primaryScreen: {
@@ -2502,19 +2495,6 @@ ShellRoot {
         }
     }
 
-    IpcHandler {
-        target: "panel"
-
-        function toggle(kind: string): void {
-            shell.panelOpen = !(shell.panelOpen && shell.panelKind === kind)
-            shell.panelKind = kind
-        }
-
-        function close(): void {
-            shell.panelOpen = false
-        }
-    }
-
     NotificationServer {
         keepOnReload: true
         bodySupported: true
@@ -2970,18 +2950,6 @@ ShellRoot {
 
     Process {
         id: captureOcr
-        stdout: StdioCollector {
-            onStreamFinished: shell.captureRecorded(this.text)
-        }
-    }
-
-    Process {
-        id: captureStop
-
-        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
-        stdout: StdioCollector {
-            onStreamFinished: shell.captureStopped(this.text)
-        }
 
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
         stdout: StdioCollector {
@@ -3002,6 +2970,18 @@ ShellRoot {
         id: captureRecord
 
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.captureRecorded(this.text)
+        }
+    }
+
+    Process {
+        id: captureStop
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.captureStopped(this.text)
+        }
     }
 
     Process {
@@ -3842,9 +3822,6 @@ ShellRoot {
                                      || monitor.modelData === shell.primaryScreen)
                         visible: DesktopPolicy.barWindowAlive()
                         opacityLevel: shell.barOpacity
-                        panelVariant: shell.panelKind
-                        panelOpen: shell.panelOpen
-                        panelPush: shell.panelPush
                         popup: Qt.rect(popupCard.x, popupCard.y, popupCard.width, popupCard.height)
                         popupLook: popupLiquid.shown && popupCard.docked ? popupLiquid.look : null
                         popupOrigin: shell.popupAnchor

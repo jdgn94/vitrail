@@ -42,7 +42,6 @@ QtObject {
     property alias frameStyle: barFile.frameStyle
     property alias frameSize: barFile.frameSize
     property alias panelSize: barFile.panelSize
-    property alias panelPush: barFile.panelPush
     property alias notificationPosition: barFile.notificationPosition
     property alias notificationMax: barFile.notificationMax
     property alias notificationDnd: barFile.notificationDnd
@@ -227,7 +226,6 @@ QtObject {
         property string frameStyle: ""
         property int frameSize: VitrailTokens.ranges.frame.value
         property int panelSize: VitrailTokens.ranges.panel.value
-        property bool panelPush: false
         property string notificationPosition: "top-right"
         property int notificationMax: VitrailTokens.ranges.notifications.value
         property bool notificationDnd: false

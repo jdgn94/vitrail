@@ -19,8 +19,6 @@
     group content rects into island rects (pad = bar style gap).
   - `layout.dock[edge]`: where docked cards (popup, notification stack) hang
     from: `hole`, or `bar` past the islands, so they rise out of an island.
-- Panels (`VitrailVariants.panel`): `full` grows `hole[edge]` (attached, follows
-  the frame's animated insets); `overlay` is a floating island under the bar.
 - `holePath` walks each edge as a depth profile: the tabs on one edge are
   merged (max depth per interval, equal neighbours joined) so a popup rising
   out of an island, or any overlap, is one outline. Every step is rounded with
@@ -42,8 +40,8 @@
 
 ## Bar layout document
 
-`bar/layouts.js` is the one model of what the bar draws (and, later, the panel,
-the desktop and the lock screen). It holds:
+`bar/layouts.js` is the one model of what the bar draws (and the panel's
+widgets, the desktop and the lock screen). It holds:
 
 - `WIDGETS`: `{ id, surface, group, label }` for every element of each
   surface. `group` is `start`, `center` or `end`; `label` is the i18n key.

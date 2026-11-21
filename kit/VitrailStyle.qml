@@ -11,7 +11,6 @@ QtObject {
         surface: "glass",
         frame: "full",
         bar: "docked",
-        panel: "full",
         dock: "attached",
         wallpaper: "frame",
         launcher: "popout",

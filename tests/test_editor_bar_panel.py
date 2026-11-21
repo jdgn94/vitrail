@@ -42,7 +42,6 @@ class BarPageTests(unittest.TestCase):
     def test_it_keeps_the_non_placement_bar_options(self) -> None:
         for key in (
             "bar.frame",
-            "bar.panelPush",
             "bar.notifications.max",
             "bar.osd.keys",
             "bar.widgets.pomodoroWork",

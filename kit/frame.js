@@ -6,9 +6,7 @@ var edges = ["left", "top", "right", "bottom"]
 
 // frame, bar: resolved variants; bar is null on a screen without a bar.
 // sizes: { frame, bar, gap, radius } in px.
-// panel: { variant, extent, push } or null. A full (attached) panel grows the
-// frame on the bar edge and reserves space only when it pushes the windows.
-function layout(frame, bar, edge, sizes, panel) {
+function layout(frame, bar, edge, sizes) {
     var side = edges.indexOf(edge) < 0 ? "left" : edge
     var border = frame.border ? sizes.frame : 0
     var radius = frame.corners ? sizes.radius : 0
@@ -25,15 +23,8 @@ function layout(frame, bar, edge, sizes, panel) {
         reserve[side] = border + sizes.gap + sizes.bar
     }
 
-    // Panels open past the bar, floating or docked.
+    // Fixes the bar's inner face, measured from the screen edge.
     var start = reserve[side]
-    var attached = panel ? panel.variant.attached : false
-    var extent = panel ? panel.extent : 0
-    if (attached && extent > 0) {
-        hole[side] = start + extent
-        if (panel.push)
-            reserve[side] += extent
-    }
 
     var docked = !bar || bar.docked
     // Where cards docked into the frame (popups, the notification stack) hang
@@ -47,8 +38,7 @@ function layout(frame, bar, edge, sizes, panel) {
         edge: side,
         hole: hole,
         dock: dock,
-        // The bar's inner face, measured from its screen edge. Panels do not
-        // move it (unlike hole, dock and reserve), so tooltips use this.
+        // The bar's inner face, measured from its screen edge; tooltips use it.
         face: start,
         radius: radius,
         reserve: reserve,
@@ -58,12 +48,6 @@ function layout(frame, bar, edge, sizes, panel) {
             // Docked content clears the inner corners where the frame curves;
             // an island sits in the corner, so only the frame border.
             padding: !docked ? 0 : bar && bar.islands ? border : border + radius
-        },
-        panel: {
-            edge: side,
-            // Where the panel begins, measured from the screen edge.
-            start: attached ? start : start + sizes.gap,
-            extent: extent
         }
     }
 }

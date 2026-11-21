@@ -127,7 +127,7 @@ package to the manifest and a row here.
 | `fontconfig` | `fc-list`, `fc-match` | the installed font families the Fonts page offers, the monospaced face the ascii effect draws with |
 | `libqalculate` | `qalc` | launcher calculator and conversions (`=`) |
 | `plocate`, `fd` | `plocate`, `fd` | launcher file search (`/`); `plocate-updatedb.timer` is enabled by the installer |
-| `cliphist`, `wl-clipboard`, `wtype`, `hyprpicker` | `cliphist`, `wl-copy`, `wl-paste`, `wtype`, `hyprpicker` | launcher clipboard history (`;`), the clipboard panel (`Mod+.`) with emojis and the colour picker, and pasting a pick into the focused window |
+| `cliphist`, `wl-clipboard`, `wtype`, `hyprpicker` | `cliphist`, `wl-copy`, `wl-paste`, `wtype`, `hyprpicker` | launcher clipboard history (`;`), the clipboard panel (`Mod+V` history, `Mod+.` emojis, `Mod+P` colours, `Mod+Shift+P` pick from screen), and pasting a pick into the focused window |
 | `xdg-utils` | `xdg-open`, `xdg-mime` | opening files, folders and links; finding the desktop's file manager |
 | `xdg-desktop-portal-phosh` | the FileChooser portal backend | every open/save dialog, drawn by Phosh's GTK 4 chooser: the settings window's, and a GTK 3 app's through `GTK_USE_PORTAL=1` (`dots/.config/xdg-desktop-portal/hyprland-portals.conf`) |
 | `xorg-xrdb` | `xrdb` | the cursor theme for X11/XWayland apps |
@@ -325,7 +325,7 @@ the window declares it in another file, or the path unit watches another set.
 | File | Keys |
 |------|------|
 | `appearance.ini` | `appearance`, `surfaceStyle`, `surfaceOpacity`, `radius`, `blurStrength`, `spacing`, `fontBase`, `uiIconFill`, `cursorThemeSplit`, `launchAnimation` (the drop that grows from an icon while an app starts) |
-| `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barMonitors`, `barLayout`, `panelLayout`, `desktopLayout`, `desktopSync`, `desktopMenu`, `barDragReorder`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize`, `panelPush`, `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `clipboardRich` (copies keep their source's style), `clipboardPreview` (the history's hover card), `mediaStyle`, `trayStyle`, `barBatteryChip`, `barBluetoothChip`, `barKeyboard`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep`, `pomodoroWork`, `pomodoroRest`, `pomodoroCycles`, `timerMinutes` |
+| `bar.ini` | `barEdge`, `barScreens`, `barStyle`, `barMonitors`, `barLayout`, `panelLayout`, `desktopLayout`, `desktopSync`, `desktopMenu`, `barDragReorder`, `barSize`, `barOpacity`, `barOpacityFollow`, `frameStyle`, `frameSize`, `panelSize` (the notification panel's width), `notificationPosition`, `notificationMax`, `notificationDnd`, `notificationMuteUntil`, `notificationSnooze`, `notificationMuted`, `notificationUrgentApps`, `notificationUrgentBypass`, `notificationSnoozes`, `clipboardMax`, `clipboardPaste`, `clipboardRich` (copies keep their source's style), `clipboardPreview` (the history's hover card), `mediaStyle`, `trayStyle`, `barBatteryChip`, `barBluetoothChip`, `barKeyboard`, `osdKeys`, `osdKeyTime`, `osdHotZone`, `osdSize`, `osdStep`, `osdBrightnessStep`, `pomodoroWork`, `pomodoroRest`, `pomodoroCycles`, `timerMinutes` |
 | `dock.ini` | `dockEnabled` (show it), `dockEdge` (`bottom`, `top`, `left` or `right`), `dockAutohide` (hide until the pointer reaches the edge), `dockAttached` (flush or floating), `dockMagnify` (`none`, `planet` or `individual`; old `scale`/`lift` read as planet), `dockMagnifyRange` (1–5, planet only), `dockMagnifyScale` (1.1–2.0), `dockPinned` (the pinned apps as one JSON array, in order) and `dockWidgets` (reserved for the next phase) |
 | `wallpaper.ini` | `wallpaper`, `wallpaperMode`, `wallpaperDir`, `wallpaperType`, `wallpaperSelection`, `wallpaperInterval`, `wallpaperOrder`, `wallpaperImport`, `wallpaperRemove`, `wallpaperEffect`, `wallpaperEffectDetail`, `wallpaperPauseFullscreen`, `wallpaperTransition`, `wallpaperTransitionTime`, `wallpaperMonitors`, `systemColor` (`wallpaperSeed`: legacy) |
 | `background.ini` | `visualiserEnabled`, `visualiserVariant`, `visualiserHeight` |
@@ -430,7 +430,7 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   the card opens a web link) — each only when there is text or a code; `C`
   shows a palette of the area's main colours on a card (ImageMagick, local;
   similar shades merged, the count is `capturePaletteSize`): a click on a swatch
-  copies it into the `Super+.` colour history and the clipboard, the card's
+  copies it into the `Super+P` colour history and the clipboard, the card's
   button takes them all (one hex per line); `P` pins the area as a floating glass window (drag, wheel zoom,
   `Ctrl`+wheel opacity, `Esc` or double click closes); and `I` asks Google about it: a question field opens beside the
   area and `Enter` opens the default browser on Google Lens with the picture
@@ -804,16 +804,6 @@ is playing audio, so an idle desktop pays nothing. The five looks are `bars`
 `panel` (the bars inside a rounded surface), `circle` (a radial ring of bars
 around the centre) and `waves` (smooth wave lines across the strip).
 `visualiserHeight` follows a token range, like every other size.
-
-### Panels
-
-| Keys | Panel |
-|---|---|
-| `Super + P` | `full`: grows out of the frame along the bar edge |
-| `Super + Shift + P` | `overlay`: floats above wallpaper and windows, moves nothing |
-
-Both are also scriptable: `vitrail-bar ipc call panel toggle full|overlay`,
-`vitrail-bar ipc call panel close`. Panels are empty for now.
 
 ### Keyboard shortcuts
 

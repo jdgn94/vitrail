@@ -81,7 +81,7 @@ local mod = "SUPER"
 
 -- Windows.
 hl.bind(mod .. " + Q", hl.dsp.window.close(), { description = "window/close" })
-hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }), { description = "window/float" })
+hl.bind(mod .. " + SHIFT + V", hl.dsp.window.float({ action = "toggle" }), { description = "window/float" })
 hl.bind(mod .. " + F", hl.dsp.window.fullscreen(), { description = "window/fullscreen" })
 hl.bind(mod .. " + SHIFT + Q", hl.dsp.exit(), { description = "shell/exit" })
 
@@ -93,12 +93,12 @@ local launcher = home .. "/.local/bin/vitrail-bar ipc call launcher toggle"
 hl.bind(mod .. " + SUPER_L", hl.dsp.exec_cmd(launcher), { release = true, description = "apps/launcher" })
 hl.bind(mod .. " + comma", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-settings"), { description = "shell/settings" })
 hl.bind(mod .. " + L", hl.dsp.exec_cmd("hyprlock"), { description = "shell/lock" })
-hl.bind(mod .. " + period", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard toggle"), { description = "shell/clipboard" })
-hl.bind(mod .. " + SHIFT + period", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard emoji"), { description = "shell/clipboard-emoji" })
-hl.bind(mod .. " + ALT + period", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard colors"), { description = "shell/clipboard-colors" })
-hl.bind(mod .. " + CTRL + period", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard pick"), { description = "shell/clipboard-pick" })
-hl.bind(mod .. " + P", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call panel toggle full"), { description = "shell/panel" })
-hl.bind(mod .. " + SHIFT + P", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call panel toggle overlay"), { description = "shell/panel-overlay" })
+-- The clipboard: V for the history, the period for the emoji set, P for the
+-- colour picker and Shift + P to pick a colour off the screen.
+hl.bind(mod .. " + V", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard toggle"), { description = "shell/clipboard" })
+hl.bind(mod .. " + period", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard emoji"), { description = "shell/clipboard-emoji" })
+hl.bind(mod .. " + P", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard colors"), { description = "shell/clipboard-colors" })
+hl.bind(mod .. " + SHIFT + P", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-bar ipc call clipboard pick"), { description = "shell/clipboard-pick" })
 hl.bind(mod .. " + slash", hl.dsp.exec_cmd(home .. "/.local/bin/vitrail-binds"), { description = "shell/shortcuts" })
 
 -- Focus.

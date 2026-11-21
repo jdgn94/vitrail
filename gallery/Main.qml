@@ -15,7 +15,6 @@ Window {
     readonly property var palettes: Args.json("--palette", ({}))
     readonly property var frames: Object.keys(VitrailVariants.frame)
     readonly property var bars: Object.keys(VitrailVariants.bar)
-    readonly property var panels: Object.keys(VitrailVariants.panel)
     readonly property var fits: Object.keys(VitrailVariants.wallpaper)
     readonly property var buttons: Object.keys(VitrailVariants.button)
     readonly property var fields: Object.keys(VitrailVariants.field)
@@ -908,46 +907,6 @@ Window {
 
         VitrailText {
             variant: "title"
-            text: "VitrailBar · panel × wallpaper × edge"
-        }
-
-        Repeater {
-            model: app.panels.length * app.fits.length
-
-            delegate: ColumnLayout {
-                id: panelRow
-
-                required property int index
-                readonly property string panel: app.panels[Math.floor(index / app.fits.length)]
-                readonly property string fit: app.fits[index % app.fits.length]
-
-                spacing: VitrailTokens.gap("sm")
-
-                VitrailText {
-                    variant: "label"
-                    text: "panel: " + panelRow.panel + "   wallpaper: " + panelRow.fit
-                }
-
-                RowLayout {
-                    spacing: VitrailTokens.gap("lg")
-
-                    Repeater {
-                        model: app.edges
-
-                        delegate: Preview {
-                            required property string modelData
-
-                            edge: modelData
-                            panel: panelRow.panel
-                            fit: panelRow.fit
-                        }
-                    }
-                }
-            }
-        }
-
-        VitrailText {
-            variant: "title"
             text: "VitrailVisualiser · the five looks · real tokens"
         }
 
@@ -1021,14 +980,13 @@ Window {
         }
     }
 
-    // One scaled-down screen: wallpaper, frame, bar and, optionally, a panel.
+    // One scaled-down screen: wallpaper, frame and bar.
     component Preview: Item {
         id: tile
 
         property string edge: "left"
         property string bar: ""
         property string frame: ""
-        property string panel: ""
         property string fit: ""
         // An open bar popup and a notification stack; docked bars grow
         // them out of the frame.
@@ -1093,9 +1051,6 @@ Window {
             edge: tile.edge
             variant: tile.bar
             frameVariant: tile.frame
-            panelVariant: tile.panel
-            panelOpen: tile.panel !== ""
-            panelPush: tile.fit !== "screen"
             popupLook: tile.cards && screen.style.docked ? tile.look : null
             popupOrigin: tile.button
             popup: tile.restRect
@@ -1114,7 +1069,6 @@ Window {
                 VitrailText { text: "◆" },
                 VitrailText { text: "◆" }
             ]
-            panelContent: VitrailText { variant: "title"; text: tile.panel }
         }
 
         // A floating bar leaves its popup to an island that grows out of it.

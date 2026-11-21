@@ -55,47 +55,6 @@ TestCase {
         compare(l.radius, 14)
     }
 
-    function test_full_panel_grows_the_frame_and_pushes_windows() {
-        var l = Frame.layout(full, docked, "left", sizes,
-                             { variant: { attached: true }, extent: 380, push: true })
-        compare(l.hole.left, 36 + 380)
-        compare(l.reserve.left, 36 + 380)
-        compare(l.panel.start, 36)
-        compare(l.panel.edge, "left")
-    }
-
-    function test_full_panel_without_push_leaves_windows_alone() {
-        var l = Frame.layout(full, docked, "left", sizes,
-                             { variant: { attached: true }, extent: 380, push: false })
-        compare(l.hole.left, 36 + 380)
-        compare(l.reserve.left, 36)
-    }
-
-    function test_overlay_panel_changes_nothing() {
-        var l = Frame.layout(full, docked, "top", sizes,
-                             { variant: { attached: false }, extent: 380, push: true })
-        compare(l.hole, { left: 6, top: 36, right: 6, bottom: 6 })
-        compare(l.reserve, l.hole)
-        compare(l.panel.start, 36 + 8)
-    }
-
-    function test_full_panel_opens_past_a_floating_bar() {
-        var l = Frame.layout(full, floating, "left", sizes,
-                             { variant: { attached: true }, extent: 380, push: true })
-        compare(l.panel.start, 6 + 8 + 36)
-        compare(l.hole.left, 6 + 8 + 36 + 380)
-    }
-
-    function test_closed_panel_changes_nothing() {
-        var l = Frame.layout(full, docked, "left", sizes,
-                             { variant: { attached: true }, extent: 0, push: true })
-        compare(l.hole.left, 36)
-        compare(l.reserve.left, 36)
-        var f = Frame.layout(full, floating, "left", sizes,
-                             { variant: { attached: true }, extent: 0, push: true })
-        compare(f.hole.left, 6)
-    }
-
     function test_docked_islands_keep_the_frame_thin_but_reserve_the_bar() {
         var l = Frame.layout(full, islands, "top", sizes)
         compare(l.hole, { left: 6, top: 6, right: 6, bottom: 6 })
@@ -107,9 +66,8 @@ TestCase {
     function test_cards_dock_past_the_islands_and_into_a_plain_docked_bar() {
         compare(Frame.layout(full, islands, "top", sizes).dock, { left: 6, top: 36, right: 6, bottom: 6 })
         compare(Frame.layout(full, docked, "left", sizes).dock, { left: 36, top: 6, right: 6, bottom: 6 })
-        // A full panel pushes the hole past the islands.
-        var l = Frame.layout(full, islands, "left", sizes, { variant: { attached: true }, extent: 380, push: true })
-        compare(l.dock.left, 36 + 380)
+        // Cards hang past the islands of an islands bar.
+        compare(Frame.layout(full, islands, "left", sizes).dock.left, 36)
     }
 
     function test_stack_hangs_below_the_islands() {
@@ -568,7 +526,7 @@ TestCase {
         compare(Frame.tooltipAt("left", Qt.rect(0, 0, 36, 20), 100, 30, 36, 8, 1000, 800).y, 8)
     }
 
-    // The bar's inner face ignores panels, which grow hole, dock and reserve.
+    // The bar's inner face, which tooltips hang from.
     function test_face_is_the_bars_inner_face() {
         compare(Frame.layout(full, docked, "left", sizes).face, 36)
         compare(Frame.layout(full, islands, "top", sizes).face, 36)
@@ -576,20 +534,6 @@ TestCase {
         compare(Frame.layout(full, floatingIslands, "right", sizes).face, 6 + 8 + 36)
         compare(Frame.layout(full, null, "left", sizes).face, 6)
         compare(Frame.layout(none, null, "left", sizes).face, 0)
-    }
-
-    function test_face_does_not_move_with_an_open_panel() {
-        var panel = { variant: { attached: true }, extent: 380, push: true }
-        var d = Frame.layout(full, docked, "left", sizes, panel)
-        compare(d.face, 36)
-        compare(d.dock.left, 36 + 380)
-        compare(d.reserve.left, 36 + 380)
-        var i = Frame.layout(full, islands, "left", sizes, panel)
-        compare(i.face, 36)
-        compare(i.dock.left, 36 + 380)
-        var f = Frame.layout(full, floating, "left", sizes, panel)
-        compare(f.face, 6 + 8 + 36)
-        compare(f.reserve.left, 6 + 8 + 36 + 380)
     }
 
     // A floating bar: the face is 50 from the edge, the element sits inside it.
