@@ -390,4 +390,37 @@ TestCase {
         compare(Capture.shortcut(Qt.Key_Tab, Qt.ShiftModifier, "shot", false), "handle")
         compare(Capture.shortcut(Qt.Key_X, Qt.NoModifier, "shot", false), "")
     }
+
+    // Two 2560x1440 monitors side by side. A drag that leaves the monitor that
+    // took the press ends there for the compositor (it sends a release at a
+    // point outside that monitor): the overlay tells that release from a real
+    // one with `outside`, and goes on with the other monitor's points.
+    readonly property var monitorA: ({ x: 0, y: 0, width: 2560, height: 1440 })
+    readonly property var monitorB: ({ x: 2560, y: 0, width: 2560, height: 1440 })
+    readonly property var layout: ({ x: 0, y: 0, w: 5120, h: 1440 })
+
+    function test_a_point_is_outside_the_monitor_beyond_any_edge() {
+        verify(!Capture.outside({ x: 0, y: 0 }, monitorA))
+        verify(!Capture.outside({ x: 2559, y: 1439 }, monitorA))
+        verify(Capture.outside({ x: 2560, y: 100 }, monitorA))
+        verify(Capture.outside({ x: -1, y: 100 }, monitorA))
+        verify(Capture.outside({ x: 100, y: 1440 }, monitorA))
+        verify(Capture.outside({ x: 100, y: -1 }, monitorA))
+        verify(!Capture.outside({ x: 2560, y: 100 }, monitorB))
+        verify(Capture.outside({ x: 2400, y: 300 }, monitorB))
+    }
+
+    function test_a_drag_from_one_monitor_into_the_other_spans_both() {
+        var press = { x: 2400, y: 300 }
+        var cursor = { x: 3000, y: 500 }
+        verify(Capture.outside(cursor, monitorA))
+        compare(Capture.move(Capture.normalize(press, cursor), 0, 0, layout), { x: 2400, y: 300, w: 600, h: 200 })
+        compare(Capture.toLocalRect(Capture.normalize(press, cursor), monitorB), { x: -160, y: 300, w: 600, h: 200 })
+    }
+
+    function test_the_drag_back_keeps_the_edges_of_the_press_and_the_cursor() {
+        var press = { x: 2700, y: 800 }
+        var cursor = { x: 2000, y: 100 }
+        compare(Capture.normalize(press, cursor), { x: 2000, y: 100, w: 700, h: 700 })
+    }
 }

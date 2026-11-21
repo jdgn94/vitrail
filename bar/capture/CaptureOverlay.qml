@@ -17,10 +17,26 @@ import "capture.js" as Capture
 // screen: the selection is composed from the frozen images afterwards, so what
 // the overlay shows is exactly what gets saved.
 //
-// The surface of the monitor under the pointer at open takes the keyboard and
-// hosts the toolbar; every surface takes the mouse, so a selection may be
-// dragged across monitors. `confirmed` carries the rectangle in layout
-// coordinates and what to do with it.
+// One surface per monitor, all `Exclusive`, and the toolbar sits on the one
+// under the pointer at open (`host`). What Hyprland does with that, measured on
+// 0.56:
+// - While any layer surface is Exclusive, pointer input reaches only the
+//   Exclusive ones: a surface that is not would never see the mouse, so a
+//   selection could only be made on the host's monitor. Hence every surface is
+//   Exclusive and every one handles keys (`root.key`).
+// - The keyboard goes to one of them (not necessarily the host) and follows a
+//   click to the surface that took it.
+// - A layer surface gets no implicit grab: when the pointer crosses into the
+//   other monitor with a button held, the compositor sends the pressing surface
+//   a release (at the last position it knew, outside its monitor), moves the
+//   pointer focus to the other surface (enter, then moves with no button) and
+//   forgets the button, so the physical release is never delivered anywhere
+//   (no surface event, no release bind). A held drag cannot be followed across.
+//   So a release outside its own surface is not a release: the gesture is
+//   `carried` over, the moves of any surface keep driving it, and the next
+//   press ends it (where the pointer is).
+// `confirmed` carries the rectangle in layout coordinates and what to do with
+// it.
 Item {
     id: root
 
@@ -80,6 +96,9 @@ Item {
     property var anchor: null
     property var last: null
     property string gesture: ""
+    // The gesture left the monitor of the surface that took the press: the
+    // button is no longer reported, so the moves drive it until the next press.
+    property bool carried: false
     property string handle: ""
     property bool windowMode: false
     // A click in the window mode takes that window (no drag, no second step).
@@ -92,6 +111,8 @@ Item {
     property bool glide: false
     // The question card is up instead of the toolbar (the "ask" action).
     property bool asking: false
+    // The monitor whose surface holds the question field while `asking`.
+    property var askOn: null
     // What the selection holds, found in the background once it settled:
     // `token` counts the settled selections so a late answer for an older one
     // is ignored.
@@ -209,12 +230,16 @@ Item {
     }
 
     // "Ask AI" first asks the question; nothing is captured or sent until it
-    // is submitted.
-    function beginAsk() {
+    // is submitted. The field is shown on the surface that has the keyboard
+    // (`monitor`, the one whose key or toolbar started it): the keyboard may
+    // be on another monitor than the host, and a field elsewhere would not get
+    // what is typed.
+    function beginAsk(monitor) {
         if (!root.ai)
             return
         if (!root.selection)
             root.selectAll()
+        root.askOn = monitor
         root.asking = true
     }
 
@@ -223,6 +248,11 @@ Item {
     }
 
     function press(point, monitor) {
+        if (root.carried) {
+            root.carried = false
+            root.release(point)
+            return
+        }
         root.asking = false
         root.card = null
         root.pointer = point
@@ -319,7 +349,8 @@ Item {
             root.copyRequested(root.card.text)
     }
 
-    function key(event) {
+    // `monitor` is the one whose surface got the key.
+    function key(event, monitor) {
         // The question field owns the keyboard; it reports Enter and Escape.
         if (root.asking)
             return
@@ -344,7 +375,7 @@ Item {
         case "translate": root.startInspect("translate"); break
         case "qr": root.startInspect("qr"); break
         case "palette": root.startPalette(); break
-        case "ask": root.beginAsk(); break
+        case "ask": root.beginAsk(monitor); break
         case "record": root.activate("record"); break
         case "timer": root.cycleTimer(); break
         case "window": root.toggleWindowMode(); break
@@ -379,6 +410,10 @@ Item {
                 readonly property var localPointer: surface.record
                     ? Capture.toLocal(root.pointer, surface.record) : ({ x: 0, y: 0 })
                 readonly property real grip: VitrailTokens.capture.handle
+                // The pointer is over this monitor (the size label follows it).
+                readonly property bool holdsPointer: surface.record !== null
+                    && root.pointer.x >= surface.record.x && root.pointer.x < surface.record.x + surface.record.width
+                    && root.pointer.y >= surface.record.y && root.pointer.y < surface.record.y + surface.record.height
                 // The drawn area: its four edges are springs toward `local`, the
                 // exact rect, so the selection itself (hit-testing, the capture)
                 // never lags.
@@ -486,7 +521,9 @@ Item {
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.namespace: "vitrail-capture"
                 WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.keyboardFocus: surface.host ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+                // Every surface, or the others would get no pointer at all
+                // (see the header).
+                WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
                 // The whole surface takes the pointer: a selection may start
                 // anywhere, and a window without a mask is click-through.
                 mask: Region { item: gestures }
@@ -508,9 +545,9 @@ Item {
                     id: gestures
 
                     anchors.fill: parent
-                    focus: surface.host
+                    focus: true
                     Keys.onPressed: function (event) {
-                        root.key(event)
+                        root.key(event, surface.record)
                         event.accepted = true
                     }
 
@@ -528,7 +565,7 @@ Item {
 
                         onPositionChanged: function (mouse) {
                             var point = Capture.toLayout(({ x: mouse.x, y: mouse.y }), surface.record)
-                            if (area.pressed)
+                            if (area.pressed || root.carried)
                                 root.drag(point)
                             else if (root.windowMode)
                                 root.hoveredWindow = root.windowUnder(point)
@@ -536,8 +573,14 @@ Item {
                                 root.pointer = point
                         }
 
+                        // A release outside the surface is the compositor's
+                        // doing, not the user's (see the header).
                         onReleased: function (mouse) {
-                            root.release(Capture.toLayout(({ x: mouse.x, y: mouse.y }), surface.record))
+                            var point = Capture.toLayout(({ x: mouse.x, y: mouse.y }), surface.record)
+                            if (root.gesture !== "" && Capture.outside(point, surface.record))
+                                root.carried = true
+                            else
+                                root.release(point)
                         }
                     }
                 }
@@ -739,7 +782,7 @@ Item {
 
                 // The size of the area, next to the pointer.
                 Item {
-                    visible: surface.alive
+                    visible: surface.alive && surface.holdsPointer
                     width: sizeLabel.width
                     height: sizeLabel.height
                     x: Math.min(Math.max(surface.localPointer.x + VitrailTokens.gap("md"), VitrailTokens.gap("sm")),
@@ -788,7 +831,7 @@ Item {
                     onTranslate: root.startInspect("translate")
                     onQr: root.startInspect("qr")
                     onPalette: root.startPalette()
-                    onAsk: root.beginAsk()
+                    onAsk: root.beginAsk(surface.record)
                     onRecord: root.activate("record")
                     onTimerCycled: root.cycleTimer()
                     onWindowMode: root.toggleWindowMode()
@@ -800,7 +843,7 @@ Item {
                 CaptureAsk {
                     id: question
 
-                    visible: surface.host && surface.alive && root.asking
+                    visible: surface.alive && root.asking && surface.record === root.askOn
                     x: surface.seat.x
                     y: surface.seat.y
                     t: root.t
@@ -813,7 +856,7 @@ Item {
                         target: root
 
                         function onAskingChanged() {
-                            if (root.asking && surface.host)
+                            if (root.asking && surface.record === root.askOn)
                                 question.open()
                         }
                     }

@@ -16,6 +16,43 @@ The selection is two rects per surface:
   `springStep` is the closed-form solution (frame-rate independent, dt clamped,
   velocity kept when the target moves).
 
+## Several monitors (Hyprland 0.56, measured with ydotool)
+
+One layer surface per monitor, all `keyboardFocus: Exclusive`, `focus: true` on
+every `gestures` item, and every surface handles keys (`root.key(event,
+monitor)`). The toolbar, cards and size label stay as they were (toolbar on
+`host`, the monitor under the pointer at open; the size label on the monitor
+holding the pointer).
+
+- **Exclusive layers gate the pointer.** While any layer surface is Exclusive,
+  Hyprland routes pointer input only to the Exclusive ones. With only the host
+  Exclusive, the other monitor's surface saw no enter, press or move: an area
+  could only be made on the host's monitor. Hence all of them are Exclusive.
+- **The keyboard goes to one surface and follows the click.** Right after open
+  it landed on DP-2 whichever surface was the host; a click moves it to the
+  clicked surface. So anything keyboard-driven must work from any surface:
+  Escape, shortcuts and nudging do (every surface calls `root.key`), and the
+  Ask AI card (`CaptureAsk`) is shown on the surface that got the `I` key
+  (`root.askOn`, set by `beginAsk(monitor)`; the toolbar button passes the host,
+  which a click has just given the keyboard). Toggling the others to `None`
+  while asking did not hand the keyboard back to the host: typing went nowhere
+  and Escape stopped working.
+- **No implicit grab on layer surfaces.** Crossing into the other monitor with
+  a button held makes Hyprland send the pressing surface a release (at the last
+  position it knew, outside its monitor, `Capture.outside`), switch the pointer
+  focus to the other surface (enter, then moves with `buttons == 0`, no press)
+  and forget the button: the physical release reaches nobody (no surface event,
+  no `release` bind, `hl.is_key_down` is keyboard only, socket2 has no button
+  events). Polling `j/cursorpos` cannot help (no button state), and an empty
+  input mask on the other surface only makes the pointer vanish.
+- **So a gesture is carried over.** A release outside its own surface is not a
+  release: `root.carried` keeps the gesture (create, move or resize) alive, the
+  moves of any surface drive it (`area.pressed || root.carried`), and the next
+  press ends it at the pointer (`press` calls `release` and returns). The area
+  spans both monitors with `Capture.move/normalize/resize` clamped to the union
+  bounds; `toLocalRect` gives each surface its part. The user drags over, lets
+  go wherever, and clicks to place the edge.
+
 ## Motion
 
 - Each edge is its own spring, so a dragged edge overshoots once and rests
