@@ -127,6 +127,14 @@ function toLocalRect(rect, monitor) {
     return { x: rect.x - monitor.x, y: rect.y - monitor.y, w: rect.w, h: rect.h }
 }
 
+// A layout point beyond the edges of a monitor. The compositor ends a press at
+// the edge of the monitor whose surface took it: a release reported there is
+// the pointer leaving, not the button going up.
+function outside(point, monitor) {
+    return point.x < monitor.x || point.x >= monitor.x + monitor.width
+        || point.y < monitor.y || point.y >= monitor.y + monitor.height
+}
+
 // Where the toolbar goes: under the area when it fits, above when it does not,
 // inside its bottom edge as a last resort. All in the same space as `rect`.
 function toolbarPlacement(rect, screen, size) {
