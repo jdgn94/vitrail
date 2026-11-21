@@ -61,6 +61,8 @@ SYSTEM = {
     "git",
     "uname",
     "findmnt",
+    # util-linux is in the Arch `base` group: the Disks popup.
+    "lsblk",
     "sha256sum",
     "id",
     "true",
@@ -136,6 +138,7 @@ PROVIDED_BY = {
     "zbarimg": "zbar",
     "trans": "translate-shell",
     "btrfs": "btrfs-progs",
+    "udisksctl": "udisks2",
 }
 
 # Shell words that start a command position but are not programs.

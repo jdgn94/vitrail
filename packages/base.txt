@@ -48,6 +48,9 @@ bluez-utils
 btrfs-progs
 power-profiles-daemon
 upower
+# Removable drives in the bar (vitrail/disks.py): lsblk lists them (util-linux,
+# in the base group) and udisksctl mounts, unmounts and powers them off.
+udisks2
 ffmpeg
 imagemagick
 pipewire
