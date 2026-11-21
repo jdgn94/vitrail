@@ -3,30 +3,30 @@ import QtQuick.Layouts
 import "../kit"
 import "../kit/base"
 
-// Sample bar element popup: shows the Python snapshot state and a live
-// preference. The gear opens the bar-elements settings page.
+// The sample element's popup: the snapshot's run and when it was taken. The
+// gear opens the element's own page in Settings → Bar elements.
 Item {
     id: root
 
     property var strings: ({})
-    property var data: ({})
+    property var snapshot: ({})
 
     signal settingsRequested()
 
-    implicitWidth: layout.implicitWidth + 2 * VitrailTokens.gap("md")
-    implicitHeight: layout.implicitHeight + 2 * VitrailTokens.gap("md")
+    readonly property bool ready: root.snapshot.counter !== undefined && !root.snapshot.error
 
     function t(key) {
         var value = root.strings[key]
         return value === undefined ? key : value
     }
 
-    ColumnLayout {
-        id: layout
+    implicitWidth: 320
+    implicitHeight: body.implicitHeight
 
-        x: VitrailTokens.gap("md")
-        y: VitrailTokens.gap("md")
-        width: 240
+    ColumnLayout {
+        id: body
+
+        anchors.fill: parent
         spacing: VitrailTokens.gap("sm")
 
         RowLayout {
@@ -35,8 +35,10 @@ Item {
 
             VitrailText {
                 Layout.fillWidth: true
-                variant: "label"
-                text: root.t("bar.widget.sample")
+                variant: "subtitle"
+                elide: Text.ElideRight
+                text: root.ready ? root.t("bar.widget.sample.run").replace("%1", root.snapshot.counter)
+                                 : root.t("bar.widget.sample.unavailable")
             }
 
             VitrailPopupGear {
@@ -47,23 +49,9 @@ Item {
 
         VitrailText {
             Layout.fillWidth: true
-            variant: "body"
-            wrapMode: Text.WordWrap
-            text: root.data.message ? String(root.data.message) : "—"
-            opacity: root.data.message ? 1.0 : 0.4
-
-            Behavior on opacity {
-                NumberAnimation { duration: VitrailTokens.duration("fast") }
-            }
-        }
-
-        VitrailText {
-            variant: "caption"
-            text: root.data.updated
-                  ? new Date(root.data.updated * 1000).toLocaleTimeString(Qt.locale(), "HH:mm")
-                  : ""
-            opacity: 0.5
-            visible: text !== ""
+            variant: "label"
+            visible: root.ready
+            text: root.t("bar.widget.sample.updated").replace("%1", Qt.formatTime(new Date(root.snapshot.updated * 1000), "HH:mm"))
         }
     }
 }

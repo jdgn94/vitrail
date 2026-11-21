@@ -1,22 +1,20 @@
 import QtQuick
 import ".."
-import "../kit"
 
-// Sample bar element: exercises BarElementBase and the Python snapshot
-// pattern. Hidden by default; enable it in bar/layouts.js or the editor.
+// The sample bar element, the reference for docs/bar-elements.md: a button
+// whose tooltip and visibility follow a Python snapshot (vitrail/sample.py).
+// Hidden by default (bar/layouts.js DEFAULT_HIDDEN); "only while active" hides
+// it whenever the snapshot has nothing to say.
 BarElementBase {
     id: root
 
-    property var data: ({})
-    property var strings: ({})
+    // The element's data: vitrail.sample's snapshot (BarSnapshot).
+    property var snapshot: ({})
+    readonly property bool ready: root.snapshot.counter !== undefined && !root.snapshot.error
 
-    tooltip: root.data.message ? String(root.data.message) : root.t("bar.widget.sample.tooltip")
-    tooltipDetail: root.t("bar.widget.sample.tooltipDetail")
-    showMode: "always"
     icon: "widgets"
-
-    function t(key) {
-        var value = root.strings[key]
-        return value === undefined ? key : value
-    }
+    active: root.ready
+    tooltip: root.ready ? root.t("bar.widget.sample.run").replace("%1", root.snapshot.counter)
+                        : root.t("bar.widget.sample.unavailable")
+    tooltipDetail: root.t("bar.widget.sample.tooltipDetail")
 }

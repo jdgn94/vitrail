@@ -3,21 +3,30 @@ import QtQuick.Layouts
 import "../../kit"
 import "../../kit/base"
 
-// Bar elements category: per-element settings for every new-style bar element.
-// Elements shipped with Vitrail appear here with their own options; the sample
-// element is the reference implementation.
+// Bar elements category: one block per new-style bar element, each with the
+// options every element shares (when it shows) and its own. A bar popup's gear
+// lands on its element's block through `tab` (the element's id). A new
+// element adds its BarElementSection here (docs/bar-elements.md).
 Item {
     id: page
 
     property var palette
     property var prefs
     property var strings
+    // The element whose block to bring into view (a gear or a search result).
     property string tab: ""
 
-    function t(key) {
-        var value = page.strings[key]
-        return value === undefined ? key : value
+    function reveal() {
+        for (var i = 0; i < column.children.length; i++) {
+            var block = column.children[i]
+            if (block.elementId !== undefined && block.elementId === page.tab) {
+                scroller.contentY = Math.min(block.y, Math.max(0, scroller.contentHeight - scroller.height))
+                return
+            }
+        }
     }
+
+    onTabChanged: Qt.callLater(page.reveal)
 
     Flickable {
         id: scroller
@@ -33,27 +42,12 @@ Item {
             width: parent.width
             spacing: VitrailTokens.gap("xl")
 
-            Section {
+            BarElementSection {
                 Layout.fillWidth: true
-                title: page.t("bar.elements.sampleItem")
-            }
-
-            VitrailSettingRow {
-                Layout.fillWidth: true
-                label: page.t("bar.elements.showMode")
-                foreground: page.palette.foreground
-                muted: page.palette.muted
-
-                VitrailSegmented {
-                    options: [
-                        { key: "always", label: page.t("bar.elements.showMode.always") },
-                        { key: "active", label: page.t("bar.elements.showMode.active") }
-                    ]
-                    current: page.prefs.sampleShowMode || "always"
-                    foreground: page.palette.foreground
-                    accent: page.palette.primary
-                    onSelected: function (key) { page.prefs.sampleShowMode = key }
-                }
+                elementId: "sample"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
             }
 
             Item { Layout.preferredHeight: VitrailTokens.gap("xl") }

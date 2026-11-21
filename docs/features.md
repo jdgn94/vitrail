@@ -2,7 +2,7 @@
 
 ## Bar element foundation
 
-`BarElementBase` (bar/BarElementBase.qml) is the shared base for new bar elements: icon button, tooltip/detail handoff, "only while active" visibility mode, and popup open/close interface. The sample element (bar/sample/, hidden by default) exercises every layer: button, panel with popup gear, Python snapshot module (vitrail/sample.py), show-mode preference, and a Settings → Bar elements page. See docs/bar-elements.md for the worked-example recipe.
+`BarElementBase` (bar/BarElementBase.qml) is the base of every new bar element: the icon button with its tooltip, click, middle click, right click and wheel, a custom face when a button does not fit, and the "only while active" switch (Settings → Bar elements, one `barActiveOnly` preference for all elements). `BarSnapshot` brings an element's data from a Python module as one JSON snapshot, polled only while the element is in a bar. The sample element (bar/sample/, hidden by default) exercises every layer, and Settings → Bar elements has one block per element. See docs/bar-elements.md for the recipe.
 
 ## The bar and the frame
 

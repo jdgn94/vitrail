@@ -73,8 +73,9 @@ bar trayStyle
 # (only with an adapter).
 bar barBatteryChip
 bar barBluetoothChip
-# The sample bar element's show mode: "always" or "active".
-bar sampleShowMode
+# The bar elements that show only while they have something to say: a JSON
+# array of element ids (bar/elements.js).
+bar barActiveOnly
 bar barKeyboard
 bar osdKeys
 bar osdKeyTime

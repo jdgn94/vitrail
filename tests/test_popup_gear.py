@@ -17,6 +17,7 @@ POPUPS = {
     "bar/network/VpnPanel.qml": ("connection", "vpn"),
     "bar/network/PowerProfilePanel.qml": ("connection", "power"),
     "bar/keyboard/KeyboardPanel.qml": ("input", "keyboard"),
+    "bar/sample/SamplePanel.qml": ("bar-elements", "sample"),
 }
 
 

@@ -1100,7 +1100,7 @@ Window {
 
         VitrailText {
             variant: "title"
-            text: "BarElementBase · showMode × opened"
+            text: "BarElementBase · showMode × opened × face"
         }
 
         Row {
@@ -1130,6 +1130,25 @@ Window {
                 showMode: "active"
                 active: false
                 icon: "widgets"
+            }
+
+            BarElementBase {
+                tooltip: "Icon and label"
+                icon: "widgets"
+                text: "42%"
+                tone: "primary"
+            }
+
+            BarElementBase {
+                tooltip: "Custom face"
+                content: Component {
+                    Rectangle {
+                        implicitWidth: VitrailTokens.size("body")
+                        implicitHeight: VitrailTokens.size("body")
+                        radius: width / 2
+                        color: VitrailTokens.color("error")
+                    }
+                }
             }
         }
 

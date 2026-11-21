@@ -63,6 +63,11 @@ var index = [
     { category: "bar", tab: "capture", key: "bar.section.capture", label: "Capture",
       terms: ["screenshot", "recording", "capture"] },
 
+    { category: "bar-elements", tab: "", key: "section.barElements", label: "Bar elements",
+      terms: ["element", "widget", "only while active", "show", "hide"] },
+    { category: "bar-elements", tab: "sample", key: "bar.widget.sample", label: "Sample",
+      terms: ["sample", "example"] },
+
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },
     { category: "windows", tab: "border", key: "windows.tabBorder", label: "Border",

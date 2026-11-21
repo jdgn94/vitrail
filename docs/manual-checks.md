@@ -8,12 +8,12 @@ sección está completa se borra.
 
 Código en `bar-foundation`. Verificar con el bar corriendo:
 
-- [ ] Abrir Settings → Bar elements: aparece la página con "Sample element" y el selector de modo.
-- [ ] Añadir el elemento `sample` al editor de barra (clic derecho → Editar, arrastrarlo a un grupo): aparece el botón con tooltip "Sample element".
-- [ ] Al pasar el ratón, aparece el tooltip con el detalle "Opens the sample popup".
-- [ ] Un clic abre el popup: muestra el mensaje del módulo Python y el engranaje de opciones.
-- [ ] El engranaje abre Settings → Bar elements.
-- [ ] El modo "Only while active" oculta el botón cuando `active = false`.
+- [ ] Ajustes → Bar elements: aparece el bloque "Sample" con el selector "Siempre / Solo cuando está activo".
+- [ ] Añadir `sample` a la barra desde el editor (clic derecho → Editar, mostrarlo): aparece el botón; al pasar el ratón el tooltip dice "Instantánea de ejemplo n.º N" y debajo el detalle.
+- [ ] Un clic abre el popup con el número de la instantánea y la hora; el engranaje abre Ajustes → Bar elements ya desplazado al bloque "Sample".
+- [ ] Con "Solo cuando está activo" el botón sigue visible mientras haya datos; ejecutar `chmod a-w ~/.cache/vitrail` y esperar un minuto tras caducar la caché (5 min): el botón desaparece; restaurar permisos y reaparece.
+- [ ] Con el elemento fuera de la barra (oculto, el estado por defecto) no hay ningún proceso `python3 -m vitrail.sample` en `ps`.
+- [ ] Rueda y clic central sobre el botón no rompen nada (la base los emite; el sample no los usa).
 
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 

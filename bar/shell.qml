@@ -15,6 +15,7 @@ import "effects.js" as Effects
 import "prefs.js" as Prefs
 import "barview.js" as BarView
 import "layouts.js" as Layouts
+import "elements.js" as Elements
 import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "kit/wallpaper.js" as WallpaperTransition
@@ -1590,33 +1591,23 @@ ShellRoot {
         active: shell.desktopWidgetsActive
     }
 
-    // The sample bar element's data: a small JSON snapshot from vitrail.sample.
-    property var sampleState: ({})
+    // The elements that show only while active (bar.ini `barActiveOnly`).
+    readonly property var activeOnlyIds: Elements.parseActiveOnly(shell.prefs.barActiveOnly)
 
-    Timer {
-        id: sampleTimer
-
-        interval: 60000
-        repeat: true
-        triggeredOnStart: true
-        running: true
-        onTriggered: if (!sampleFetch.running) sampleFetch.running = true
+    // Whether any monitor's bar draws the element: its data runs only then.
+    function barShows(id) {
+        var text = shell.prefs.barLayout || ""
+        return Quickshell.screens.some(function (screen) {
+            return Layouts.effective(text, screen.name).hidden.indexOf(id) < 0
+        })
     }
 
-    Process {
-        id: sampleFetch
+    // The sample bar element's data (vitrail/sample.py).
+    BarSnapshot {
+        id: sampleData
 
-        command: ["python3", "-m", "vitrail.sample", "state"]
-        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    var result = JSON.parse(this.text)
-                    if (result && typeof result === "object")
-                        shell.sampleState = result
-                } catch (e) {}
-            }
-        }
+        module: "sample"
+        active: shell.barShows("sample")
     }
 
     function syncTokens() {
@@ -3646,7 +3637,8 @@ ShellRoot {
                         id: sampleButton
 
                         strings: shell.strings
-                        data: shell.sampleState
+                        snapshot: sampleData.snapshot
+                        showMode: Elements.showMode(shell.activeOnlyIds, "sample")
                         opened: shell.popupOpen && shell.popupKind === "sample" && shell.popupScreen === monitor.modelData
                         onClicked: shell.togglePopup("sample", sampleButton, monitor.modelData)
                         onHoveredChanged: {
@@ -4961,8 +4953,8 @@ ShellRoot {
 
                     SamplePanel {
                         strings: shell.strings
-                        data: shell.sampleState
-                        onSettingsRequested: shell.openSettingsAt("bar-elements", "")
+                        snapshot: sampleData.snapshot
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "sample")
                     }
                 }
 
