@@ -144,7 +144,9 @@ QtObject {
     property alias captureRecordAudio: captureFile.captureRecordAudio
     property alias captureRecordRegion: captureFile.captureRecordRegion
     property alias captureAnimation: captureFile.captureAnimation
-    property alias annotatePanel: captureFile.annotatePanel
+    property alias editorTool: captureFile.editorTool
+    property alias editorRemember: captureFile.editorRemember
+    property alias editorOptions: captureFile.editorOptions
     property alias captureAi: captureFile.captureAi
     property alias ocrLanguages: captureFile.ocrLanguages
     property alias captureDetect: captureFile.captureDetect
@@ -462,7 +464,11 @@ QtObject {
         property bool captureRecordAudio: false
         property bool captureRecordRegion: false
         property bool captureAnimation: true
-        property bool annotatePanel: true
+        // The screenshot editor: the tool it opens on, whether it remembers
+        // the options last used, and those options (a JSON document).
+        property string editorTool: "pencil"
+        property bool editorRemember: true
+        property string editorOptions: ""
         // "Ask AI" in the overlay: off, the button and the I key are gone.
         property bool captureAi: true
         // tesseract codes joined with "+"; empty: system language + English.

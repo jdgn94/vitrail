@@ -171,7 +171,7 @@ hl.window_rule({
 -- when the surface style is solid.
 hl.layer_rule({
     name = "vitrail-glass",
-    match = { namespace = "^vitrail-(bar|popup|notifications|dialog|session|tooltip|launcher|osd|clipboard|keyboard|capture|pin|droplet)$" },
+    match = { namespace = "^vitrail-(bar|popup|notifications|dialog|session|tooltip|launcher|osd|clipboard|keyboard|capture|pin|editor|droplet)$" },
     blur = true,
     ignore_alpha = 0.01,
 })

@@ -948,7 +948,6 @@ ShellRoot {
     property string captureMode: "region"
     property var capture: ({})
     property var capturePending: null
-    property bool captureAnnotateNext: false
 
     function openCapture(mode) {
         shell.closePopup()
@@ -1037,6 +1036,10 @@ ShellRoot {
             capturePin.exec(["python3", "-m", "vitrail.capture", "pin", "--geometry", pending.geometry])
             return
         }
+        if (pending.action === "edit") {
+            captureEdit.exec(["python3", "-m", "vitrail.capture", "edit", "--geometry", pending.geometry])
+            return
+        }
         if (pending.action === "ocr") {
             captureOcr.exec(["python3", "-m", "vitrail.capture", "ocr", "--geometry", pending.geometry])
             return
@@ -1047,7 +1050,6 @@ ShellRoot {
                              "--text", pending.text])
             return
         }
-        shell.captureAnnotateNext = pending.action === "annotate"
         captureGrab.exec(["python3", "-m", "vitrail.capture", "grab", "--geometry", pending.geometry,
                           pending.action === "copy" ? "--copy" : "--save"])
     }
@@ -1068,11 +1070,7 @@ ShellRoot {
             return
         }
         var pending = shell.capturePending
-        if (shell.captureAnnotateNext && document.path) {
-            shell.captureAnnotateNext = false
-            captureAnnotate.exec(["python3", "-m", "vitrail.capture", "annotate", document.path])
-            shell.captureNotice("capture.annotate.opened", shell.captureSize(pending && pending.rect))
-        } else if (document.path) {
+        if (document.path) {
             shell.captureNotice("capture.save.saved", shell.captureEscape(document.path))
         } else if (document.copied) {
             shell.captureNotice("capture.shot.copied", shell.captureSize(pending && pending.rect))
@@ -1127,6 +1125,26 @@ ShellRoot {
         pinLayer.add(document.image, pending.rect, shell.capture.monitors || [])
         shell.captureNotice("capture.pin.done", shell.captureSize(pending.rect))
     }
+
+    // An area to edit: the picture is a file of its own, and the editor layer
+    // (which outlives the overlay) opens a window for it on that monitor.
+    function captureEdited(text) {
+        var document = ({})
+        try {
+            document = JSON.parse(text)
+        } catch (error) {
+            document = ({})
+        }
+        var pending = shell.capturePending
+        if (document.error || !document.image || !pending) {
+            shell.captureNotice("capture.edit.failed")
+            return
+        }
+        editorLayer.add(document.image, document.w, document.h, pending.rect, shell.capture.monitors || [])
+    }
+
+    // The editor remembers the options last used, unless the setting says not to.
+    readonly property bool editorRemember: shell.prefBool("editorRemember", true)
 
     // Background detection for the overlay's buttons: one process at a time,
     // always for the newest selection (an older run is stopped).
@@ -2949,6 +2967,31 @@ ShellRoot {
     }
 
     Process {
+        id: captureEdit
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.captureEdited(this.text)
+        }
+    }
+
+    EditorLayer {
+        id: editorLayer
+
+        t: shell.t
+        tool: shell.prefs.editorTool || "pencil"
+        options: shell.editorRemember ? (shell.prefs.editorOptions || "") : ""
+        onSaved: function (path) { shell.captureNotice("capture.save.saved", shell.captureEscape(path)) }
+        onCopied: function (size) { shell.captureNotice("capture.shot.copied", size) }
+        onSaveFailed: shell.captureNotice("capture.editor.saveFailed")
+        onCopyFailed: shell.captureNotice("capture.copyFailed")
+        onRemember: function (options) {
+            if (shell.editorRemember && String(options) !== String(shell.prefs.editorOptions || ""))
+                shell.setPref("editorOptions", String(options))
+        }
+    }
+
+    Process {
         id: captureOcr
 
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
@@ -2982,12 +3025,6 @@ ShellRoot {
         stdout: StdioCollector {
             onStreamFinished: shell.captureStopped(this.text)
         }
-    }
-
-    Process {
-        id: captureAnnotate
-
-        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
     }
 
     Process {

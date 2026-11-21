@@ -37,7 +37,7 @@ The bar's camera button opens the capture overlay (`vitrail/capture.py`): the
 screen freezes, the area can be dragged and resized with its eight handles —
 even across monitors — and a toolbar outside it offers the actions. `Enter`
 or `Ctrl`+`C` takes the picture and copies it (in record mode `Enter` records and `Ctrl`+`C` still copies), `G` or `Ctrl`+`S` saves it under `~/Pictures/Screenshots`,
-`A` opens it in `swappy`, `R` records that area with `wf-recorder` — one monitor per
+`A` opens it in the editor (pencil, text, shapes, arrows; undo; save or copy at the picture's own size), `R` records that area with `wf-recorder` — one monitor per
 recording — (a red chip in the bar stops it), `T` sets a 3 or 5 second countdown, `W` picks a window
 (a click takes it), `F` takes the whole layout and `Esc` leaves; the toolbar
 appears once there is an area; each button's tooltip names its key. Once the
@@ -61,7 +61,14 @@ line. The number of colours is Bar → Capture → *Colours in the palette*. **P
 the area on screen as a floating glass window on its monitor: drag it, zoom with
 the wheel, change its opacity with `Ctrl`+wheel or the bar that appears on
 hover, close it with `Esc`, a double click or the close button; any number of
-pins, and they outlive the overlay. `I`
+pins, and they outlive the overlay. The **editor** (`A`) opens the area in a
+glass window centred on its monitor: pencil (`P`, with a highlighter mode), text
+(`T`, typed in place), shapes (`F`) and arrows (`A`), each with its colour (six
+swatches and a custom one), width and options; undo and redo take one element at
+a time, the view zoom never changes the saved picture, **Copy** (`Ctrl`+`C`) and
+**Save** (`Ctrl`+`S`) draw the picture and its marks at its own pixel size, and
+`Esc` discards (asking first when something would be lost). Bar → Capture sets
+its starting tool and whether it remembers the last options. `I`
 (Ask AI) opens a question field beside the area; `Enter` opens the default
 browser on Google Lens with the picture and the question (its AI Overview
 answers it, and the AI Mode tab continues with both). Nothing is sent before
@@ -69,7 +76,7 @@ answers it, and the AI Mode tab continues with both). Nothing is sent before
 key. Letters are plain keys: with `Ctrl`, `Alt` or `Meta` they do nothing, except `Ctrl`+`C` and
 `Ctrl`+`S`; on a card `Ctrl`+`C` copies its content (the colours, the QR content or
 the translation). Every action says what it did in a notification: screenshot
-copied (its size) or saved (its path), annotator opened, area pinned, countdown
+copied (its size) or saved (its path), editor result (saved or copied), area pinned, countdown
 started, recording started and saved (the file) and Ask AI opening Google.
 `PRINT` opens the
 same overlay (and `Super+PRINT` with the whole layout selected). The folders and

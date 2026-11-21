@@ -209,7 +209,7 @@ ourselves.
 
 | Task | Depends on | Done when |
 |---|---|---|
-| P3.1 Screenshots: region, window, full, annotate (grim/slurp/swappy) | P0.1 | Saved to the configured path and copied to the clipboard; the three modes are also buttons in the panel's widgets slot |
+| P3.1 Screenshots: region, window, full, annotate (grim/slurp, the built-in editor) | P0.1 | Saved to the configured path and copied to the clipboard; the three modes are also buttons in the panel's widgets slot |
 | P3.2 Recording: screen and region, with indicator and stop from the bar | P3.1 | Produces a playable file with audio; the panel widget starts and stops it |
 | P4.1 Lock: native `ext-session-lock` client + PAM | P0.1, P4.2 | Locks all outputs, wrong password retries, unlock returns to the session; rotation timer frozen |
 | P4.2 SDDM theme + last-session snapshot | P0.1, P2.2 | Greeter shows the last cursor, palette and wallpaper; wrong password is handled |
@@ -255,16 +255,12 @@ the stack built against the release.
 
 ---
 
-## Waiting on Mirlo
+## Mirlo
 
-Not started until Mirlo phase 1 (the annotator, `~/Projects/mirlo/PLAN.md`) ships
-a package. Until then the capture overlay keeps `swappy`.
-
-| Task | Depends on | Done when |
-|---|---|---|
-| Move the capture overlay's Annotate action from `swappy` to `mirlo -` (image on stdin, `--early-exit`, `--output` following Vitrail's capture save scheme) | Mirlo phase 1 | Annotating a region copies and saves at native size and the window closes by itself |
-| Remove swappy: `vitrail/swappy.py`, `tests/test_swappy.py`, the annotate env, the `annotatePanel` preference with its settings row and i18n keys (all six `kit/i18n/*.json`), `packages/base.txt`, the PKGBUILDs, the README dependencies and the docs | Annotate on `mirlo` | `grep -ri swappy` finds nothing outside the changelog |
-| Add `mirlo` as a dependency: `packages/*.txt`, the README's "Runtime dependencies" table, `tests/test_dependencies.py` green | Annotate on `mirlo` | The dependency gate passes with `mirlo` declared |
+The capture overlay's Annotate action is Vitrail's own editor
+(`bar/capture/Editor*.qml`); the old GTK annotator is gone. Mirlo (`~/Projects/mirlo/PLAN.md`)
+stays a separate viewer; wiring the overlay to it is only worth reopening if
+the built-in editor falls short.
 
 ---
 
@@ -290,5 +286,5 @@ a package. Until then the capture overlay keeps `swappy`.
 ## Open questions
 
 - RAM budget per animated wallpaper (default 3 GB, measured at import).
-- Image and colour pickers: our own components or system tools (`swappy`, `nwg-look`)?
+- Image and colour pickers: our own components or system tools (`nwg-look`)?
 - Plugin sandboxing: QML plugins run in-process; decide the trust model before shipping any.

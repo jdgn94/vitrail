@@ -37,6 +37,8 @@ layer contract.
      the five looks, background wiring.
    - `references/capture.md` — capture overlay: exact vs drawn selection, liquid
      motion, the masked veil, `captureAnimation`.
+   - `references/editor.md` — screenshot editor: flow, scene in picture pixels,
+     export, options, dialogs, window.
    - `references/desktop.md` — desktop widgets: registry entries, layer,
      points, editor canvas and how to add one.
 2. Geometry goes in `kit/frame.js` (pure, tested in `tests/qml/tst_frame.qml`);

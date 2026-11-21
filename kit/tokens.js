@@ -266,12 +266,54 @@ var desktopEdit = {
 // searched for text and codes. pin: the floating copy of an area: wheel
 // `zoomStep` per notch between `zoomMin` and `zoomMax`, `opacityStep` per
 // Ctrl+wheel notch down to `opacityMin`.
+// editor: the screenshot editor (bar/capture/Editor*.qml). Lengths are px of
+// the picture unless noted. window: the card's `width` and `height` at least
+// (canvas included), and the `share` of the screen it may take at most.
+// color: the six `swatches` (annotation marks are the same on any wallpaper,
+// so they are not palette roles), the `swatch` diameter and `ring` of the
+// chosen one, `ink` the two colours a text background is chosen from (the one
+// that contrasts with the text), `start` the first colour. backdrop: the
+// share of the foreground tinting the canvas behind the picture. scrim: the
+// share of the foreground that dims the card under a dialog; dialog: its
+// `width`. zoom: the view's multiplier of the fit (`min`..`max`, `step` per
+// press). drag: the `least` a shape or arrow must be dragged to count, and
+// the `smooth` distance between pen points. slider: the width of an option's
+// slider. Per tool: pen / shape / arrow `width`, pen `opacity` and text
+// `size` are ranges like `ranges`; `highlighter` widens the pen by `width`
+// and caps its opacity at `opacity`; `fill` is the translucent fill's alpha;
+// `head` the arrow head's length per px of line width, at least `headMin`,
+// opening `angle` degrees each side; `dash` the dash and the gap in line
+// widths; `pad` the solid text background's padding, as a share of the size.
 var capture = {
     handle: 12,
     ask: { width: 360 },
     card: { width: 360, lines: 12, swatch: { columns: 3, height: 44, edge: 0.25 } },
     detect: 300,
     pin: { zoomMin: 0.1, zoomMax: 8, zoomStep: 1.1, opacityStep: 0.05, opacityMin: 0.2 },
+    editor: {
+        window: { width: 860, height: 460, share: 0.9 },
+        color: {
+            swatches: ["#F44336", "#FFC107", "#4CAF50", "#2196F3", "#FFFFFF", "#000000"],
+            swatch: 24,
+            ring: 2,
+            ink: { light: "#FFFFFF", dark: "#000000" },
+            start: "#F44336"
+        },
+        backdrop: 0.1,
+        scrim: 0.5,
+        dialog: { width: 380 },
+        zoom: { min: 0.25, max: 8, step: 1.25 },
+        drag: { least: 3, smooth: 1.5 },
+        slider: 120,
+        pen: {
+            width: { min: 1, max: 48, step: 1, value: 4 },
+            opacity: { min: 0.1, max: 1, step: 0.05, value: 1 },
+            highlighter: { width: 3, opacity: 0.4 }
+        },
+        text: { size: { min: 10, max: 160, step: 2, value: 32 }, pad: 0.25 },
+        shape: { width: { min: 1, max: 40, step: 1, value: 4 }, fill: 0.3 },
+        arrow: { width: { min: 1, max: 40, step: 1, value: 4 }, head: 4, headMin: 14, angle: 28, dash: [3, 2] }
+    },
     border: 2,
     guide: { width: 1, alpha: 0.6 },
     dim: 0.55,

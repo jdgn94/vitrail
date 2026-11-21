@@ -346,30 +346,140 @@ class WindowTests(unittest.TestCase):
         self.assertIsNone(capture.window_at(0, 0, self.clients(None)))
 
 
-class AnnotateTests(unittest.TestCase):
-    def test_swappy_opens_the_file_in_the_vitrail_theme_when_it_is_installed(self) -> None:
-        calls: list[tuple[list[str], dict]] = []
-        with (
-            mock.patch.object(capture.shutil, "which", return_value="/usr/bin/swappy"),
-            mock.patch("vitrail.swappy.environment", return_value={"GTK_THEME": "Vitrail-Swappy"}) as prepared,
-        ):
-            self.assertTrue(
-                capture.annotate(
-                    "/tmp/a.png",
-                    values={"annotatePanel": "false"},
-                    spawner=lambda argv, log, env=None: calls.append((argv, env)) or 1,
-                )
-            )
-        prepared.assert_called_once_with({"annotatePanel": "false"})
-        self.assertEqual(calls, [(["swappy", "-f", "/tmp/a.png"], {"GTK_THEME": "Vitrail-Swappy"})])
+class EditTests(unittest.TestCase):
+    flat = CropTests.flat
 
-    def test_without_swappy_nothing_opens(self) -> None:
-        calls: list[list[str]] = []
-        with mock.patch.object(capture.shutil, "which", return_value=None):
-            self.assertFalse(
-                capture.annotate("/tmp/a.png", spawner=lambda argv, log, env=None: calls.append(argv) or 1)
+    def run_png(self, argv: list[str]) -> str:
+        Path(argv[-1]).write_bytes(b"png")
+        return ""
+
+    def test_the_area_is_kept_for_the_editor_in_its_own_private_folder(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            first = capture.edit_image(
+                {"x": 0, "y": 0, "w": 50, "h": 40}, self.flat, Path(tmp), run=self.run_png, now=1.0
             )
+            second = capture.edit_image(
+                {"x": 0, "y": 0, "w": 50, "h": 40}, self.flat, Path(tmp), run=self.run_png, now=2.0
+            )
+            self.assertEqual(Path(first["image"]).parent, Path(tmp) / "edits")
+            self.assertNotEqual(first["image"], second["image"])
+            self.assertEqual((first["w"], first["h"]), (50, 40))
+            self.assertEqual(Path(first["image"]).read_bytes(), b"png")
+            self.assertEqual(Path(first["image"]).stat().st_mode & 0o777, 0o600)
+            self.assertEqual((Path(tmp) / "edits").stat().st_mode & 0o777, 0o700)
+
+    def test_a_bad_selection_is_an_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = capture.edit_image({"x": 0, "y": 0, "w": 0, "h": 5}, self.flat, Path(tmp), run=lambda argv: "")
+        self.assertEqual(result, {"error": "empty selection"})
+
+
+class FinishTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.runtime = Path(self.tmp.name) / "run"
+        (self.runtime / "edits").mkdir(parents=True)
+        self.source = self.runtime / "edits" / "edit-1-final.png"
+        self.source.write_bytes(b"edited")
+        self.folder = Path(self.tmp.name) / "shots"
+
+    def test_saving_copies_the_picture_into_the_folder_and_forgets_the_source(self) -> None:
+        result = capture.finish(str(self.source), directory=str(self.folder), runtime=self.runtime, now=NOW)
+        saved = Path(result["path"])
+        self.assertEqual(saved.parent, self.folder)
+        self.assertRegex(saved.name, r"^Screenshot_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.png$")
+        self.assertEqual(saved.read_bytes(), b"edited")
+        self.assertFalse(self.source.exists())
+
+    def test_copying_sends_the_picture_to_the_clipboard_and_forgets_the_source(self) -> None:
+        sent: list[tuple[list[str], bytes]] = []
+        result = capture.finish(
+            str(self.source),
+            copy=True,
+            runtime=self.runtime,
+            copy_run=lambda argv, data: sent.append((argv, data)) or True,
+        )
+        self.assertEqual(result, {"copied": True})
+        self.assertEqual(sent, [(["wl-copy"], b"edited")])
+        self.assertFalse(self.source.exists())
+
+    def test_a_clipboard_that_fails_is_reported_and_the_source_is_still_forgotten(self) -> None:
+        result = capture.finish(str(self.source), copy=True, runtime=self.runtime, copy_run=lambda argv, data: False)
+        self.assertEqual(result, {"copied": False})
+        self.assertFalse(self.source.exists())
+
+    def test_a_folder_that_cannot_be_written_is_an_error_and_keeps_the_source(self) -> None:
+        blocked = Path(self.tmp.name) / "file"
+        blocked.write_text("x", encoding="utf-8")
+        result = capture.finish(str(self.source), directory=str(blocked / "inside"), runtime=self.runtime)
+        self.assertIn("error", result)
+        self.assertTrue(self.source.exists())
+
+    def test_only_files_of_the_edits_folder_are_taken(self) -> None:
+        stranger = Path(self.tmp.name) / "photo.png"
+        stranger.write_bytes(b"mine")
+        result = capture.finish(str(stranger), directory=str(self.folder), runtime=self.runtime)
+        self.assertEqual(result, {"error": "not an edit"})
+        self.assertTrue(stranger.exists())
+        self.assertEqual(
+            capture.finish(
+                str(self.runtime / "edits" / ".." / "x.png"), directory=str(self.folder), runtime=self.runtime
+            ),
+            {"error": "not an edit"},
+        )
+
+    def png(self, width: int, height: int) -> bytes:
+        header = b"\x89PNG\r\n\x1a\n" + (13).to_bytes(4, "big") + b"IHDR"
+        return header + width.to_bytes(4, "big") + height.to_bytes(4, "big") + b"\x08\x06\x00\x00\x00"
+
+    def test_a_picture_of_another_size_is_brought_to_the_asked_one(self) -> None:
+        # The view's pixel ratio (a 1.5x monitor) can leave the render a pixel off.
+        self.source.write_bytes(self.png(1281, 720))
+        calls: list[list[str]] = []
+        result = capture.finish(
+            str(self.source),
+            directory=str(self.folder),
+            runtime=self.runtime,
+            size=(1280, 720),
+            run=lambda argv: calls.append(argv) or "",
+        )
+        self.assertIn("path", result)
+        self.assertEqual(calls, [["magick", str(self.source), "-resize", "1280x720!", str(self.source)]])
+
+    def test_a_picture_of_the_asked_size_is_left_alone(self) -> None:
+        self.source.write_bytes(self.png(1280, 720))
+        calls: list[list[str]] = []
+        result = capture.finish(
+            str(self.source),
+            directory=str(self.folder),
+            runtime=self.runtime,
+            size=(1280, 720),
+            run=lambda argv: calls.append(argv) or "",
+        )
+        self.assertIn("path", result)
         self.assertEqual(calls, [])
+
+    def test_a_resize_that_fails_is_an_error_and_keeps_the_source(self) -> None:
+        self.source.write_bytes(self.png(2560, 1440))
+        result = capture.finish(
+            str(self.source), directory=str(self.folder), runtime=self.runtime, size=(1280, 720), run=lambda argv: None
+        )
+        self.assertEqual(result, {"error": "magick failed"})
+        self.assertTrue(self.source.exists())
+
+    def test_the_size_is_read_from_the_png_header(self) -> None:
+        self.source.write_bytes(self.png(640, 360))
+        self.assertEqual(capture.png_size(self.source), (640, 360))
+        self.source.write_bytes(b"not a png at all, just bytes")
+        self.assertIsNone(capture.png_size(self.source))
+        self.assertIsNone(capture.png_size(self.source.with_name("missing.png")))
+
+    def test_a_missing_picture_is_an_error(self) -> None:
+        result = capture.finish(
+            str(self.runtime / "edits" / "gone.png"), directory=str(self.folder), runtime=self.runtime
+        )
+        self.assertEqual(result, {"error": "not an edit"})
 
 
 class RecordTests(unittest.TestCase):
@@ -672,7 +782,7 @@ class AskTests(unittest.TestCase):
                 text,
                 Path(tmp),
                 run=extra.get("run", self.tools(calls)),
-                spawner=lambda argv, log, env=None: spawned.append(argv) or 1,
+                spawner=lambda argv, log: spawned.append(argv) or 1,
                 now=1.5,
             )
             page = Path(result["page"]) if "page" in result else None
@@ -783,7 +893,7 @@ class CodeTests(unittest.TestCase):
             capture.shutil, "which", side_effect=lambda n: "/usr/bin/" + n if n == "xdg-open" else real(n)
         ):
             done = capture.open_link(
-                "https://example.org/x", Path("/tmp/x.log"), lambda argv, log, env=None: spawned.append(argv) or 1
+                "https://example.org/x", Path("/tmp/x.log"), lambda argv, log: spawned.append(argv) or 1
             )
             refused = capture.open_link(
                 "file:///etc/passwd", Path("/tmp/x.log"), lambda *a, **k: spawned.append(a) or 1
@@ -1106,9 +1216,22 @@ class EntryTests(unittest.TestCase):
         self.assertEqual(capture.main(["ask", "--text", "x"]), 2)
 
     def test_every_area_command_needs_a_geometry(self) -> None:
-        for command in ("detect", "qr", "translate", "pin", "palette"):
+        for command in ("detect", "qr", "translate", "pin", "palette", "edit"):
             with self.subTest(command=command):
                 self.assertEqual(capture.main([command]), 2)
+
+    def test_finish_needs_a_picture_and_an_action(self) -> None:
+        self.assertEqual(capture.main(["finish"]), 2)
+        self.assertEqual(capture.main(["finish", "/tmp/a.png"]), 2)
+
+    def test_the_size_of_finish_is_a_width_and_a_height(self) -> None:
+        self.assertEqual(capture.size_argument(["finish", "a.png", "--save", "--size", "1280x720"]), (1280, 720))
+        self.assertIsNone(capture.size_argument(["finish", "a.png", "--save"]))
+        self.assertEqual(capture.main(["finish", "a.png", "--save", "--size", "wide"]), 2)
+
+    def test_the_annotate_command_is_gone(self) -> None:
+        self.assertFalse(hasattr(capture, "annotate"))
+        self.assertEqual(capture.main(["annotate", "/tmp/a.png"]), 2)
 
     def test_open_needs_a_link(self) -> None:
         self.assertEqual(capture.main(["open"]), 2)

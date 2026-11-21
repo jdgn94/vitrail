@@ -30,7 +30,7 @@ Item {
 
     signal shot()
     signal save()
-    signal annotate()
+    signal edit()
     signal pin()
     signal ocr()
     signal translate()
@@ -132,9 +132,9 @@ Item {
 
             Action {
                 icon: "edit"
-                tooltip: root.t("capture.annotate")
-                tooltipDetail: root.t("capture.annotate.detail")
-                onClicked: root.annotate()
+                tooltip: root.t("capture.edit")
+                tooltipDetail: root.t("capture.edit.detail")
+                onClicked: root.edit()
             }
 
             Action {

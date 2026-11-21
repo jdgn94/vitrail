@@ -228,8 +228,9 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
       reproduce.
 - [ ] Cambia las carpetas en **Bar → Captura** y repite: guarda donde dijiste.
 - [ ] El audio solo se graba con el interruptor de audio encendido.
-- [ ] **Anotar**: enciende *Anotar las capturas*; al capturar se abre swappy y
-      lo que guardes es lo que queda en el fichero y en el portapapeles.
+- [ ] **Editar**: `A` abre el editor en una ventana de cristal centrada; dibuja
+      con cada herramienta, **Guardar** deja en la carpeta de capturas un PNG
+      del tamaño exacto del área y **Copiar** lo pone en el portapapeles.
 - [ ] **Color propio**: en el editor, el color propio abre la rueda de color,
       la barra de tono y el código hex; mover uno mueve los otros, un código
       inválido pone el campo en error y `⏎` usa el color. Lo mismo en
@@ -313,12 +314,13 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
       modificadores sigue abriendo la paleta; `Ctrl`+`G` y `Alt`+letra no hacen nada.
 - [ ] Con una tarjeta (paleta, QR, traducción) `Ctrl`+`C` copia su contenido
       y avisa («Colores copiados», «Contenido del QR copiado», «Traducción copiada»).
-- [ ] Cada acción avisa de lo que hizo: `A` («Anotación abierta»), `P` («Área
+- [ ] Cada acción avisa de lo que hizo: `P` («Área
       fijada»), `T` y una captura («Temporizador iniciado: Capturando en 3 s»; el
       aviso no debe salir en la imagen), `R` («Grabación iniciada» con la ruta del
       vídeo) y el chip rojo («Grabación guardada» con la ruta), `I` + `⏎`
       («Abriendo Google…»). `W` y `F` no avisan.
-- [ ] `A`: se abre `swappy` con esa captura.
+- [ ] `A`: se abre el editor con esa captura; `Esc` sin dibujar lo cierra al
+      instante, con trazos pregunta antes de descartar.
 - [ ] `R`: graban las mismas coordenadas; el chip rojo de la barra la para.
 - [ ] `T` dos veces (3 s, 5 s) y `G`: la captura sale 3 o 5 s más tarde, sin la
       UI en la imagen.

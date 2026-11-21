@@ -132,7 +132,6 @@ PROVIDED_BY = {
     "ddcutil": "ddcutil",
     "grim": "grim",
     "wf-recorder": "wf-recorder",
-    "swappy": "swappy",
     "tesseract": "tesseract",
     "zbarimg": "zbar",
     "trans": "translate-shell",

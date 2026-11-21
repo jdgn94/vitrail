@@ -444,18 +444,41 @@ Item {
                         }
                     }
 
+                    VitrailSelect {
+                        Layout.fillWidth: true
+                        label: page.t("bar.capture.editorTool")
+                        options: [
+                            { key: "pencil", label: page.t("capture.editor.pencil") },
+                            { key: "text", label: page.t("capture.editor.text") },
+                            { key: "shape", label: page.t("capture.editor.shape") },
+                            { key: "arrow", label: page.t("capture.editor.arrow") }
+                        ]
+                        current: page.prefs.editorTool || "pencil"
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        panel: page.palette.surfaceHigh
+                        onSelected: page.prefs.editorTool = key
+                    }
+
+                    VitrailText {
+                        Layout.fillWidth: true
+                        variant: "label"
+                        wrapMode: Text.WordWrap
+                        text: page.t("bar.capture.editorTool.help")
+                    }
+
                     VitrailSettingRow {
-                        icon: "edit"
-                        label: page.t("bar.capture.annotate")
-                        description: page.t("bar.capture.annotate.help")
+                        icon: "history"
+                        label: page.t("bar.capture.editorRemember")
+                        description: page.t("bar.capture.editorRemember.help")
                         foreground: page.palette.foreground
                         muted: page.palette.muted
 
                         VitrailSwitch {
-                            checked: page.prefs.annotatePanel === true
+                            checked: page.prefs.editorRemember === true
                             foreground: page.palette.foreground
                             accent: page.palette.primary
-                            onToggled: function (value) { page.prefs.annotatePanel = value }
+                            onToggled: function (value) { page.prefs.editorRemember = value }
                         }
                     }
 

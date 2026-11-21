@@ -226,7 +226,7 @@ function shortcut(key, modifiers, mode, card) {
         return key === Qt.Key_C ? (card ? "copyCard" : "copy") : key === Qt.Key_S ? "save" : ""
     switch (key) {
     case Qt.Key_G: return "save"
-    case Qt.Key_A: return "annotate"
+    case Qt.Key_A: return "edit"
     case Qt.Key_P: return "pin"
     case Qt.Key_O: return "ocr"
     case Qt.Key_L: return "translate"

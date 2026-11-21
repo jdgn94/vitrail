@@ -3,7 +3,7 @@ import QtQuick
 import "bar/capture"
 
 // Loaded by tests/qml_smoke.sh inside a real (offscreen) Quickshell process.
-// The toolbar, the question and result cards and the pinned area are the
+// The toolbar, the question and result cards, the pinned area and the editor are the
 // overlay's whole UI (Items, so they load without a Wayland output: the
 // overlay's layer surfaces need a compositor); a QML error in them or in the
 // kit they are made of makes createObject() return null.
@@ -51,6 +51,18 @@ ShellRoot {
         }
 
         Component {
+            id: editing
+
+            EditorCard {
+                imageWidth: 400
+                imageHeight: 300
+                t: function (key) {
+                    return key
+                }
+            }
+        }
+
+        Component {
             id: question
 
             CaptureAsk {
@@ -69,10 +81,11 @@ ShellRoot {
             var card = question.createObject(host, { x: 0, y: 100 })
             var result = answer.createObject(host, { x: 0, y: 200 })
             var pin = pinned.createObject(host, { x: 0, y: 400 })
-            if (!item || !card || !result || !pin) {
+            var editor = editing.createObject(host, { x: 0, y: 500 })
+            if (!item || !card || !result || !pin || !editor) {
                 console.error("capture smoke: the toolbar did not load")
                 Qt.exit(1)
-            } else if (!(item.implicitWidth > 0 && item.implicitHeight > 0 && card.implicitWidth > 0 && result.implicitWidth > 0 && pin.implicitWidth > 0)) {
+            } else if (!(item.implicitWidth > 0 && item.implicitHeight > 0 && card.implicitWidth > 0 && result.implicitWidth > 0 && pin.implicitWidth > 0 && editor.implicitWidth > 0 && editor.implicitHeight > 0)) {
                 console.error("capture smoke: the toolbar has no size")
                 Qt.exit(1)
             } else {

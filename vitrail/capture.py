@@ -12,10 +12,11 @@ selected from those images, or record it. No helper daemon:
     python3 -m vitrail.capture palette --geometry X,Y,W,H
     python3 -m vitrail.capture translate --geometry X,Y,W,H
     python3 -m vitrail.capture pin --geometry X,Y,W,H
+    python3 -m vitrail.capture edit --geometry X,Y,W,H
+    python3 -m vitrail.capture finish <edited.png> --save|--copy [--size WxH]
     python3 -m vitrail.capture open <link>
     python3 -m vitrail.capture record start|stop|toggle [--geometry WxH+X+Y]
     python3 -m vitrail.capture window <x> <y>
-    python3 -m vitrail.capture annotate <path>
     python3 -m vitrail.capture status
 
 The bar calls these; the recording state lives in
@@ -33,6 +34,7 @@ import os
 import re
 import shutil
 import signal
+import struct
 import subprocess
 import sys
 import time
@@ -72,12 +74,12 @@ def run_bytes(argv: list[str], data: bytes) -> bool:
     return found.returncode == 0
 
 
-def spawn(argv: list[str], log_path: Path, env: dict[str, str] | None = None) -> int:
-    """Starts a detached process (in `env` when given) and returns its pid."""
+def spawn(argv: list[str], log_path: Path) -> int:
+    """Starts a detached process and returns its pid."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with open(log_path, "ab") as log_file:
         process = subprocess.Popen(
-            argv, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL, start_new_session=True, env=env
+            argv, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL, start_new_session=True
         )
     return process.pid
 
@@ -428,24 +430,6 @@ def wf_geometry(geometry: str, monitors: list[dict] | None = None) -> str:
             if rect["w"] <= 0 or rect["h"] <= 0:
                 raise ValueError("empty selection")
     return f"{rect['x']},{rect['y']} {rect['w']}x{rect['h']}"
-
-
-def annotate(
-    path: str | Path, runtime: Path | None = None, spawner: Spawner = spawn, values: dict | None = None
-) -> bool:
-    """Opens the file in swappy, detached; False when it is not installed.
-
-    swappy starts with its panel shown or hidden as the preference says, in the
-    Vitrail theme (see `vitrail.swappy`).
-    """
-    if shutil.which("swappy") is None:
-        log("swappy is not installed; the screenshot is unannotated")
-        return False
-    from . import swappy
-
-    env = swappy.environment(_preferences() if values is None else values)
-    spawner(["swappy", "-f", str(path)], (runtime or runtime_dir()) / "capture.log", env=env)
-    return True
 
 
 # --- text from a picture -----------------------------------------------------
@@ -840,7 +824,36 @@ def palette(
     return {"colors": colors} if colors else {"error": "no colours"}
 
 
-# --- pin -----------------------------------------------------------------------
+# --- pin and edit --------------------------------------------------------------
+
+
+def _keep(
+    selection: dict,
+    monitors: list[dict],
+    folder_name: str,
+    prefix: str,
+    failure: str,
+    runtime: Path | None,
+    run: Runner,
+    now: float | None,
+) -> dict:
+    """The composed area as a private file of its own: {"image", "w", "h"} or {"error"}.
+
+    It lives in `folder_name` of the runtime folder, not in `capture/`: the next
+    freeze empties that one, and a pin or an edit outlives the overlay.
+    """
+    composed = compose(selection, monitors, runtime, run, name=prefix)
+    if "error" in composed:
+        return composed
+    folder = (runtime or runtime_dir()) / folder_name
+    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(folder, 0o700)
+    path = folder / f"{prefix}-{int((time.time() if now is None else now) * 1000)}.png"
+    try:
+        _private_file(path, Path(composed["image"]).read_bytes())
+    except OSError:
+        return {"error": failure}
+    return {"image": str(path), "w": composed["w"], "h": composed["h"]}
 
 
 def pin_image(
@@ -850,23 +863,78 @@ def pin_image(
     run: Runner = run_text,
     now: float | None = None,
 ) -> dict:
-    """The composed area, kept as a file of its own for a pin: {"image"} or {"error"}.
+    """The composed area, kept as a file of its own for a pin: {"image"} or {"error"}."""
+    kept = _keep(selection, monitors, "pins", "pin", "the pin could not be written", runtime, run, now)
+    return kept if "error" in kept else {"image": kept["image"]}
 
-    Pins live in `pins/` of the runtime folder, not in `capture/`: the next
-    freeze empties that one, and a pin outlives the overlay.
-    """
-    composed = compose(selection, monitors, runtime, run, name="pin")
-    if "error" in composed:
-        return composed
-    folder = (runtime or runtime_dir()) / "pins"
-    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
-    os.chmod(folder, 0o700)
-    path = folder / f"pin-{int((time.time() if now is None else now) * 1000)}.png"
+
+def edit_image(
+    selection: dict,
+    monitors: list[dict],
+    runtime: Path | None = None,
+    run: Runner = run_text,
+    now: float | None = None,
+) -> dict:
+    """The composed area, kept for the editor: {"image", "w", "h"} or {"error"}."""
+    return _keep(selection, monitors, "edits", "edit", "the picture could not be written", runtime, run, now)
+
+
+def png_size(path: Path) -> tuple[int, int] | None:
+    """The width and height in a PNG's header; None when it is not one."""
     try:
-        _private_file(path, Path(composed["image"]).read_bytes())
+        with open(path, "rb") as handle:
+            head = handle.read(24)
     except OSError:
-        return {"error": "the pin could not be written"}
-    return {"image": str(path)}
+        return None
+    if len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n" or head[12:16] != b"IHDR":
+        return None
+    return struct.unpack(">II", head[16:24])
+
+
+def finish(
+    source: str,
+    directory: str | None = None,
+    copy: bool = False,
+    runtime: Path | None = None,
+    copy_run=run_bytes,
+    now: float | None = None,
+    size: tuple[int, int] | None = None,
+    run: Runner = run_text,
+) -> dict:
+    """Saves or copies what the editor rendered, then deletes that file.
+
+    {"path"} for a save into `directory`, {"copied": bool} for the clipboard,
+    {"error"} otherwise. Only files of the runtime `edits/` folder are taken:
+    the bar passes a path and must not be able to delete anything else.
+    A failed save keeps the file, so the editor can try again. `size` is the
+    picture's own size: a render a pixel off it (a fractional monitor scale) is
+    resized to it, so the result always has the pixels of the area.
+    """
+    path = Path(source)
+    folder = ((runtime or runtime_dir()) / "edits").resolve()
+    if path.resolve().parent != folder or not path.is_file():
+        return {"error": "not an edit"}
+    if size is not None and png_size(path) not in (None, size):
+        if run(["magick", str(path), "-resize", f"{size[0]}x{size[1]}!", str(path)]) is None:
+            return {"error": "magick failed"}
+    result: dict
+    if directory:
+        try:
+            target_path = target(directory, now)
+            shutil.copyfile(path, target_path)
+        except OSError:
+            return {"error": "the screenshot could not be written"}
+        result = {"path": str(target_path)}
+    else:
+        try:
+            copied = copy_run(["wl-copy"], path.read_bytes())
+        except OSError:
+            copied = False
+        if not copied:
+            log("the edited screenshot was not copied")
+        result = {"copied": bool(copied)}
+    path.unlink(missing_ok=True)
+    return result
 
 
 # --- ask AI --------------------------------------------------------------------
@@ -1088,9 +1156,9 @@ def _flag(value: object, fallback: bool) -> bool:
 USAGE = (
     "usage: capture freeze | grab --geometry <X,Y,W,H> [--copy] [--save]"
     " | record <start|stop|toggle> [--geometry <WxH+X+Y>] [--audio]"
-    " | ocr|detect|qr|palette|translate|pin --geometry <X,Y,W,H> | ask --geometry <X,Y,W,H> --text <question>"
-    " | open <link>"
-    " | window <x> <y> | annotate <path> | status"
+    " | ocr|detect|qr|palette|translate|pin|edit --geometry <X,Y,W,H> | ask --geometry <X,Y,W,H> --text <question>"
+    " | finish <edited.png> --save|--copy [--size <WxH>] | open <link>"
+    " | window <x> <y> | status"
 )
 
 
@@ -1110,6 +1178,17 @@ def _background() -> None:
         os.nice(10)
     except OSError:
         pass
+
+
+def size_argument(args: list[str]) -> tuple[int, int] | None:
+    """The `--size WxH` of `finish`, None without one; ValueError when it is not a size."""
+    if "--size" not in args:
+        return None
+    index = args.index("--size")
+    match = re.fullmatch(r"(\d+)x(\d+)", args[index + 1] if index + 1 < len(args) else "")
+    if not match:
+        raise ValueError("--size needs WxH")
+    return int(match.group(1)), int(match.group(2))
 
 
 def _text_argument(args: list[str]) -> str:
@@ -1148,7 +1227,7 @@ def main(argv: list[str] | None = None) -> int:
             log(USAGE)
             return 2
         result = read_text(geometry, read_frozen().get("monitors") or monitors(), wanted_languages(values))
-    elif args[:1] in (["detect"], ["qr"], ["palette"], ["translate"], ["pin"]):
+    elif args[:1] in (["detect"], ["qr"], ["palette"], ["translate"], ["pin"], ["edit"]):
         if geometry is None:
             log(USAGE)
             return 2
@@ -1162,6 +1241,8 @@ def main(argv: list[str] | None = None) -> int:
             result = palette(geometry, screens, palette_size(values))
         elif args[0] == "pin":
             result = pin_image(geometry, screens)
+        elif args[0] == "edit":
+            result = edit_image(geometry, screens)
         else:
             result = translate(geometry, screens, target_language(values), wanted_languages(values), run=run_limited)
     elif args[:1] == ["open"]:
@@ -1193,8 +1274,18 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print(json.dumps(found or {}, separators=(",", ":")))
         return 0 if found else 1
-    elif args[:1] == ["annotate"] and len(args) >= 2:
-        return 0 if annotate(args[1], values=values) else 1
+    elif args[:1] == ["finish"] and len(args) >= 3 and args[2] in ("--save", "--copy"):
+        try:
+            size = size_argument(args)
+        except ValueError as problem:
+            log(str(problem))
+            return 2
+        result = finish(
+            args[1],
+            directory=(values.get("captureDir") or pictures()) if args[2] == "--save" else None,
+            copy=args[2] == "--copy",
+            size=size,
+        )
     elif args[:1] == ["record"] and len(args) >= 2:
         result = record(
             args[1],

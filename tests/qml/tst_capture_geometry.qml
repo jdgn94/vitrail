@@ -346,7 +346,7 @@ TestCase {
     }
 
     function test_a_plain_letter_runs_its_action() {
-        var plain = { g: "save", a: "annotate", p: "pin", o: "ocr", l: "translate", q: "qr", c: "palette",
+        var plain = { g: "save", a: "edit", p: "pin", o: "ocr", l: "translate", q: "qr", c: "palette",
                       i: "ask", r: "record", t: "timer", w: "window", f: "full" }
         for (var letter in plain)
             compare(Capture.shortcut(Qt["Key_" + letter.toUpperCase()], Qt.NoModifier, "shot", false), plain[letter], letter)

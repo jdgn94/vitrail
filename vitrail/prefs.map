@@ -192,7 +192,9 @@ capture captureRecordDir
 capture captureRecordAudio
 capture captureRecordRegion
 capture captureAnimation
-capture annotatePanel
+capture editorTool
+capture editorRemember
+capture editorOptions
 capture captureAi
 capture ocrLanguages
 capture captureDetect

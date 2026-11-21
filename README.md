@@ -141,7 +141,6 @@ package to the manifest and a row here.
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
 | `grim` | `grim` | the frozen screen of every monitor, and the area the overlay draws |
 | `wf-recorder` | `wf-recorder` | screen recording from the panel, stopped from the bar |
-| `swappy` | `swappy` | annotating a screenshot before it is copied (optional flow) |
 | `tesseract`, `tesseract-data-eng`, `tesseract-data-spa` | `tesseract` | the capture overlay's "Copy text", the text detection that enables its buttons, and Translate's reading (OCR, local only); only the installed language data are used, so add `tesseract-data-<lang>` for more |
 | `zbar` | `zbarimg` | the capture overlay's QR / bar code button: finds a code in the selection (local) and reads it |
 | `translate-shell` | `trans` | the capture overlay's Translate (`trans -b :<language>`; sends the text to Google Translate online) |
@@ -336,7 +335,7 @@ the window declares it in another file, or the path unit watches another set.
 | `sound.ini` | `soundOutputApps`, `soundInputApps`, `soundFocusApps`, `soundStep` |
 | `colors.ini` | `colorScheme`, `colorContrast` |
 | `fonts.ini` | `fontSystem`, `fontConsole`, `uiIcons`, `iconTheme`, `iconAdaptive`, `iconFill`, `iconImport`, `iconRemove`, `cursorTheme`, `cursorThemeLight`, `cursorThemeDark`, `cursorImport`, `cursorRemove`, `cursorAdaptive`, `cursorMonochrome`, `cursorSize`, `cursorSpinner` |
-| `capture.ini` | `captureDir`, `captureRecordDir`, `captureRecordAudio`, `captureRecordRegion`, `captureAnimation` (the selection glides like a drop), `annotatePanel` (swappy's tools panel), `captureAi` (the Ask AI button and `I` key), `ocrLanguages` (tesseract codes for Copy text, e.g. `spa+eng`; empty follows the system language plus English), `captureDetect` (look for text and codes in the selection to enable Copy text, Translate and QR), `capturePaletteSize` (how many colours the `C` palette shows, 3-10), `translateTarget` (Translate's language code; empty follows the system language) |
+| `capture.ini` | `captureDir`, `captureRecordDir`, `captureRecordAudio`, `captureRecordRegion`, `captureAnimation` (the selection glides like a drop), `editorTool` (the tool the capture editor opens with), `editorRemember` (start each tool from the options last used), `editorOptions` (those options, written by the editor), `captureAi` (the Ask AI button and `I` key), `ocrLanguages` (tesseract codes for Copy text, e.g. `spa+eng`; empty follows the system language plus English), `captureDetect` (look for text and codes in the selection to enable Copy text, Translate and QR), `capturePaletteSize` (how many colours the `C` palette shows, 3-10), `translateTarget` (Translate's language code; empty follows the system language) |
 | `launcher.ini` | `launcherEngine`, `launcherBangs`, `launcherModes`, `launcherView`, `launcherClear` |
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
@@ -420,7 +419,7 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   capture overlay (`vitrail/capture.py`, `vitrail-capture`): the screen is
   frozen into one PNG per monitor, the area is dragged and resized with eight
   handles (across monitors too) and a toolbar outside it offers the actions —
-  `Enter` or `Ctrl`+`C` copies the picture (`Enter` records instead in record mode), `G` or `Ctrl`+`S` saves it, `A` annotates it in `swappy`, `R`
+  `Enter` or `Ctrl`+`C` copies the picture (`Enter` records instead in record mode), `G` or `Ctrl`+`S` saves it, `A` opens it in the editor (below), `R`
   records that area with `wf-recorder` (one monitor: an area that
   crosses outputs is cut to the monitor it starts on), `T` counts down 3 or 5 seconds, `W`
   picks a window (a single click takes it), `F` takes the whole layout, `Esc`
@@ -435,11 +434,22 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   `Ctrl`+wheel opacity, `Esc` or double click closes); and `I` asks Google about it: a question field opens beside the
   area and `Enter` opens the default browser on Google Lens with the picture
   and the question (a private page of the runtime folder posts them; the
-  files are deleted after a minute). The saved file is
+  files are deleted after a minute). The **editor** (`A`; `bar/capture/Editor*.qml`) is a glass window centred on the
+  area's monitor: pencil (`P`, with a highlighter mode), text (`T`, typed in
+  place: `Enter` confirms, `Esc` cancels), shapes (`F`, rectangle or ellipse,
+  with or without fill) and arrows (`A`, one or two heads, solid or dashed),
+  each with its colour (six swatches and one of your own), width and options;
+  undo and redo (`Ctrl`+`Z`, `Ctrl`+`Shift`+`Z`) take one element at a time; the
+  view zoom (`Ctrl`+`+`, `Ctrl`+`-`, `Ctrl`+`0`) never changes the saved picture;
+  **Copy** (`Ctrl`+`C`) and **Save** (`Ctrl`+`S`, into the screenshots folder)
+  draw the picture and its marks at the area's own pixel size, and `Esc`
+  discards (it asks first when something would be lost). Bar → Capture sets
+  the tool it opens with and whether it remembers the last options of each
+  tool. The saved file is
   composed from the frozen images with `magick`, so it is exactly what the
   overlay showed. The bar shows a red chip while a recording runs; the folders
   and the audio flag live in `capture.ini`. Letters are plain keys (`Ctrl`+`C` is copy, never the palette; on a card it copies the card's
-  content), and every action says what it did in a notification: screenshot copied (with its size) or saved (with its path), annotator opened, area pinned, countdown started,
+  content), and every action says what it did in a notification: screenshot copied (with its size) or saved (with its path), editor result (saved or copied), area pinned, countdown started,
   recording started and saved (with the file), Ask AI opening Google, plus the existing colour, text, QR and translation ones. `PRINT` opens the same overlay, and
   `Super+PRINT` opens it with the whole layout already selected. The window cannot run
   commands, so `bin/vitrail-settings` injects `python3 -m vitrail.fonts state`

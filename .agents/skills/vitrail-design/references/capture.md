@@ -133,6 +133,8 @@ so the veil is not the cost.
   glass layer rule. Files are deleted on close (`forget --after 0`); a bar
   restart leaves its pins' files in the tmpfs until logout.
 
+`A` opens the editor: see `editor.md`.
+
 ## Keys and notices
 
 `Capture.shortcut(key, modifiers, mode, card)` (capture.js, tested) maps a key to an
@@ -141,7 +143,7 @@ they do nothing, except `Ctrl+C` = copy (`copyCard` while a card is shown: the
 palette's colours, the QR content or the translation, as the card's copy button) and
 `Ctrl+S` = save. Enter confirms (records in record mode); `Ctrl+C` always copies the
 picture, even in record mode. Every action tells what it did through
-`shell.captureNotice(key, body)`: copy (size), save (path), annotate, pin, timer,
+`shell.captureNotice(key, body)`: copy (size), save (path), pin, timer,
 record start (path, from `captureRecord`'s stdout) and stop (path, from
 `captureStop`: the chip and the panel stop it through `toggleRecording`), Ask AI
 opening, QR / translation copy, plus colour, palette, OCR and the failures. Bodies are

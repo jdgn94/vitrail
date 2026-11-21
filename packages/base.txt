@@ -23,7 +23,6 @@ xdg-desktop-portal-phosh
 polkit-gnome
 grim
 wf-recorder
-swappy
 # Local text recognition of a capture ("Extract text"); the language data are
 # separate packages, and only installed ones are used (vitrail/capture.py).
 tesseract

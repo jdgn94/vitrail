@@ -26,6 +26,14 @@ The first distributable release.
   the background so only the buttons that can work are enabled, and every
   button's tooltip names its key. Settings: Bar → Capture (detection, Ask AI,
   OCR languages, palette size, Translate language).
+- A screenshot editor of Vitrail's own replaces swappy (`A` in the capture):
+  a glass window centred on the area's monitor with a pencil (and highlighter),
+  text typed in place, rectangles and ellipses, and arrows, each with colours
+  (six swatches and a custom one), width and its own options; undo and redo, a
+  view zoom, **Copy** and **Save** at the area's own pixel size, and a
+  confirmation before discarding work. Settings: Bar → Capture (starting tool,
+  remember the last options). swappy, its theme and the tools-panel setting are
+  gone.
 - A colour picker of the kit: a colour wheel (hue around, saturation from the
   centre), a tone slider painted with the colour's own tones and a hex code that
   follow each other. It replaces the editor's hue / saturation / lightness
@@ -34,7 +42,7 @@ The first distributable release.
 - Capture keys and notices: `Ctrl`+`C` copies the picture (it used to open the
   palette), `Ctrl`+`S` saves it, and letter shortcuts ignore Ctrl/Alt/Meta; on a
   card `Ctrl`+`C` copies its content. Every action says what it did in a
-  notification: copied, saved (with the path), annotator opened, pinned,
+  notification: copied, saved (with the path), pinned,
   countdown started, recording started and saved, Ask AI opening, QR and
   translation copied.
 - Rich clipboard: a copy keeps the style of its source (font family, size,

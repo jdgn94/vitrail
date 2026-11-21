@@ -335,7 +335,7 @@ Item {
         case "copy": root.activate("copy"); break
         case "copyCard": root.copyCard(); break
         case "save": root.activate("save"); break
-        case "annotate": root.activate("annotate"); break
+        case "edit": root.activate("edit"); break
         case "pin": root.activate("pin"); break
         case "ocr":
             if (!root.selection || root.textReady)
@@ -782,7 +782,7 @@ Item {
                     hasCode: root.found.codes > 0
                     onShot: root.activate("copy")
                     onSave: root.activate("save")
-                    onAnnotate: root.activate("annotate")
+                    onEdit: root.activate("edit")
                     onPin: root.activate("pin")
                     onOcr: root.activate("ocr")
                     onTranslate: root.startInspect("translate")
