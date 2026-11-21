@@ -96,6 +96,7 @@ EXTERNAL = {
 PROVIDED_BY = {
     "hyprctl": "hyprland",
     "hyprlock": "hyprlock",
+    "hyprsunset": "hyprsunset",
     "quickshell": "quickshell",
     "qml6": "qt6-declarative",
     "matugen": "matugen",

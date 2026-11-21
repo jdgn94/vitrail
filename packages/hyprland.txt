@@ -3,6 +3,8 @@ hyprland
 hyprlock
 hypridle
 hyprpolkitagent
+# Night light: the colour-temperature filter in the brightness popup.
+hyprsunset
 # System bar and screen frame (bin/vitrail-bar).
 quickshell
 xdg-desktop-portal-hyprland
