@@ -1,5 +1,9 @@
 # Features
 
+## Bar element foundation
+
+`BarElementBase` (bar/BarElementBase.qml) is the shared base for new bar elements: icon button, tooltip/detail handoff, "only while active" visibility mode, and popup open/close interface. The sample element (bar/sample/, hidden by default) exercises every layer: button, panel with popup gear, Python snapshot module (vitrail/sample.py), show-mode preference, and a Settings → Bar elements page. See docs/bar-elements.md for the worked-example recipe.
+
 ## The bar and the frame
 
 A single bar on any screen edge (top, bottom, left or right), with or without

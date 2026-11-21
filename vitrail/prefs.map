@@ -73,6 +73,8 @@ bar trayStyle
 # (only with an adapter).
 bar barBatteryChip
 bar barBluetoothChip
+# The sample bar element's show mode: "always" or "active".
+bar sampleShowMode
 bar barKeyboard
 bar osdKeys
 bar osdKeyTime

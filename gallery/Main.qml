@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import "../kit"
 import "../kit/base"
 import "../kit/composed"
+import "../bar"
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
 
@@ -1095,6 +1096,41 @@ Window {
                 VitrailText { text: "◆" },
                 VitrailText { text: "◆" }
             ]
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "BarElementBase · showMode × opened"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            BarElementBase {
+                tooltip: "Normal"
+                showMode: "always"
+                icon: "widgets"
+            }
+
+            BarElementBase {
+                tooltip: "Opened"
+                opened: true
+                icon: "widgets"
+            }
+
+            BarElementBase {
+                tooltip: "Active-only (shown)"
+                showMode: "active"
+                active: true
+                icon: "widgets"
+            }
+
+            BarElementBase {
+                tooltip: "Active-only (hidden)"
+                showMode: "active"
+                active: false
+                icon: "widgets"
+            }
         }
 
         // A floating bar leaves its popup to an island that grows out of it.

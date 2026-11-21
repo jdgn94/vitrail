@@ -14,6 +14,7 @@ Start here.
 | [`troubleshooting.md`](troubleshooting.md) | when something does not show up |
 | [`roadmap.md`](roadmap.md) | what is done and what comes next |
 | [`manual-checks.md`](manual-checks.md) | the checks a release needs a person for |
+| [`bar-elements.md`](bar-elements.md) | how to add a new bar element (architecture, recipe, sample element) |
 
 The installer, the shell and the tests live at the repository root; the README
 describes the layout.

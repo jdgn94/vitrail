@@ -110,7 +110,7 @@ fi
 # Pages are built when their category is first shown, so the run above covers
 # only the first one: open each category on its own and require it to render.
 # A page that fails to build makes the selftest exit non-zero (LazyPage.qml).
-categories="$(grep -oP '^\s+\{ key: "\K\w+(?=", group:)' "$REPO/shell/main.qml")"
+categories="$(grep -oP '^\s+\{ key: "\K[\w-]+(?=", group:)' "$REPO/shell/main.qml")"
 pages="$(grep -c '^ *LazyPage {' "$REPO/shell/main.qml")"
 if [[ "$(wc -w <<<"$categories")" -ne "$pages" ]]; then
     not_ok "every category has a page" "$(wc -w <<<"$categories") categories, $pages pages"

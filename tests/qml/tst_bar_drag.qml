@@ -124,7 +124,7 @@ TestCase {
         var doc = baseDocument()
         var result = DragDrop.apply(doc, "network", { kind: "group", group: "end", index: 5 })
         var end = result.order.end
-        compare(end[end.indexOf("network") + 1], "keyboard")
+        compare(end[end.indexOf("network") + 1], "sample")
         compare(end[end.indexOf("network") - 1], "battery")
         compare(result.chips.connections.members.indexOf("network"), -1)
     }

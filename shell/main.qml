@@ -132,6 +132,7 @@ Window {
         { key: "colors", group: "look", glyph: "palette", label: app.t("section.colors"), badge: "" },
         { key: "design", group: "look", glyph: "design_services", label: app.t("section.design"), badge: app.t("badge.live") },
         { key: "bar", group: "desktop", glyph: "toolbar", label: app.t("section.bar"), badge: app.t("badge.live") },
+        { key: "bar-elements", group: "desktop", glyph: "tune", label: app.t("section.barElements"), badge: app.t("badge.live") },
         { key: "windows", group: "desktop", glyph: "view_quilt", label: app.t("section.windows"), badge: app.t("badge.live") },
         { key: "monitors", group: "desktop", glyph: "monitor", label: app.t("section.monitors"), badge: app.t("badge.live") },
         { key: "terminal", group: "desktop", glyph: "terminal", label: app.t("section.terminal"), badge: app.t("badge.live") },
@@ -796,6 +797,17 @@ Window {
                                         palette: app.theme
                                         prefs: app.store
                                         plugins: app.plugins
+                                        strings: app.strings
+                                    }
+                                }
+
+                                LazyPage {
+                                    shown: app.category === "bar-elements"
+                                    jumpTab: app.category === "bar-elements" ? app.jumpTab : ""
+
+                                    BarElementsPage {
+                                        palette: app.theme
+                                        prefs: app.store
                                         strings: app.strings
                                     }
                                 }

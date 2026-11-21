@@ -55,6 +55,7 @@ import "osd"
 import "osd/osd.js" as Osd
 import "session"
 import "session/actions.js" as Session
+import "sample"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -1587,6 +1588,35 @@ ShellRoot {
         id: desktopData
 
         active: shell.desktopWidgetsActive
+    }
+
+    // The sample bar element's data: a small JSON snapshot from vitrail.sample.
+    property var sampleState: ({})
+
+    Timer {
+        id: sampleTimer
+
+        interval: 60000
+        repeat: true
+        triggeredOnStart: true
+        running: true
+        onTriggered: if (!sampleFetch.running) sampleFetch.running = true
+    }
+
+    Process {
+        id: sampleFetch
+
+        command: ["python3", "-m", "vitrail.sample", "state"]
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    var result = JSON.parse(this.text)
+                    if (result && typeof result === "object")
+                        shell.sampleState = result
+                } catch (e) {}
+            }
+        }
     }
 
     function syncTokens() {
@@ -3279,6 +3309,7 @@ ShellRoot {
                     case "battery": return batteryWidget
                     case "keyboard": return keyboardWidget
                     case "power": return powerWidget
+                    case "sample": return sampleWidget
                     default: return null
                     }
                 }
@@ -3608,6 +3639,24 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: sampleWidget
+
+                    SampleButton {
+                        id: sampleButton
+
+                        strings: shell.strings
+                        data: shell.sampleState
+                        opened: shell.popupOpen && shell.popupKind === "sample" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("sample", sampleButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(sampleButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("sample", sampleButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -3667,6 +3716,7 @@ ShellRoot {
                     case "launcher": return monitor.loadedItem("launcher")
                     // The cheatsheet has no button: it grows from the bar's centre.
                     case "binds": return monitor.loadedItem("clock")
+                    case "sample": return monitor.loadedItem("sample")
                     default: return null
                     }
                 }
@@ -4600,6 +4650,13 @@ ShellRoot {
                                 sourceComponent: powerComponent
                             }
 
+                            Popout {
+                                name: "sample"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: sampleComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -4896,6 +4953,16 @@ ShellRoot {
                         keyboards: shell.keyboards
                         onLayoutRequested: function (layout) { shell.applyKeyboardLayout(layout) }
                         onSettingsRequested: shell.openSettingsAt("input", "keyboard")
+                    }
+                }
+
+                Component {
+                    id: sampleComponent
+
+                    SamplePanel {
+                        strings: shell.strings
+                        data: shell.sampleState
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "")
                     }
                 }
 

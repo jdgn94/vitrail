@@ -4,6 +4,17 @@ Lo que necesita a una persona delante de la máquina: una sección por tarea
 terminada, con los pasos y lo que se debe ver. Se marca al pasar; cuando una
 sección está completa se borra.
 
+## Bar element foundation (2026-11-21)
+
+Código en `bar-foundation`. Verificar con el bar corriendo:
+
+- [ ] Abrir Settings → Bar elements: aparece la página con "Sample element" y el selector de modo.
+- [ ] Añadir el elemento `sample` al editor de barra (clic derecho → Editar, arrastrarlo a un grupo): aparece el botón con tooltip "Sample element".
+- [ ] Al pasar el ratón, aparece el tooltip con el detalle "Opens the sample popup".
+- [ ] Un clic abre el popup: muestra el mensaje del módulo Python y el engranaje de opciones.
+- [ ] El engranaje abre Settings → Bar elements.
+- [ ] El modo "Only while active" oculta el botón cuando `active = false`.
+
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 
 Código en `master` (`5936834..36fab6a`). La automatización ya está verde
