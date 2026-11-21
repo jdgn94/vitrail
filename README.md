@@ -302,6 +302,12 @@ hl.config({
 
 A legacy `hyprctl keyword` path is kept as a fallback for non-Lua configs.
 
+The same block is also written to `~/.config/hypr/vitrail-settings.lua`
+(`python3 -m vitrail.hyprsettings`, run by apply-settings even when Hyprland is
+not running). `hyprland.lua` loads it right after its own defaults, so a login
+starts with the saved keyboard layouts, borders, opacity and blur instead of the
+shipped defaults. Without the file the defaults stand.
+
 Glass is the only surface style that turns blur on. Solid keeps the opacity the
 user chose but draws no blur, so a translucent window shows the wallpaper
 unfiltered. Blur itself is a single configurable value (`blurStrength`).

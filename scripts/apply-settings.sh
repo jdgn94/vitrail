@@ -86,6 +86,11 @@ if [[ "$focus_follows" == "true" ]]; then
     follow_mouse=1
 fi
 
+# The file hyprland.lua loads at login, so the next session starts with these
+# values (and the keyboard layouts before any device exists), whether or not
+# Hyprland is running now.
+PYTHONPATH="$(dirname -- "${SELF}")/.." python3 -m vitrail.hyprsettings || true
+
 if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
     lua="hl.config({
         general = { border_size = ${border_width}, layout = \"${window_layout}\" },

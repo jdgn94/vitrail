@@ -11,6 +11,9 @@ The first distributable release.
   date & time, connection, plugins.
 - Theming that follows the wallpaper: GTK/Qt, kitty, palette-tinted cursors and
   icon folders, Flatpak and Firefox.
+- The session starts with the saved settings: keyboard layouts, borders,
+  opacity and blur are written to `~/.config/hypr/vitrail-settings.lua`, which
+  `hyprland.lua` loads at login, instead of waiting for the next change.
 - The capture selection moves like jelly: it is born as a drop at the pointer,
   each edge springs to the selection and bows while it moves, window picks and
   full-screen glide with a neck, and the dark veil has the same shape
