@@ -139,8 +139,13 @@ function position(spec) {
     return { auto: false, x: Number(parts[0]) || 0, y: Number(parts[1]) || 0 }
 }
 
-function positionText(place) {
-    return place.auto ? "auto" : place.x + "x" + place.y
+// The resolution a tile names: the chosen mode's, or the live one while the
+// mode is "preferred".
+function sizeText(monitor, spec) {
+    var mode = spec && spec.mode && spec.mode !== "preferred" ? String(spec.mode).split("@")[0] : ""
+    if (mode === "")
+        mode = (monitor && monitor.width ? monitor.width : 0) + "x" + (monitor && monitor.height ? monitor.height : 0)
+    return mode.replace("x", "×")
 }
 
 // --- the draft ---------------------------------------------------------------

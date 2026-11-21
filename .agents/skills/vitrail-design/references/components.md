@@ -211,6 +211,19 @@ screen; the old accent frame around the screen is gone, and the canvas
 ring stays as the selection. The output's picture and bar overrides live in
 their own categories (Wallpaper, Bar), one block per monitor.
 
+The position is set **only** by dragging (no X / Y fields, no "automatic"
+switch); the first move pins an automatic output where it stands on screen.
+The canvas `Repeater` is modelled on `page.live.length`, never on an array
+derived from the draft: a new array on every move rebuilds the delegates, the
+tile under the pointer is destroyed and the drag dies after its first step.
+Each tile reads its rectangle from `View.rectOfName`. Tiles are rounded with
+opaque `VitrailTokens.solid` fills over `page.canvasColor` (foreground tint
+unselected, primary tint plus a 2 px primary border when selected, a step
+stronger on hover or lift), the name centred with the resolution (or the
+mirror note) under it, the star top-right, `OpenHandCursor` / `ClosedHandCursor`.
+The tile follows the pointer without delay and glides to its snapped place
+(`base` duration, `OutCubic`) only for the `base` span after a release.
+
 ## Settings window (shell/main.qml)
 
 Frameless, floated + centred by the Hyprland rule `vitrail-float` (class

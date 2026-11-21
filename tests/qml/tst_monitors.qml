@@ -88,8 +88,6 @@ TestCase {
         compare(View.position({ position: "auto-right" }).auto, true)
         compare(View.position({ position: "2560x0" }), ({ auto: false, x: 2560, y: 0 }))
         compare(View.position({ position: "-1920x120" }), ({ auto: false, x: -1920, y: 120 }))
-        compare(View.positionText({ auto: true, x: 0, y: 0 }), "auto")
-        compare(View.positionText({ auto: false, x: 2560, y: 0 }), "2560x0")
     }
 
     function test_others_and_live() {
@@ -161,6 +159,12 @@ TestCase {
         compare(View.extent(second, { transform: 0, scale: 2 }), ({ width: 960, height: 600 }))
         var box = View.bounds(View.rects([monitor, second], View.draft([monitor, second], "", "DP-1")))
         compare(box, ({ x: 0, y: 0, width: 3520, height: 1536 }))
+    }
+
+    function test_the_tile_names_the_resolution_it_will_have() {
+        compare(View.sizeText(monitor, { mode: "preferred" }), "2560×1440")
+        compare(View.sizeText(monitor, null), "2560×1440")
+        compare(View.sizeText(monitor, { mode: "1920x1080@60.00" }), "1920×1080")
     }
 
     function test_the_indicator_document_round_trips() {

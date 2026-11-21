@@ -460,9 +460,10 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
 - **Windows:** border geometry and window opacity (focused and unfocused).
   Blur is a single global value and only exists in glass mode.
 - **Monitors:** a drag-and-drop canvas places each output at its logical
-  position, snapping to its neighbours' edges; clicking one opens its mode,
-  scale, rotation, position, mirror, enabled state, wallpaper, bar edge and
-  primary flag. The page keeps a draft and writes `monitorOverrides` in
+  position, snapping to its neighbours' edges (the position is set only by
+  dragging; an output placed automatically is pinned where it is dropped);
+  clicking one opens its mode, scale, rotation, mirror, enabled state,
+  wallpaper, bar edge and primary flag. The page keeps a draft and writes `monitorOverrides` in
   `monitors.ini` only on **Apply**; **Discard** restores the applied document,
   and a refused apply keeps the draft and shows the reason. One output may be
   primary: applying the layout moves workspace 1 there and records it in

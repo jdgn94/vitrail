@@ -56,6 +56,8 @@ Item {
     readonly property var selectedMonitor: View.live(page.live, page.selected)
     readonly property var selectedSpec: View.override(page.draftDoc, page.selected)
     readonly property var canvasRects: View.rects(page.live, page.draftDoc)
+    // The canvas's own fill, opaque like every tile over it.
+    readonly property color canvasColor: VitrailTokens.solid("foreground", 0.06, "surfaceHigh")
     readonly property var canvasBounds: View.bounds(page.canvasRects)
 
     function t(key) {
@@ -117,15 +119,6 @@ Item {
             next[name].primary = true
         page.draftDoc = next
         page.ensureSelection()
-    }
-
-    // A typed position, committed when the field is accepted or loses focus.
-    function setPosition(name, x, y) {
-        var left = Number(x)
-        var top = Number(y)
-        if (isNaN(left) || isNaN(top))
-            return
-        page.patch(name, { position: Math.round(left) + "x" + Math.round(top) })
     }
 
     function dragMonitor(name, x, y) {
@@ -352,8 +345,7 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: VitrailTokens.radius
-                    color: Qt.rgba(page.palette.surfaceHigh.r, page.palette.surfaceHigh.g,
-                                   page.palette.surfaceHigh.b, 0.35)
+                    color: page.canvasColor
                 }
 
                 VitrailText {
@@ -365,76 +357,115 @@ Item {
                     color: page.palette.muted
                 }
 
+                // One tile per output, counted rather than listed: the model
+                // never changes while a draft is dragged, so the tile under the
+                // pointer is the same object from press to release.
                 Repeater {
-                    model: page.canvasRects
+                    model: page.live.length
 
                     delegate: Item {
                         id: screen
 
-                        required property var modelData
+                        required property int index
 
-                        objectName: "canvasMonitor." + screen.modelData.name
+                        readonly property string name: page.live[screen.index] ? page.live[screen.index].name : ""
+                        readonly property var geometry: View.rectOfName(page.live, page.draftDoc, screen.name)
                         readonly property var frame: page.frameFor(canvas.width, canvas.height)
-                        readonly property bool chosen: screen.modelData.name === page.selected
-                        readonly property var spec: View.override(page.draftDoc, screen.modelData.name)
-                                                  || View.seed(screen.modelData.monitor)
+                        readonly property bool chosen: screen.name === page.selected
+                        readonly property bool lifted: dragArea.pressed && dragArea.dragged
+                        // After a drop the tile glides to where it snapped; while
+                        // the pointer holds it, it follows with no delay.
+                        property bool settling: false
 
-                        x: screen.frame.x + screen.modelData.x * screen.frame.scale
-                        y: screen.frame.y + screen.modelData.y * screen.frame.scale
-                        width: Math.max(28, screen.modelData.width * screen.frame.scale)
-                        height: Math.max(24, screen.modelData.height * screen.frame.scale)
-                        z: screen.chosen ? 2 : 1
+                        objectName: "canvasMonitor." + screen.name
+                        visible: screen.geometry !== null
+                        x: screen.frame.x + (screen.geometry ? screen.geometry.x : 0) * screen.frame.scale
+                        y: screen.frame.y + (screen.geometry ? screen.geometry.y : 0) * screen.frame.scale
+                        width: Math.max(VitrailTokens.size("display") * 2, (screen.geometry ? screen.geometry.width : 0) * screen.frame.scale)
+                        height: Math.max(VitrailTokens.size("display") * 0.8, (screen.geometry ? screen.geometry.height : 0) * screen.frame.scale)
+                        z: screen.lifted ? 3 : (screen.chosen ? 2 : 1)
+
+                        Behavior on x {
+                            enabled: screen.settling
+                            NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic }
+                        }
+
+                        Behavior on y {
+                            enabled: screen.settling
+                            NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic }
+                        }
+
+                        Behavior on width {
+                            enabled: screen.settling
+                            NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic }
+                        }
+
+                        Behavior on height {
+                            enabled: screen.settling
+                            NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic }
+                        }
+
+                        Timer {
+                            id: settled
+
+                            interval: VitrailTokens.duration("base")
+                            onTriggered: screen.settling = false
+                        }
 
                         Rectangle {
                             anchors.fill: parent
                             radius: Math.min(VitrailTokens.radius, height / 2)
-                            color: Qt.rgba(page.palette.surfaceHigh.r, page.palette.surfaceHigh.g,
-                                           page.palette.surfaceHigh.b, screen.chosen ? 0.9 : 0.62)
+                            color: screen.chosen
+                                   ? VitrailTokens.solid("primary", screen.lifted || dragArea.containsMouse ? 0.3 : 0.22, page.canvasColor)
+                                   : VitrailTokens.solid("foreground", screen.lifted || dragArea.containsMouse ? 0.16 : 0.1, page.canvasColor)
                             border.width: screen.chosen ? 2 : 1
                             border.color: screen.chosen
                                           ? page.palette.primary
-                                          : Qt.rgba(page.palette.foreground.r, page.palette.foreground.g,
-                                                    page.palette.foreground.b, 0.22)
-                            opacity: screen.modelData.disabled ? 0.45 : 1
+                                          : VitrailTokens.solid("foreground", dragArea.containsMouse ? 0.4 : 0.24, page.canvasColor)
+                            opacity: screen.geometry && screen.geometry.disabled ? 0.5 : 1
+
+                            Behavior on color {
+                                ColorAnimation { duration: VitrailTokens.duration("fast") }
+                            }
                         }
 
                         VitrailIcon {
                             anchors.top: parent.top
                             anchors.right: parent.right
                             anchors.margins: VitrailTokens.gap("xs")
-                            visible: screen.modelData.primary
+                            visible: screen.geometry && screen.geometry.primary
                             icon: "star"
                             size: "sm"
                             color: page.palette.primary
                         }
 
                         Column {
-                            anchors.fill: parent
-                            anchors.margins: VitrailTokens.gap("xs")
+                            id: caption
+
+                            anchors.centerIn: parent
+                            width: parent.width - 2 * VitrailTokens.gap("md")
                             spacing: 0
 
                             VitrailText {
                                 width: parent.width
-                                variant: "label"
-                                text: screen.modelData.name
+                                variant: "body"
+                                fontWeight: "medium"
+                                horizontalAlignment: Text.AlignHCenter
+                                text: screen.name
                                 color: screen.chosen ? page.palette.primary : page.palette.foreground
                                 elide: Text.ElideRight
                             }
 
                             VitrailText {
                                 width: parent.width
+                                // Only when both lines fit in the tile.
+                                visible: screen.height >= 2 * implicitHeight + 2 * VitrailTokens.gap("xs")
                                 variant: "label"
-                                visible: screen.chosen
-                                text: page.t("monitors.selected")
-                                color: page.palette.primary
-                                elide: Text.ElideRight
-                            }
-
-                            VitrailText {
-                                width: parent.width
-                                variant: "label"
-                                visible: !screen.chosen && screen.modelData.mirror !== ""
-                                text: page.t("monitors.mirror") + " " + screen.modelData.mirror
+                                horizontalAlignment: Text.AlignHCenter
+                                text: screen.geometry && screen.geometry.mirror !== ""
+                                      ? page.t("monitors.mirror") + " " + screen.geometry.mirror
+                                      : View.sizeText(screen.geometry ? screen.geometry.monitor : null,
+                                                      screen.geometry ? View.override(page.draftDoc, screen.name) : null)
                                 color: page.palette.muted
                                 elide: Text.ElideRight
                             }
@@ -451,19 +482,22 @@ Item {
 
                             anchors.fill: parent
                             hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
+                            cursorShape: dragArea.pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                             // The page scrolls; a press on a monitor belongs to it.
                             preventStealing: true
 
                             onPressed: function (mouse) {
-                                page.select(screen.modelData.name)
+                                settled.stop()
+                                screen.settling = false
+                                page.select(screen.name)
                                 page.beginDrag()
                                 var at = dragArea.mapToItem(canvas, mouse.x, mouse.y)
                                 dragArea.pressX = at.x
                                 dragArea.pressY = at.y
-                                var place = View.position(screen.spec)
-                                dragArea.originX = place.auto ? screen.modelData.monitor.x : place.x
-                                dragArea.originY = place.auto ? screen.modelData.monitor.y : place.y
+                                // An automatic output starts from where it is on
+                                // screen; the first move pins it there.
+                                dragArea.originX = screen.geometry.x
+                                dragArea.originY = screen.geometry.y
                                 dragArea.dragged = false
                             }
 
@@ -476,26 +510,26 @@ Item {
                                 var dy = (at.y - dragArea.pressY) / fit.scale
                                 if (Math.abs(dx) + Math.abs(dy) > 1)
                                     dragArea.dragged = true
-                                page.dragMonitor(screen.modelData.name, dragArea.originX + dx,
+                                page.dragMonitor(screen.name, dragArea.originX + dx,
                                                  dragArea.originY + dy)
                             }
 
                             onReleased: {
+                                screen.settling = true
+                                settled.restart()
                                 if (dragArea.dragged)
-                                    page.dropMonitor(screen.modelData.name)
+                                    page.dropMonitor(screen.name)
                                 page.endDrag()
-                                page.select(screen.modelData.name)
                             }
 
                             onCanceled: page.endDrag()
-                            onClicked: page.select(screen.modelData.name)
                         }
                     }
                 }
 
                 VitrailText {
                     anchors.centerIn: parent
-                    visible: page.canvasRects.length === 0
+                    visible: page.live.length === 0
                     variant: "body"
                     text: page.t("monitors.none")
                     color: page.palette.muted
@@ -514,8 +548,7 @@ Item {
                     visible: page.selected !== ""
                     title: page.selected !== "" ? page.selected : ""
                     icon: "monitor"
-                    badge: page.selectedSpec && page.selectedSpec.primary
-                           ? page.t("monitors.primary") : page.t("monitors.selected")
+                    badge: page.selectedSpec && page.selectedSpec.primary ? page.t("monitors.primary") : ""
                     foreground: page.palette.foreground
                     accent: page.palette.primary
 
@@ -619,71 +652,6 @@ Item {
                         foreground: page.palette.foreground
                         accent: page.palette.primary
                         onMoved: page.patch(page.selected, { scale: value })
-                    }
-
-                    VitrailSettingRow {
-                        icon: "open_with"
-                        label: page.t("monitors.position.auto")
-                        description: page.t("monitors.position.help")
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailSwitch {
-                            checked: page.selectedSpec
-                                     && String(page.selectedSpec.position).indexOf("auto") === 0
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            enabled: page.selectedSpec && !page.selectedSpec.disabled
-                                     && page.selectedSpec.mirror === ""
-                            onToggled: function (value) {
-                                var monitor = page.monitorOf(page.selected)
-                                page.patch(page.selected, {
-                                    position: value ? "auto"
-                                                    : (monitor ? monitor.x + "x" + monitor.y : "0x0")
-                                })
-                            }
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: VitrailTokens.gap("md")
-                        enabled: page.selectedSpec && !page.selectedSpec.disabled
-                                 && page.selectedSpec.mirror === ""
-                                 && String(page.selectedSpec.position).indexOf("auto") !== 0
-                        opacity: !page.selectedSpec || page.selectedSpec.disabled
-                                 || page.selectedSpec.mirror !== ""
-                                 || String(page.selectedSpec.position).indexOf("auto") === 0 ? 0.35 : 1
-
-                        VitrailField {
-                            id: posX
-
-                            Layout.fillWidth: true
-                            label: page.t("monitors.position.x")
-                            text: page.selectedSpec
-                                  ? String(View.position(page.selectedSpec).x) : "0"
-                            onAccepted: page.setPosition(page.selected, text, posY.text)
-                            onActiveFocusChanged: {
-                                if (!activeFocus && page.selectedSpec
-                                        && String(page.selectedSpec.position).indexOf("auto") !== 0)
-                                    page.setPosition(page.selected, text, posY.text)
-                            }
-                        }
-
-                        VitrailField {
-                            id: posY
-
-                            Layout.fillWidth: true
-                            label: page.t("monitors.position.y")
-                            text: page.selectedSpec
-                                  ? String(View.position(page.selectedSpec).y) : "0"
-                            onAccepted: page.setPosition(page.selected, posX.text, text)
-                            onActiveFocusChanged: {
-                                if (!activeFocus && page.selectedSpec
-                                        && String(page.selectedSpec.position).indexOf("auto") !== 0)
-                                    page.setPosition(page.selected, posX.text, text)
-                            }
-                        }
                     }
 
                     VitrailSelect {

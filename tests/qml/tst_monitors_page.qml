@@ -229,6 +229,52 @@ TestCase {
         mouseRelease(testCase, at.x + 24, at.y)
     }
 
+    function test_a_drag_in_several_steps_keeps_its_tile_and_lands_snapped() {
+        var page = createTemporaryObject(pageComponent, testCase, { width: 900, height: 640 })
+        verify(page)
+        var canvas = findChild(page, "canvas")
+        var tile = findChild(page, "canvasMonitor.HDMI-A-1")
+        verify(canvas && tile)
+        tryVerify(function () { return tile.width > 0 })
+        var scale = page.canvasFit(canvas.width, canvas.height).scale
+        var from = View.position(page.draftDoc["HDMI-A-1"])
+        var at = tile.mapToItem(testCase, tile.width / 2, tile.height / 2)
+        mousePress(testCase, at.x, at.y)
+        for (var step = 1; step <= 5; step++) {
+            mouseMove(testCase, at.x - 10 * step, at.y + 4 * step)
+            verify(findChild(page, "canvasMonitor.HDMI-A-1") === tile,
+                   "the dragged tile survives move " + step)
+            compare(View.position(page.draftDoc["HDMI-A-1"]).x, from.x + Math.round(-10 * step / scale))
+        }
+        compare(View.position(page.draftDoc["HDMI-A-1"]).y, from.y + Math.round(20 / scale))
+        mouseRelease(testCase, at.x - 50, at.y + 20)
+        verify(findChild(page, "canvasMonitor.HDMI-A-1") === tile, "the tile survives the release")
+        var landed = View.rectOfName(page.live, page.draftDoc, "HDMI-A-1")
+        var other = View.rectOfName(page.live, page.draftDoc, "DP-1")
+        verify(!View.overlaps(landed, other), "it lands beside the other output, not on it")
+        compare(page.dragFrame, null, "the frame is free again")
+        compare(mockPrefs.monitorOverrides, "", "nothing is written before Apply")
+    }
+
+    function test_an_automatic_output_can_be_dragged_and_is_pinned() {
+        mockPrefs.monitorOverrides = JSON.stringify({ "HDMI-A-1": { position: "auto" } })
+        var page = createTemporaryObject(pageComponent, testCase, { width: 900, height: 640 })
+        verify(page)
+        verify(View.position(page.draftDoc["HDMI-A-1"]).auto)
+        var canvas = findChild(page, "canvas")
+        var tile = findChild(page, "canvasMonitor.HDMI-A-1")
+        tryVerify(function () { return tile.width > 0 })
+        var scale = page.canvasFit(canvas.width, canvas.height).scale
+        var at = tile.mapToItem(testCase, tile.width / 2, tile.height / 2)
+        mousePress(testCase, at.x, at.y)
+        mouseMove(testCase, at.x + 8, at.y)
+        mouseMove(testCase, at.x + 16, at.y)
+        var place = View.position(page.draftDoc["HDMI-A-1"])
+        compare(place.auto, false, "dragging pins the position")
+        compare(place.x, 2560 + Math.round(16 / scale), "it starts from where it is on screen")
+        mouseRelease(testCase, at.x + 16, at.y)
+    }
+
     function test_the_rotation_control_is_the_monitor_turned() {
         var page = make()
         page.select("HDMI-A-1")
