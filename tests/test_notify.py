@@ -35,8 +35,17 @@ class StoreTests(Home):
         self.assertEqual(mode(path), 0o600)
 
     def test_a_row_round_trips(self) -> None:
-        row = {"arrived": 1000, "summary": "Hi", "body": "there", "appName": "Telegram Desktop",
-               "icon": "telegram", "image": "", "conversation": "Juan", "urgent": True, "acted": False}
+        row = {
+            "arrived": 1000,
+            "summary": "Hi",
+            "body": "there",
+            "appName": "Telegram Desktop",
+            "icon": "telegram",
+            "image": "",
+            "conversation": "Juan",
+            "urgent": True,
+            "acted": False,
+        }
         notify.save({"history": [row], "stats": {"2026-11-01": {"Telegram Desktop": [2, 1]}}})
         self.assertEqual(notify.load(), {"history": [row], "stats": {"2026-11-01": {"Telegram Desktop": [2, 1]}}})
 
@@ -62,8 +71,12 @@ class StoreTests(Home):
         self.assertEqual(kept[0], "day-005")
 
     def test_a_row_without_text_is_dropped(self) -> None:
-        notify.save({"history": [{"summary": "kept", "body": ""}, {"summary": "", "body": ""}, 5, None],
-                     "stats": {"2026-11-01": {"App": [1, 0], "Bad": ["x", 1]}}})
+        notify.save(
+            {
+                "history": [{"summary": "kept", "body": ""}, {"summary": "", "body": ""}, 5, None],
+                "stats": {"2026-11-01": {"App": [1, 0], "Bad": ["x", 1]}},
+            }
+        )
         loaded = notify.load()
         self.assertEqual([row["summary"] for row in loaded["history"]], ["kept"])
         self.assertEqual(loaded["stats"], {"2026-11-01": {"App": [1, 0]}})
@@ -82,9 +95,25 @@ class SendTests(unittest.TestCase):
                 sent.append((summary, body, actions, hints, replace))
                 return 7
 
-        self.assertEqual(notify.send({"app": "Telegram Desktop", "icon": "telegram",
-                                      "summary": "Juan", "body": "Hola"}, notifier=Fake()), 7)
+        self.assertEqual(
+            notify.send(
+                {"app": "Telegram Desktop", "icon": "telegram", "summary": "Juan", "body": "Hola"}, notifier=Fake()
+            ),
+            7,
+        )
         self.assertEqual(sent, [("Juan", "Hola", [], {}, 0)])
+
+    def test_a_notice_expires_by_the_servers_default_instead_of_staying(self) -> None:
+        timeouts = []
+
+        class Fake:
+            def send(self, summary, body, actions=None, hints=None, replace=0, timeout=0):
+                timeouts.append(timeout)
+                return 1
+
+        notify.send({"summary": "Screenshot copied"}, notifier=Fake())
+        # 0 would mean "never expires": the toast would stay until closed by hand.
+        self.assertEqual(timeouts, [-1])
 
     def test_a_payload_that_is_not_an_object_is_refused(self) -> None:
         with self.assertRaises(ValueError):

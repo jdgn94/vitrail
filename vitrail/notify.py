@@ -96,8 +96,7 @@ def normalise(document: object) -> dict:
     """A document the history can be rebuilt from: bounded and safe to draw."""
     if not isinstance(document, dict):
         return {"history": [], "stats": {}}
-    rows = [row for row in (normalise_row(one) for one in document.get("history") or [])
-            if row is not None]
+    rows = [row for row in (normalise_row(one) for one in document.get("history") or []) if row is not None]
     return {"history": rows[:LIMIT], "stats": normalise_stats(document.get("stats"))}
 
 
@@ -133,10 +132,11 @@ def send(payload: dict, notifier=None) -> int:
     if notifier is None:
         from .downloads import Notifier
 
-        notifier = Notifier(app=_text(payload.get("app")) or "Vitrail",
-                            icon=_text(payload.get("icon")) or "notifications")
-    return notifier.send(_text(payload.get("summary")) or "Vitrail",
-                         _text(payload.get("body")), [], {}, 0, 0)
+        notifier = Notifier(
+            app=_text(payload.get("app")) or "Vitrail", icon=_text(payload.get("icon")) or "notifications"
+        )
+    # -1: the server's own timeout (a toast of a few seconds); 0 would never expire.
+    return notifier.send(_text(payload.get("summary")) or "Vitrail", _text(payload.get("body")), [], {}, 0, -1)
 
 
 def main(argv: list[str] | None = None) -> int:
