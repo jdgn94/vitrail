@@ -142,6 +142,7 @@ package to the manifest and a row here.
 | `pipewire`, `libpulse` | `pw-dump`, `pactl` | the volume popup's snapshot of sinks, sources and playback streams (`vitrail/audio.py`), and moving a stream to another output |
 | `cava` | `cava` | the audio visualiser's spectrum (`vitrail/visualiser.py`), written to the background layer |
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
+| `hyprsunset` | `hyprsunset` | night light (colour temperature and schedule) in the brightness popup |
 | `grim` | `grim` | the frozen screen of every monitor, and the area the overlay draws |
 | `wf-recorder` | `wf-recorder` | screen recording from the panel, stopped from the bar |
 | `tesseract`, `tesseract-data-eng`, `tesseract-data-spa` | `tesseract` | the capture overlay's "Copy text", the text detection that enables its buttons, and Translate's reading (OCR, local only); only the installed language data are used, so add `tesseract-data-<lang>` for more |
