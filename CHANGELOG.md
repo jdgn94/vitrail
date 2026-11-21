@@ -108,5 +108,7 @@ The first distributable release.
   saves, annotates, records that area, counts down, picks a window or the whole
   layout. `PRINT` opens the same overlay (`Super+PRINT`, whole layout).
 
+- Super+Return opens kitty tiled: it no longer remembers its window size, so it
+  stops reopening maximized and covering the workspace.
 - Installation without cloning (`bootstrap.sh`), an AUR package, and
   `vitrail update` against the installed branch, with snapshots.
