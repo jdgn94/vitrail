@@ -4,6 +4,13 @@
 // window.
 .pragma library
 
+// The elements that show only while they have something to say when the
+// preference has never been written. The updates element is the case the plan
+// describes ("appears while there is something to say"): its count is its
+// whole message, so it starts in "only while active". An explicit preference
+// (even "[]") always wins.
+var DEFAULT_ACTIVE_ONLY = ["updates"]
+
 // The ids that show only while active, from the preference's text.
 function parseActiveOnly(text) {
     var list = []
@@ -17,6 +24,11 @@ function parseActiveOnly(text) {
     return list.filter(function (id, index) {
         return typeof id === "string" && id !== "" && list.indexOf(id) === index
     })
+}
+
+// The preference's text, with the built-in default when the key is unset.
+function activeOnly(text) {
+    return parseActiveOnly(text === undefined || text === null ? JSON.stringify(DEFAULT_ACTIVE_ONLY) : text)
 }
 
 // "active" or "always" (the default) for one element.

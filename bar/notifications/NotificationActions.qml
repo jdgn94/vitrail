@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../kit"
 import "../kit/base"
+import "notifications.js" as Notifications
 
 // What can be done with a notification, under its text: the app's own actions,
 // copy, snooze (15 min / 1 h / tomorrow), mute that app, and mark as read.
@@ -50,7 +51,14 @@ ColumnLayout {
                 variant: "text"
                 tone: "secondary"
                 text: modelData.text
-                onClicked: modelData.invoke()
+                onClicked: {
+                    // The bar's own notice has no client left to receive the
+                    // D-Bus invocation: run its action here.
+                    if (modelData.identifier === Notifications.UPDATES_ACTION && root.act)
+                        root.act("updates", "")
+                    else
+                        modelData.invoke()
+                }
             }
         }
 

@@ -10,7 +10,9 @@ One JSON document, the snapshot the bar and its popup read:
       "flatpak": [{"name": "org.mozilla.firefox", "from": "", "to": "135.0"}],
       "errors": {"flatpak": "flatpak is not installed"},
       "total": 3,
-      "checkedAt": 1763730000000
+      "checkedAt": 1763730000000,
+      "commands": {"official": ["sudo", "pacman", "-Syu"], "aur": ["paru", "-Sua"],
+                   "flatpak": ["flatpak", "update", "-y"]}
     }
 
 `official` is `checkupdates` (pacman-contrib, a temporary database and no
@@ -19,11 +21,15 @@ is `remote-ls --updates`: it does not publish the installed version, so
 `from`/`to` stay empty when the remote has none. `total` counts the entries,
 `checkedAt` is epoch milliseconds (like the other snapshots) and `errors` names
 only the sources that failed; the rest of the document is still filled.
+`commands` is the argv of each enabled source's "Update" action, so the popup
+never rebuilds a command the module owns.
 
 The parsers are pure functions of their text and every program goes through one
 injected runner, so the tests never touch pacman, an AUR helper or flatpak.
 `command()` returns the argv of an "Update" action without running it: the
-caller hands it to a terminal, and nothing here needs root.
+caller hands it to a terminal, and nothing here needs root. `main()` reads the
+element's preferences (`updatesSources`, `updatesAurHelper`) and checks only
+the sources the user chose.
 """
 
 from __future__ import annotations
@@ -35,6 +41,8 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable, Iterable
+
+from . import prefs
 
 Runner = Callable[[list[str]], tuple[int, str, str]]
 Which = Callable[[str], str | None]
@@ -100,6 +108,20 @@ def parse_flatpak(text: str) -> list[dict[str, str]]:
         version = fields[1].strip() if len(fields) > 1 else ""
         found.append({"name": name, "from": "", "to": version})
     return found
+
+
+def parse_sources(text: str | None) -> tuple[str, ...]:
+    """The enabled sources from `updatesSources`; unset means all three."""
+    if text is None:
+        return SOURCES
+    wanted = {word.strip() for word in str(text).split(",")}
+    return tuple(source for source in SOURCES if source in wanted)
+
+
+def parse_helper(text: str | None) -> str | None:
+    """The AUR helper from `updatesAurHelper`; "auto", empty or unknown is None."""
+    value = (text or "").strip()
+    return value if value in AUR_HELPERS else None
 
 
 def aur_helper(helper: str | None = None, which: Which = shutil.which) -> str:
@@ -194,6 +216,7 @@ def state(
     document["errors"] = errors
     document["total"] = sum(len(document[source]) for source in enabled)
     document["checkedAt"] = int((time.time() if now is None else now) * 1000)
+    document["commands"] = {source: command(source, helper, which=which) for source in enabled}
     return document
 
 
@@ -216,7 +239,12 @@ def command(source: str, helper: str | None = None, *, which: Which = shutil.whi
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args == ["state"]:
-        print(json.dumps(state(), separators=(",", ":")))
+        settings = prefs.read_prefs(prefs.config_dir())
+        document = state(
+            sources=parse_sources(settings.get("updatesSources")),
+            helper=parse_helper(settings.get("updatesAurHelper")),
+        )
+        print(json.dumps(document, separators=(",", ":")))
         return 0
     print("usage: updates state", file=sys.stderr)
     return 2

@@ -93,11 +93,28 @@ class StateTests(unittest.TestCase):
     def test_the_default_state_has_the_documented_shape(self) -> None:
         fake = ready()
         data = updates.state(run=fake.run, which=fake.which, now=1_000.0)
-        self.assertEqual(set(data), {"official", "aur", "flatpak", "errors", "total", "checkedAt"})
+        self.assertEqual(set(data), {"official", "aur", "flatpak", "errors", "total", "checkedAt", "commands"})
         self.assertEqual(data["total"], 3 + 2 + 3)
         self.assertEqual(data["errors"], {})
         self.assertEqual(data["checkedAt"], 1_000_000)
         json.dumps(data)
+
+    def test_every_source_carries_the_argv_of_its_update(self) -> None:
+        fake = ready()
+        data = updates.state(run=fake.run, which=fake.which)
+        self.assertEqual(
+            data["commands"],
+            {
+                "official": ["sudo", "pacman", "-Syu"],
+                "aur": ["paru", "-Sua"],
+                "flatpak": ["flatpak", "update", "-y"],
+            },
+        )
+
+    def test_the_aur_update_uses_the_configured_helper(self) -> None:
+        fake = ready()
+        data = updates.state(helper="yay", run=fake.run, which=fake.which)
+        self.assertEqual(data["commands"]["aur"], ["yay", "-Sua"])
 
     def test_every_source_runs_its_own_program(self) -> None:
         fake = ready()
@@ -198,8 +215,9 @@ class StateTests(unittest.TestCase):
         fake = ready()
         data = updates.state(sources=("official",), run=fake.run, which=fake.which)
         self.assertEqual(fake.calls, [["checkupdates"]])
-        self.assertEqual(set(data), {"official", "errors", "total", "checkedAt"})
+        self.assertEqual(set(data), {"official", "errors", "total", "checkedAt", "commands"})
         self.assertEqual(data["total"], 3)
+        self.assertEqual(data["commands"], {"official": ["sudo", "pacman", "-Syu"]})
 
     def test_a_string_source_is_one_source(self) -> None:
         fake = ready()
@@ -211,8 +229,26 @@ class StateTests(unittest.TestCase):
         fake = ready()
         data = updates.state(sources=[], run=fake.run, which=fake.which)
         self.assertEqual(fake.calls, [])
-        self.assertEqual(set(data), {"errors", "total", "checkedAt"})
+        self.assertEqual(set(data), {"errors", "total", "checkedAt", "commands"})
         self.assertEqual(data["total"], 0)
+        self.assertEqual(data["commands"], {})
+
+
+class PreferenceTests(unittest.TestCase):
+    def test_an_unset_source_list_checks_all_three(self) -> None:
+        self.assertEqual(updates.parse_sources(None), updates.SOURCES)
+
+    def test_the_source_list_keeps_the_known_sources_in_their_order(self) -> None:
+        self.assertEqual(updates.parse_sources("flatpak, aur,official"), ("official", "aur", "flatpak"))
+        self.assertEqual(updates.parse_sources("snap, official"), ("official",))
+        self.assertEqual(updates.parse_sources(""), ())
+
+    def test_auto_and_unknown_helpers_mean_decide_from_what_is_installed(self) -> None:
+        self.assertIsNone(updates.parse_helper(None))
+        self.assertIsNone(updates.parse_helper("auto"))
+        self.assertIsNone(updates.parse_helper("pacman"))
+        self.assertEqual(updates.parse_helper("yay"), "yay")
+        self.assertEqual(updates.parse_helper(" paru "), "paru")
 
 
 class CommandTests(unittest.TestCase):
@@ -240,6 +276,30 @@ class MainTests(unittest.TestCase):
             with redirect_stdout(output):
                 self.assertEqual(updates.main(["state"]), 0)
         self.assertEqual(json.loads(output.getvalue()), document)
+
+    def test_state_checks_the_sources_and_helper_the_preferences_name(self) -> None:
+        document = {"official": [], "errors": {}, "total": 0, "checkedAt": 1, "commands": {}}
+        with (
+            mock.patch.object(
+                updates.prefs,
+                "read_prefs",
+                return_value={"updatesSources": "official, flatpak", "updatesAurHelper": "yay"},
+            ),
+            mock.patch.object(updates, "state", return_value=document) as state,
+        ):
+            with redirect_stdout(StringIO()):
+                self.assertEqual(updates.main(["state"]), 0)
+        state.assert_called_once_with(sources=("official", "flatpak"), helper="yay")
+
+    def test_an_unset_preference_checks_every_source_with_auto_helper(self) -> None:
+        document = {"official": [], "errors": {}, "total": 0, "checkedAt": 1, "commands": {}}
+        with (
+            mock.patch.object(updates.prefs, "read_prefs", return_value={}),
+            mock.patch.object(updates, "state", return_value=document) as state,
+        ):
+            with redirect_stdout(StringIO()):
+                self.assertEqual(updates.main(["state"]), 0)
+        state.assert_called_once_with(sources=updates.SOURCES, helper=None)
 
     def test_an_unknown_action_prints_the_usage(self) -> None:
         errors = StringIO()

@@ -61,8 +61,17 @@ function copy(text) {
     return ["wl-copy", "--", text]
 }
 
+// One argv word for `sh -c`: single-quoted, with an embedded quote closed,
+// escaped and reopened.
+function quote(word) {
+    return "'" + String(word).replace(/'/g, "'\\''") + "'"
+}
+
+// A terminal command: a shell string as the caller wrote it, or an argv whose
+// words are quoted for it.
 function runInTerminal(command) {
-    return ["kitty", "--hold", "sh", "-c", command]
+    var line = Array.isArray(command) ? command.map(quote).join(" ") : command
+    return ["kitty", "--hold", "sh", "-c", line]
 }
 
 function runDetached(command) {

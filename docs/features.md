@@ -8,6 +8,10 @@
 
 An icon that follows the default output's level (muted, none, low, high) and, with `volumePercent`, the level as text. The wheel moves the master volume by `volumeStep` (1–25 %, default 5), a middle click mutes, and a click opens the popup: the master slider with its device's name and mute, one row per application stream (slider, mute, and an output chooser that moves the stream to another sink), the output and input device choosers and the microphone mute. `volumeHideSilent` leaves paused streams out. The data is `vitrail.audio`'s snapshot (`pw-dump`), polled only while the element is in a bar; every change is one `python3 -m vitrail.audio` process. Without PipeWire or `pw-dump` the icon goes neutral and the popup says it cannot read the audio server. Hidden by default (bar → Editor, or Settings → Bar elements), where its block holds the three options.
 
+## Updates bar element
+
+The number of pending packages, and nothing while there are none. `checkupdates` (pacman-contrib) fills the official repositories, `paru -Qua` or `yay -Qua` the AUR and `flatpak remote-ls --updates` Flatpak; `updatesSources` picks the three and `updatesAurHelper` fixes the AUR helper (`auto` follows what is installed). `updatesInterval` sets how often the snapshot is polled (minutes, 60 by default). The popup groups the rows by source (`name from → to`), turns what does not fit into "and N more", shows a source's failure as a calm line with its code, refreshes on demand and offers one Update per source that runs the snapshot's own argv (`sudo pacman -Syu`, `paru -Sua`, `flatpak update -y`) in a kitty terminal. When the total grows and at least one package is new, one notification offers the popup; the first snapshot after start is the silent baseline. Hidden by default (bar → Editor, or Settings → Bar elements), where it starts in "only while active": at zero it leaves the bar until it has something to say.
+
 ## The bar and the frame
 
 A single bar on any screen edge (top, bottom, left or right), with or without

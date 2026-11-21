@@ -32,6 +32,29 @@ Código en `bar-volume-ui`. Con la barra corriendo, una aplicación reproduciend
 - [ ] Parar PipeWire (`systemctl --user stop pipewire pipewire-pulse wireplumber`, y `socket` si reactiva): el icono queda en gris/silenciado sin error, el popup dice que no puede leer el servidor de audio y no muestra deslizadores; rueda y clic central no hacen nada; al reiniciarlo todo vuelve solo.
 - [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.audio` en `ps`.
 
+## Updates bar element (2026-11-21)
+
+Código en `bar-updates-ui`. Para falsear el conjunto sin tocar pacman, paru ni Flatpak, y arrancar la barra con esos programas delante:
+
+```sh
+mkdir -p /tmp/vitrail-fake-updates
+printf '#!/bin/sh\necho "linux 6.12.1-1 -> 6.12.2-1"\necho "mesa 1:24.2.7-1 -> 1:24.3.1-1"\n' > /tmp/vitrail-fake-updates/checkupdates
+printf '#!/bin/sh\necho "claude-desktop 5.1-1 -> 6.2-1"\n' > /tmp/vitrail-fake-updates/paru
+printf '#!/bin/sh\nprintf "org.mozilla.firefox\\t135.0\\n"\n' > /tmp/vitrail-fake-updates/flatpak
+chmod +x /tmp/vitrail-fake-updates/*
+PATH=/tmp/vitrail-fake-updates:$PATH bin/vitrail-bar &
+```
+
+- [ ] Mostrar `updates` desde el editor de la barra (está oculto por defecto): aparece el icono con "4"; el tooltip dice "4 actualizaciones" y debajo las fuentes que tienen alguna.
+- [ ] Con el modo "Solo cuando está activo" (el valor por defecto de este elemento en Ajustes → Bar elements) el botón desaparece a cero: dejar los tres scripts imprimiendo nada (solo `#!/bin/sh`), esperar un ciclo y el icono se va; volver a poner las líneas y reaparece.
+- [ ] Clic abre el popup: un bloque por fuente con su recuento y sus filas `nombre  versión → versión`; con más de cinco filas en una fuente, las cinco primeras y "y N más".
+- [ ] Cada bloque con filas ofrece "Actualizar": abre kitty con `sudo pacman -Syu`, `paru -Sua` o `flatpak update -y` según la fuente (nada se ejecuta desde la barra). El botón de refrescar vuelve a lanzar el snapshot.
+- [ ] Renombrar `/tmp/vitrail-fake-updates/flatpak` y esperar: el bloque de Flatpak queda a cero con una línea tranquila que dice "flatpak is not installed", y las otras fuentes siguen listadas.
+- [ ] Cambiar el nombre de un paquete por otro (mismo número total) no debe notificar; añadir una línea nueva sí, una sola vez, con el recuento, y su botón "Ver actualizaciones" abre este popup. El primer snapshot tras arrancar la barra no notifica aunque haya actualizaciones, y con el elemento fuera de la barra tampoco hay aviso.
+- [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.updates` en `ps`.
+- [ ] Ajustes → Bar elements → Updates: el intervalo (60 min por defecto) cambia cada cuánto se comprueba; desactivar AUR quita su bloque y no ejecuta paru; el ayudante AUR automático usa paru si está, si no yay, y la elección explícita aparece en el comando de "Actualizar".
+- [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque "Updates".
+
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 
 Código en `master` (`5936834..36fab6a`). La automatización ya está verde

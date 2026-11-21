@@ -2,6 +2,11 @@
 // tests/qml/tst_notifications.qml.
 .pragma library
 
+// The action the updates element's own notice carries. The notice is posted by
+// the bar through D-Bus, so its sender is already gone: pressing the button
+// runs the action in the shell that drew the card instead of crossing back.
+var UPDATES_ACTION = "vitrail-updates"
+
 // The configured side, unless the bar owns it: notifications never open on the
 // bar's edge. Legacy values ("top-right") are tolerated until the preference
 // migration rewrites them to "left" / "right".

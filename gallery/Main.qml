@@ -5,6 +5,7 @@ import "../kit/base"
 import "../kit/composed"
 import "../bar"
 import "../bar/volume"
+import "../bar/updates"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -1076,6 +1077,85 @@ Window {
 
                 VolumePanel {
                     id: broken
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ error: "unreadable" })
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "UpdatesButton · count × zero × no sources"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            UpdatesButton {
+                snapshot: ({
+                    official: [{ name: "linux", from: "6.12.1", to: "6.12.2" },
+                               { name: "mesa", from: "1:24.2", to: "1:24.3" },
+                               { name: "python", from: "3.12.7", to: "3.12.8" }],
+                    aur: [{ name: "claude-desktop", from: "5.1", to: "6.2" }],
+                    flatpak: [{ name: "org.mozilla.firefox", from: "", to: "135.0" }],
+                    errors: {}, total: 5, checkedAt: 1763730000000
+                })
+            }
+
+            UpdatesButton {
+                snapshot: ({
+                    official: [{ name: "linux", from: "6.12.1", to: "6.12.2" }],
+                    aur: [], flatpak: [], errors: {}, total: 1, checkedAt: 1763730000000
+                })
+            }
+
+            UpdatesButton {
+                snapshot: ({ official: [], aur: [], flatpak: [], errors: {}, total: 0, checkedAt: 1763730000000 })
+            }
+
+            UpdatesButton {
+                snapshot: ({ error: "unreadable" })
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "UpdatesPanel · sources × a failed source × no sources"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: updatesFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: updatesFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                UpdatesPanel {
+                    id: updatesFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({
+                        official: [{ name: "linux", from: "6.12.1", to: "6.12.2" },
+                                   { name: "mesa", from: "1:24.2", to: "1:24.3" }],
+                        aur: [{ name: "claude-desktop", from: "5.1", to: "6.2" }],
+                        flatpak: [],
+                        errors: { flatpak: "flatpak is not installed" },
+                        total: 3,
+                        checkedAt: 1763730000000,
+                        commands: { official: ["sudo", "pacman", "-Syu"], aur: ["paru", "-Sua"] }
+                    })
+                }
+            }
+
+            VitrailSurface {
+                width: brokenUpdates.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: brokenUpdates.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                UpdatesPanel {
+                    id: brokenUpdates
 
                     x: VitrailTokens.gap("md")
                     y: VitrailTokens.gap("md")

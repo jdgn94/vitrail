@@ -16,6 +16,7 @@ import "prefs.js" as Prefs
 import "barview.js" as BarView
 import "layouts.js" as Layouts
 import "elements.js" as Elements
+import "updates/updates.js" as Updates
 import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "kit/wallpaper.js" as WallpaperTransition
@@ -58,6 +59,7 @@ import "session"
 import "session/actions.js" as Session
 import "sample"
 import "volume"
+import "updates"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -481,6 +483,13 @@ ShellRoot {
             toasts.dismiss(id)
         } else if (kind === "open") {
             shell.openAttachment(value)
+        } else if (kind === "updates") {
+            // The updates notice's own button: the element's popup, on the
+            // focused monitor, instead of a round trip over D-Bus to a sender
+            // that has already exited.
+            shell.notificationsOpen = false
+            shell.openPopup("updates", null, null)
+            toasts.markActed(id)
         }
     }
 
@@ -550,15 +559,44 @@ ShellRoot {
     }
 
     // A notification of the bar's own, through the same server (and the same
-    // queue) as a snooze that is due: it never takes the focus.
-    function postNotification(summary, body, icon) {
+    // queue) as a snooze that is due: it never takes the focus. `actions` is
+    // the D-Bus pair list ("id", "label", …).
+    function postNotification(summary, body, icon, actions) {
         snoozeSend.pending.push(JSON.stringify({
             app: "Vitrail",
             icon: icon || "notifications",
             summary: summary,
-            body: body || ""
+            body: body || "",
+            actions: actions || []
         }))
         shell.sendNextSnooze()
+    }
+
+    // --- updates: one notice when new ones arrive ---------------------------
+    // The first snapshot after start is the baseline and stays silent: a
+    // machine that was off for a week must not fire a toast the moment the bar
+    // loads, and an element the user never placed does not poll at all. After
+    // that, one notice per growing set (never one per package, never while the
+    // total stays the same), and its button opens this element's popup.
+    function considerUpdates(snapshot) {
+        var found = Updates.notice(shell.updatesSeen, snapshot)
+        if (Updates.ready(snapshot))
+            shell.updatesSeen = snapshot
+        if (found.count === 0)
+            return
+        var summary = found.count === 1 ? shell.t("bar.updates.notify.one")
+                                        : shell.t("bar.updates.notify").replace("%1", found.count)
+        shell.postNotification(summary, shell.t("bar.updates.notify.body"), "update",
+                               [Notifications.UPDATES_ACTION, shell.t("bar.updates.notify.action")])
+    }
+
+    // The popup's Update: the snapshot's argv (vitrail.updates.command) in the
+    // user's terminal, never silently from the bar.
+    function runUpdates(argv) {
+        if (!Array.isArray(argv) || argv.length === 0)
+            return
+        Quickshell.execDetached(Commands.runInTerminal(argv))
+        shell.closePopup()
     }
 
     // A pomodoro phase or a timer ran out.
@@ -728,6 +766,9 @@ ShellRoot {
             shell.refreshPowerProfile()
         if (kind === "keyboard")
             shell.refreshKeyboards()
+        // The list may be an hour old: the popup asks for today's answer.
+        if (kind === "updates")
+            updatesData.refresh()
         if (kind === "network" || kind === "vpn")
             if (!linkRead.running)
                 linkRead.running = true
@@ -1593,7 +1634,7 @@ ShellRoot {
     }
 
     // The elements that show only while active (bar.ini `barActiveOnly`).
-    readonly property var activeOnlyIds: Elements.parseActiveOnly(shell.prefs.barActiveOnly)
+    readonly property var activeOnlyIds: Elements.activeOnly(shell.prefs.barActiveOnly)
 
     // Whether any monitor's bar draws the element: its data runs only then.
     function barShows(id) {
@@ -1635,6 +1676,27 @@ ShellRoot {
             "root=\"$1\"; shift; PYTHONPATH=\"$root\" exec python3 -m vitrail.audio \"$@\"",
             "sh", Quickshell.shellDir + "/.."].concat(args))
         audioSettle.restart()
+    }
+
+    // The updates bar element's data (vitrail/updates.py): the interval is the
+    // element's own preference (minutes), so the three check programs do not
+    // run more often than the user asked.
+    BarSnapshot {
+        id: updatesData
+
+        module: "updates"
+        interval: Updates.intervalMs(shell.prefs.updatesInterval)
+        active: shell.barShows("updates")
+    }
+
+    // The last usable snapshot: the baseline the "new updates" notice diffs
+    // against. The first one after start is silent (see considerUpdates).
+    property var updatesSeen: null
+
+    Connections {
+        target: updatesData
+
+        function onSnapshotChanged() { shell.considerUpdates(updatesData.snapshot) }
     }
 
     function syncTokens() {
@@ -3329,6 +3391,7 @@ ShellRoot {
                     case "power": return powerWidget
                     case "sample": return sampleWidget
                     case "volume": return volumeWidget
+                    case "updates": return updatesWidget
                     default: return null
                     }
                 }
@@ -3699,6 +3762,25 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: updatesWidget
+
+                    UpdatesButton {
+                        id: updatesButton
+
+                        strings: shell.strings
+                        snapshot: updatesData.snapshot
+                        showMode: Elements.showMode(shell.activeOnlyIds, "updates")
+                        opened: shell.popupOpen && shell.popupKind === "updates" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("updates", updatesButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(updatesButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("updates", updatesButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -3760,6 +3842,7 @@ ShellRoot {
                     case "binds": return monitor.loadedItem("clock")
                     case "sample": return monitor.loadedItem("sample")
                     case "volume": return monitor.loadedItem("volume")
+                    case "updates": return monitor.loadedItem("updates")
                     default: return null
                     }
                 }
@@ -4707,6 +4790,13 @@ ShellRoot {
                                 sourceComponent: volumeComponent
                             }
 
+                            Popout {
+                                name: "updates"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: updatesComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -5027,6 +5117,18 @@ ShellRoot {
                         iconPath: function (name) { return Quickshell.iconPath(name, true) }
                         onAudioAction: function (args) { shell.audioAction(args) }
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "volume")
+                    }
+                }
+
+                Component {
+                    id: updatesComponent
+
+                    UpdatesPanel {
+                        strings: shell.strings
+                        snapshot: updatesData.snapshot
+                        onUpdateRequested: function (argv) { shell.runUpdates(argv) }
+                        onRefreshRequested: updatesData.refresh()
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "updates")
                     }
                 }
 

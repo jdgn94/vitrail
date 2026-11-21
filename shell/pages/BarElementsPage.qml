@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../../kit"
 import "../../kit/base"
+import "../../bar/updates/updates.js" as Updates
 
 // Bar elements category: one block per new-style bar element, each with the
 // options every element shares (when it shows) and its own. A bar popup's gear
@@ -106,6 +107,110 @@ Item {
                         accent: page.palette.primary
                         onToggled: function (value) { page.prefs.volumeHideSilent = value }
                     }
+                }
+            }
+
+            BarElementSection {
+                id: updatesSection
+
+                Layout.fillWidth: true
+                elementId: "updates"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSelect {
+                    objectName: "updatesInterval"
+
+                    Layout.fillWidth: true
+                    label: updatesSection.t("bar.updates.interval")
+                    options: {
+                        var minutes = [15, 30, 60, 120, 360, 720]
+                        var now = Updates.intervalMinutes(page.prefs.updatesInterval)
+                        if (minutes.indexOf(now) < 0)
+                            minutes.push(now)
+                        minutes.sort(function (a, b) { return a - b })
+                        return minutes.map(function (value) {
+                            return { key: String(value),
+                                     label: updatesSection.t("bar.updates.intervalOption").replace("%1", value) }
+                        })
+                    }
+                    current: String(Updates.intervalMinutes(page.prefs.updatesInterval))
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.updatesInterval = Number(key) }
+                }
+
+                VitrailSettingRow {
+                    Layout.fillWidth: true
+                    label: updatesSection.t("bar.updates.source.official")
+                    description: updatesSection.t("bar.updates.source.official.help")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSwitch {
+                        objectName: "updatesOfficial"
+                        checked: Updates.enabledSources(page.prefs.updatesSources).indexOf("official") >= 0
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onToggled: function (value) {
+                            page.prefs.updatesSources = Updates.withSource(page.prefs.updatesSources, "official", value)
+                        }
+                    }
+                }
+
+                VitrailSettingRow {
+                    Layout.fillWidth: true
+                    label: updatesSection.t("bar.updates.source.aur")
+                    description: updatesSection.t("bar.updates.source.aur.help")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSwitch {
+                        objectName: "updatesAur"
+                        checked: Updates.enabledSources(page.prefs.updatesSources).indexOf("aur") >= 0
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onToggled: function (value) {
+                            page.prefs.updatesSources = Updates.withSource(page.prefs.updatesSources, "aur", value)
+                        }
+                    }
+                }
+
+                VitrailSettingRow {
+                    Layout.fillWidth: true
+                    label: updatesSection.t("bar.updates.source.flatpak")
+                    description: updatesSection.t("bar.updates.source.flatpak.help")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSwitch {
+                        objectName: "updatesFlatpak"
+                        checked: Updates.enabledSources(page.prefs.updatesSources).indexOf("flatpak") >= 0
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onToggled: function (value) {
+                            page.prefs.updatesSources = Updates.withSource(page.prefs.updatesSources, "flatpak", value)
+                        }
+                    }
+                }
+
+                VitrailSelect {
+                    objectName: "updatesAurHelper"
+
+                    Layout.fillWidth: true
+                    label: updatesSection.t("bar.updates.helper")
+                    options: [
+                        { key: "auto", label: updatesSection.t("bar.updates.helper.auto") },
+                        { key: "paru", label: "paru" },
+                        { key: "yay", label: "yay" }
+                    ]
+                    current: page.prefs.updatesAurHelper || "auto"
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.updatesAurHelper = key }
                 }
             }
 

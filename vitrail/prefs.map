@@ -88,6 +88,11 @@ bar osdBrightnessStep
 bar volumeStep
 bar volumePercent
 bar volumeHideSilent
+# The updates bar element: how often it checks (minutes), which sources, and
+# the AUR helper ("auto" follows what is installed).
+bar updatesInterval
+bar updatesSources
+bar updatesAurHelper
 # The dashboard clock widgets: the pomodoro's periods and rounds, and the
 # timer's default length, in minutes.
 bar pomodoroWork

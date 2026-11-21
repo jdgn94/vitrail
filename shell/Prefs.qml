@@ -79,6 +79,9 @@ QtObject {
     property alias volumeStep: barFile.volumeStep
     property alias volumePercent: barFile.volumePercent
     property alias volumeHideSilent: barFile.volumeHideSilent
+    property alias updatesInterval: barFile.updatesInterval
+    property alias updatesSources: barFile.updatesSources
+    property alias updatesAurHelper: barFile.updatesAurHelper
     property alias pomodoroWork: barFile.pomodoroWork
     property alias pomodoroRest: barFile.pomodoroRest
     property alias pomodoroCycles: barFile.pomodoroCycles
@@ -262,8 +265,9 @@ QtObject {
         property bool barBatteryChip: true
         property bool barBluetoothChip: true
         // The elements that show only while they have something to say: a JSON
-        // array of ids (bar/elements.js). Empty is every element always shown.
-        property string barActiveOnly: "[]"
+        // array of ids (bar/elements.js). The updates element starts here; an
+        // explicit value (even "[]") wins over the built-in default.
+        property string barActiveOnly: "[\"updates\"]"
         // The keyboard layout chip, with its switcher and on-screen keyboard.
         property bool barKeyboard: true
         // The OSD: whether keys show it, how long a key's slider stays, how far
@@ -279,6 +283,11 @@ QtObject {
         property int volumeStep: VitrailTokens.ranges.volumeStep.value
         property bool volumePercent: false
         property bool volumeHideSilent: false
+        // The updates bar element: how often it checks (minutes), the sources
+        // it checks ("official,aur,flatpak") and the AUR helper.
+        property int updatesInterval: 60
+        property string updatesSources: "official,aur,flatpak"
+        property string updatesAurHelper: "auto"
         // The dashboard's clock widgets: the pomodoro's periods and rounds and
         // the timer's default length, in minutes.
         property int pomodoroWork: VitrailTokens.ranges.pomodoroWork.value

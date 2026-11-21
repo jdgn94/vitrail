@@ -69,6 +69,8 @@ var index = [
       terms: ["sample", "example"] },
     { category: "bar-elements", tab: "volume", key: "bar.widget.volume", label: "Volume",
       terms: ["volume", "sound", "audio", "speaker", "wheel", "microphone", "apps"] },
+    { category: "bar-elements", tab: "updates", key: "bar.widget.updates", label: "Updates",
+      terms: ["updates", "packages", "aur", "flatpak", "pacman", "checkupdates", "paru", "yay"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },

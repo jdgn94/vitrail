@@ -16,7 +16,7 @@ Section {
     property var prefs
     property var strings
 
-    readonly property var activeOnly: Elements.parseActiveOnly(section.prefs.barActiveOnly)
+    readonly property var activeOnly: Elements.activeOnly(section.prefs.barActiveOnly)
 
     function t(key) {
         var value = section.strings[key]

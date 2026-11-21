@@ -198,6 +198,12 @@ TestCase {
         compare(Elements.withShowMode(["a"], "a", "active"), '["a"]')
     }
 
+    function test_an_unwritten_preference_starts_the_updates_element_active_only() {
+        compare(Elements.activeOnly(undefined), ["updates"])
+        compare(Elements.activeOnly('["sample"]'), ["sample"])
+        compare(Elements.activeOnly("[]"), [])
+    }
+
     function test_a_snapshot_that_is_not_an_object_is_an_error_not_stale_data() {
         compare(Elements.snapshot('{"counter":2}').counter, 2)
         compare(Elements.snapshot("").error, "unreadable")

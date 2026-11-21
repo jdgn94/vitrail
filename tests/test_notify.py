@@ -103,6 +103,17 @@ class SendTests(unittest.TestCase):
         )
         self.assertEqual(sent, [("Juan", "Hola", [], {}, 0)])
 
+    def test_a_payload_can_carry_the_buttons_of_its_notice(self) -> None:
+        sent = []
+
+        class Fake:
+            def send(self, summary, body, actions=None, hints=None, replace=0, timeout=0):
+                sent.append(actions)
+                return 1
+
+        notify.send({"summary": "New updates: 2", "actions": ["vitrail-updates", "Show updates"]}, notifier=Fake())
+        self.assertEqual(sent, [["vitrail-updates", "Show updates"]])
+
     def test_a_notice_expires_by_the_servers_default_instead_of_staying(self) -> None:
         timeouts = []
 

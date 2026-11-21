@@ -15,7 +15,7 @@ a new one on the bar's server.
 
     python3 -m vitrail.notify store <json>   # the bar replaces the file
     python3 -m vitrail.notify show           # print it
-    python3 -m vitrail.notify send <json>    # {app, icon, summary, body}
+    python3 -m vitrail.notify send <json>    # {app, icon, summary, body, actions}
 """
 
 from __future__ import annotations
@@ -135,8 +135,18 @@ def send(payload: dict, notifier=None) -> int:
         notifier = Notifier(
             app=_text(payload.get("app")) or "Vitrail", icon=_text(payload.get("icon")) or "notifications"
         )
+    buttons = payload.get("actions")
+    if not isinstance(buttons, list):
+        buttons = []
     # -1: the server's own timeout (a toast of a few seconds); 0 would never expire.
-    return notifier.send(_text(payload.get("summary")) or "Vitrail", _text(payload.get("body")), [], {}, 0, -1)
+    return notifier.send(
+        _text(payload.get("summary")) or "Vitrail",
+        _text(payload.get("body")),
+        [_text(button) for button in buttons],
+        {},
+        0,
+        -1,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
