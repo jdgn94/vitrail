@@ -244,6 +244,7 @@
   "network.wifiMissing": "Kein WLAN erkannt",
   "terminal.system": "System",
   "notifications.markRead": "Als gelesen markieren",
+  "notifications.hide": "Ausblenden",
   "notifications.reply": "Antworten",
   "notifications.replyPlaceholder": "Antwort schreiben…",
   "bar.notifications": "Position der Benachrichtigungen",

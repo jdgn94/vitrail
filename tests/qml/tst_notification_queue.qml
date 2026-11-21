@@ -16,11 +16,12 @@ TestCase {
             property string summary: "Title " + id
             property string body: "Body " + id
             property string appName: "App"
+            property int closes: 0
             signal closed(int reason)
 
-            function dismiss() { closed(1) }
+            function dismiss() { closes++; closed(1) }
             // Quickshell reports a time-out with the dismiss reason.
-            function expire() { closed(1) }
+            function expire() { closes++; closed(1) }
         }
     }
 
@@ -293,5 +294,24 @@ TestCase {
         compare(until, seen.until)
         compare(seen.row.summary, "Title 1")
         compare(historyIds(queue), [])
+    }
+
+    function test_hiding_a_toast_only_takes_it_off_the_screen() {
+        var queue = createTemporaryObject(queueComponent, this, { maximum: 2 })
+        var list = make(queue, 3)
+        compare(shownIds(queue), [2, 1])
+        queue.hide(1)
+        // The waiting one takes the freed slot.
+        compare(shownIds(queue), [3, 2])
+        compare(queue.waiting, [])
+        // Nothing was closed, the row is intact and the notification is live.
+        compare(list[0].closes, 0)
+        compare(queue.history.count, 3)
+        compare(queue.row(1).expired, false)
+        compare(queue.row(1).acted, false)
+        verify(queue.byId[1] === list[0])
+        // The app can still close it later; that is a dismissal like any other.
+        list[0].dismiss()
+        compare(queue.history.count, 2)
     }
 }

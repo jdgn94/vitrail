@@ -3668,7 +3668,7 @@ ShellRoot {
                 VitrailLiquid {
                     id: stackLiquid
 
-                    open: monitor.modelData === (shell.toastScreen || shell.notificationScreen) && toasts.shown.count > 0
+                    open: monitor.modelData === (shell.toastScreen || shell.notificationScreen) && stack.count > 0
                           && !shell.notificationsOpen
                           && DesktopPolicy.toastsAllowed(monitor.fullscreen, shell.editMode)
                 }
@@ -5156,23 +5156,44 @@ ShellRoot {
                         height: stack.implicitHeight > 0 ? stack.implicitHeight : stackHolder.keptHeight
                         clip: true
 
-                        // Only a stack that is fully open grows and shrinks with its cards.
-                        Behavior on height { enabled: stackLiquid.progress >= 1; NumberAnimation { duration: VitrailTokens.duration("base"); easing.type: Easing.OutCubic } }
+                        // The container is what animates: its height follows the
+                        // stack's slots (they grow and shrink with a card inside)
+                        // and `stackView` clips the cards to the depth the frame
+                        // tab or island has drawn, so the content never vanishes
+                        // ahead of the shape.
+                        Item {
+                            id: stackView
 
-                        NotificationStack {
-                            id: stack
+                            readonly property string depthEdge: stackHolder.docked ? stackHolder.edge
+                                                                                   : stackHolder.place.edge
+                            readonly property bool across: stackView.depthEdge === "left" || stackView.depthEdge === "right"
+                            readonly property real drawn: Math.max(0, Math.min(1, stackHolder.docked
+                                ? stackLiquid.look.reveal
+                                : stackLiquid.look.grow * stackLiquid.look.scale))
 
-                            width: parent.width
-                            height: stack.implicitHeight
-                            y: stack.atBottom ? parent.height - stack.implicitHeight : 0
-                            opacity: stackLiquid.look.content
-                            queue: toasts
-                            strings: shell.strings
-                            act: shell.notificationAction
-                            snoozeEnabled: shell.snoozeEnabled
-                            mutedApps: shell.prefs.notificationMuted || ""
-                            atBottom: stackHolder.place.edge === "bottom"
-                            onImplicitHeightChanged: if (stack.implicitHeight > 0) stackHolder.keptHeight = stack.implicitHeight
+                            x: stackView.depthEdge === "right" ? stackHolder.width - stackView.width : 0
+                            y: stackView.depthEdge === "bottom" ? stackHolder.height - stackView.height : 0
+                            width: stackView.across ? stackHolder.width * stackView.drawn : stackHolder.width
+                            height: stackView.across ? stackHolder.height : stackHolder.height * stackView.drawn
+                            clip: true
+
+                            NotificationStack {
+                                id: stack
+
+                                x: -stackView.x
+                                y: -stackView.y + (stack.atBottom ? stackHolder.height - stack.implicitHeight : 0)
+                                width: stackHolder.width
+                                height: stack.implicitHeight
+                                // Solid, the island fades as a whole; glass, only its shape moves.
+                                opacity: VitrailTokens.glass ? 1 : stackLiquid.look.fade
+                                queue: toasts
+                                strings: shell.strings
+                                act: shell.notificationAction
+                                snoozeEnabled: shell.snoozeEnabled
+                                mutedApps: shell.prefs.notificationMuted || ""
+                                atBottom: stackHolder.place.edge === "bottom"
+                                onImplicitHeightChanged: if (stack.implicitHeight > 0) stackHolder.keptHeight = stack.implicitHeight
+                            }
                         }
                     }
                 }

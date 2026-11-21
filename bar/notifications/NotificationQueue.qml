@@ -142,6 +142,14 @@ QtObject {
         root.byId[id].expire()
     }
 
+    // The toast's X: it leaves the floating list and nothing else. The
+    // notification stays live (its row, its actions in the panel, no
+    // `closed` for the app): hiding is not dismissing.
+    function hide(id) {
+        root.removeFrom(root.shown, id)
+        root.pump()
+    }
+
     function forget(id) {
         delete root.expiring[id]
         delete root.byId[id]

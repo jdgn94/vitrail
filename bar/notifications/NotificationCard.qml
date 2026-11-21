@@ -14,6 +14,9 @@ import "notifications.js" as Notifications
 // wears the accent border. `act(kind, value, id)` hands copy, snooze, mute and
 // opening an attachment to the shell.
 //
+// The X at the end of the title row asks to hide the toast (`hideRequested`):
+// the notification itself stays.
+//
 // The toast wraps it with the swipe and the expiry; the panel has its own
 // (`NotificationEntry`).
 Item {
@@ -80,6 +83,8 @@ Item {
     readonly property var surface: VitrailStyle.resolve("surface", VitrailTokens.surfaceMode)
 
     implicitHeight: content.implicitHeight + 2 * root.pad
+
+    signal hideRequested()
 
     function t(key) {
         var value = root.strings[key]
@@ -189,7 +194,7 @@ Item {
                 // chevron keeps the right edge.
                 VitrailText {
                     Layout.maximumWidth: heading.width - ageLabel.implicitWidth - chevron.implicitWidth
-                                         - 2 * heading.spacing
+                                         - hideButton.implicitWidth - 3 * heading.spacing
                     variant: root.expanded ? "content" : "body"
                     font.weight: root.expanded ? Font.Normal : Font.Medium
                     elide: Text.ElideRight
@@ -214,6 +219,16 @@ Item {
                     size: "sm"
                     icon: root.expanded ? "expand_less" : "expand_more"
                     onClicked: root.userExpanded = !root.expanded
+                }
+
+                VitrailButton {
+                    id: hideButton
+
+                    variant: "plain"
+                    tone: "secondary"
+                    size: "sm"
+                    icon: "close"
+                    onClicked: root.hideRequested()
                 }
             }
 
@@ -297,6 +312,16 @@ Item {
                 }
             }
         }
+    }
+
+    // Names the X, to its left over the card (the stack clips anything past it).
+    VitrailTooltip {
+        x: content.x + hideButton.mapToItem(content, 0, 0).x - width - VitrailTokens.gap("xs")
+        y: content.y + hideButton.mapToItem(content, 0, 0).y + (hideButton.height - height) / 2
+        z: 2
+        active: hideButton.hovered
+        edge: "top"
+        text: root.t("notifications.hide")
     }
 
     // Keyboard: Tab reaches the card, Enter or Space runs its default action

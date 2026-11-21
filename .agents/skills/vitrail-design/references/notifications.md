@@ -27,22 +27,36 @@ history the queue still holds). A bell beside the launcher opens the centre.
 
 ## Stacking
 
-- Toasts are one below the other, never over each other. Each card's `y` is
-  computed from the heights the cards report (`NotificationStack.place`):
-  the heights of the ones before it plus `pad` between, counted from the edge
-  the stack hangs from. A `Behavior on y` (`duration("base")`) only glides it
-  there; it can never strand a card, because the target is a function of the
-  heights, not an animation's start value.
+- Toasts are one below the other, never over each other. Each card sits in a
+  **slot** (`NotificationStack`, a Repeater over its own `rows`, a mirror of
+  `queue.shown` that also holds the leaving ones). A slot's `y` is computed
+  from the heights the slots report (`place`): the slots before it plus a gap
+  of `pad` each, counted from the edge the stack hangs from.
 - Do not use a ListView here. Its `displaced` transition, cut short by the next
   arrival while the newest card expands and the one before it collapses (the
   `newest` flag moves with every arrival), left cards at stale y's on top of
   each other: the second card drew over the first one's action row. The
-  panel has the same rule (see Panel). A glide may cross the next card for
-  `duration("base")`; what it settles at never overlaps (tested in
-  `tests/qml/tst_notification_stack.qml`, run with the Quickshell stand-ins
-  in `tests/qml/stubs`, `-import stubs`).
-- `implicitHeight` of the stack is the cards plus `2 * pad`; the shell's holder
-  follows it and clips.
+  panel has the same rule (see Panel).
+- **The container animates, the content never vanishes first.** The slot's
+  height is what animates (`duration("base")`, `OutCubic`; its gap with it): it
+  grows from 0 when a toast arrives and shrinks to 0 when it leaves (timer,
+  X, dismissal, the app closing it), with the card already inside, opaque,
+  clipped by the slot and sliding in from / out towards the stack edge (the
+  card keeps its size and follows the slot's moving side). The slots after it
+  follow that height in the same motion, so slots never overlap, at any
+  instant. A leaving row stays in `rows` until its slot is 0 and shows
+  `Notifications.snapshot` of the notification (it may be gone by then); its
+  timer is off and it takes no input.
+- The outer container follows the same rule: the stack's `implicitHeight` is
+  the slots' heights (its padding goes with the last slot), so a docked tab or
+  island shrinks with the last toast, and `stackLiquid` stays open until the
+  last slot is gone. In `shell.qml` the stack sits in `stackView`, clipped to
+  the depth the container has drawn (`look.reveal`, or `grow * scale`
+  floating); glass keeps the content at full opacity, solid fades it with the
+  island (`look.fade`). No `Behavior` on the holder's height: the slots are
+  already animated.
+- Tests: `tests/qml/tst_notification_stack.qml`, run with the Quickshell
+  stand-ins in `tests/qml/stubs` (`-import stubs`).
 
 ## Panel
 
@@ -137,6 +151,12 @@ history the queue still holds). A bell beside the launcher opens the centre.
 
 - Click → the `default` action (focus the app); middle click or a sideways
   flick past a third of the width → `dismiss()` (mark read).
+- The X (end of the title row, kit `plain` icon button, "Hide" tooltip,
+  `notifications.hide`) only hides the toast: `queue.hide(id)` takes it off
+  `shown`, the next waiting one takes its slot. The notification stays live:
+  no `dismiss()` / `expire()` (so no `closed` reaches the app), its history row
+  is untouched (not expired, not acted on) and the panel still offers its
+  actions. Hiding is not dismissing.
 - Each toast has its own timer (`NotificationToast`), from the notification's
   `expireTimeout` (ms, `-1` when the app gave none): `Notifications.toastTimeout`
   = the app's timeout, else 5 s; `0` (the app asked for no expiry) and a

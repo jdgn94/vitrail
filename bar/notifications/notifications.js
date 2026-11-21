@@ -80,6 +80,29 @@ function toastTimeout(notification) {
     return notification.urgency >= 2 ? 0 : TOAST_MS
 }
 
+// What a toast keeps showing while it leaves, after the notification may be
+// gone: plain data with the fields the card reads, and actions that do nothing.
+function snapshot(notification) {
+    if (!notification)
+        return null
+    return {
+        id: notification.id,
+        urgency: notification.urgency,
+        summary: notification.summary,
+        body: notification.body,
+        appName: notification.appName,
+        appIcon: notification.appIcon,
+        image: notification.image,
+        expireTimeout: notification.expireTimeout,
+        hints: notification.hints,
+        hasInlineReply: false,
+        inlineReplyPlaceholder: "",
+        actions: (notification.actions || []).map(function (action) {
+            return { identifier: action.identifier, text: action.text, invoke: function () {} }
+        })
+    }
+}
+
 // Urgent: the app asked for it (critical), or it is in the user's list.
 function urgent(notification, urgentText) {
     if (!notification)

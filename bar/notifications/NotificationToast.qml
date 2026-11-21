@@ -23,6 +23,8 @@ Item {
     property real arrived: 0
     property real now: Date.now()
     property bool newest: false
+    // On its way out (the stack animates it): its timer is over.
+    property bool leaving: false
 
     readonly property int timeout: Notifications.toastTimeout(root.notification)
 
@@ -44,6 +46,7 @@ Item {
         arrived: root.arrived
         now: root.now
         newest: root.newest
+        onHideRequested: if (root.queue && root.notification) root.queue.hide(root.notification.id)
         opacity: 1 - Math.min(1, Math.abs(card.x) / root.width)
 
         Behavior on x {
@@ -81,7 +84,7 @@ Item {
     // Restarts from zero whenever the pointer leaves or the reply closes.
     Timer {
         interval: root.timeout
-        running: root.notification !== null && root.timeout > 0 && !card.held && !Progress.live(root.notification)
+        running: root.notification !== null && !root.leaving && root.timeout > 0 && !card.held && !Progress.live(root.notification)
         onTriggered: if (root.notification && root.queue) root.queue.expire(root.notification.id)
     }
 }

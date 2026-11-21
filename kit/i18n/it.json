@@ -244,6 +244,7 @@
   "network.wifiMissing": "Wi-Fi non rilevato",
   "terminal.system": "Sistema",
   "notifications.markRead": "Segna come letto",
+  "notifications.hide": "Nascondi",
   "notifications.reply": "Rispondi",
   "notifications.replyPlaceholder": "Scrivi una risposta…",
   "bar.notifications": "Posizione delle notifiche",
