@@ -14,3 +14,4 @@ VitrailSurface 1.0 VitrailSurface.qml
 VitrailSwitch 1.0 VitrailSwitch.qml
 VitrailTabs 1.0 VitrailTabs.qml
 VitrailPicker 1.0 VitrailPicker.qml
+VitrailPopupGear 1.0 VitrailPopupGear.qml
