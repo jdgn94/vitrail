@@ -117,17 +117,33 @@ TestCase {
     function test_chosen_icon_uses_the_pill_ink_only() {
         var box = make()
         var icon = textOf(box.currentItem, true)
-        tryVerify(function () { return sameColor(icon.color, box.onAccent) })
+        tryVerify(function () { return sameColor(icon.color, box.accentInk) })
         // The FILL axis stays 0: the chosen state is the pill and its ink.
         compare(icon.font.variableAxes["FILL"], 0)
         box.current = "c"
         tryVerify(function () {
             var next = textOf(box.currentItem, true)
-            return next !== null && sameColor(next.color, box.onAccent)
+            return next !== null && sameColor(next.color, box.accentInk)
         })
         // The old icon settles on the normal ink.
         tryVerify(function () { return sameColor(icon.color, box.foreground) })
         compare(icon.font.variableAxes["FILL"], 0)
+    }
+
+    // A palette whose on_primary is neither black nor the fallback, so a
+    // binding that never applies (a property named `on<Capital>` next to
+    // `accent` is read as a signal handler) cannot pass by luck.
+    function test_chosen_ink_is_the_palette_on_primary() {
+        var saved = palette.data
+        palette.data = ({ on_primary: "#fff0f0" })
+        VitrailTokens.configure(palette, true, "glass", ({}))
+        var box = make()
+        var expected = VitrailTokens.color("accentForeground")
+        verify(!sameColor(expected, Qt.color("#000000")))
+        verify(sameColor(box.accentInk, expected))
+        tryVerify(function () { return sameColor(textOf(box.currentItem, true).color, expected) })
+        palette.data = saved
+        VitrailTokens.configure(palette, true, "glass", ({}))
     }
 
     function test_the_icon_family_follows_the_token() {
@@ -199,6 +215,17 @@ TestCase {
         box.current = "all"
         wait(50)
         box.width = 220
+        tryVerify(function () { return box.contentX === 0 })
+    }
+
+    // A row scrolled while the control was narrow returns to its start once
+    // the whole row fits again.
+    function test_a_row_that_then_fits_returns_to_the_start() {
+        var box = createTemporaryObject(long, testCase, { width: 120 })
+        verify(box)
+        box.current = "flags"
+        tryVerify(function () { return box.contentX > 0 })
+        box.width = 900
         tryVerify(function () { return box.contentX === 0 })
     }
 

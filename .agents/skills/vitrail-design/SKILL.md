@@ -60,6 +60,7 @@ layer contract.
   different fallback.
 - Quickshell `ObjectModel`s (`Networking.devices`, `networks`) are read with
   `.values`; `.length` / `[i]` on the model are silently undefined.
+- Never name a property `on<Capital>…`: next to a property `accent`, `onAccent` is read as a signal handler, the binding never applies and the value stays black (it hid the on-primary ink of the segmented control and slider). Name it `accentInk`.
 - `Item` already has FINAL `top` / `bottom` / `left` / `right`: name custom
   properties otherwise (`atBottom`, `begin`, `stop`).
 - A `Behavior` cannot target a `readonly` property.

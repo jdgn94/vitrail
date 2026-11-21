@@ -47,7 +47,7 @@ ColumnLayout {
     property color foreground: VitrailTokens.color("foreground", "#e2e2e9")
     property color accent: VitrailTokens.color("primary", "#a8c7fa")
     // Icon colour where it sits on the filled part.
-    property color onAccent: VitrailTokens.color("accentForeground", "#002f65")
+    property color accentInk: VitrailTokens.color("accentForeground", "#002f65")
 
     property string size: "md"
     property real thickness: 0
@@ -316,7 +316,7 @@ ColumnLayout {
                     visible: root.icon !== ""
                     rotation: root.vertical ? 90 : 0
                     icon: root.icon
-                    color: onFill ? root.onAccent : root.bandColor(slider.visualPosition)
+                    color: onFill ? root.accentInk : root.bandColor(slider.visualPosition)
                     pixelSize: slider.iconSize
                 }
 
@@ -328,7 +328,7 @@ ColumnLayout {
                     visible: root.endIcon !== "" && slider.inactiveStart <= x
                     rotation: root.vertical ? 90 : 0
                     icon: root.endIcon
-                    color: onFill ? root.onAccent : root.bandColor(1)
+                    color: onFill ? root.accentInk : root.bandColor(1)
                     pixelSize: slider.iconSize
                 }
             }

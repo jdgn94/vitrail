@@ -50,6 +50,20 @@ TestCase {
         compare(item.implicitHeight, item.handleHeight)
     }
 
+    // A property named `on<Capital>` next to `accent` is read as a signal
+    // handler and never binds; the ink must be the palette's on_primary.
+    function test_fill_ink_is_the_palette_on_primary() {
+        var saved = palette.data
+        palette.data = ({ on_primary: "#fff0f0" })
+        VitrailTokens.configure(palette, true, "glass", ({}))
+        var item = make({ width: 200 })
+        var expected = VitrailTokens.color("accentForeground")
+        compare(item.accentInk.toString(), Qt.color(expected).toString())
+        verify(item.accentInk.toString() !== Qt.color("#000000").toString())
+        palette.data = saved
+        VitrailTokens.configure(({}), true, "glass", ({}))
+    }
+
     function test_horizontal_right_is_more() {
         var item = make({ width: 200 })
         spy.target = item
