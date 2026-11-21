@@ -126,6 +126,8 @@ PROVIDED_BY = {
     "xrdb": "xorg-xrdb",
     "xdg-mime": "xdg-utils",
     "wpctl": "wireplumber",
+    "pw-dump": "pipewire",
+    "pw-cli": "pipewire",
     "playerctl": "playerctl",
     "cava": "cava",
     "brightnessctl": "brightnessctl",
