@@ -15,6 +15,8 @@ Item {
     property var keyboards: []
 
     signal layoutRequested(string layout)
+    // The gear opens the settings of what the popup is showing.
+    signal settingsRequested()
 
     readonly property var rows: Keyboard.layoutRows(root.keyboards)
 
@@ -57,6 +59,11 @@ Item {
                     wrapMode: Text.Wrap
                     text: root.t("keyboard.layouts.help")
                 }
+            }
+
+            VitrailPopupGear {
+                Layout.alignment: Qt.AlignTop
+                onClicked: root.settingsRequested()
             }
         }
 

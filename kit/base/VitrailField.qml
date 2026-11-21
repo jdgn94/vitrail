@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Shapes
 import ".."
 import "../shapes.js" as Shapes
@@ -51,7 +52,14 @@ FocusScope {
     readonly property real padX: VitrailTokens.gap("md")
     readonly property real boxHeight: Math.max(VitrailTokens.field.height[root.size] || VitrailTokens.field.height.md,
                                                input.implicitHeight + labelMetrics.height + VitrailTokens.gap("xs"))
-    readonly property real radius: Math.min(VitrailTokens.radius, root.boxHeight / 2)
+    // The search look is a pill: the corners follow the box's height.
+    readonly property bool pill: root.style.pill === true
+    // The search look also lifts off the surface (a shadow that grows under
+    // the pointer and again on focus), the way a search bar does.
+    readonly property bool lifts: root.style.lift === true
+    readonly property var lift: VitrailTokens.field.lift
+    readonly property real radius: root.pill ? root.boxHeight / 2
+                                             : Math.min(VitrailTokens.radius, root.boxHeight / 2)
     readonly property real iconPx: VitrailTokens.size("subtitle")
     readonly property real contentX: root.padX + (root.leadingIcon !== "" ? root.iconPx + VitrailTokens.gap("sm") : 0)
     readonly property real contentWidth: Math.max(0, box.width - root.contentX
@@ -141,6 +149,22 @@ FocusScope {
         height: root.boxHeight
         transform: Translate { x: root.shakeX }
 
+        // The bar's lift. Behind the fill, so the fill stays crisp.
+        RectangularShadow {
+            objectName: "fieldLift"
+
+            anchors.fill: fill
+            visible: root.lifts
+            radius: fill.radius
+            blur: root.lift.blur * (root.focused ? 1.7 : hover.hovered ? 1.35 : 1)
+            offset.y: root.lift.offset
+            color: Qt.rgba(0, 0, 0, root.focused ? root.lift.focus
+                                                 : hover.hovered ? root.lift.hover : root.lift.rest)
+
+            Behavior on blur { NumberAnimation { duration: root.duration } }
+            Behavior on color { ColorAnimation { duration: root.duration } }
+        }
+
         // Fill, and the state layer under the pointer.
         Rectangle {
             id: fill
@@ -187,8 +211,12 @@ FocusScope {
             ShapePath {
                 fillColor: "transparent"
                 strokeWidth: outline.stroke
-                strokeColor: root.error || root.focused ? root.accent
-                             : hover.hovered ? root.ink : VitrailTokens.color("muted")
+                // The search look says "focused" with its lift, not with an
+                // accent ring: its hairline stays quiet.
+                strokeColor: root.error ? root.accent
+                             : root.focused && root.style.accentFocus !== false ? root.accent
+                             : hover.hovered || (root.focused && root.style.accentFocus === false)
+                               ? root.ink : VitrailTokens.color("muted")
 
                 Behavior on strokeColor { ColorAnimation { duration: root.duration } }
 

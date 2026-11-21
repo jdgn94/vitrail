@@ -746,6 +746,14 @@ ShellRoot {
         }
     }
 
+    // A popup's gear: the settings window, on the page and tab that own what
+    // the popup shows (one destination per popup; see references/popups.md).
+    function openSettingsAt(category, tab) {
+        Quickshell.execDetached([Quickshell.env("HOME") + "/.local/bin/vitrail-settings",
+                                 "--category", category, "--tab", tab])
+        shell.closePopup()
+    }
+
     // Hovering an element that has a popup moves an open popup to it (never
     // opens one from closed).
     function hoverPopup(kind, item, screen) {
@@ -4770,6 +4778,7 @@ ShellRoot {
                         tab: "internet"
                         bluetooth: shell.bluetoothDevices
                         onRefreshRequested: if (!bluetoothRead.running) bluetoothRead.running = true
+                        onSettingsRequested: shell.openSettingsAt("connection", "internet")
                     }
                 }
 
@@ -4782,6 +4791,7 @@ ShellRoot {
                         tab: "bluetooth"
                         bluetooth: shell.bluetoothDevices
                         onRefreshRequested: if (!bluetoothRead.running) bluetoothRead.running = true
+                        onSettingsRequested: shell.openSettingsAt("connection", "bluetooth")
                     }
                 }
 
@@ -4860,6 +4870,7 @@ ShellRoot {
                         configDir: shell.configDir
                         stats: shell.linkStats
                         onProbeRequested: shell.requestVpnProbe()
+                        onSettingsRequested: shell.openSettingsAt("connection", "vpn")
                     }
                 }
 
@@ -4873,6 +4884,7 @@ ShellRoot {
                             shell.powerProfile = mode
                             powerWrite.run(Commands.powerSet(mode), "")
                         }
+                        onSettingsRequested: shell.openSettingsAt("connection", "power")
                     }
                 }
 
@@ -4883,6 +4895,7 @@ ShellRoot {
                         strings: shell.strings
                         keyboards: shell.keyboards
                         onLayoutRequested: function (layout) { shell.applyKeyboardLayout(layout) }
+                        onSettingsRequested: shell.openSettingsAt("input", "keyboard")
                     }
                 }
 

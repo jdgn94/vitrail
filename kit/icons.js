@@ -38,6 +38,7 @@ var names = {
     backspace: "backspace",
     balance: "balance",
     bar_chart: "bar_chart",
+    battery_charging_full: "battery_charging_full",
     battery_full: "battery_full",
     bedtime: "bedtime",
     bluetooth: "bluetooth",

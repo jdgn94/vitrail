@@ -54,6 +54,20 @@ Item {
     readonly property var wifi: page.live.wifi || ({})
     readonly property var vpn: page.live.vpn || ({})
     readonly property var bluetooth: page.live.bluetooth || ({})
+    // The power profiles: the daemon's three modes, its actions and whether it
+    // follows the power source.
+    readonly property var power: page.live.power || ({})
+    readonly property var powerModes: [
+        { key: "power-saver", icon: "energy_savings_leaf", label: page.t("connection.power.saver"),
+          detail: page.t("powerprofile.saver.detail") },
+        { key: "balanced", icon: "balance", label: page.t("connection.power.balanced"),
+          detail: page.t("powerprofile.balanced.detail") },
+        { key: "performance", icon: "speed", label: page.t("connection.power.performance"),
+          detail: page.t("powerprofile.performance.detail") }
+    ]
+    readonly property var powerMode: page.powerModes.find(function (mode) {
+        return mode.key === (page.power.profile || "balanced")
+    }) || page.powerModes[1]
     readonly property var paired: (page.bluetooth.devices || []).filter(function (device) { return device.paired })
     readonly property var nearby: (page.bluetooth.devices || []).filter(function (device) { return !device.paired })
     // The VPN lists, replaced only when their content changes: a view that is
@@ -304,7 +318,8 @@ Item {
                 tabs: [
                     { key: "internet", icon: "public", label: page.t("connection.tab.internet") },
                     { key: "vpn", icon: "vpn_key", label: page.t("network.vpn") },
-                    { key: "bluetooth", icon: "bluetooth", label: page.t("connection.bluetooth") }
+                    { key: "bluetooth", icon: "bluetooth", label: page.t("connection.bluetooth") },
+                    { key: "power", icon: "bolt", label: page.t("connection.tab.power") }
                 ]
                 current: page.tab
                 foreground: page.palette.foreground
@@ -615,6 +630,104 @@ Item {
                         model: page.nearby
 
                         delegate: DeviceRow {}
+                    }
+                }
+                // --- Power -------------------------------------------------
+                Section {
+                    Layout.fillWidth: true
+                    visible: page.tab === "power"
+                    icon: "bolt"
+                    title: page.t("connection.power")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    VitrailText {
+                        Layout.fillWidth: true
+                        visible: page.power.available !== true
+                        variant: "content"
+                        text: page.t("connection.power.missing")
+                    }
+
+                    // The mode, its explanation and the three of them packed
+                    // at the right, like every other setting of the window.
+                    VitrailSettingRow {
+                        visible: page.power.available === true
+                        icon: page.powerMode.icon
+                        label: page.powerMode.label
+                        description: page.powerMode.detail
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSegmented {
+                            options: page.powerModes.map(function (mode) {
+                                return { key: mode.key, label: mode.label, icon: mode.icon }
+                            })
+                            current: page.power.profile || "balanced"
+                            enabled: page.idle
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onSelected: function (key) { page.ask("power-set:" + key) }
+                        }
+                    }
+
+                    VitrailSettingRow {
+                        visible: page.power.available === true
+                        icon: "battery_charging_full"
+                        label: page.t("connection.power.aware")
+                        description: page.t("connection.power.aware.help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            checked: page.power.batteryAware === true
+                            enabled: page.idle
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) {
+                                page.ask("power-aware:" + (value ? "on" : "off"))
+                            }
+                        }
+                    }
+                }
+
+                // The daemon's own actions (trickle charge, the panel's power
+                // savings, the GPU's management): what each mode may do beyond
+                // the CPU profile. The daemon describes them; its text is not
+                // ours to translate.
+                Section {
+                    Layout.fillWidth: true
+                    visible: page.tab === "power" && page.power.available === true
+                             && (page.power.actions || []).length > 0
+                    icon: "tune"
+                    title: page.t("connection.power.actions")
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+
+                    Repeater {
+                        model: page.power.actions || []
+
+                        delegate: VitrailSettingRow {
+                            id: powerAction
+
+                            required property var modelData
+
+                            icon: "power_settings_new"
+                            label: powerAction.modelData.description
+                            description: powerAction.modelData.name
+                            foreground: page.palette.foreground
+                            muted: page.palette.muted
+
+                            VitrailSwitch {
+                                checked: powerAction.modelData.enabled === true
+                                enabled: page.idle
+                                foreground: page.palette.foreground
+                                accent: page.palette.primary
+                                onToggled: function (value) {
+                                    page.ask("power-action:" + powerAction.modelData.name
+                                             + (value ? ":on" : ":off"))
+                                }
+                            }
+                        }
                     }
                 }
             }

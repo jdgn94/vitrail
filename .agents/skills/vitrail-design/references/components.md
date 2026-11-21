@@ -95,10 +95,15 @@ Elevation uses `RectangularShadow` (a `MultiEffect` layer blanks the fill).
 
 ## VitrailField (`kit/base`)
 
-One text field everywhere (dialogs, toast reply, lock/login). `variant`
-outline (label floats into a notch of an animated `Shape` outline from
-`shapes.outlinePath`) or filled (fill, label rides inside, bottom indicator
-grows from the centre); `size` sm / md / lg; `label`, `placeholder`,
+One text field everywhere (dialogs, toast reply, lock/login, the launcher).
+`variant` outline (label floats into a notch of an animated `Shape` outline
+from `shapes.outlinePath`) or filled (fill, label rides inside, bottom indicator
+grows from the centre), or **search**: the launcher's bar — a pill (`radius` =
+the box's half height, never the radius token), `surfaceHigh` fill with a
+hairline outline, and a `RectangularShadow` behind it that lifts from
+`field.lift` (blur, drop and ink alpha at rest) a step under the pointer and
+another on focus (Google's bar is the reference). No label, no notch, no
+indicator. `size` sm / md / lg; `label`, `placeholder`,
 `leadingIcon`, `supportingText`, `error` + `errorText`, `shake()` on a new
 error, `forceActiveFocus()` (it is a FocusScope).
 

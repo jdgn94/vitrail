@@ -133,6 +133,12 @@ class RequestTests(unittest.TestCase):
             self.argv("bt-disconnect:A0:1B:9E:B3:9A:65"), ["bluetoothctl", "disconnect", "A0:1B:9E:B3:9A:65"]
         )
         self.assertEqual(self.argv("bt-scan"), ["bluetoothctl", "--timeout", "6", "scan", "on"])
+        self.assertEqual(self.argv("power-set:performance"), ["powerprofilesctl", "set", "performance"])
+        self.assertEqual(self.argv("power-aware:off"), ["powerprofilesctl", "configure-battery-aware", "--disable"])
+        self.assertEqual(
+            self.argv("power-action:trickle_charge:on"),
+            ["powerprofilesctl", "configure-action", "trickle_charge", "--enable"],
+        )
 
     def test_refresh_runs_nothing_and_a_missing_wifi_device_skips_the_disconnect(self) -> None:
         self.assertIsNone(self.argv("refresh"))
@@ -166,6 +172,12 @@ class RequestTests(unittest.TestCase):
             "vpn-up:a;reboot",
             "vpn-up:$(id)",
             "vpn-down:../x",
+            "power-set:turbo",
+            "power-set:",
+            "power-aware:maybe",
+            "power-action:trickle_charge",
+            "power-action:--help:on",
+            "power-action:trickle_charge:on;reboot",
             "bt-connect:not-a-mac",
             "bt-connect:AA:BB:CC:DD:EE",
             "bt-connect:AA:BB:CC:DD:EE:FF;id",
@@ -450,6 +462,43 @@ class StateTests(unittest.TestCase):
         self.assertEqual(data["bluetooth"]["devices"][0]["battery"], 88)
         self.assertIsInstance(data["updated"], int)
         json.dumps(data)
+
+    def test_the_power_section_reads_the_daemon(self) -> None:
+        outputs = {
+            **EVERYTHING,
+            "powerprofilesctl get": "performance\n",
+            "powerprofilesctl query-battery-aware": "Dynamic changes from charger and battery events: True\n",
+            "powerprofilesctl list-actions": (
+                "Name: trickle_charge\n"
+                "Description: Configure power supply to trickle charge\n"
+                "Enabled: True\n"
+                "\n"
+                "Name: amdgpu_dpm\n"
+                "Description: Adjust GPU dynamic power management\n"
+                "Enabled: False\n"
+            ),
+        }
+        data = self.state(fake(outputs), bluetooth_present=controller(True), power_available=controller(True))
+        self.assertEqual(
+            data["power"],
+            {
+                "available": True,
+                "profile": "performance",
+                "batteryAware": True,
+                "actions": [
+                    {
+                        "name": "trickle_charge",
+                        "description": "Configure power supply to trickle charge",
+                        "enabled": True,
+                    },
+                    {"name": "amdgpu_dpm", "description": "Adjust GPU dynamic power management", "enabled": False},
+                ],
+            },
+        )
+
+    def test_without_the_daemon_the_power_section_is_unavailable(self) -> None:
+        data = self.state(fake(EVERYTHING), bluetooth_present=controller(True), power_available=controller(False))
+        self.assertEqual(data["power"], {"available": False, "profile": "", "batteryAware": False, "actions": []})
 
     def test_the_wifi_list_is_not_asked_while_the_radio_is_off(self) -> None:
         data = self.state(fake({**EVERYTHING, "nmcli radio wifi": "disabled\n"}), bluetooth_present=controller(True))

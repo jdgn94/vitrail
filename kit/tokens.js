@@ -160,11 +160,13 @@ motion.smooth = {
     stretch: 0
 }
 
-// Text field: box height per size, and the password shape as a fraction of
-// the font size.
+// Text field: box height per size, the password shape as a fraction of the
+// font size, and the search look's lift (a shadow's blur and drop below the
+// bar, and its ink alpha at rest, under the pointer and focused).
 var field = {
     height: { sm: 40, md: 52, lg: 64 },
-    shape: 0.9
+    shape: 0.9,
+    lift: { blur: 14, offset: 4, rest: 0.10, hover: 0.16, focus: 0.24 }
 }
 
 // Slider track thickness per size; the handle and the gaps around it.

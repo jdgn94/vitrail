@@ -483,7 +483,12 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   (`hyprctl devices -j`), left click switches it and right click opens a
   floating on-screen keyboard that types through `wtype` without taking the
   window's focus; `barKeyboard` keeps the abbreviation out of the bar.
-- **Connection:** Internet (Ethernet and Wi-Fi), VPN and Bluetooth on tabs. The
+- **Connection:** Internet (Ethernet and Wi-Fi), VPN, Bluetooth and Power on
+  tabs. Power shows the three profiles of `power-profiles-daemon` as one
+  selector (the mode changes the CPU/GPU profile at once), the switch that lets
+  the daemon follow the charger, and one switch per daemon action
+  (`trickle_charge`, `amdgpu_panel_power`, `amdgpu_dpm`) — the three profiles
+  themselves are the daemon's, not Vitrail's. The
   window cannot run commands, so `bin/vitrail-settings` injects the state
   (`python3 -m vitrail.network state`, as `--network`), and a click writes
   `connectionRequest` and raises `connectionSeq` in `connection.ini`.
@@ -493,7 +498,7 @@ Qt 6 / QML panel that edits the preference files in `~/.config/vitrail/` immedia
   and the commands without secrets) and `apply` rewrites
   `~/.config/vitrail/network-state.json`, which the page polls while it waits
   (its `result` says which verb it answers and whether it failed).
-  `--tab internet|vpn|bluetooth` opens a tab; `--view global|<connection id>`
+  `--tab internet|vpn|bluetooth|power` opens a tab; `--view global|<connection id>`
   opens a VPN view. The state also carries `latency` (one echo, in ms, to the
   gateway or 1.1.1.1) and `traffic` (`rx`/`tx` bytes per second since the
   previous read, from `/sys/class/net/<iface>/statistics` and a sample in

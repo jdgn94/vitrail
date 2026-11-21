@@ -23,6 +23,8 @@ Item {
 
     // The Bluetooth tab asks the shell for a fresh copy after an action.
     signal refreshRequested()
+    // The gear opens the settings of what the popup is showing (its tab).
+    signal settingsRequested()
 
     // --- state ---------------------------------------------------------------
     readonly property var wifiDevice: root.deviceOf(DeviceType.Wifi, false)
@@ -67,14 +69,24 @@ Item {
         anchors.fill: parent
         spacing: VitrailTokens.gap("md")
 
-        VitrailTabs {
+        RowLayout {
             Layout.fillWidth: true
-            tabs: [
-                { key: "internet", icon: "public", label: root.t("connection.tab.internet") },
-                { key: "bluetooth", icon: "bluetooth", label: root.t("connection.bluetooth") }
-            ]
-            current: root.tab
-            onSelected: function (key) { root.tab = key }
+            spacing: VitrailTokens.gap("sm")
+
+            VitrailTabs {
+                Layout.fillWidth: true
+                tabs: [
+                    { key: "internet", icon: "public", label: root.t("connection.tab.internet") },
+                    { key: "bluetooth", icon: "bluetooth", label: root.t("connection.bluetooth") }
+                ]
+                current: root.tab
+                onSelected: function (key) { root.tab = key }
+            }
+
+            VitrailPopupGear {
+                Layout.alignment: Qt.AlignTop
+                onClicked: root.settingsRequested()
+            }
         }
 
         // --- Internet --------------------------------------------------------

@@ -612,6 +612,8 @@ FocusScope {
 
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
+                // The launcher's bar: a pill that lifts, like a search engine's.
+                variant: "search"
                 size: root.style.field
                 leadingIcon: "search"
                 placeholder: root.t("launcher.placeholder")

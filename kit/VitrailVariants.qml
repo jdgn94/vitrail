@@ -49,9 +49,13 @@ QtObject {
     // the bottom line from the centre on focus.
     //   outline  no fill, the label floats into a notch of the outline
     //   filled   surfaceHigh fill, top corners rounded, label rides inside
+    //   search   the one search bar (the launcher): a pill that lifts a step
+    //            under the pointer and another on focus, with a hairline that
+    //            stays quiet on focus (the lift says it instead)
     readonly property var field: ({
         outline: { role: "surfaceHigh", text: "foreground", fill: 0.0, hover: 0.06, border: 1, focus: 2, notch: true, indicator: false, motion: "base" },
-        filled: { role: "surfaceHigh", text: "foreground", fill: 1.0, hover: 0.08, border: 1, focus: 2, notch: false, indicator: true, motion: "base" }
+        filled: { role: "surfaceHigh", text: "foreground", fill: 1.0, hover: 0.08, border: 1, focus: 2, notch: false, indicator: true, motion: "base" },
+        search: { role: "surfaceHigh", text: "foreground", fill: 1.0, hover: 0.03, border: 1, focus: 1, notch: false, indicator: false, motion: "base", pill: true, lift: true, accentFocus: false }
     })
 
     // Surface styles, the one source for every container. `alpha` multiplies

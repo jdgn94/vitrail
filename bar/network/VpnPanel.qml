@@ -24,6 +24,8 @@ Item {
     // The link's latency and traffic (`vitrail.network link`).
     property var stats: ({})
     signal probeRequested()
+    // The gear opens the settings of what the popup is showing.
+    signal settingsRequested()
 
     // { "<id>": { latency, loss } } and when the file was written (ms).
     property var quality: ({})
@@ -130,6 +132,11 @@ Item {
                     color: VitrailTokens.color("primary")
                     opacity: 1
                 }
+            }
+
+            VitrailPopupGear {
+                Layout.alignment: Qt.AlignTop
+                onClicked: root.settingsRequested()
             }
         }
 

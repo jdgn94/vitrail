@@ -116,6 +116,10 @@ SHAPES = {
     "vpn-cred-assign": ({"name", "ids"}, set()),
 }
 MAX_IDS = 64
+# The three profiles power-profiles-daemon offers, and its action names.
+POWER_PROFILES = ("power-saver", "balanced", "performance")
+POWER_ACTION = re.compile(r"^[a-z][a-z0-9_]{0,40}$")
+POWER_ACTION_RE = re.compile(r"^[a-z][a-z0-9_]{0,40}:(on|off)$")
 # Requests that name a credential or a file in the log instead of their argv.
 LABELLED = set(SHAPES) | {"vpn-cred-remove"}
 # The password file the window writes, and the plain one the tool is given.
@@ -159,6 +163,9 @@ WITH_ARGUMENT = {
     "vpn-cred-remove",
     "bt-connect",
     "bt-disconnect",
+    "power-set",
+    "power-aware",
+    "power-action",
 } | set(SHAPES)
 
 Runner = Callable[[list[str]], "str | None"]
@@ -302,6 +309,9 @@ def parse(request: str) -> tuple[str, str]:
         "vpn-cred-remove": valid_label,
         "bt-connect": MAC.match,
         "bt-disconnect": MAC.match,
+        "power-set": lambda text: text in POWER_PROFILES,
+        "power-aware": lambda text: text in ("on", "off"),
+        "power-action": lambda text: bool(POWER_ACTION_RE.match(text)),
     }[verb]
     if not ok(argument):
         raise ValueError(f"bad argument for {verb}: {argument!r}")
@@ -376,6 +386,13 @@ def command(verb: str, argument: str = "", wifi_device: str = "", secret: str = 
             return ["bluetoothctl", "power", verb.removeprefix("bt-")]
         case "bt-connect" | "bt-disconnect":
             return ["bluetoothctl", verb.removeprefix("bt-"), argument]
+        case "power-set":
+            return ["powerprofilesctl", "set", argument]
+        case "power-aware":
+            return ["powerprofilesctl", "configure-battery-aware", "--enable" if argument == "on" else "--disable"]
+        case "power-action":
+            name, _, state = argument.partition(":")
+            return ["powerprofilesctl", "configure-action", name, "--enable" if state == "on" else "--disable"]
         case "bt-scan":
             return ["bluetoothctl", "--timeout", str(SCAN_SECONDS), "scan", "on"]
     return None
@@ -706,6 +723,49 @@ def has_bluetooth_controller(sysfs: Path = BLUETOOTH_SYSFS) -> bool:
         return False
 
 
+def has_power_daemon() -> bool:
+    """Whether power-profiles-daemon is there (its client decides the three modes)."""
+    return shutil.which("powerprofilesctl") is not None
+
+
+def power(run: Runner, available: Callable[[], bool] = has_power_daemon) -> dict:
+    """The power profiles: the one in use, whether they follow the power source,
+    and the daemon's own actions with their switch. The three profiles are the
+    daemon's; only the actions and the automatic changes can be configured."""
+    if not available():
+        return {"available": False, "profile": "", "batteryAware": False, "actions": []}
+    profile = (run(["powerprofilesctl", "get"]) or "").strip()
+    aware = "True" in (run(["powerprofilesctl", "query-battery-aware"]) or "")
+    return {
+        "available": True,
+        "profile": profile if profile in POWER_PROFILES else "balanced",
+        "batteryAware": aware,
+        "actions": parse_power_actions(run(["powerprofilesctl", "list-actions"]) or ""),
+    }
+
+
+def parse_power_actions(text: str) -> list[dict[str, str | bool]]:
+    """`powerprofilesctl list-actions` blocks: a name, what it does and whether
+    it is on."""
+    actions = []
+    for block in text.replace("\r\n", "\n").split("\n\n"):
+        fields = {}
+        for line in block.splitlines():
+            key, colon, value = line.partition(":")
+            if colon:
+                fields[key.strip().lower()] = value.strip()
+        name = fields.get("name", "")
+        if POWER_ACTION.match(name):
+            actions.append(
+                {
+                    "name": name,
+                    "description": fields.get("description", ""),
+                    "enabled": fields.get("enabled", "") == "True",
+                }
+            )
+    return actions
+
+
 def bluetooth(run: Runner, present: Callable[[], bool] = has_bluetooth_controller) -> dict:
     if not present():
         return {"available": False, "powered": False, "devices": []}
@@ -737,6 +797,7 @@ def state(
     quality: dict | None = None,
     marker: Path | None = None,
     bluetooth_present: Callable[[], bool] = has_bluetooth_controller,
+    power_available: Callable[[], bool] = has_power_daemon,
     *,
     cache: Path | None = None,
     now: float | None = None,
@@ -760,6 +821,7 @@ def state(
         "wifi": wifi(run, devices),
         "vpn": vpn(run, quality, marker),
         "bluetooth": bluetooth(run, bluetooth_present),
+        "power": power(run, power_available),
     }
 
 

@@ -13,6 +13,8 @@ Item {
     property string profile: "balanced"
 
     signal profileRequested(string profile)
+    // The gear opens the settings of what the popup is showing.
+    signal settingsRequested()
 
     readonly property var modes: [
         { key: "power-saver", icon: "energy_savings_leaf", tone: "primary",
@@ -66,6 +68,11 @@ Item {
                     wrapMode: Text.Wrap
                     text: root.t(root.mode.detail)
                 }
+            }
+
+            VitrailPopupGear {
+                Layout.alignment: Qt.AlignTop
+                onClicked: root.settingsRequested()
             }
         }
 

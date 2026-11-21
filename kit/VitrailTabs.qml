@@ -40,16 +40,32 @@ Item {
     Component.onCompleted: Qt.callLater(function () { root.settled = true })
     // The chosen tab is always brought into view, however far the row was
     // scrolled.
-    onCurrentChanged: Qt.callLater(function () { root.reveal(root.currentItem) })
+    onCurrentChanged: revealing.restart()
     // The chosen item is shown again once the control has a width (a tab set
     // before the row was laid out).
-    onWidthChanged: Qt.callLater(function () { root.reveal(root.currentItem) })
+    onWidthChanged: revealing.restart()
+
+    // One tick after the change, so the items have their new positions. A timer
+    // of our own, not Qt.callLater: a delayed call outlives the object it was
+    // meant for and throws when the bar reloads.
+    Timer {
+        id: revealing
+
+        interval: 0
+        onTriggered: root.reveal(root.currentItem)
+    }
 
     function reveal(item) {
         // Before the first layout there is no view to scroll in: the row would
         // end up scrolled past its own first item.
         if (!item || flick.width <= 0)
             return
+        // Everything fits: there is nothing to reveal, and a row that was
+        // scrolled while the control was narrower goes back to its start.
+        if (flick.contentWidth <= flick.width) {
+            flick.contentX = 0
+            return
+        }
         var left = item.x
         var right = item.x + item.width
         if (left < flick.contentX)

@@ -179,6 +179,16 @@ timeline, ratios), `motion.smooth`.
   `layout.dock[edge] + margin` from the screen edge (past the frame / islands;
   `reserve` for a floating bar) and has no neck (`sourceTarget` is null while
   the bar is docked).
+- **Settings gear**: a popup that offers settings draws `VitrailPopupGear`
+  (`kit/`) as the LAST item of its first row, top-right (`Layout.alignment:
+  Qt.AlignTop`) — one place, always the same corner. The popup declares
+  `signal settingsRequested()` and `bar/shell.qml` answers with
+  `openSettingsAt(category, tab)`, the page and tab that own what the popup
+  shows: `connection/internet`, `connection/bluetooth`, `connection/vpn`,
+  `connection/power`, `input/keyboard`. A popup whose content is the whole
+  control may still carry it when the page has the switches around it (the
+  power profile does: the modes, the automatic change and the daemon's
+  actions).
 - The idle close timer (`popupLeave`, 3 s after the pointer leaves the card and
   the tray menu card) is cancelled when the popup kind changes; it closes only
   if the pointer is outside the popup's rule above, otherwise it waits another

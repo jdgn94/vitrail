@@ -34,6 +34,18 @@ TestCase {
         }
     }
 
+    // The launcher's bar: the one look that is a pill and lifts.
+    Component {
+        id: search
+
+        VitrailField {
+            width: 320
+            variant: "search"
+            size: "md"
+            placeholder: "Search"
+        }
+    }
+
     Component {
         id: plain
 
@@ -151,6 +163,32 @@ TestCase {
         verify(field.focused)
         mouseClick(eye)
         compare(field.revealed, false)
+    }
+
+    function test_the_search_bar_is_a_pill_that_lifts() {
+        var field = createTemporaryObject(search, testCase)
+        verify(field)
+        wait(50)
+        compare(field.pill, true)
+        compare(field.lifts, true)
+        // A pill: the corners follow the box's height, not the radius token.
+        compare(field.radius, field.boxHeight / 2)
+        verify(field.radius > VitrailTokens.radius)
+        var lift = findChild(field, "fieldLift")
+        verify(lift !== null)
+        compare(lift.visible, true)
+        verify(lift.blur > 0)
+        verify(lift.offset.y > 0)
+    }
+
+    function test_the_other_looks_are_not_pills_and_do_not_lift() {
+        var field = make(plain)
+        compare(field.pill, false)
+        compare(field.lifts, false)
+        compare(field.radius, VitrailTokens.radius)
+        var lift = findChild(field, "fieldLift")
+        verify(lift !== null)
+        compare(lift.visible, false)
     }
 
     function test_text_fields_have_no_eye_and_no_shapes() {

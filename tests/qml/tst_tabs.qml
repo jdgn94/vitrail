@@ -184,6 +184,17 @@ TestCase {
         tryVerify(function () { return box.contentX === 0 })
     }
 
+    // A row scrolled while the control was narrow returns to its start once
+    // the whole row fits again (the settings window lays it out small first).
+    function test_a_row_that_then_fits_returns_to_the_start() {
+        var box = createTemporaryObject(long, testCase, { width: 120 })
+        verify(box)
+        box.current = "f"
+        tryVerify(function () { return box.contentX > 0 })
+        box.width = 900
+        tryVerify(function () { return box.contentX === 0 })
+    }
+
     function test_a_row_that_fits_does_not_scroll() {
         var box = make()
         compare(box.contentWidth, box.width)

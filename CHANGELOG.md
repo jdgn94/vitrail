@@ -69,6 +69,14 @@ The first distributable release.
   size and the character count. `charcoal` now turns over with the mode: white
   lines on black at night, dark lines on paper by day. The picker shows the
   drawn styles at a scale a thumbnail can read.
+- The launcher's search bar is a pill that lifts off the surface: a
+  `search` field look (surface fill, hairline, a shadow that grows on hover
+  and again on focus) on the field primitive.
+- The bar's popups of internet, VPN, Bluetooth, power profile and keyboard
+  carry the settings gear at the top right, always in the same corner, and
+  open the page and tab that own them. The power profile gains its page: a
+  Power tab in Connection with the three modes, the switch that follows the
+  charger and one switch per daemon action.
 - Rows that do not fit scroll instead of being cut: the settings' subcategory
   tabs (wheel, drag, the chosen tab always in view) and the emoji groups,
   whose pill no longer starts half cut when the tab opens.
