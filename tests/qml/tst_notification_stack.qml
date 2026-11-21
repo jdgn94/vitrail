@@ -148,9 +148,14 @@ TestCase {
         wait(320)
     }
 
-    function build(atBottom) {
+    function build(atBottom, exit, carry) {
         var queue = createTemporaryObject(queueComponent, this, { maximum: 5 })
-        var stack = createTemporaryObject(stackComponent, this, { queue: queue, atBottom: atBottom === true })
+        var props = { queue: queue, atBottom: atBottom === true }
+        if (exit)
+            props.exit = exit
+        if (carry)
+            props.carry = true
+        var stack = createTemporaryObject(stackComponent, this, props)
         verify(stack)
         return { queue: queue, stack: stack }
     }
@@ -325,6 +330,121 @@ TestCase {
         compare(ids(s.stack), [2])
     }
 
+    // Where the card is inside its slot, while it leaves or arrives.
+    function offsetOf(slot) {
+        var toast = cardOf(slot).parent
+        return { x: toast.x, y: toast.y }
+    }
+
+    function leavesTowards(exit, atBottom, sign) {
+        var s = build(atBottom, exit)
+        var first = add(s.queue, 1, { actions: [action("open")] })
+        add(s.queue, 2, { actions: [action("open")] })
+        settle()
+        var gone = toasts(s.stack).filter(function (toast) { return toast.id === 1 })[0].slot
+        var card = cardOf(gone)
+        compare(offsetOf(gone).x, 0)
+        first.dismiss()
+        var moved = 0
+        var last = 0
+        for (var frame = 0; frame < 30 && gone.height > 1; frame++) {
+            wait(16)
+            if (!(gone.height > 1))
+                break
+            var at = offsetOf(gone)
+            // Whole and opaque while it slides out of its slot's side.
+            compare(card.opacity, 1)
+            compare(card.parent.opacity, 1)
+            compare(card.summary, "Title 1")
+            verify(at.x * sign >= last - 0.01, exit + ": it only moves outwards: " + at.x + " after " + last)
+            last = at.x * sign
+            moved = Math.max(moved, last)
+            assertNeverOver(s.stack, exit + " leaving / frame " + frame)
+        }
+        verify(moved > 40, exit + ": it slid sideways, moved " + moved)
+        tryCompare(s.stack.rows, "count", 1, 1000)
+        compare(ids(s.stack), [2])
+    }
+
+    function test_the_newest_toast_leaves_open_instead_of_folding_on_the_way_out() {
+        var s = build(false, "right")
+        var only = add(s.queue, 1, { actions: [action("open")] })
+        settle()
+        var slot = toasts(s.stack)[0].slot
+        var card = cardOf(slot)
+        verify(card.expanded, "the newest opens expanded")
+        only.dismiss()
+        wait(60)
+        verify(slot.leaving && slot.height > 1)
+        verify(card.expanded, "and keeps its size while it goes")
+    }
+
+    function test_a_stack_at_the_right_edge_sends_a_leaving_toast_out_to_the_right() {
+        leavesTowards("right", false, 1)
+    }
+
+    function test_a_stack_at_the_left_edge_sends_a_leaving_toast_out_to_the_left() {
+        leavesTowards("left", false, -1)
+    }
+
+    function test_a_stack_at_the_bottom_right_still_leaves_to_the_right() {
+        leavesTowards("right", true, 1)
+    }
+
+    function test_a_sideways_card_keeps_its_row_while_the_slot_closes() {
+        var s = build(false, "right")
+        var first = add(s.queue, 1, { actions: [action("open")] })
+        settle()
+        var gone = toasts(s.stack)[0].slot
+        first.dismiss()
+        wait(40)
+        compare(offsetOf(gone).y, 0)
+        verify(offsetOf(gone).x > 0)
+        var low = build(true, "right")
+        var other = add(low.queue, 1, { actions: [action("open")] })
+        settle()
+        var below = toasts(low.stack)[0].slot
+        other.dismiss()
+        wait(40)
+        // Stuck to the bottom, the card keeps its bottom while the slot's top comes down.
+        compare(offsetOf(below).y, below.height - cardOf(below).parent.height)
+    }
+
+    function test_a_new_toast_comes_in_from_the_edge_it_is_stuck_to() {
+        var s = build(false, "left")
+        add(s.queue, 1)
+        wait(16)
+        var slot = toasts(s.stack)[0].slot
+        verify(offsetOf(slot).x < 0, "it starts outside, on the left: " + offsetOf(slot).x)
+        tryVerify(function () { return slot.settled }, 1000)
+        compare(offsetOf(slot).x, 0)
+    }
+
+    function test_a_centred_stack_still_leaves_up_or_down() {
+        var s = build(false, "top")
+        var first = add(s.queue, 1, { actions: [action("open")] })
+        settle()
+        var gone = toasts(s.stack)[0].slot
+        first.dismiss()
+        var up = 0
+        for (var frame = 0; frame < 30 && gone.height > 1; frame++) {
+            wait(16)
+            if (!(gone.height > 1))
+                break
+            compare(offsetOf(gone).x, 0)
+            up = Math.min(up, offsetOf(gone).y)
+        }
+        verify(up < -20, "it slid up: " + up)
+        var low = build(true, "bottom")
+        var other = add(low.queue, 1, { actions: [action("open")] })
+        settle()
+        var below = toasts(low.stack)[0].slot
+        other.dismiss()
+        wait(40)
+        compare(offsetOf(below).x, 0)
+        compare(offsetOf(below).y, 0)
+    }
+
     function test_the_last_toast_closes_its_container_before_the_stack_is_empty() {
         var s = build()
         var only = add(s.queue, 1)
@@ -377,5 +497,92 @@ TestCase {
         wait(400)
         compare(note.closes, 0)
         compare(s.queue.row(1).expired, false)
+    }
+
+    // A lone toast of a sideways stack is carried by the container: the slot
+    // is at its full height at once and the card sits still in it, so the
+    // container's own horizontal reveal is the whole motion.
+    function test_a_lone_toast_of_a_carrying_stack_has_its_full_height_at_once() {
+        var s = build(false, "right", true)
+        add(s.queue, 1, { actions: [action("open")] })
+        wait(16)
+        var slot = toasts(s.stack)[0].slot
+        verify(slot.height >= slot.full - 0.5 && slot.full > 0, "full at once: " + slot.height + " of " + slot.full)
+        compare(offsetOf(slot).x, 0)
+        verify(s.stack.implicitHeight > 0)
+    }
+
+    function test_a_lone_toast_of_a_carrying_stack_holds_its_size_until_the_container_is_gone() {
+        var s = build(false, "right", true)
+        var only = add(s.queue, 1, { actions: [action("open")] })
+        settle()
+        var slot = toasts(s.stack)[0].slot
+        var full = slot.height
+        var tall = s.stack.implicitHeight
+        only.dismiss()
+        for (var frame = 0; frame < 20; frame++) {
+            wait(16)
+            compare(slot.height, full)
+            compare(s.stack.implicitHeight, tall)
+            compare(offsetOf(slot).x, 0)
+            compare(cardOf(slot).summary, "Title 1")
+        }
+        verify(slot.leaving, "it is still there")
+        verify(!s.stack.open, "and the container is asked to close")
+        s.stack.onScreen = false
+        tryCompare(s.stack.rows, "count", 0, 1000)
+    }
+
+    function test_a_carrying_stack_keeps_the_per_card_slide_when_others_are_shown() {
+        var s = build(false, "right", true)
+        add(s.queue, 1, { actions: [action("open")] })
+        settle()
+        var second = add(s.queue, 2, { actions: [action("open")] })
+        wait(16)
+        var slot = toasts(s.stack).filter(function (toast) { return toast.id === 2 })[0].slot
+        verify(slot.height < slot.full, "the new one grows: " + slot.height)
+        verify(offsetOf(slot).x > 0, "and slides in from the right: " + offsetOf(slot).x)
+        settle()
+        second.dismiss()
+        wait(30)
+        verify(slot.leaving && slot.height > 0 && slot.height < slot.full, "it closes its slot while the first stays")
+        verify(offsetOf(slot).x > 0, "sliding out to the right")
+        tryCompare(s.stack.rows, "count", 1, 1000)
+    }
+
+    function test_a_carrying_stack_is_open_while_a_toast_is_live() {
+        var s = build(false, "right", true)
+        verify(!s.stack.open)
+        var only = add(s.queue, 1)
+        verify(s.stack.open)
+        only.dismiss()
+        verify(!s.stack.open, "closed as soon as the last one is dismissed")
+    }
+
+    function test_a_stack_that_does_not_carry_stays_open_until_its_slots_are_gone() {
+        var s = build(false, "right")
+        var only = add(s.queue, 1)
+        settle()
+        only.dismiss()
+        verify(s.stack.open)
+        tryCompare(s.stack, "open", false, 1000)
+    }
+
+    function test_a_slot_already_closing_does_not_jump_back_when_the_last_one_leaves() {
+        var s = build(false, "right", true)
+        var first = add(s.queue, 1, { actions: [action("open")] })
+        var second = add(s.queue, 2, { actions: [action("open")] })
+        settle()
+        var gone = toasts(s.stack).filter(function (toast) { return toast.id === 1 })[0].slot
+        first.dismiss()
+        wait(60)
+        var mid = gone.height
+        verify(mid > 0 && mid < gone.full, "it is closing: " + mid)
+        second.dismiss()
+        wait(16)
+        verify(gone.height <= mid + 0.01, "it keeps closing instead of reopening: " + gone.height)
+        tryCompare(s.stack.rows, "count", 1, 1000)
+        s.stack.onScreen = false
+        tryCompare(s.stack.rows, "count", 0, 1000)
     }
 }

@@ -25,24 +25,41 @@ TestCase {
         compare(Notifications.sideFor("", "right"), "left")
     }
 
-    function test_toasts_hang_from_the_top_of_that_side() {
-        compare(Notifications.stackPosition("left"), "top-left")
-        compare(Notifications.stackPosition("right"), "top-right")
+    function test_the_stack_takes_its_edge_and_place_from_the_preference() {
+        compare(Notifications.stackPosition("top-right", "right"), "top-right")
+        compare(Notifications.stackPosition("bottom-left", "left"), "bottom-left")
+        compare(Notifications.stackPosition("bottom-center", "right"), "bottom-center")
+        compare(Notifications.stackPosition("top-center", "left"), "top-center")
     }
 
-    function test_a_docked_bar_on_the_top_turns_the_toasts_to_the_side() {
-        // The toast leaves the frame through the notification side, below the
-        // bar, like the panel, instead of fusing with the bar's island.
-        compare(Notifications.stackEdge("right", "top", true), "right")
-        compare(Notifications.stackEdge("left", "top", true), "left")
+    function test_the_side_the_bar_leaves_free_wins_over_the_preference() {
+        // A bar on the right pushes "top-right" to the left (see sideFor).
+        compare(Notifications.stackPosition("top-right", "left"), "top-left")
+        compare(Notifications.stackPosition("bottom-left", "right"), "bottom-right")
     }
 
-    function test_elsewhere_the_toasts_still_hang_from_the_top() {
-        compare(Notifications.stackEdge("right", "bottom", true), "top")
-        compare(Notifications.stackEdge("right", "left", true), "top")
-        compare(Notifications.stackEdge("right", "right", true), "top")
-        // A floating bar leaves the stack its own island, growing out of the bar.
-        compare(Notifications.stackEdge("right", "top", false), "top")
+    function test_legacy_preferences_hang_from_the_top() {
+        compare(Notifications.stackPosition("left", "left"), "top-left")
+        compare(Notifications.stackPosition("right", "right"), "top-right")
+        compare(Notifications.stackPosition("", "right"), "top-right")
+    }
+
+    function test_a_stack_at_a_side_leaves_towards_that_edge() {
+        compare(Notifications.exitEdge("top-right"), "right")
+        compare(Notifications.exitEdge("bottom-right"), "right")
+        compare(Notifications.exitEdge("top-left"), "left")
+        compare(Notifications.exitEdge("bottom-left"), "left")
+    }
+
+    function test_a_centred_stack_leaves_up_or_down() {
+        compare(Notifications.exitEdge("top-center"), "top")
+        compare(Notifications.exitEdge("bottom-center"), "bottom")
+    }
+
+    function test_the_exit_of_a_legacy_preference() {
+        compare(Notifications.exitEdge("right"), "right")
+        compare(Notifications.exitEdge("left"), "left")
+        compare(Notifications.exitEdge(""), "right")
     }
 
     function test_the_preference_booleans_are_read_as_they_come() {

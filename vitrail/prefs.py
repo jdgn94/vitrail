@@ -230,7 +230,8 @@ def _normalise_dock_magnify(config: Path) -> bool:
 
 
 def _normalise_positions(config: Path) -> bool:
-    """`notificationPosition` is left/right now; old values carried a top/bottom."""
+    """`notificationPosition` is "<top|bottom>-<left|center|right>"; the old
+    bare "left"/"right" (and anything unreadable) gets its full form."""
     path = config / "bar.ini"
     text = _read_text(path)
     if not text:
@@ -239,9 +240,11 @@ def _normalise_positions(config: Path) -> bool:
     for key, value in _items(text):
         if key != "notificationPosition":
             continue
-        side = "left" if "left" in value else "right"
-        if value != side:
-            write_pref(config, key, side)
+        vertical = "bottom" if "bottom" in value else "top"
+        across = next((word for word in ("left", "center") if word in value), "right")
+        full = f"{vertical}-{across}"
+        if value != full:
+            write_pref(config, key, full)
             changed = True
     return changed
 

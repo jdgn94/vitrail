@@ -213,6 +213,20 @@ class MigrationTests(Base):
             self.assertEqual(cli.main(["migrate"]), 0)
         self.assertIn("radius=14", self.read("appearance"))
 
+    def test_a_notification_position_keeps_its_edge_and_place(self) -> None:
+        self.config.mkdir(parents=True)
+        for value, expected in (
+            ("bottom-center", "bottom-center"),
+            ("top-left", "top-left"),
+            ("right", "top-right"),
+            ("left", "top-left"),
+            ("bottom", "bottom-right"),
+            ("nonsense", "top-right"),
+        ):
+            (self.config / "bar.ini").write_text(f"[bar]\nnotificationPosition={value}\n", encoding="utf-8")
+            prefs.migrate(self.config)
+            self.assertEqual(prefs.read_prefs(self.config)["notificationPosition"], expected, value)
+
     def test_a_vitrail_cursor_becomes_a_pack_plus_adaptive(self) -> None:
         self.config.mkdir(parents=True)
         (self.config / "fonts.ini").write_text(

@@ -13,19 +13,29 @@ function sideFor(position, barEdge) {
     return want
 }
 
-// Toasts hang from the top of the notification side; the panel fills the same
-// side, below the bar.
-function stackPosition(side) {
-    return "top-" + side
+// "top" / "bottom" and "left" / "center" / "right" of a position such as
+// "bottom-center". A legacy value ("right") has no edge and hangs from the top;
+// one with no place is on the right.
+function edgeOf(position) {
+    return String(position || "").indexOf("bottom") >= 0 ? "bottom" : "top"
 }
 
-// The edge the toasts come out of. Docked, when the bar sits on the edge they
-// hang from (a bar at the top), they come out of the notification side
-// instead, below the bar: the frame grows that side's tongue around them, like
-// the panel, rather than fusing them into the bar's own island. A floating bar
-// leaves the stack its island, growing out of the bar.
-function stackEdge(side, barEdge, docked) {
-    return docked && barEdge === "top" ? side : "top"
+function placeOf(position) {
+    var text = String(position || "")
+    return text.indexOf("left") >= 0 ? "left" : text.indexOf("center") >= 0 ? "center" : "right"
+}
+
+// Where the toasts go: the preferred edge and place, except that the side the
+// bar leaves free (`side`, from sideFor) replaces a left/right the bar owns.
+function stackPosition(position, side) {
+    return edgeOf(position) + "-" + (placeOf(position) === "center" ? "center" : side)
+}
+
+// The screen edge the toasts come out of and go back into, container and cards
+// alike: the side they are stuck to, or, centred, up or down.
+function exitEdge(position) {
+    var place = placeOf(position)
+    return place === "center" ? edgeOf(position) : place
 }
 
 // A notification is listed but never raised as a toast while the panel is

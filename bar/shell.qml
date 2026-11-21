@@ -3648,7 +3648,7 @@ ShellRoot {
                 VitrailLiquid {
                     id: stackLiquid
 
-                    open: monitor.modelData === (shell.toastScreen || shell.notificationScreen) && stack.count > 0
+                    open: monitor.modelData === (shell.toastScreen || shell.notificationScreen) && stack.open
                           && !shell.notificationsOpen
                           && DesktopPolicy.toastsAllowed(monitor.fullscreen, shell.editMode)
                 }
@@ -5084,7 +5084,7 @@ ShellRoot {
                     VitrailLiquidSkin {
                         anchors.fill: parent
                         visible: !stackHolder.docked
-                        edge: stackHolder.place.edge
+                        edge: stackHolder.edge
                         rect: Qt.rect(stackHolder.x, stackHolder.y, stackHolder.width, stackHolder.height)
                         origin: stackHolder.origin
                         source: stackHolder.source
@@ -5099,28 +5099,31 @@ ShellRoot {
                         // Height of the last stack shown: it keeps it while it closes.
                         property real keptHeight: 0
 
-                        readonly property string position: Notifications.stackPosition(monitor.notificationSide)
+                        readonly property string position: Notifications.stackPosition(shell.prefs.notificationPosition,
+                                                                                         monitor.notificationSide)
                         readonly property bool docked: bar.style.docked
-                        // The edge the cards come out of: the one they hang
-                        // from, or the notification side under a bar at the top
-                        // (the panel's own edge).
-                        readonly property string edge: Notifications.stackEdge(monitor.notificationSide,
-                                                                               bar.layout.edge, stackHolder.docked)
+                        // The edge the container and the cards come out of and
+                        // go back into: their side (they slide in from the
+                        // screen's edge), or, centred, the one they hang from.
+                        readonly property string edge: Notifications.exitEdge(stackHolder.position)
                         readonly property var place: Frame.stackRect(stackHolder.position, parent.width, parent.height,
                                                                      stack.implicitWidth, stackHolder.height,
                                                                      bar.layout, stackHolder.docked,
                                                                      VitrailTokens.gap("md"),
                                                                      bar.showBar ? bar.islandRects : [])
-                        // Out of its own edge, it grows from a drop as wide as
-                        // the bar, at its middle; out of the side, from the
-                        // whole side.
+                        // Centred, out of its own edge, it grows from a drop as
+                        // wide as the bar, at its middle; out of a side, from
+                        // the whole side: a docked tab as long as the holder, a
+                        // floating island that only grows in width.
                         readonly property var origin: stackHolder.edge === stackHolder.place.edge
                                                       ? Qt.rect(stackHolder.x + (stackHolder.width - VitrailTokens.bar) / 2,
                                                                 stackHolder.y, VitrailTokens.bar, stackHolder.height)
-                                                      : null
-                        // The bar or island a floating stack leaves, when the bar is on its edge.
+                                                      : stackHolder.docked ? null
+                                                      : Qt.rect(stackHolder.x, stackHolder.y, stackHolder.width, stackHolder.height)
+                        // The bar or island a centred floating stack leaves, when the bar is on its edge.
                         readonly property var source: {
-                            if (stackHolder.docked || !bar.showBar || bar.layout.edge !== stackHolder.place.edge)
+                            if (stackHolder.docked || !bar.showBar || bar.layout.edge !== stackHolder.edge
+                                    || stackHolder.edge !== stackHolder.place.edge)
                                 return null
                             if (bar.islands)
                                 return Frame.nearestRect(bar.islandRects, stackHolder.x + stackHolder.width / 2, 0)
@@ -5141,8 +5144,7 @@ ShellRoot {
                         Item {
                             id: stackView
 
-                            readonly property string depthEdge: stackHolder.docked ? stackHolder.edge
-                                                                                   : stackHolder.place.edge
+                            readonly property string depthEdge: stackHolder.edge
                             readonly property bool across: stackView.depthEdge === "left" || stackView.depthEdge === "right"
                             readonly property real drawn: Math.max(0, Math.min(1, stackHolder.docked
                                 ? stackLiquid.look.reveal
@@ -5157,7 +5159,11 @@ ShellRoot {
                             NotificationStack {
                                 id: stack
 
-                                x: -stackView.x
+                                // Sideways, the cards travel with the container's
+                                // moving edge (they slide in with it); up or
+                                // down, the container uncovers them.
+                                x: stackView.across ? (stackView.depthEdge === "left" ? stackView.width - stackHolder.width : 0)
+                                                    : -stackView.x
                                 y: -stackView.y + (stack.atBottom ? stackHolder.height - stack.implicitHeight : 0)
                                 width: stackHolder.width
                                 height: stack.implicitHeight
@@ -5169,6 +5175,9 @@ ShellRoot {
                                 snoozeEnabled: shell.snoozeEnabled
                                 mutedApps: shell.prefs.notificationMuted || ""
                                 atBottom: stackHolder.place.edge === "bottom"
+                                exit: stackHolder.edge
+                                carry: true
+                                onScreen: stackLiquid.shown
                                 onImplicitHeightChanged: if (stack.implicitHeight > 0) stackHolder.keptHeight = stack.implicitHeight
                             }
                         }

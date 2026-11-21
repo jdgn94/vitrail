@@ -17,13 +17,14 @@ history the queue still holds). A bell beside the launcher opens the centre.
   pushes; a full-screen Overlay layer (`vitrail-notifications`, mask = stack,
   `keyboardFocus: OnDemand` for replies) places the stack with
   `Frame.stackRect()`. It opens and closes with `stackLiquid` like a popup
-  (see popups.md): a liquid tab in glass, a smooth fade in solid. Docked, the
-  cards come out of `Notifications.stackEdge(side, barEdge, docked)`: their own
-  edge (the top), unless the bar is docked there too — a bar at the top — when
-  they come out of the notification side, from below the bar, so the frame
-  grows that side's tongue around them exactly as it does for the panel
-  instead of fusing them into the bar's island. Floating, the stack is an
-  island growing out of the bar when the bar is on its edge.
+  (see popups.md): a liquid tab in glass, a smooth fade in solid. Container
+  and cards come out of, and go back into, `Notifications.exitEdge(position)`:
+  the side they are stuck to (they slide in from the screen's right or left
+  edge, and leave the same way), or, centred, the top or bottom. Docked, the
+  frame grows that side's tongue around them exactly as it does for the panel;
+  floating, the island grows in width from that edge (`VitrailLiquidSkin` with
+  `edge` = the side, `origin` = its own rect, no bar neck). Only a centred
+  stack still drops out of the bar.
 
 ## Stacking
 
@@ -55,6 +56,17 @@ history the queue still holds). A bell beside the launcher opens the centre.
   floating); glass keeps the content at full opacity, solid fades it with the
   island (`look.fade`). No `Behavior` on the holder's height: the slots are
   already animated.
+- **Sideways, the container carries the only toast.** The shell sets
+  `carry: true` and `onScreen: stackLiquid.shown`: with a single toast (first
+  arrival, last departure) its slot is at full height at once and stays so
+  while it leaves (`whole`), and `stack.open` (what `stackLiquid` follows) is
+  `live > 0`, so the container's width grows from the side / shrinks back into
+  it on its own timeline. The cards ride the container's moving edge
+  (`stackView` anchors the stack to it), whole and opaque, so the entire toast
+  reads as one horizontal slide. A leaving slot stays until `onScreen` is
+  false. With other toasts shown nothing changes: the slot's height opens or
+  closes and the card slides sideways within it. A slot already closing keeps
+  closing when the last one leaves (`alone`, latched when it starts leaving).
 - Tests: `tests/qml/tst_notification_stack.qml`, run with the Quickshell
   stand-ins in `tests/qml/stubs` (`-import stubs`).
 
