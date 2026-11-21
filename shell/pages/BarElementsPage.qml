@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import "../../kit"
 import "../../kit/base"
 import "../../bar/updates/updates.js" as Updates
+import "../../bar/disks/disks.js" as Disks
 
 // Bar elements category: one block per new-style bar element, each with the
 // options every element shares (when it shows) and its own. A bar popup's gear
@@ -211,6 +212,107 @@ Item {
                     accent: page.palette.primary
                     panel: page.palette.surfaceHigh
                     onSelected: function (key) { page.prefs.updatesAurHelper = key }
+                }
+            }
+
+            BarElementSection {
+                id: disksSection
+
+                Layout.fillWidth: true
+                elementId: "disks"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSettingRow {
+                    Layout.fillWidth: true
+                    icon: "download"
+                    label: disksSection.t("bar.disks.automount")
+                    description: disksSection.t("bar.disks.automount.help")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSwitch {
+                        objectName: "disksAutomount"
+                        checked: page.prefs.disksAutomount === true
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onToggled: function (value) { page.prefs.disksAutomount = value }
+                    }
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    text: disksSection.t("bar.disks.ignore")
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: disksSection.t("bar.disks.ignore.help")
+                }
+
+                Repeater {
+                    model: Disks.parseIgnore(page.prefs.disksIgnore)
+
+                    delegate: VitrailSettingRow {
+                        id: ignored
+
+                        required property string modelData
+
+                        objectName: "disksIgnoreEntry"
+
+                        Layout.fillWidth: true
+                        icon: "storage"
+                        label: ignored.modelData
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailButton {
+                            objectName: "disksIgnoreRemove"
+
+                            variant: "text"
+                            tone: "error"
+                            icon: "delete"
+                            onClicked: page.prefs.disksIgnore = Disks.withIgnore(page.prefs.disksIgnore, ignored.modelData, false)
+                        }
+                    }
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    visible: Disks.parseIgnore(page.prefs.disksIgnore).length === 0
+                    variant: "label"
+                    text: disksSection.t("bar.disks.ignore.empty")
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: VitrailTokens.gap("sm")
+
+                    VitrailField {
+                        id: ignoreField
+
+                        Layout.fillWidth: true
+                        label: disksSection.t("bar.disks.ignore.add")
+                    }
+
+                    VitrailButton {
+                        objectName: "disksIgnoreAdd"
+
+                        Layout.alignment: Qt.AlignBottom
+                        variant: "tonal"
+                        icon: "add"
+                        text: disksSection.t("action.add")
+                        enabled: ignoreField.text.trim() !== ""
+                        onClicked: {
+                            page.prefs.disksIgnore = Disks.withIgnore(page.prefs.disksIgnore, ignoreField.text, true)
+                            ignoreField.text = ""
+                        }
+                    }
                 }
             }
 

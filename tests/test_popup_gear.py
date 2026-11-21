@@ -20,6 +20,7 @@ POPUPS = {
     "bar/sample/SamplePanel.qml": ("bar-elements", "sample"),
     "bar/volume/VolumePanel.qml": ("bar-elements", "volume"),
     "bar/updates/UpdatesPanel.qml": ("bar-elements", "updates"),
+    "bar/disks/DisksPanel.qml": ("bar-elements", "disks"),
 }
 
 

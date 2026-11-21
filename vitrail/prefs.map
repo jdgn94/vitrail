@@ -93,6 +93,10 @@ bar volumeHideSilent
 bar updatesInterval
 bar updatesSources
 bar updatesAurHelper
+# The disks bar element: whether a newly plugged drive is mounted on its own,
+# and the labels or UUIDs it leaves alone (one JSON array).
+bar disksAutomount
+bar disksIgnore
 # The dashboard clock widgets: the pomodoro's periods and rounds, and the
 # timer's default length, in minutes.
 bar pomodoroWork

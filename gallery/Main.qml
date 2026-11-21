@@ -6,6 +6,7 @@ import "../kit/composed"
 import "../bar"
 import "../bar/volume"
 import "../bar/updates"
+import "../bar/disks"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -1156,6 +1157,126 @@ Window {
 
                 UpdatesPanel {
                     id: brokenUpdates
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ error: "unreadable" })
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "DisksButton · one drive × two drives × unmounted × ignored × no data"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            DisksButton {
+                showMode: "always"
+                snapshot: ({
+                    devices: [{ name: "/dev/sdb1", label: "KINGSTON", uuid: "1A2B-3C4D",
+                                fstype: "vfat", size: 16 * 1024 * 1024 * 1024, model: "USB DISK 3.0",
+                                transport: "usb", mounted: true, mountpoint: "/run/media/juan/KINGSTON",
+                                used: 4 * 1024 * 1024 * 1024, free: 12 * 1024 * 1024 * 1024 }],
+                    total: 1
+                })
+            }
+
+            DisksButton {
+                showMode: "always"
+                snapshot: ({
+                    devices: [
+                        { name: "/dev/sdb1", label: "KINGSTON", uuid: "1A2B-3C4D",
+                          fstype: "vfat", size: 16 * 1024 * 1024 * 1024, model: "USB DISK 3.0",
+                          transport: "usb", mounted: true, mountpoint: "/run/media/juan/KINGSTON",
+                          used: 4 * 1024 * 1024 * 1024, free: 12 * 1024 * 1024 * 1024 },
+                        { name: "/dev/sdc1", label: "Backup", uuid: "9F8E-7D6C",
+                          fstype: "ext4", size: 32 * 1024 * 1024 * 1024, model: "Portable SSD T7",
+                          transport: "usb", mounted: false, mountpoint: "", used: null, free: null }
+                    ],
+                    total: 2
+                })
+            }
+
+            DisksButton {
+                showMode: "always"
+                snapshot: ({
+                    devices: [{ name: "/dev/sdc1", label: "Backup", uuid: "9F8E-7D6C",
+                                fstype: "ext4", size: 32 * 1024 * 1024 * 1024, model: "Portable SSD T7",
+                                transport: "usb", mounted: false, mountpoint: "", used: null, free: null }],
+                    total: 1
+                })
+            }
+
+            DisksButton {
+                showMode: "always"
+                snapshot: ({
+                    devices: [{ name: "/dev/sdb1", label: "KINGSTON", uuid: "1A2B-3C4D" }],
+                    total: 1
+                })
+                ignore: '["KINGSTON"]'
+            }
+
+            DisksButton {
+                showMode: "always"
+                snapshot: ({ error: "unreadable" })
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "DisksPanel · mounted × unmounted × a failed action × no drives × no data"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: disksFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: disksFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                DisksPanel {
+                    id: disksFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({
+                        devices: [
+                            { name: "/dev/sdb1", label: "KINGSTON", uuid: "1A2B-3C4D",
+                              fstype: "vfat", size: 16 * 1024 * 1024 * 1024, model: "USB DISK 3.0",
+                              transport: "usb", mounted: true, mountpoint: "/run/media/juan/KINGSTON",
+                              used: 4 * 1024 * 1024 * 1024, free: 12 * 1024 * 1024 * 1024 },
+                            { name: "/dev/sdc1", label: "Backup", uuid: "9F8E-7D6C",
+                              fstype: "ext4", size: 32 * 1024 * 1024 * 1024, model: "Portable SSD T7",
+                              transport: "usb", mounted: false, mountpoint: "", used: null, free: null }
+                        ],
+                        total: 2
+                    })
+                    error: "Error: GDBus.Error:org.freedesktop.UDisks2.Error.NotAuthorized"
+                }
+            }
+
+            VitrailSurface {
+                width: disksEmpty.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: disksEmpty.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                DisksPanel {
+                    id: disksEmpty
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ devices: [], total: 0 })
+                }
+            }
+
+            VitrailSurface {
+                width: brokenDisks.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: brokenDisks.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                DisksPanel {
+                    id: brokenDisks
 
                     x: VitrailTokens.gap("md")
                     y: VitrailTokens.gap("md")

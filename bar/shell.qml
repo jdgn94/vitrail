@@ -17,6 +17,7 @@ import "barview.js" as BarView
 import "layouts.js" as Layouts
 import "elements.js" as Elements
 import "updates/updates.js" as Updates
+import "disks/disks.js" as Disks
 import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "kit/wallpaper.js" as WallpaperTransition
@@ -60,6 +61,7 @@ import "session/actions.js" as Session
 import "sample"
 import "volume"
 import "updates"
+import "disks"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -769,6 +771,12 @@ ShellRoot {
         // The list may be an hour old: the popup asks for today's answer.
         if (kind === "updates")
             updatesData.refresh()
+        if (kind === "disks") {
+            // A failure belongs to the action that caused it, not to a later
+            // visit: start the popup with a clean line.
+            shell.disksError = ""
+            disksData.refresh()
+        }
         if (kind === "network" || kind === "vpn")
             if (!linkRead.running)
                 linkRead.running = true
@@ -1697,6 +1705,92 @@ ShellRoot {
         target: updatesData
 
         function onSnapshotChanged() { shell.considerUpdates(updatesData.snapshot) }
+    }
+
+    // The disks bar element's data (vitrail/disks.py): polled faster while its
+    // popup is open. It also runs with automount on, so a drive plugged in
+    // while the element is not in a bar is still mounted.
+    BarSnapshot {
+        id: disksData
+
+        module: "disks"
+        interval: shell.popupOpen && shell.popupKind === "disks" ? 1000 : 4000
+        active: shell.barShows("disks") || shell.prefBool("disksAutomount", false)
+    }
+
+    // The names automount has already tried: a drive stays here while it is
+    // connected, so a slow or failed mount is not retried in a loop; it leaves
+    // with the drive, so plugging it back in mounts it again.
+    property var disksTried: []
+    // The actions waiting for the one running process, in order.
+    property var disksQueue: []
+    // The last udisksctl failure: the popup shows it as a calm line.
+    property string disksError: ""
+
+    Connections {
+        target: disksData
+
+        function onSnapshotChanged() { shell.considerDisks(disksData.snapshot) }
+    }
+
+    // Automount, on the element's own snapshot: no polling loop and no second
+    // timer. A newly seen drive is recorded before its mount starts.
+    function considerDisks(snapshot) {
+        var fresh = Disks.automountCandidates(shell.disksTried, snapshot, shell.prefs.disksIgnore || "",
+                                              shell.prefBool("disksAutomount", false))
+        shell.disksTried = Disks.retainAttempted(shell.disksTried, snapshot)
+        for (var i = 0; i < fresh.length; i++) {
+            shell.disksTried = shell.disksTried.concat([fresh[i]])
+            shell.disksAct(["mount", fresh[i]])
+        }
+    }
+
+    // One `python3 -m vitrail.disks <action>` process at a time; the popup's
+    // actions and automount share the same queue.
+    function disksAct(args) {
+        if (!Array.isArray(args) || args.length === 0)
+            return
+        shell.disksQueue = shell.disksQueue.concat([args])
+        shell.runNextDiskAction()
+    }
+
+    function runNextDiskAction() {
+        if (disksAction.running || shell.disksQueue.length === 0)
+            return
+        var args = shell.disksQueue[0]
+        shell.disksQueue = shell.disksQueue.slice(1)
+        disksAction.verb = String(args[0])
+        disksAction.command = ["python3", "-m", "vitrail.disks"].concat(args)
+        disksAction.running = true
+    }
+
+    function disksFinished(text) {
+        if (String(text || "").trim() === "") {
+            shell.disksError = ""
+            return
+        }
+        var answer = Elements.snapshot(text)
+        if (answer.ok === true)
+            shell.disksError = ""
+        else
+            shell.disksError = String(answer.error !== undefined ? answer.error : text)
+    }
+
+    Process {
+        id: disksAction
+
+        property string verb: ""
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        stdout: StdioCollector {
+            onStreamFinished: shell.disksFinished(this.text)
+        }
+        onExited: {
+            disksData.refresh()
+            if (disksAction.verb === "open")
+                shell.closePopup()
+            Qt.callLater(shell.runNextDiskAction)
+        }
     }
 
     function syncTokens() {
@@ -3392,6 +3486,7 @@ ShellRoot {
                     case "sample": return sampleWidget
                     case "volume": return volumeWidget
                     case "updates": return updatesWidget
+                    case "disks": return disksWidget
                     default: return null
                     }
                 }
@@ -3781,6 +3876,26 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: disksWidget
+
+                    DisksButton {
+                        id: disksButton
+
+                        strings: shell.strings
+                        snapshot: disksData.snapshot
+                        ignore: shell.prefs.disksIgnore || ""
+                        showMode: Elements.showMode(shell.activeOnlyIds, "disks")
+                        opened: shell.popupOpen && shell.popupKind === "disks" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("disks", disksButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(disksButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("disks", disksButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -3843,6 +3958,7 @@ ShellRoot {
                     case "sample": return monitor.loadedItem("sample")
                     case "volume": return monitor.loadedItem("volume")
                     case "updates": return monitor.loadedItem("updates")
+                    case "disks": return monitor.loadedItem("disks")
                     default: return null
                     }
                 }
@@ -4797,6 +4913,13 @@ ShellRoot {
                                 sourceComponent: updatesComponent
                             }
 
+                            Popout {
+                                name: "disks"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: disksComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -5129,6 +5252,20 @@ ShellRoot {
                         onUpdateRequested: function (argv) { shell.runUpdates(argv) }
                         onRefreshRequested: updatesData.refresh()
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "updates")
+                    }
+                }
+
+                Component {
+                    id: disksComponent
+
+                    DisksPanel {
+                        strings: shell.strings
+                        snapshot: disksData.snapshot
+                        ignore: shell.prefs.disksIgnore || ""
+                        busy: disksAction.running
+                        error: shell.disksError
+                        onActionRequested: function (action, target) { shell.disksAct([action, target]) }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "disks")
                     }
                 }
 

@@ -55,6 +55,22 @@ PATH=/tmp/vitrail-fake-updates:$PATH bin/vitrail-bar &
 - [ ] Ajustes → Bar elements → Updates: el intervalo (60 min por defecto) cambia cada cuánto se comprueba; desactivar AUR quita su bloque y no ejecuta paru; el ayudante AUR automático usa paru si está, si no yay, y la elección explícita aparece en el comando de "Actualizar".
 - [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque "Updates".
 
+## Disks bar element (2026-11-21)
+
+Código en `bar-disks-ui`. Con la barra corriendo y un lápiz USB desmontado (o una tarjeta SD):
+
+- [ ] Mostrar `disks` desde el editor de la barra (está oculto por defecto): con una unidad conectada aparece el icono; el tooltip dice su etiqueta (o "N unidades") y debajo el espacio usado/total.
+- [ ] Con el modo "Solo cuando está activo" (el valor por defecto de este elemento en Ajustes → Bar elements) el botón desaparece al desenchufar la unidad y vuelve al enchufarla.
+- [ ] Clic abre el popup: una tarjeta por unidad con su etiqueta, su tamaño, la barra usada/total y el punto de montaje ("Sin montar" si lo está). El engranaje abre Ajustes → Bar elements ya desplazado al bloque "Disks".
+- [ ] **Montar** ejecuta `udisksctl mount -b /dev/sdX` (sin root); la tarjeta pasa a "Montada en /run/media/…" y la barra de espacio se llena en el siguiente ciclo.
+- [ ] **Abrir** solo está activo con la unidad montada y abre su punto de montaje en el gestor de archivos del escritorio.
+- [ ] **Desmontar** la deja "Sin montar"; **Expulsar** solo está activo mientras está desmontada (`udisksctl power-off`) y la unidad puede retirarse.
+- [ ] Cada acción que el estado prohíbe (Montar con la unidad montada, Desmontar y Abrir sin montar, Expulsar con ella montada) está desactivada y debajo se lee el motivo; mientras una acción corre, todos los botones esperan.
+- [ ] Provocar un fallo (por ejemplo, `chmod -x $(command -v udisksctl)` o montar una unidad ya montada por otro usuario): el popup muestra una línea tranquila con el texto devuelto, sin cerrarse ni romper la barra; restaurar el permiso.
+- [ ] Ajustes → Bar elements → Disks → "Unidades que ignorar": añadir la etiqueta o el UUID de una unidad conectada quita su tarjeta y, si era la única, el botón de la barra; quitarla de la lista la devuelve.
+- [ ] "Montar las unidades nuevas automáticamente" está apagado por defecto. Encendido, enchufar una unidad desmontada la monta sola en un ciclo; no se vuelve a montar mientras siga conectada, y al desenchufarla y volver a enchufarla se monta otra vez.
+- [ ] Con el elemento fuera de la barra y el automontaje apagado no hay ningún proceso `python3 -m vitrail.disks` en `ps`; con el automontaje encendido sí hay uno, aunque el elemento no esté en la barra.
+
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 
 Código en `master` (`5936834..36fab6a`). La automatización ya está verde

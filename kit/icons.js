@@ -102,6 +102,7 @@ var names = {
     done_all: "done_all",
     download: "download",
     downloading: "downloading",
+    eject: "eject",
     drag_indicator: "drag_indicator",
     draw: "draw",
     drive_file_move: "drive_file_move",

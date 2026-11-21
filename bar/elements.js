@@ -7,9 +7,10 @@
 // The elements that show only while they have something to say when the
 // preference has never been written. The updates element is the case the plan
 // describes ("appears while there is something to say"): its count is its
-// whole message, so it starts in "only while active". An explicit preference
-// (even "[]") always wins.
-var DEFAULT_ACTIVE_ONLY = ["updates"]
+// whole message, so it starts in "only while active". The disks element joins
+// it: with nothing plugged in there is no drive to name. An explicit
+// preference (even "[]") always wins.
+var DEFAULT_ACTIVE_ONLY = ["updates", "disks"]
 
 // The ids that show only while active, from the preference's text.
 function parseActiveOnly(text) {

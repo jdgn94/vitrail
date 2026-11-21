@@ -71,6 +71,8 @@ var index = [
       terms: ["volume", "sound", "audio", "speaker", "wheel", "microphone", "apps"] },
     { category: "bar-elements", tab: "updates", key: "bar.widget.updates", label: "Updates",
       terms: ["updates", "packages", "aur", "flatpak", "pacman", "checkupdates", "paru", "yay"] },
+    { category: "bar-elements", tab: "disks", key: "bar.widget.disks", label: "Drives",
+      terms: ["disks", "drives", "usb", "removable", "mount", "unmount", "eject", "udisks", "automount"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },
