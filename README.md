@@ -150,6 +150,7 @@ package to the manifest and a row here.
 | `pciutils` | `lspci` | GPU vendor detection in the installer and `vitrail doctor` |
 | `networkmanager`, `bluez-utils`, `wireplumber`, `power-profiles-daemon` | `nmcli`, `bluetoothctl`, `wpctl`, `powerprofilesctl` | the panel's quick toggles, the bar's network and power-profile popups, and the settings window's Connection page (networks, Bluetooth and power profile; `vitrail.network`: Wi-Fi, Bluetooth and VPN state and requests) |
 | `upower` | UPower's D-Bus service | the battery chip's charge, state and time left (Quickshell's UPower service; no process) |
+| `udisks2` | `udisksctl` | mounting, unmounting and ejecting removable drives from the Disks popup, as the user (no root or password); `lsblk` (from the base system's `util-linux`) lists them (`vitrail/disks.py`) |
 | `awww`, `mpvpaper` | `awww`, `awww-daemon`, `mpvpaper` | still wallpapers with transitions (awww) and animated ones (mpvpaper with VA-API) |
 
 `vitrail-vpn` comes from the VPN module (`vpn/`), not from the manifest.
