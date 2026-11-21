@@ -18,6 +18,7 @@ POPUPS = {
     "bar/network/PowerProfilePanel.qml": ("connection", "power"),
     "bar/keyboard/KeyboardPanel.qml": ("input", "keyboard"),
     "bar/sample/SamplePanel.qml": ("bar-elements", "sample"),
+    "bar/volume/VolumePanel.qml": ("bar-elements", "volume"),
 }
 
 

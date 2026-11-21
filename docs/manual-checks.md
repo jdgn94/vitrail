@@ -15,6 +15,23 @@ Código en `bar-foundation`. Verificar con el bar corriendo:
 - [ ] Con el elemento fuera de la barra (oculto, el estado por defecto) no hay ningún proceso `python3 -m vitrail.sample` en `ps`.
 - [ ] Rueda y clic central sobre el botón no rompen nada (la base los emite; el sample no los usa).
 
+## Volume bar element (2026-11-21)
+
+Código en `bar-volume-ui`. Con la barra corriendo, una aplicación reproduciendo sonido (un vídeo o `mpv`) y una segunda salida (auriculares, HDMI o USB):
+
+- [ ] Mostrar `volume` desde el editor de la barra (está oculto por defecto): aparece el icono; el tooltip dice el nombre de la salida y debajo "N%" (o "Silenciado (N%)").
+- [ ] Rueda arriba/abajo sobre el icono sube/baja el volumen en el paso de Ajustes → Bar elements → Volume (5 % por defecto); el tooltip y el icono siguen el cambio en pocos segundos; no pasa de 100 % ni baja de 0 %.
+- [ ] Clic central silencia y vuelve a activar la salida; el icono cambia a "silenciado".
+- [ ] Clic abre el popup: el deslizador maestro, con el nombre de la salida y su silencio, mueve el volumen real (`wpctl get-volume @DEFAULT_AUDIO_SINK@`); arrastrar no hace saltar el deslizador hacia atrás.
+- [ ] Hay una fila por la aplicación que suena, con su icono, su deslizador y su silencio; mover el deslizador cambia solo el volumen de esa aplicación.
+- [ ] El selector "Reproducir en" de la aplicación la manda a la otra salida y el sonido sale por ella (`pactl list sink-inputs short`); volver a elegir la primera la devuelve.
+- [ ] Los selectores de dispositivo de salida y de entrada cambian el dispositivo por defecto (`wpctl status`); el interruptor "Silenciar el micrófono" silencia y activa el micrófono por defecto.
+- [ ] Pausar el vídeo y activar Ajustes → Volume → "Ocultar flujos en silencio": su fila desaparece del popup; al reanudar, vuelve. Con la opción apagada la fila pausada sigue.
+- [ ] "Mostrar el nivel" escribe el porcentaje junto al icono (y lo quita mientras está silenciado).
+- [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque "Volume".
+- [ ] Parar PipeWire (`systemctl --user stop pipewire pipewire-pulse wireplumber`, y `socket` si reactiva): el icono queda en gris/silenciado sin error, el popup dice que no puede leer el servidor de audio y no muestra deslizadores; rueda y clic central no hacen nada; al reiniciarlo todo vuelve solo.
+- [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.audio` en `ps`.
+
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 
 Código en `master` (`5936834..36fab6a`). La automatización ya está verde

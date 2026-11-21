@@ -57,6 +57,7 @@ import "osd/osd.js" as Osd
 import "session"
 import "session/actions.js" as Session
 import "sample"
+import "volume"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -1608,6 +1609,32 @@ ShellRoot {
 
         module: "sample"
         active: shell.barShows("sample")
+    }
+
+    // The volume bar element's data (vitrail/audio.py): polled faster while
+    // its popup is open, and re-read once an action has settled.
+    BarSnapshot {
+        id: audioData
+
+        module: "audio"
+        interval: shell.popupOpen && shell.popupKind === "volume" ? 1000 : 4000
+        active: shell.barShows("volume")
+    }
+
+    Timer {
+        id: audioSettle
+
+        interval: 250
+        onTriggered: audioData.refresh()
+    }
+
+    // One `python3 -m vitrail.audio <args>` process per action (volume, mute,
+    // move, default device); the snapshot follows a moment later.
+    function audioAction(args) {
+        Quickshell.execDetached(["sh", "-c",
+            "root=\"$1\"; shift; PYTHONPATH=\"$root\" exec python3 -m vitrail.audio \"$@\"",
+            "sh", Quickshell.shellDir + "/.."].concat(args))
+        audioSettle.restart()
     }
 
     function syncTokens() {
@@ -3301,6 +3328,7 @@ ShellRoot {
                     case "keyboard": return keyboardWidget
                     case "power": return powerWidget
                     case "sample": return sampleWidget
+                    case "volume": return volumeWidget
                     default: return null
                     }
                 }
@@ -3649,6 +3677,28 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: volumeWidget
+
+                    VolumeButton {
+                        id: volumeButton
+
+                        strings: shell.strings
+                        snapshot: audioData.snapshot
+                        step: shell.prefNumber("volumeStep", VitrailTokens.ranges.volumeStep.value)
+                        showPercent: shell.prefBool("volumePercent", false)
+                        showMode: Elements.showMode(shell.activeOnlyIds, "volume")
+                        opened: shell.popupOpen && shell.popupKind === "volume" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("volume", volumeButton, monitor.modelData)
+                        onAudioAction: function (args) { shell.audioAction(args) }
+                        onHoveredChanged: {
+                            tooltips.hover(volumeButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("volume", volumeButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -3709,6 +3759,7 @@ ShellRoot {
                     // The cheatsheet has no button: it grows from the bar's centre.
                     case "binds": return monitor.loadedItem("clock")
                     case "sample": return monitor.loadedItem("sample")
+                    case "volume": return monitor.loadedItem("volume")
                     default: return null
                     }
                 }
@@ -4649,6 +4700,13 @@ ShellRoot {
                                 sourceComponent: sampleComponent
                             }
 
+                            Popout {
+                                name: "volume"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: volumeComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -4955,6 +5013,20 @@ ShellRoot {
                         strings: shell.strings
                         snapshot: sampleData.snapshot
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "sample")
+                    }
+                }
+
+                Component {
+                    id: volumeComponent
+
+                    VolumePanel {
+                        strings: shell.strings
+                        snapshot: audioData.snapshot
+                        step: shell.prefNumber("volumeStep", VitrailTokens.ranges.volumeStep.value)
+                        hideSilent: shell.prefBool("volumeHideSilent", false)
+                        iconPath: function (name) { return Quickshell.iconPath(name, true) }
+                        onAudioAction: function (args) { shell.audioAction(args) }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "volume")
                     }
                 }
 

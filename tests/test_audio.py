@@ -364,6 +364,58 @@ class MainTests(unittest.TestCase):
             self.assertEqual(audio.main(["now"], run=Recorder(DUMP_TEXT)), 2)
         self.assertIn("usage: audio state", errors.getvalue())
 
+    def run_action(self, args: list[str], run: Recorder) -> tuple[int, dict | None]:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            code = audio.main(args, run=run)
+        return code, json.loads(out.getvalue()) if out.getvalue() else None
+
+    def test_a_volume_step_is_one_wpctl_call(self) -> None:
+        run = Recorder("")
+        code, result = self.run_action(["volume", "sink", "-5"], run)
+        self.assertEqual(code, 0)
+        self.assertEqual(run.calls, [["wpctl", "set-volume", "--limit", "1.0", "@DEFAULT_AUDIO_SINK@", "5%-"]])
+        self.assertTrue(result["ok"])
+
+    def test_an_absolute_volume_goes_to_a_node_id(self) -> None:
+        run = Recorder("")
+        self.assertEqual(self.run_action(["volume", "57", "40"], run)[0], 0)
+        self.assertEqual(run.calls, [["wpctl", "set-volume", "--limit", "1.0", "57", "40%"]])
+
+    def test_mute_and_default_and_move(self) -> None:
+        run = Recorder("")
+        self.assertEqual(self.run_action(["mute", "source"], run)[0], 0)
+        self.assertEqual(self.run_action(["default", "52"], run)[0], 0)
+        self.assertEqual(self.run_action(["move", "91", USB_SINK], run)[0], 0)
+        self.assertEqual(
+            run.calls,
+            [
+                ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"],
+                ["wpctl", "set-default", "52"],
+                ["pactl", "move-sink-input", "91", USB_SINK],
+            ],
+        )
+
+    def test_an_action_that_cannot_run_exits_one_and_says_why(self) -> None:
+        code, result = self.run_action(["default", "52"], Recorder(None))
+        self.assertEqual(code, 1)
+        self.assertFalse(result["ok"])
+        self.assertIn("wpctl", result["error"])
+
+    def test_a_bad_target_or_value_runs_nothing(self) -> None:
+        run = Recorder("")
+        for args in (
+            ["volume", "sink; reboot", "5"],
+            ["volume", "sink", "loud"],
+            ["mute", "everything"],
+            ["default", "sink"],
+            ["move", "x", USB_SINK],
+            ["volume", "sink"],
+        ):
+            with self.subTest(args=args):
+                self.assertEqual(self.run_action(args, run)[0], 2)
+        self.assertEqual(run.calls, [])
+
 
 if __name__ == "__main__":
     unittest.main()

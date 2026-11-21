@@ -83,6 +83,11 @@ bar osdHotZone
 bar osdSize
 bar osdStep
 bar osdBrightnessStep
+# The volume bar element: the wheel step, the level as text, and whether
+# paused streams are left out of its popup.
+bar volumeStep
+bar volumePercent
+bar volumeHideSilent
 # The dashboard clock widgets: the pomodoro's periods and rounds, and the
 # timer's default length, in minutes.
 bar pomodoroWork

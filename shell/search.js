@@ -67,6 +67,8 @@ var index = [
       terms: ["element", "widget", "only while active", "show", "hide"] },
     { category: "bar-elements", tab: "sample", key: "bar.widget.sample", label: "Sample",
       terms: ["sample", "example"] },
+    { category: "bar-elements", tab: "volume", key: "bar.widget.volume", label: "Volume",
+      terms: ["volume", "sound", "audio", "speaker", "wheel", "microphone", "apps"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },

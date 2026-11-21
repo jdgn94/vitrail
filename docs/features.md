@@ -4,6 +4,10 @@
 
 `BarElementBase` (bar/BarElementBase.qml) is the base of every new bar element: the icon button with its tooltip, click, middle click, right click and wheel, a custom face when a button does not fit, and the "only while active" switch (Settings → Bar elements, one `barActiveOnly` preference for all elements). `BarSnapshot` brings an element's data from a Python module as one JSON snapshot, polled only while the element is in a bar. The sample element (bar/sample/, hidden by default) exercises every layer, and Settings → Bar elements has one block per element. See docs/bar-elements.md for the recipe.
 
+## Volume bar element
+
+An icon that follows the default output's level (muted, none, low, high) and, with `volumePercent`, the level as text. The wheel moves the master volume by `volumeStep` (1–25 %, default 5), a middle click mutes, and a click opens the popup: the master slider with its device's name and mute, one row per application stream (slider, mute, and an output chooser that moves the stream to another sink), the output and input device choosers and the microphone mute. `volumeHideSilent` leaves paused streams out. The data is `vitrail.audio`'s snapshot (`pw-dump`), polled only while the element is in a bar; every change is one `python3 -m vitrail.audio` process. Without PipeWire or `pw-dump` the icon goes neutral and the popup says it cannot read the audio server. Hidden by default (bar → Editor, or Settings → Bar elements), where its block holds the three options.
+
 ## The bar and the frame
 
 A single bar on any screen edge (top, bottom, left or right), with or without

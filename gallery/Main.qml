@@ -4,6 +4,8 @@ import "../kit"
 import "../kit/base"
 import "../kit/composed"
 import "../bar"
+import "../bar/volume"
+import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
 
@@ -48,6 +50,8 @@ Window {
 
     Component.onCompleted: {
         VitrailTokens.configure(wallpaper, app.dark, Args.value("--surface", "glass"), ({}))
+        // bar/ reaches the kit through its own `kit` link: a second singleton.
+        BarKit.VitrailTokens.configure(wallpaper, app.dark, Args.value("--surface", "glass"), ({}))
         var target = Args.value("--grab", "")
         if (target !== "")
             grabTimer.start()
@@ -1003,6 +1007,80 @@ Window {
             DropletPreview {
                 phase: "burst"
                 Layout.alignment: Qt.AlignTop
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "VolumeButton · level × muted × percent × no audio server"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VolumeButton {
+                snapshot: ({ defaultSink: { id: 1, description: "Speakers", volume: 20, muted: false } })
+            }
+
+            VolumeButton {
+                snapshot: ({ defaultSink: { id: 1, description: "Speakers", volume: 80, muted: false } })
+                showPercent: true
+            }
+
+            VolumeButton {
+                snapshot: ({ defaultSink: { id: 1, description: "Speakers", volume: 80, muted: true } })
+            }
+
+            VolumeButton {
+                opened: true
+                snapshot: ({ defaultSink: { id: 1, description: "Speakers", volume: 50, muted: false } })
+            }
+
+            VolumeButton {
+                snapshot: ({ error: "unreadable" })
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "VolumePanel · master × applications × devices × microphone × no audio server"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: full.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: full.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                VolumePanel {
+                    id: full
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({
+                        defaultSink: { id: 1, description: "Speakers", volume: 64, muted: false },
+                        defaultSource: { id: 3, description: "Headset microphone", volume: 100, muted: true },
+                        sinks: [{ id: 1, name: "speakers", description: "Speakers", volume: 64, muted: false },
+                                { id: 2, name: "headset", description: "Headset", volume: 40, muted: false }],
+                        sources: [{ id: 3, name: "mic", description: "Headset microphone", volume: 100, muted: true }],
+                        streams: [{ id: 10, serial: 110, app: "Firefox", name: "Video", icon: "", volume: 80, muted: false, corked: false, sink: 1 },
+                                  { id: 11, serial: 111, app: "Music player", name: "Song", icon: "", volume: 35, muted: true, corked: true, sink: 2 }]
+                    })
+                }
+            }
+
+            VitrailSurface {
+                width: broken.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: broken.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                VolumePanel {
+                    id: broken
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ error: "unreadable" })
+                }
             }
         }
     }

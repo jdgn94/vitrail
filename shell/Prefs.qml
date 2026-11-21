@@ -76,6 +76,9 @@ QtObject {
     property alias osdSize: barFile.osdSize
     property alias osdStep: barFile.osdStep
     property alias osdBrightnessStep: barFile.osdBrightnessStep
+    property alias volumeStep: barFile.volumeStep
+    property alias volumePercent: barFile.volumePercent
+    property alias volumeHideSilent: barFile.volumeHideSilent
     property alias pomodoroWork: barFile.pomodoroWork
     property alias pomodoroRest: barFile.pomodoroRest
     property alias pomodoroCycles: barFile.pomodoroCycles
@@ -271,6 +274,11 @@ QtObject {
         property string osdSize: VitrailTokens.osd.size
         property int osdStep: VitrailTokens.ranges.osdStep.value
         property int osdBrightnessStep: VitrailTokens.ranges.osdBrightnessStep.value
+        // The volume bar element: wheel step (%), the level as text, and
+        // whether its popup hides paused streams.
+        property int volumeStep: VitrailTokens.ranges.volumeStep.value
+        property bool volumePercent: false
+        property bool volumeHideSilent: false
         // The dashboard's clock widgets: the pomodoro's periods and rounds and
         // the timer's default length, in minutes.
         property int pomodoroWork: VitrailTokens.ranges.pomodoroWork.value

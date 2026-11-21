@@ -21,6 +21,8 @@ var ranges = {
     osdHot: { min: 0, max: 24, step: 1, value: 5 },
     osdStep: { min: 1, max: 20, step: 1, value: 5 },
     osdBrightnessStep: { min: 1, max: 20, step: 1, value: 5 },
+    // The volume bar element: the percent one wheel notch on its button moves.
+    volumeStep: { min: 1, max: 25, step: 1, value: 5 },
     // The dock's magnification: how many neighbouring icons the planet falloff
     // reaches, and the largest scale it gives the icon under the pointer.
     dockMagnifyRange: { min: 1, max: 5, step: 1, value: 2 },

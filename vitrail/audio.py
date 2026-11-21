@@ -12,9 +12,11 @@ the links are grouped by their output node. Each stream keeps the PipeWire node
 id (`id`, what `wpctl` changes) and the object serial (`serial`, what `pactl`
 calls the sink input and needs to move it).
 
-Actions use `wpctl` for volume and mute. WirePlumber has no way to move a stream,
-so a move uses `pactl` (libpulse) and reports itself as unsupported when the
-program is missing rather than pretending it worked. Everything that parses or
+Actions use `wpctl` for volume, mute and the default device. WirePlumber has no
+way to move a stream, so a move uses `pactl` (libpulse) and reports itself as
+unsupported when the program is missing rather than pretending it worked. The
+command line runs one action per process (`state`, `volume`, `mute`,
+`default`, `move`), which is how the bar calls them. Everything that parses or
 decides is a pure function; the subprocess lives in one injectable runner.
 """
 
@@ -318,6 +320,47 @@ def move_stream(stream: int, sink: str, *, run: Runner = run_text) -> dict:
     return {"ok": True, "action": "move-stream", "stream": stream, "sink": str(sink)}
 
 
+def set_default(node: int, *, run: Runner = run_text) -> dict:
+    """Make a sink or a source (its node `id`) the default device."""
+    if run(["wpctl", "set-default", str(node)]) is None:
+        return _unsupported("set-default", "wpctl", "wireplumber")
+    return {"ok": True, "action": "set-default", "target": int(node)}
+
+
+USAGE = (
+    "usage: audio state | volume <sink|source|id> <0-100|+n|-n> | mute <sink|source|id>"
+    " | default <id> | move <stream-serial> <sink-name>"
+)
+TARGETS = {"sink": DEFAULT_SINK, "source": DEFAULT_SOURCE}
+
+
+def _target(word: str) -> str | None:
+    """`sink`, `source` or a node id; anything else is not a target."""
+    return TARGETS.get(word) or (word if word.isdecimal() else None)
+
+
+def _volume_command(args: list[str], run: Runner) -> dict | None:
+    """`volume <target> <value>`: `+5` / `-5` are steps, a bare number is absolute."""
+    target = _target(args[0])
+    amount = args[1]
+    if target is None or not re.fullmatch(r"[+-]?[0-9]+", amount):
+        return None
+    return set_volume(int(amount), target=target, delta=amount[0] in "+-", run=run)
+
+
+def act(args: list[str], run: Runner = run_text) -> dict | None:
+    """Run the action `args` names, or None when they are not one."""
+    if len(args) == 3 and args[0] == "volume":
+        return _volume_command(args[1:], run)
+    if len(args) == 2 and args[0] == "mute" and (target := _target(args[1])) is not None:
+        return toggle_mute(target=target, run=run)
+    if len(args) == 2 and args[0] == "default" and args[1].isdecimal():
+        return set_default(int(args[1]), run=run)
+    if len(args) == 3 and args[0] == "move" and args[1].isdecimal() and args[2]:
+        return move_stream(int(args[1]), args[2], run=run)
+    return None
+
+
 def main(argv: list[str] | None = None, run: Runner = run_text) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args == ["state"]:
@@ -327,8 +370,12 @@ def main(argv: list[str] | None = None, run: Runner = run_text) -> int:
             return 1
         print(json.dumps(data, separators=(",", ":")))
         return 0
-    print("usage: audio state", file=sys.stderr)
-    return 2
+    result = act(args, run)
+    if result is None:
+        print(USAGE, file=sys.stderr)
+        return 2
+    print(json.dumps(result, separators=(",", ":")))
+    return 0 if result["ok"] else 1
 
 
 if __name__ == "__main__":
