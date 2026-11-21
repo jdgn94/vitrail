@@ -131,7 +131,9 @@ package to the manifest and a row here.
 | `xdg-utils` | `xdg-open`, `xdg-mime` | opening files, folders and links; finding the desktop's file manager |
 | `xdg-desktop-portal-phosh` | the FileChooser portal backend | every open/save dialog, drawn by Phosh's GTK 4 chooser: the settings window's, and a GTK 3 app's through `GTK_USE_PORTAL=1` (`dots/.config/xdg-desktop-portal/hyprland-portals.conf`) |
 | `xorg-xrdb` | `xrdb` | the cursor theme for X11/XWayland apps |
-| `flatpak` | `flatpak` | the sandbox overrides that let Flatpak apps read the theme |
+| `flatpak` | `flatpak` | the sandbox overrides that let Flatpak apps read the theme, and the pending Flatpak updates (`remote-ls --updates`) |
+| `pacman-contrib` | `checkupdates` | pending repository updates for the bar's updates snapshot (`vitrail/updates.py`), with a temporary database and no root |
+| `paru`, `yay` | `paru`, `yay` | the AUR helper the user installed: AUR updates (`-Qua`) and `-Sua`; Vitrail does not package AUR helpers |
 | `btrfs-progs` | `btrfs` | the snapshot `vitrail update` takes on a btrfs root |
 | `nautilus` | the file manager | "open folder" and "open file" of a download, with the desktop's own choice read from `xdg-mime` (Nautilus is the fallback installed with Vitrail) |
 | `gtk4`, `python-gobject` | `gi.repository.Gdk` | the clipboard's styled re-copy (`vitrail/richclip.py`): a small helper owns the clipboard with text and HTML together, since `wl-copy` offers one type |

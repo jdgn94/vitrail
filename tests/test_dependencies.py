@@ -90,6 +90,11 @@ EXTERNAL = {
     # Optional snapshot backend: the user installs it if they want one on a
     # non-btrfs system. btrfs-progs is in the manifest for the btrfs case.
     "timeshift",
+    # AUR helpers are the user's choice and Vitrail does not package them
+    # (install.sh only records which one exists). The updates snapshot uses
+    # paru before yay, when present.
+    "paru",
+    "yay",
 }
 
 # Program -> the package that provides it. A program missing here is unknown.
@@ -116,6 +121,7 @@ PROVIDED_BY = {
     "plocate": "plocate",
     "fd": "fd",
     "cliphist": "cliphist",
+    "checkupdates": "pacman-contrib",
     "wtype": "wtype",
     "hyprpicker": "hyprpicker",
     "bluetoothctl": "bluez-utils",
