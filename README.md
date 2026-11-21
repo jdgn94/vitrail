@@ -137,6 +137,7 @@ package to the manifest and a row here.
 | `gtk4`, `python-gobject` | `gi.repository.Gdk` | the clipboard's styled re-copy (`vitrail/richclip.py`): a small helper owns the clipboard with text and HTML together, since `wl-copy` offers one type |
 | `python-dbus`, `python-gobject` | — | the downloads watcher (`vitrail/downloads.py`): a notification per download and the buttons that cancel, delete or open it |
 | `wireplumber`, `playerctl`, `brightnessctl` | `wpctl`, `playerctl`, `brightnessctl` | media keys, laptop panel brightness |
+| `pipewire`, `libpulse` | `pw-dump`, `pactl` | the volume popup's snapshot of sinks, sources and playback streams (`vitrail/audio.py`), and moving a stream to another output |
 | `cava` | `cava` | the audio visualiser's spectrum (`vitrail/visualiser.py`), written to the background layer |
 | `ddcutil` | `ddcutil` | brightness of external monitors over DDC/CI (OSD); needs `/dev/i2c-*` access, set up by the installer |
 | `grim` | `grim` | the frozen screen of every monitor, and the area the overlay draws |

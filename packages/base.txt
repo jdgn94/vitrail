@@ -53,6 +53,7 @@ imagemagick
 pipewire
 pipewire-pulse
 wireplumber
+libpulse
 # The audio visualiser's spectrum (vitrail/visualiser.py).
 cava
 fontconfig
