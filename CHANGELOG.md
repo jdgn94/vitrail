@@ -53,6 +53,13 @@ The first distributable release.
   size and the character count. `charcoal` now turns over with the mode: white
   lines on black at night, dark lines on paper by day. The picker shows the
   drawn styles at a scale a thumbnail can read.
+- Rows that do not fit scroll instead of being cut: the settings' subcategory
+  tabs (wheel, drag, the chosen tab always in view) and the emoji groups,
+  whose pill no longer starts half cut when the tab opens.
+- The clipboard owns the keys: `Super+V` history, `Super+.` emojis, `Super+P`
+  colours and `Super+Shift+P` pick from the screen; a window floats with
+  `Super+Shift+V` now. The empty side panel, its variants, its token and the
+  "windows make room for full panels" switch are gone.
 - The background steps out of a fullscreen window's way: the video wallpaper
   pauses, the rotation waits, the cava visualiser ends and changes skip their
   animation (Settings → Wallpaper → Pause on fullscreen, on by default).

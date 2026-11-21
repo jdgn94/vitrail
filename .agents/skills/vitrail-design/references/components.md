@@ -160,6 +160,14 @@ bound to `repeater.itemAt(currentIndex)` geometry and animate x / width
 (`base`); `settled` skips the animation on first layout. Reuse that pattern
 for any single-choice control (the settings rail does the same).
 
+A row that does not fit the width the control was given scrolls sideways (wheel,
+drag, touch) and nothing is cut: the indicator travels with the content, the
+chosen item is brought into view whenever it changes, and `contentX` /
+`contentWidth` are readable for a caller that draws its own affordance. A
+choice set before the first layout (width 0) must not scroll the row: `reveal()`
+waits for a width, and a width change reveals the current item again — without
+that the pill starts half cut off (the emoji groups were).
+
 ## Monitors page
 
 The canvas and the selected output's settings share **one scroll**: the canvas

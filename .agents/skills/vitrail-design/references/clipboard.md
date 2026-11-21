@@ -86,3 +86,8 @@ Four commands, one per entry point:
 
 Rules live in `bar/clipboard/clipboard.js` (image parsing, filter, label,
 clamp) and are tested in `tests/qml/tst_clipboard.qml`.
+
+The emoji groups are a `VitrailSegmented` with ten icon-only segments: the row
+scrolls sideways in the panel's width (wheel, drag) and the chosen group is
+revealed. The selection pill must not scroll past the first group when the tab
+opens — the control starts from width 0, so `reveal()` has to wait for a width.

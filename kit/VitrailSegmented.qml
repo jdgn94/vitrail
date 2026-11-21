@@ -29,6 +29,9 @@ Rectangle {
                                         ? segments.itemAt(root.currentIndex) : null
     // The first placement does not slide in from the left edge.
     property bool settled: false
+    // The scroll position, for a caller that draws its own affordance.
+    readonly property real contentX: flick.contentX
+    readonly property real contentWidth: row.width
 
     implicitHeight: 36
     implicitWidth: row.implicitWidth + 8
@@ -40,9 +43,14 @@ Rectangle {
     // The chosen option is always brought into view, however far the row was
     // scrolled.
     onCurrentChanged: Qt.callLater(function () { root.reveal(root.currentItem) })
+    // The chosen item is shown again once the control has a width (a tab set
+    // before the row was laid out).
+    onWidthChanged: Qt.callLater(function () { root.reveal(root.currentItem) })
 
     function reveal(item) {
-        if (!item)
+        // Before the first layout there is no view to scroll in: the row would
+        // end up scrolled past its own first item.
+        if (!item || flick.width <= 0)
             return
         var left = item.x
         var right = item.x + item.width

@@ -31,6 +31,23 @@ TestCase {
         }
     }
 
+    Component {
+        id: long
+
+        VitrailTabs {
+            width: 260
+            current: "a"
+            tabs: [
+                { key: "a", label: "Frame and panels" },
+                { key: "b", label: "Notifications" },
+                { key: "c", label: "On-screen display" },
+                { key: "d", label: "Widgets" },
+                { key: "e", label: "Background" },
+                { key: "f", label: "Capture" }
+            ]
+        }
+    }
+
     SignalSpy {
         id: spy
 
@@ -119,6 +136,58 @@ TestCase {
 
     function test_is_one_keyboard_stop() {
         verify(make().activeFocusOnTab)
+    }
+
+    // A row wider than the control scrolls sideways: the wheel moves it, and a
+    // tab chosen out of sight is brought into view.
+    function test_a_long_row_scrolls_with_the_wheel() {
+        var box = createTemporaryObject(long, testCase)
+        verify(box)
+        verify(box.contentWidth > box.width)
+        compare(box.contentX, 0)
+        mouseWheel(box, box.width / 2, box.height / 2, 0, -120)
+        // The move is animated, so it lands a moment later.
+        tryVerify(function () { return box.contentX > 0 })
+    }
+
+    // Dragging the row moves it and selects nothing.
+    function test_a_long_row_scrolls_by_dragging() {
+        var box = createTemporaryObject(long, testCase)
+        verify(box)
+        spy.target = box
+        spy.clear()
+        mouseDrag(box, box.width * 0.7, box.height / 2, -140, 0)
+        tryVerify(function () { return box.contentX > 0 })
+        compare(spy.count, 0)
+    }
+
+    function test_the_current_tab_is_scrolled_into_view() {
+        var box = createTemporaryObject(long, testCase)
+        verify(box)
+        box.current = "f"
+        tryVerify(function () {
+            return box.currentItem !== null
+                   && box.currentItem.x + box.currentItem.width <= box.contentX + box.width
+                   && box.currentItem.x >= box.contentX
+        })
+    }
+
+    // A tab set before the row was laid out must not scroll the row past its
+    // own first tab (the pill would start half cut).
+    function test_choosing_a_tab_before_the_first_layout_does_not_scroll_past_it() {
+        var box = createTemporaryObject(long, testCase, { width: 0 })
+        verify(box)
+        box.current = "b"
+        box.current = "a"
+        wait(50)
+        box.width = 260
+        tryVerify(function () { return box.contentX === 0 })
+    }
+
+    function test_a_row_that_fits_does_not_scroll() {
+        var box = make()
+        compare(box.contentWidth, box.width)
+        compare(box.contentX, 0)
     }
 
     function test_click_selects() {
