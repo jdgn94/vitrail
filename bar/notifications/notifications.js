@@ -63,6 +63,23 @@ function muted(appName, mutedText) {
     return list(mutedText).indexOf(appName) >= 0
 }
 
+// How long a toast stays, in ms; 0 is until something closes it. The app's own
+// timeout (`expireTimeout`, ms as Quickshell reports it; -1 when the app gave
+// none) wins: 0 means it never expires. Without one, a critical notification
+// stays and the rest go after TOAST_MS.
+var TOAST_MS = 5000
+
+function toastTimeout(notification) {
+    if (!notification)
+        return 0
+    var asked = notification.expireTimeout
+    if (asked > 0)
+        return Math.round(asked)
+    if (asked === 0)
+        return 0
+    return notification.urgency >= 2 ? 0 : TOAST_MS
+}
+
 // Urgent: the app asked for it (critical), or it is in the user's list.
 function urgent(notification, urgentText) {
     if (!notification)

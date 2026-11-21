@@ -1,12 +1,17 @@
 import QtQuick
 import "../kit"
+import "notifications.js" as Notifications
 import "progress.js" as Progress
 
 // One incoming notification: the shared card, a sideways flick that marks it
-// read, and the five second expiry (paused while the pointer rests on it).
-// A live task (a download) stays on screen until it ends.
+// read, and its own expiry: the notification's timeout, five seconds when it
+// gives none (`Notifications.toastTimeout`), paused while the pointer rests on
+// it. A live task (a download), an urgent one and one with no timeout stay on
+// screen until they are closed.
 Item {
     id: root
+
+    objectName: "toast"
 
     property var notification: null
     property var queue: null
@@ -19,9 +24,11 @@ Item {
     property real now: Date.now()
     property bool newest: false
 
+    readonly property int timeout: Notifications.toastTimeout(root.notification)
+
     implicitHeight: card.implicitHeight
-    // The stack lays the cards out by this height; a change of content (the
-    // actions, the progress bar) must move the ones below.
+    // The stack places the cards by this height; a change of content (the
+    // actions, the progress bar) moves the ones below.
     height: implicitHeight
 
     NotificationCard {
@@ -73,8 +80,8 @@ Item {
 
     // Restarts from zero whenever the pointer leaves or the reply closes.
     Timer {
-        interval: 5000
-        running: root.notification !== null && !card.held && !Progress.live(root.notification)
+        interval: root.timeout
+        running: root.notification !== null && root.timeout > 0 && !card.held && !Progress.live(root.notification)
         onTriggered: if (root.notification && root.queue) root.queue.expire(root.notification.id)
     }
 }

@@ -63,6 +63,19 @@ TestCase {
         verify(!Notifications.muted("", ""))
     }
 
+    function test_a_toast_goes_after_the_apps_timeout_or_five_seconds() {
+        compare(Notifications.toastTimeout({ expireTimeout: 3000, urgency: 1 }), 3000)
+        compare(Notifications.toastTimeout({ expireTimeout: 250, urgency: 2 }), 250)
+        compare(Notifications.toastTimeout({ expireTimeout: -1, urgency: 1 }), 5000)
+        compare(Notifications.toastTimeout({ urgency: 0 }), 5000)
+    }
+
+    function test_a_toast_without_a_timeout_or_critical_stays() {
+        compare(Notifications.toastTimeout({ expireTimeout: 0, urgency: 1 }), 0)
+        compare(Notifications.toastTimeout({ expireTimeout: -1, urgency: 2 }), 0)
+        compare(Notifications.toastTimeout(null), 0)
+    }
+
     function test_urgent_comes_from_the_app_or_the_user() {
         verify(Notifications.urgent({ urgency: 2, appName: "Calls" }, ""))
         verify(!Notifications.urgent({ urgency: 1, appName: "Calls" }, ""))
