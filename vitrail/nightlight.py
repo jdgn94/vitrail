@@ -6,6 +6,7 @@
     python3 -m vitrail.nightlight enable <K>
     python3 -m vitrail.nightlight disable
     python3 -m vitrail.nightlight set-temperature <K>
+    python3 -m vitrail.nightlight apply [--mode …] [--temperature K]
 
 The filter is applied by the `hyprsunset` daemon, which has no configuration
 file to read: the temperature and identity flag it is applying come from its
@@ -103,6 +104,30 @@ def parse_identity(text: str) -> bool | None:
     return None
 
 
+def window(schedule: object, sunrise: object = None, sunset: object = None) -> tuple[int, int] | None:
+    """The minute window the schedule uses, or None when it names none.
+
+    `sun` uses sunset -> sunrise (the night window), falling back to the fixed
+    hours when the weather has no sun times.
+    """
+    values = schedule if isinstance(schedule, dict) else {}
+    mode = values.get("mode", "off")
+    if mode == "off" or mode not in MODES:
+        return None
+    if mode == "sun":
+        start = parse_clock(sunset if sunset is not None else values.get("sunset"))
+        end = parse_clock(sunrise if sunrise is not None else values.get("sunrise"))
+        if start is None or end is None:
+            start = parse_clock(values.get("start"))
+            end = parse_clock(values.get("end"))
+    else:
+        start = parse_clock(values.get("start"))
+        end = parse_clock(values.get("end"))
+    if start is None or end is None or start == end:
+        return None
+    return start, end
+
+
 def plan(now: object, schedule: dict, sunrise: object = None, sunset: object = None) -> int:
     """The temperature the schedule asks for at `now`.
 
@@ -115,22 +140,33 @@ def plan(now: object, schedule: dict, sunrise: object = None, sunset: object = N
     minutes = parse_clock(now)
     if mode == "off" or minutes is None:
         return IDENTITY_TEMPERATURE
-
-    if mode == "sun":
-        # The night window: the filter comes on at sunset and off at sunrise.
-        start = parse_clock(sunset if sunset is not None else values.get("sunset"))
-        end = parse_clock(sunrise if sunrise is not None else values.get("sunrise"))
-        if start is None or end is None:
-            start = parse_clock(values.get("start"))
-            end = parse_clock(values.get("end"))
-    else:
-        start = parse_clock(values.get("start"))
-        end = parse_clock(values.get("end"))
-
-    if start is None or end is None or start == end:
+    bounds = window(values, sunrise, sunset)
+    if bounds is None:
         return IDENTITY_TEMPERATURE
+    start, end = bounds
     inside = start <= minutes < end if start < end else minutes >= start or minutes < end
     return clamp_temperature(values.get("temperature", DEFAULT_TEMPERATURE)) if inside else IDENTITY_TEMPERATURE
+
+
+def next_change(now: object, schedule: dict, sunrise: object = None, sunset: object = None) -> dict | None:
+    """The next moment `plan` changes its answer, as the popup writes it.
+
+    The candidate is always the window's other edge, so a schedule that crosses
+    midnight needs no special case; when the clock sits exactly on an edge the
+    following one is next. Off (or a broken window) has no next change.
+    """
+    values = schedule if isinstance(schedule, dict) else {}
+    minutes = parse_clock(now)
+    bounds = window(values, sunrise, sunset)
+    if minutes is None or bounds is None:
+        return None
+    start, end = bounds
+    edges = [start, end]
+    ahead = [edge for edge in edges if edge > minutes]
+    at = min(ahead) if ahead else min(edges)
+    label = f"{at // 60:02d}:{at % 60:02d}"
+    temperature = plan(label, values, sunrise, sunset)
+    return {"at": label, "temperature": temperature, "active": temperature < IDENTITY_TEMPERATURE}
 
 
 def enable_argv(temperature: object) -> list[str]:
@@ -158,6 +194,49 @@ def disable(*, run: Run = _run) -> bool:
 
 def set_temperature(temperature: object, *, run: Run = _run) -> bool:
     return run(set_temperature_argv(temperature)).returncode == 0
+
+
+def apply(
+    *,
+    now: object = None,
+    schedule: dict | None = None,
+    temperature: object = None,
+    sunrise: object = None,
+    sunset: object = None,
+    run: Run = _run,
+) -> dict:
+    """Make the daemon match the schedule now; one command, so the bar's timer
+    never piles up. `off` means the switch alone decides: on at the configured
+    temperature, since there is no window to follow."""
+    values = schedule if isinstance(schedule, dict) else {}
+    mode = values.get("mode") if values.get("mode") in MODES else "off"
+    start = str(values.get("start") or DEFAULT_START)
+    end = str(values.get("end") or DEFAULT_END)
+    sunrise = sunrise if sunrise is not None else values.get("sunrise")
+    sunset = sunset if sunset is not None else values.get("sunset")
+    configured = clamp_temperature(
+        temperature if temperature is not None else values.get("temperature", DEFAULT_TEMPERATURE)
+    )
+    when = datetime.now().time() if now is None else now
+    if mode == "off":
+        target = configured
+    else:
+        target = plan(
+            when,
+            {"mode": mode, "start": start, "end": end, "temperature": configured},
+            sunrise,
+            sunset,
+        )
+
+    wanted = target < IDENTITY_TEMPERATURE
+    current = current_temperature(run)
+    identity = current_identity(run) if current is not None else None
+    enabled = current is not None and current < IDENTITY_TEMPERATURE and identity is not True
+    changed = wanted != enabled or (wanted and current != target)
+    if not changed:
+        return {"ok": True, "active": wanted, "temperature": target, "changed": False}
+    ok = enable(target, run=run) if wanted else disable(run=run)
+    return {"ok": ok, "active": wanted, "temperature": target, "changed": ok}
 
 
 def current_temperature(run: Run = _run) -> int | None:
@@ -210,6 +289,12 @@ def state(
         sunrise,
         sunset,
     )
+    upcoming = next_change(
+        when,
+        {"mode": mode, "start": start, "end": end, "temperature": configured},
+        sunrise,
+        sunset,
+    )
 
     error = None
     current = None
@@ -237,6 +322,7 @@ def state(
             "temperature": effective,
             "active": effective < IDENTITY_TEMPERATURE,
         },
+        "next": upcoming,
         "error": error,
     }
 
@@ -256,6 +342,13 @@ def main(argv: list[str] | None = None) -> int:
     commands.add_parser("disable", help="reset to identity")
     change = commands.add_parser("set-temperature", help="apply a temperature")
     change.add_argument("temperature", type=int)
+    follow = commands.add_parser("apply", help="make the daemon match the schedule now")
+    follow.add_argument("--mode", choices=MODES, default="off")
+    follow.add_argument("--start", default=DEFAULT_START)
+    follow.add_argument("--end", default=DEFAULT_END)
+    follow.add_argument("--temperature", type=int, default=DEFAULT_TEMPERATURE)
+    follow.add_argument("--sunrise", default=None)
+    follow.add_argument("--sunset", default=None)
     args = parser.parse_args(argv)
 
     if args.command == "state":
@@ -267,6 +360,16 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(json.dumps(data, separators=(",", ":")))
         return 0
+
+    if args.command == "apply":
+        answer = apply(
+            schedule={"mode": args.mode, "start": args.start, "end": args.end},
+            temperature=args.temperature,
+            sunrise=args.sunrise,
+            sunset=args.sunset,
+        )
+        print(json.dumps(answer, separators=(",", ":")))
+        return 0 if answer["ok"] else 1
 
     if args.command == "enable":
         ok = enable(args.temperature)

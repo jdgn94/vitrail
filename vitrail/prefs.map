@@ -97,6 +97,13 @@ bar updatesAurHelper
 # and the labels or UUIDs it leaves alone (one JSON array).
 bar disksAutomount
 bar disksIgnore
+# The brightness bar element: the wheel step (percent), the night light's
+# switch, colour temperature and schedule (mode plus fixed hours, one JSON
+# document; sun mode uses the weather's times).
+bar brightnessStep
+bar nightLightEnabled
+bar nightLightTemperature
+bar nightLightSchedule
 # The dashboard clock widgets: the pomodoro's periods and rounds, and the
 # timer's default length, in minutes.
 bar pomodoroWork

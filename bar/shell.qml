@@ -18,6 +18,7 @@ import "layouts.js" as Layouts
 import "elements.js" as Elements
 import "updates/updates.js" as Updates
 import "disks/disks.js" as Disks
+import "brightness/brightness.js" as Brightness
 import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "kit/wallpaper.js" as WallpaperTransition
@@ -62,6 +63,7 @@ import "sample"
 import "volume"
 import "updates"
 import "disks"
+import "brightness"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -776,6 +778,13 @@ ShellRoot {
             // visit: start the popup with a clean line.
             shell.disksError = ""
             disksData.refresh()
+        }
+        if (kind === "brightness") {
+            // The OSD's own reader caches ddcutil's slow detection; opening
+            // the popup is a good moment to ask for today's levels, and the
+            // night light snapshot follows the preferences in its arguments.
+            osdController.light.refresh(true)
+            nightlightData.refresh()
         }
         if (kind === "network" || kind === "vpn")
             if (!linkRead.running)
@@ -1791,6 +1800,120 @@ ShellRoot {
                 shell.closePopup()
             Qt.callLater(shell.runNextDiskAction)
         }
+    }
+
+    // --- brightness: the OSD's monitors and the night light -----------------
+    // One reader for both the OSD and this popup: `vitrail brightness list`
+    // (brightnessctl for a laptop panel, ddcutil for external monitors) is
+    // cached by the OSD's BrightnessState, so the element never runs a second
+    // detection.
+    readonly property var brightnessSnapshot: ({
+        status: osdController.light.status,
+        devices: osdController.light.devices
+    })
+    readonly property real brightnessStepValue: Brightness.step(
+        shell.prefNumber("brightnessStep", VitrailTokens.ranges.brightnessStep.value))
+
+    readonly property var nightLightSchedule: Brightness.scheduleOf(shell.prefs.nightLightSchedule)
+    readonly property real nightLightTemperature: Brightness.temperature(
+        shell.prefNumber("nightLightTemperature", Brightness.TEMPERATURE_DEFAULT))
+    readonly property bool nightLightOn: shell.prefBool("nightLightEnabled", false)
+
+    // The weather module's sun times when its answer has them; sun mode falls
+    // back to the fixed hours when it does not (vitrail/nightlight.py).
+    readonly property var sunTimes: {
+        var sun = (weatherData.snapshot || ({}))["sun"] || ({})
+        return { sunrise: sun.sunrise || "", sunset: sun.sunset || "" }
+    }
+
+    // The weather is only needed while the element is in a bar or the night
+    // light switch is on (the schedule may use the sun while the popup is
+    // closed). Its own cache makes the fifteen-minute poll cheap.
+    BarSnapshot {
+        id: weatherData
+
+        module: "weather"
+        interval: 900000
+        active: shell.barShows("brightness") || shell.nightLightOn
+    }
+
+    // The popup's night light state. BarSnapshot asks the module's `state`
+    // with this element's schedule, so the maths and the next change stay in
+    // vitrail/nightlight.py.
+    BarSnapshot {
+        id: nightlightData
+
+        module: "nightlight"
+        arguments: shell.nightLightArguments()
+        interval: shell.popupOpen && shell.popupKind === "brightness" ? 4000 : 60000
+        active: shell.barShows("brightness")
+    }
+
+    function nightLightArguments() {
+        var sun = shell.sunTimes
+        var args = []
+        args.push("--mode")
+        args.push(shell.nightLightSchedule.mode)
+        args.push("--start")
+        args.push(shell.nightLightSchedule.start)
+        args.push("--end")
+        args.push(shell.nightLightSchedule.end)
+        args.push("--temperature")
+        args.push(String(shell.nightLightTemperature))
+        args.push("--sunrise")
+        args.push(sun.sunrise)
+        args.push("--sunset")
+        args.push(sun.sunset)
+        return args
+    }
+
+    // The schedule's one timer: one `apply` per minute at most, and only while
+    // the switch is on. `apply` reads the schedule and the sun times itself
+    // (vitrail/nightlight.py), so this stays true with the popup closed.
+    Timer {
+        id: nightLightTick
+
+        interval: 60000
+        repeat: true
+        running: shell.nightLightOn
+        triggeredOnStart: true
+        onTriggered: shell.applyNightLight()
+    }
+
+    function applyNightLight() {
+        if (!nightLightApply.running)
+            nightLightApply.running = true
+    }
+
+    Process {
+        id: nightLightApply
+
+        command: ["python3", "-m", "vitrail.nightlight", "apply"].concat(shell.nightLightArguments())
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        onExited: nightlightData.refresh()
+    }
+
+    Timer {
+        id: nightLightSettle
+
+        interval: 500
+        onTriggered: nightlightData.refresh()
+    }
+
+    function nightLightAction(args) {
+        Quickshell.execDetached(["sh", "-c",
+            "root=\"$1\"; shift; PYTHONPATH=\"$root\" exec python3 -m vitrail.nightlight \"$@\"",
+            "sh", Quickshell.shellDir + "/.."].concat(args))
+        nightLightSettle.restart()
+    }
+
+    // The popup's switch writes the preference; turning it on lets the timer's
+    // first tick apply at once, turning it off returns the screen to identity.
+    function setNightLight(on) {
+        shell.setPref("nightLightEnabled", on ? "true" : "false")
+        if (!on)
+            shell.nightLightAction(["disable"])
+        nightlightData.refresh()
     }
 
     function syncTokens() {
@@ -3487,6 +3610,7 @@ ShellRoot {
                     case "volume": return volumeWidget
                     case "updates": return updatesWidget
                     case "disks": return disksWidget
+                    case "brightness": return brightnessWidget
                     default: return null
                     }
                 }
@@ -3896,6 +4020,30 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: brightnessWidget
+
+                    BrightnessButton {
+                        id: brightnessButton
+
+                        strings: shell.strings
+                        snapshot: shell.brightnessSnapshot
+                        primary: shell.primaryScreen ? shell.primaryScreen.name : ""
+                        step: shell.brightnessStepValue
+                        showMode: Elements.showMode(shell.activeOnlyIds, "brightness")
+                        opened: shell.popupOpen && shell.popupKind === "brightness" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("brightness", brightnessButton, monitor.modelData)
+                        onBrightnessRequested: function (name, percent) {
+                            osdController.light.set(name, percent)
+                        }
+                        onHoveredChanged: {
+                            tooltips.hover(brightnessButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("brightness", brightnessButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -3959,6 +4107,7 @@ ShellRoot {
                     case "volume": return monitor.loadedItem("volume")
                     case "updates": return monitor.loadedItem("updates")
                     case "disks": return monitor.loadedItem("disks")
+                    case "brightness": return monitor.loadedItem("brightness")
                     default: return null
                     }
                 }
@@ -4920,6 +5069,13 @@ ShellRoot {
                                 sourceComponent: disksComponent
                             }
 
+                            Popout {
+                                name: "brightness"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: brightnessComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -5266,6 +5422,34 @@ ShellRoot {
                         error: shell.disksError
                         onActionRequested: function (action, target) { shell.disksAct([action, target]) }
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "disks")
+                    }
+                }
+
+                Component {
+                    id: brightnessComponent
+
+                    BrightnessPanel {
+                        strings: shell.strings
+                        snapshot: shell.brightnessSnapshot
+                        nightlight: nightlightData.snapshot
+                        screens: Quickshell.screens.map(function (screen) { return screen.name })
+                        schedule: shell.nightLightSchedule
+                        temperature: shell.nightLightTemperature
+                        nightLightOn: shell.nightLightOn
+                        step: shell.brightnessStepValue
+                        onBrightnessRequested: function (name, percent) {
+                            osdController.light.set(name, percent)
+                        }
+                        onNightLightToggled: function (on) { shell.setNightLight(on) }
+                        onTemperatureRequested: function (kelvin) {
+                            shell.setPref("nightLightTemperature", String(Math.round(kelvin)))
+                            nightlightData.refresh()
+                        }
+                        onScheduleRequested: function (text) {
+                            shell.setPref("nightLightSchedule", text)
+                            nightlightData.refresh()
+                        }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "brightness")
                     }
                 }
 

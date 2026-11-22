@@ -73,6 +73,9 @@ var index = [
       terms: ["updates", "packages", "aur", "flatpak", "pacman", "checkupdates", "paru", "yay"] },
     { category: "bar-elements", tab: "disks", key: "bar.widget.disks", label: "Drives",
       terms: ["disks", "drives", "usb", "removable", "mount", "unmount", "eject", "udisks", "automount"] },
+    { category: "bar-elements", tab: "brightness", key: "bar.widget.brightness", label: "Brightness",
+      terms: ["brightness", "screen", "display", "sun", "night light", "temperature",
+              "schedule", "sunset", "sunrise", "hyprsunset", "ddcutil", "brightnessctl"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },

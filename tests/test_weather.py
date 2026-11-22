@@ -149,6 +149,14 @@ class ForecastTests(unittest.TestCase):
     def test_an_unknown_code_is_still_described(self) -> None:
         self.assertEqual(weather.describe(1234), "Unknown")
 
+    def test_sun_times_are_kept_when_the_answer_has_them(self) -> None:
+        answer = json.loads(FORECAST)
+        answer["daily"]["sunrise"] = [f"{DAY}T07:32" for DAY in DAYS]
+        answer["daily"]["sunset"] = [f"{DAY}T17:45" for DAY in DAYS]
+        data = weather.parse_forecast(json.dumps(answer))
+        self.assertEqual(data["sun"], {"sunrise": "07:32", "sunset": "17:45"})
+        self.assertNotIn("sun", weather.parse_forecast(FORECAST))
+
     def test_a_malformed_answer_is_refused(self) -> None:
         for body in (
             "not json",

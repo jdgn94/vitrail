@@ -84,6 +84,10 @@ QtObject {
     property alias updatesAurHelper: barFile.updatesAurHelper
     property alias disksAutomount: barFile.disksAutomount
     property alias disksIgnore: barFile.disksIgnore
+    property alias brightnessStep: barFile.brightnessStep
+    property alias nightLightEnabled: barFile.nightLightEnabled
+    property alias nightLightTemperature: barFile.nightLightTemperature
+    property alias nightLightSchedule: barFile.nightLightSchedule
     property alias pomodoroWork: barFile.pomodoroWork
     property alias pomodoroRest: barFile.pomodoroRest
     property alias pomodoroCycles: barFile.pomodoroCycles
@@ -294,6 +298,13 @@ QtObject {
         // its own, and the labels or UUIDs it leaves alone (one JSON array).
         property bool disksAutomount: false
         property string disksIgnore: ""
+        // The brightness bar element: the wheel step, the night light's switch,
+        // its colour temperature (kelvin) and its schedule (mode plus fixed
+        // hours, one JSON document).
+        property int brightnessStep: VitrailTokens.ranges.brightnessStep.value
+        property bool nightLightEnabled: false
+        property int nightLightTemperature: 4000
+        property string nightLightSchedule: '{"mode":"off","start":"20:00","end":"07:00"}'
         // The dashboard's clock widgets: the pomodoro's periods and rounds and
         // the timer's default length, in minutes.
         property int pomodoroWork: VitrailTokens.ranges.pomodoroWork.value

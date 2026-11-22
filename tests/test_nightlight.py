@@ -117,6 +117,51 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(nightlight.plan("21:00", FIXED), 4000)
 
 
+class NextChangeTests(unittest.TestCase):
+    def test_the_next_change_is_the_next_boundary(self) -> None:
+        self.assertEqual(
+            nightlight.next_change(at(12, 0), FIXED),
+            {"at": "20:00", "temperature": 4000, "active": True},
+        )
+        self.assertEqual(
+            nightlight.next_change(at(19, 59), FIXED),
+            {"at": "20:00", "temperature": 4000, "active": True},
+        )
+        self.assertEqual(
+            nightlight.next_change(at(21, 0), FIXED),
+            {"at": "07:00", "temperature": nightlight.IDENTITY_TEMPERATURE, "active": False},
+        )
+        self.assertEqual(
+            nightlight.next_change(at(7, 0), FIXED),
+            {"at": "20:00", "temperature": 4000, "active": True},
+        )
+
+    def test_a_day_window_crosses_to_the_next_day(self) -> None:
+        self.assertEqual(
+            nightlight.next_change(at(12, 0), DAY),
+            {"at": "17:00", "temperature": nightlight.IDENTITY_TEMPERATURE, "active": False},
+        )
+        self.assertEqual(
+            nightlight.next_change(at(18, 0), DAY),
+            {"at": "08:00", "temperature": 3000, "active": True},
+        )
+
+    def test_sun_mode_uses_sunset_and_sunrise(self) -> None:
+        self.assertEqual(
+            nightlight.next_change(at(12, 0), SUN, "06:30", "19:45"),
+            {"at": "19:45", "temperature": 3500, "active": True},
+        )
+        self.assertEqual(
+            nightlight.next_change(at(21, 0), SUN, "06:30", "19:45"),
+            {"at": "06:30", "temperature": nightlight.IDENTITY_TEMPERATURE, "active": False},
+        )
+
+    def test_no_next_change_for_off_or_a_broken_window(self) -> None:
+        self.assertIsNone(nightlight.next_change(at(12, 0), {"mode": "off"}))
+        self.assertIsNone(nightlight.next_change(at(12, 0), {"mode": "fixed", "start": "nope", "end": "07:00"}))
+        self.assertIsNone(nightlight.next_change(at(12, 0), {"mode": "fixed", "start": "20:00", "end": "20:00"}))
+
+
 class ClampTests(unittest.TestCase):
     def test_the_range_is_kept(self) -> None:
         self.assertEqual(nightlight.clamp_temperature(500), nightlight.MIN_TEMPERATURE)
@@ -191,7 +236,7 @@ class StateTests(unittest.TestCase):
 
     def test_the_state_has_the_shape_the_popup_reads(self) -> None:
         data = self.state(schedule=FIXED)
-        self.assertEqual(sorted(data), ["effective", "enabled", "error", "schedule", "temperature"])
+        self.assertEqual(sorted(data), ["effective", "enabled", "error", "next", "schedule", "temperature"])
         self.assertEqual(sorted(data["schedule"]), ["end", "mode", "start", "sunrise", "sunset"])
         self.assertEqual(sorted(data["effective"]), ["active", "temperature"])
         self.assertEqual(
@@ -200,6 +245,7 @@ class StateTests(unittest.TestCase):
         self.assertTrue(data["enabled"])
         self.assertEqual(data["temperature"], 4000)
         self.assertEqual(data["effective"], {"temperature": 4000, "active": True})
+        self.assertEqual(data["next"], {"at": "07:00", "temperature": 6500, "active": False})
         self.assertIsNone(data["error"])
         json.dumps(data)
 
@@ -269,6 +315,45 @@ class StateTests(unittest.TestCase):
         self.assertTrue(data["enabled"])
 
 
+class ApplyTests(unittest.TestCase):
+    def test_inside_the_window_the_filter_is_enabled(self) -> None:
+        runner = Runner(temperature="6500\n", identity="true\n")
+        result = nightlight.apply(now=at(21, 0), schedule=FIXED, run=runner)
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["active"])
+        self.assertTrue(result["changed"])
+        self.assertEqual(result["temperature"], 4000)
+        self.assertIn(["hyprsunset", "-t", "4000"], runner.calls)
+
+    def test_outside_the_window_the_filter_is_reset(self) -> None:
+        runner = Runner(temperature="4000\n", identity="false\n")
+        result = nightlight.apply(now=at(12, 0), schedule=FIXED, run=runner)
+        self.assertFalse(result["active"])
+        self.assertTrue(result["changed"])
+        self.assertIn(["hyprsunset", "-i"], runner.calls)
+
+    def test_a_daemon_already_at_the_right_temperature_is_left_alone(self) -> None:
+        runner = Runner(temperature="4000\n", identity="false\n")
+        result = nightlight.apply(now=at(21, 0), schedule=FIXED, run=runner)
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["changed"])
+        self.assertNotIn(["hyprsunset", "-t", "4000"], runner.calls)
+        self.assertNotIn(["hyprsunset", "-i"], runner.calls)
+
+    def test_schedule_off_means_on_at_the_configured_temperature(self) -> None:
+        runner = Runner(temperature="6500\n", identity="true\n")
+        schedule = {"mode": "off", "start": "20:00", "end": "07:00"}
+        result = nightlight.apply(now=at(12, 0), schedule=schedule, temperature=3500, run=runner)
+        self.assertTrue(result["active"])
+        self.assertEqual(result["temperature"], 3500)
+        self.assertIn(["hyprsunset", "-t", "3500"], runner.calls)
+
+    def test_a_failed_command_is_not_ok(self) -> None:
+        runner = Runner(temperature="", code=1)
+        result = nightlight.apply(now=at(21, 0), schedule=FIXED, run=runner)
+        self.assertFalse(result["ok"])
+
+
 class CommandTests(unittest.TestCase):
     def test_state_prints_compact_json(self) -> None:
         answer = {"enabled": False, "temperature": 4000, "schedule": {}, "effective": {}, "error": "missing"}
@@ -322,6 +407,38 @@ class CommandTests(unittest.TestCase):
             contextlib.redirect_stderr(io.StringIO()),
         ):
             self.assertEqual(nightlight.main(["set-temperature", "3500"]), 1)
+
+    def test_apply_runs_the_schedule_and_prints_its_answer(self) -> None:
+        answer = {"ok": True, "active": True, "temperature": 4000, "changed": True}
+        out = io.StringIO()
+        with mock.patch.object(nightlight, "apply", return_value=answer) as apply, contextlib.redirect_stdout(out):
+            self.assertEqual(
+                nightlight.main(
+                    [
+                        "apply",
+                        "--mode",
+                        "sun",
+                        "--start",
+                        "20:00",
+                        "--end",
+                        "07:00",
+                        "--temperature",
+                        "3500",
+                        "--sunrise",
+                        "06:30",
+                        "--sunset",
+                        "19:45",
+                    ]
+                ),
+                0,
+            )
+        apply.assert_called_once_with(
+            schedule={"mode": "sun", "start": "20:00", "end": "07:00"},
+            temperature=3500,
+            sunrise="06:30",
+            sunset="19:45",
+        )
+        self.assertEqual(json.loads(out.getvalue()), answer)
 
     def test_usage_is_an_error(self) -> None:
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as raised:

@@ -71,6 +71,23 @@ Código en `bar-disks-ui`. Con la barra corriendo y un lápiz USB desmontado (o 
 - [ ] "Montar las unidades nuevas automáticamente" está apagado por defecto. Encendido, enchufar una unidad desmontada la monta sola en un ciclo; no se vuelve a montar mientras siga conectada, y al desenchufarla y volver a enchufarla se monta otra vez.
 - [ ] Con el elemento fuera de la barra y el automontaje apagado no hay ningún proceso `python3 -m vitrail.disks` en `ps`; con el automontaje encendido sí hay uno, aunque el elemento no esté en la barra.
 
+## Brightness bar element (2026-11-22)
+
+Código en `bar-brightness-ui`. Con la barra corriendo, un portátil (panel interno) o un monitor externo por DDC/CI, y `hyprsunset` instalado:
+
+- [ ] Mostrar `brightness` desde el editor de la barra (está oculto por defecto): aparece el sol; el tooltip dice el nombre del monitor principal y debajo "N%".
+- [ ] Rueda arriba/abajo sobre el icono sube/baja el brillo del monitor principal en el paso de Ajustes → Bar elements → Brightness (5 % por defecto); no pasa de 100 % ni baja de 0 %, y una vuelta rápida no lanza una orden por muesca (el escritor del OSD las agrupa).
+- [ ] Clic abre el popup: una fila por monitor con su deslizador y su porcentaje. En el panel interno mueve el brillo real (`brightnessctl get`); en el externo, el valor DDC (`ddcutil getvcp 10 --bus N`).
+- [ ] **Monitor externo sin DDC** (o con el bus i2c sin permisos): su fila sale sin deslizador, con el motivo ("Esta pantalla no responde por DDC/CI" o el de acceso), nunca un deslizador muerto; los demás monitores siguen funcionando.
+- [ ] **Luz nocturna**: el interruptor enciende el filtro a la temperatura del deslizador; `hyprctl hyprsunset temperature` responde el valor. Bajarlo calienta la pantalla; subirlo a 6500 K la deja neutra.
+- [ ] **Horario fijo que cruza medianoche** (por ejemplo 20:00 → 07:00): con el interruptor encendido, a las 20:00 la pantalla se calienta y a las 07:00 vuelve a neutra; el popup muestra "Se enciende a las 20:00" o "Se apaga a las 07:00" según la hora. Dejar la barra corriendo y el popup cerrado: el cambio ocurre igual (una orden `vitrail.nightlight apply` por minuto como mucho).
+- [ ] **Horario de sol**: elegir "Del atardecer al amanecer" muestra el atardecer y el amanecer que trae el tiempo; el siguiente cambio coincide con esa hora. Sin datos de sol, se usan las horas fijas y el popup lo dice.
+- [ ] Apagar el interruptor devuelve la pantalla a neutra en el acto (`hyprctl hyprsunset identity get` → `true`).
+- [ ] Ajustes → Bar elements → Brightness: el paso de la rueda, el interruptor, la temperatura y el horario (modo + horas) cambian lo mismo que el popup; una hora inválida marca el campo en error y no se guarda.
+- [ ] Sin `hyprsunset`, el popup muestra una línea tranquila con el error y los monitores siguen ajustándose; no rompe la barra.
+- [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque "Brightness".
+- [ ] Con el elemento fuera de la barra y el interruptor apagado no hay ningún proceso `python3 -m vitrail.nightlight` en `ps` (el brillo de los monitores lo lee el OSD, que solo consulta `vitrail.cli brightness list` cuando hace falta); con el interruptor encendido solo corre el `apply` del horario una vez por minuto.
+
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 
 Código en `master` (`5936834..36fab6a`). La automatización ya está verde

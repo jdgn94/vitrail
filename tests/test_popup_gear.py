@@ -21,6 +21,7 @@ POPUPS = {
     "bar/volume/VolumePanel.qml": ("bar-elements", "volume"),
     "bar/updates/UpdatesPanel.qml": ("bar-elements", "updates"),
     "bar/disks/DisksPanel.qml": ("bar-elements", "disks"),
+    "bar/brightness/BrightnessPanel.qml": ("bar-elements", "brightness"),
 }
 
 
