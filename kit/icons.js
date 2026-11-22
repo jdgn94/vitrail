@@ -76,6 +76,7 @@ var names = {
     close: "close",
     close_fullscreen: "close_fullscreen",
     cloud: "cloud",
+    coffee: "coffee",
     colorize: "colorize",
     compress: "compress",
     computer: "computer",

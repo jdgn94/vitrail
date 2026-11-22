@@ -103,6 +103,12 @@ var index = [
       terms: ["pomodoro", "timer", "countdown", "focus", "work", "break", "cycles", "quick timer"] },
     { category: "bar-elements", tab: "notes", key: "bar.widget.notes", label: "Notes",
       terms: ["notes", "quick notes", "note", "write", "list", "memo"] },
+    { category: "bar-elements", tab: "dnd", key: "bar.widget.dnd", label: "Do not disturb",
+      terms: ["dnd", "do not disturb", "focus", "mute", "notifications", "moon",
+              "urgent", "allowed applications", "until tomorrow"] },
+    { category: "bar-elements", tab: "caffeine", key: "bar.widget.caffeine", label: "Caffeine",
+      terms: ["caffeine", "coffee", "awake", "idle", "inhibitor", "screen", "sleep",
+              "suspend", "keep on"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },

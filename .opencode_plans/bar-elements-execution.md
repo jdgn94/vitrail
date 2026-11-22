@@ -253,3 +253,10 @@ data and UI halves are both green.
 - 2026-11-22: steps 8 (dnd + caffeine) and 9 (clipboard + colour picker)
   dispatched in parallel from `master`; 4b (netusage) and 6 (pomodoro + notes)
   still running, so four workers are in flight.
+- 2026-11-22: step 6 (pomodoro + notes) `1b43d77` merged as `27b54fb` (1511
+  tests, 127 QML). It shares the shell's single `focusTimers` TimerEngine and
+  the one `notes.js` store; adds `kit/base/VitrailRing.qml` and `notesPopupMax`.
+  Merge lesson: the gallery has nested sections, so an anchor matched inside
+  `component Preview` and duplicated 195 lines; always render the gallery with
+  `qml6 gallery/Main.qml -- --palette '{}' --grab` before believing the smoke,
+  and rebuild from the branch that renders when in doubt.

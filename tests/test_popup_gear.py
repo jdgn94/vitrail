@@ -32,6 +32,8 @@ POPUPS = {
     "bar/downloads/DownloadsPanel.qml": ("bar-elements", "downloads"),
     "bar/pomodoro/PomodoroPanel.qml": ("bar-elements", "pomodoro"),
     "bar/notes/NotesPanel.qml": ("bar-elements", "notes"),
+    "bar/dnd/DndPanel.qml": ("bar-elements", "dnd"),
+    "bar/caffeine/CaffeinePanel.qml": ("bar-elements", "caffeine"),
 }
 
 

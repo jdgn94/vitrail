@@ -53,6 +53,13 @@ The countdown of the shell's one `TimerEngine` (bar/dashboard/TimerEngine.qml, t
 ## Notes bar element
 
 A note glyph with the number of quick notes, from the same `quickNotes` value the notification panel writes (`bar/notes/notes.js`, one store). Its `active` is "there is at least one note"; the tooltip gives the count and the newest note's first line. The popup lists the newest notes with their first line and age (`notesPopupMax`, 1–20, default 5), a click on a row opens the full notes card in the notification panel, and the field writes a new note with Enter through `notes.js` — no second store, and notes added from the bar keep the moment they were written so their age is honest. Hidden by default (bar → Editor, or Settings → Bar elements), where its block holds the list cap.
+## Do Not Disturb bar element
+
+A moon that fills while notifications are held back. A left or middle click turns it on for `dndDefaultMinutes` (30 minutes, 1 hour, or until tomorrow at 08:00) and a right click opens the popup: the switch, the three durations and the notifications layer's allowed applications (`notificationUrgentApps`, with `notificationUrgentBypass`). It keeps no state of its own: `notificationDnd` and `notificationMuteUntil` are the notifications layer's keys, so the bell, the notification panel and this element always agree, and a timed silence ends through the same check that ends the bell's one-hour silence. The tooltip gives the state with the time left and the applications that may still come through. Hidden by default (bar → Editor, or Settings → Bar elements); the duration lives in its block, and the allowed applications are edited on Bar → Notifications (the block links there).
+
+## Caffeine bar element
+
+A cup that fills while the screen is kept awake. A left or middle click turns it on for `caffeineMinutes` (15 minutes, 30 minutes, 1 hour, or until turned off) and a right click opens the popup with the switch, the four durations and the state Quickshell's `IdleInhibitor` reports. The inhibitor is a `LazyLoader` on the primary monitor's bar surface, so it exists only while the element is on: no `systemd-inhibit`, no helper process, and no state beyond the remembered duration (the on/off state is session state and is not written to `~/.config`). A timed inhibitor stops itself and the cup empties. Hidden by default (bar → Editor, or Settings → Bar elements).
 
 ## The bar and the frame
 

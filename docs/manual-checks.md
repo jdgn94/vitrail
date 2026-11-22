@@ -644,3 +644,29 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] Ajustes → Lanzador → Portapapeles: *Conservar el estilo* apagado no
       guarda HTML nuevo ni ofrece `text/html`; *Vista previa al pasar* apagado
       no abre la tarjeta.
+
+## No molestar y cafeína (2026-11-22)
+
+- [ ] Barra → Editor → *No molestar*: un clic izquierdo llena la luna y las
+      notificaciones dejan de salir como aviso; el popup (clic derecho) trae el
+      interruptor, *30 min*, *1 h* y *Hasta mañana*.
+- [ ] Elige *Hasta mañana* y mira el tooltip: dice el tiempo restante y
+      `notificationMuteUntil` es mañana a las 08:00. Con el reloj adelantado
+      (o esperando) la luna y el popup vuelven a apagado solos, sin tocar nada.
+- [ ] Barra → Notificaciones: añade `Discord` a las aplicaciones urgentes y
+      deja *Las notificaciones urgentes lo evitan* activado. Con No molestar
+      encendido, una notificación de Discord sí sale como aviso y las demás no.
+- [ ] Apaga esa excepción: la misma notificación de Discord deja de salir
+      mientras No molestar siga encendido. El popup del elemento y la página de
+      Notificaciones muestran la misma lista (el bloque enlaza allí).
+- [ ] Barra → Editor → *Cafeína*: un clic izquierdo rellena la taza; el popup
+      (clic derecho) trae el interruptor, *15 min*, *30 min*, *1 h* y *Hasta
+      apagarla*, y dice qué informa el inhibidor.
+- [ ] Con Cafeína encendida y *Hasta apagarla*, espera el tiempo de apagado de
+      pantalla (`hypridle`/`idle`): la pantalla no se apaga y la sesión no
+      suspende. Al apagar Cafeína, el apagado por inactividad vuelve.
+- [ ] Elige *15 min* y espera: el inhibidor se apaga solo, la taza se vacía y
+      el apagado por inactividad vuelve.
+- [ ] Reinicia la barra: No molestar conserva su estado (es una preferencia);
+      Cafeína empieza apagada (es estado de sesión). `~/.config/vitrail/` solo
+      gana `dndDefaultMinutes` y `caffeineMinutes`.

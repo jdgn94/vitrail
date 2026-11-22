@@ -15,9 +15,11 @@ import "../bar/resources"
 import "../bar/privacy"
 import "../bar/weather"
 import "../bar/market"
-import "../bar/downloads"
 import "../bar/pomodoro"
+import "../bar/downloads"
 import "../bar/notes"
+import "../bar/dnd"
+import "../bar/caffeine"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -2477,6 +2479,197 @@ Window {
                 VitrailText { text: "◆" },
                 VitrailText { text: "◆" }
             ]
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "DndButton · off × 30 min left × until turned off × opened × bypass off"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            DndButton {
+                dndOn: false
+            }
+
+            DndButton {
+                dndOn: true
+                muteUntil: Date.now() + 30 * 60000
+                now: Date.now()
+                apps: "Discord,Spotify"
+                bypass: true
+            }
+
+            DndButton {
+                dndOn: true
+                muteUntil: 0
+                now: Date.now()
+            }
+
+            DndButton {
+                dndOn: true
+                opened: true
+                muteUntil: 0
+                now: Date.now()
+            }
+
+            DndButton {
+                dndOn: true
+                muteUntil: 0
+                apps: "Discord"
+                bypass: false
+                now: Date.now()
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "DndPanel · off × 30 min with allowed apps × until tomorrow"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: dndOff.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: dndOff.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                DndPanel {
+                    id: dndOff
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    dndOn: false
+                    defaultMinutes: 30
+                }
+            }
+
+            VitrailSurface {
+                width: dndApps.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: dndApps.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                DndPanel {
+                    id: dndApps
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    dndOn: true
+                    muteUntil: Date.now() + 30 * 60000
+                    now: Date.now()
+                    defaultMinutes: 30
+                    apps: "Discord,Spotify"
+                    bypass: true
+                }
+            }
+
+            VitrailSurface {
+                width: dndTomorrow.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: dndTomorrow.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                DndPanel {
+                    id: dndTomorrow
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    dndOn: true
+                    muteUntil: Date.now() + 8 * 60 * 60000
+                    now: Date.now()
+                    defaultMinutes: 0
+                    bypass: false
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "CaffeineButton · off × 30 min left × until turned off × opened"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            CaffeineButton {
+                caffeineOn: false
+            }
+
+            CaffeineButton {
+                caffeineOn: true
+                until: Date.now() + 30 * 60000
+                inhibiting: true
+                now: Date.now()
+            }
+
+            CaffeineButton {
+                caffeineOn: true
+                until: 0
+                inhibiting: true
+                now: Date.now()
+            }
+
+            CaffeineButton {
+                caffeineOn: true
+                opened: true
+                until: 0
+                inhibiting: true
+                now: Date.now()
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "CaffeinePanel · off × 30 min × until turned off"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: caffeineOff.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: caffeineOff.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                CaffeinePanel {
+                    id: caffeineOff
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    caffeineOn: false
+                    defaultMinutes: 30
+                }
+            }
+
+            VitrailSurface {
+                width: caffeineTimed.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: caffeineTimed.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                CaffeinePanel {
+                    id: caffeineTimed
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    caffeineOn: true
+                    until: Date.now() + 30 * 60000
+                    inhibiting: true
+                    now: Date.now()
+                    defaultMinutes: 30
+                }
+            }
+
+            VitrailSurface {
+                width: caffeineNoEnd.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: caffeineNoEnd.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                CaffeinePanel {
+                    id: caffeineNoEnd
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    caffeineOn: true
+                    until: 0
+                    inhibiting: true
+                    defaultMinutes: 0
+                }
+            }
         }
 
         VitrailText {

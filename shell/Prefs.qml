@@ -100,6 +100,8 @@ QtObject {
     property alias marketCurrency: barFile.marketCurrency
     property alias marketInterval: barFile.marketInterval
     property alias downloadsRecent: barFile.downloadsRecent
+    property alias dndDefaultMinutes: barFile.dndDefaultMinutes
+    property alias caffeineMinutes: barFile.caffeineMinutes
     property alias nightLightEnabled: barFile.nightLightEnabled
     property alias nightLightTemperature: barFile.nightLightTemperature
     property alias nightLightSchedule: barFile.nightLightSchedule
@@ -353,6 +355,12 @@ QtObject {
         property int marketInterval: VitrailTokens.ranges.marketInterval.value
         // The downloads element: how many finished downloads its popup keeps.
         property int downloadsRecent: VitrailTokens.ranges.downloadsRecent.value
+        // The Do Not Disturb element: the duration its click starts and its
+        // popup marks (30, 60, or 0 for until tomorrow at 08:00).
+        property int dndDefaultMinutes: 60
+        // The caffeine element: the duration its click starts and its popup
+        // marks (minutes; 0 is until turned off).
+        property int caffeineMinutes: 30
         property bool nightLightEnabled: false
         property int nightLightTemperature: 4000
         property string nightLightSchedule: '{"mode":"off","start":"20:00","end":"07:00"}'
