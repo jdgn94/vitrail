@@ -55,13 +55,37 @@ function counts(entries) {
     return out
 }
 
+// The values a copy must never show in a bar tooltip or a row's one-line label:
+// a private key, the credentials of a URL, a bearer token, a JWT, and the value
+// after a key named like a secret. The history and the bar's clipboard element
+// share this redaction; the hover card still shows the copy itself.
+var PRIVATE_KEY = /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g
+var URL_CREDENTIALS = /\b([a-z][a-z0-9+.-]*:\/\/)[^\s\/@]+@/gi
+var BEARER = /\bBearer\s+\S+/gi
+var JWT = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g
+var SECRET = /\b(?:password|passwd|pass|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|authorization|auth|credential|cookie|session)\b\s*[:=]\s*\S+/gi
+
+function redact(text) {
+    var value = String(text || "")
+    if (value === "")
+        return ""
+    value = value.replace(PRIVATE_KEY, "••••")
+    value = value.replace(URL_CREDENTIALS, "$1••••@")
+    value = value.replace(BEARER, "Bearer ••••")
+    value = value.replace(JWT, "••••")
+    return value.replace(SECRET, function (match) {
+        var at = match.search(/[:=]/)
+        return match.slice(0, at + 1) + " ••••"
+    })
+}
+
 // One line for the row: the text with its whitespace collapsed, or the image
-// and its size.
+// and its size. A secret keeps its key and loses its value.
 function label(entry) {
     var image = imageOf(entry ? entry.preview : "")
     if (image)
         return image.format.toUpperCase() + " · " + image.width + "×" + image.height
-    return String((entry && entry.preview) || "").replace(/\s+/g, " ").trim()
+    return redact(String((entry && entry.preview) || "").replace(/\s+/g, " ").trim())
 }
 
 // Where the card goes: at the pointer, pulled inside the screen by `margin`.

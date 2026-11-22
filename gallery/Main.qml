@@ -18,6 +18,8 @@ import "../bar/weather"
 import "../bar/market"
 import "../bar/pomodoro"
 import "../bar/downloads"
+import "../bar/colorpicker"
+import "../bar/clipboardbar"
 import "../bar/notes"
 import "../bar/dnd"
 import "../bar/caffeine"
@@ -2743,6 +2745,132 @@ Window {
                     until: 0
                     inhibiting: true
                     defaultMinutes: 0
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "ClipboardBarButton · copies × one × none"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            ClipboardBarButton {
+                strings: demoStrings
+                entries: demoClip.entries
+                limit: 5
+            }
+
+            ClipboardBarButton {
+                strings: demoStrings
+                entries: [{ id: "1", preview: "una sola copia" }]
+                limit: 5
+            }
+
+            ClipboardBarButton {
+                strings: demoStrings
+                entries: []
+                limit: 5
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "ClipboardBarPanel · five rich previews × empty"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: clipFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: clipFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ClipboardBarPanel {
+                    id: clipFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    strings: demoStrings
+                    entries: demoClip.entries
+                    previews: demoClip.previews
+                    thumbs: ({})
+                    limit: 5
+                }
+            }
+
+            VitrailSurface {
+                width: clipEmpty.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: clipEmpty.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ClipboardBarPanel {
+                    id: clipEmpty
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    strings: demoStrings
+                    entries: []
+                    limit: 5
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "ColorPickerButton · two recent colours × none"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            ColorPickerButton {
+                strings: demoStrings
+                colors: ["#A8C7FA", "#F2B8B5"]
+            }
+
+            ColorPickerButton {
+                strings: demoStrings
+                colors: []
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "ColorPickerPanel · a dozen swatches × empty"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: colorsFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: colorsFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ColorPickerPanel {
+                    id: colorsFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    strings: demoStrings
+                    colors: demoColors
+                    limit: 12
+                }
+            }
+
+            VitrailSurface {
+                width: colorsEmpty.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: colorsEmpty.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ColorPickerPanel {
+                    id: colorsEmpty
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    strings: demoStrings
+                    colors: []
+                    limit: 12
                 }
             }
         }

@@ -684,3 +684,18 @@ Código en `master` (`5936834..36fab6a`). La automatización ya está verde
 - [ ] Reinicia la barra: No molestar conserva su estado (es una preferencia);
       Cafeína empieza apagada (es estado de sesión). `~/.config/vitrail/` solo
       gana `dndDefaultMinutes` y `caffeineMinutes`.
+## Portapapeles y selector de color en la barra (2026-11-22)
+
+Código en `bar-clipboard-ui`. Con la barra corriendo:
+
+- [ ] Mostrar `clipboardbar` desde el editor de la barra (oculto por defecto): con copias en el historial aparece el glifo del portapapeles; el tooltip dice el número de copias y debajo la más antigua de las que muestra el popup. Sin ninguna copia el tooltip dice «Sin copias».
+- [ ] Copiar una imagen (`wl-copy < ~/Pictures/algo.png`) y una ruta de archivo (`printf '%s' "$PWD/archivo.txt" | wl-copy`): el tooltip y el popup se actualizan solos en unos segundos, sin abrir el historial; la imagen sale con su miniatura y la ruta con el texto de la ruta.
+- [ ] Clic abre el popup: las cinco copias más recientes (o el número de «Copias mostradas»), cada una con la vista previa rica del historial (texto con el estilo de origen, imagen o ruta); un clic en una entrada la vuelve a copiar con el mismo camino que `Super+V` y cierra el popup.
+- [ ] El botón **Abrir historial** cierra el popup y abre el panel completo, el mismo que `Super+V` (sin un segundo panel).
+- [ ] Copiar `password=secreto` y `https://usuario:clave@ejemplo.com`: el tooltip y las filas muestran la clave con su valor tapado (nunca la contraseña ni la clave); la vista previa rica de la entrada sigue mostrando el contenido al abrir el historial.
+- [ ] Ajustes → Bar elements → Clipboard: bajar «Copias mostradas» a 1 deja una sola fila en el popup; subirlo a 10 muestra diez. El engranaje del popup abre este bloque.
+- [ ] Mostrar `colorpicker` y pulsar el cuentagotas: `hyprpicker` toma el color bajo el puntero, se copia en el formato de la pestaña de colores y aparece el primero en el popup del selector. Hacerlo en cada monitor: el color tomado es el de la pantalla bajo el puntero y el popup se abre en la barra de ese monitor.
+- [ ] Clic derecho abre el popup: una cuadrícula de muestras con su hex; un clic en una copia ese hex y la deja en el portapapeles. El botón **Abrir paleta** cierra el popup y abre la pestaña de colores, el mismo panel que `Super+P`.
+- [ ] Ajustes → Bar elements → Colour picker: «Colores mostrados» cambia entre 4 y 24 (12 por defecto) y el popup muestra ese número; el engranaje abre este bloque.
+- [ ] Un color no es una copia: tras elegir varios colores, el popup de `clipboardbar` y el historial (`Super+V`) no muestran esos colores como copias. Copiar una entrada del historial no cambia la lista de colores recientes del selector.
+- [ ] Con el elemento fuera de la barra no queda ningún proceso `cliphist list` periódico del elemento (el historial solo se lee al abrirlo) ni `hyprpicker` en `ps`.

@@ -78,6 +78,9 @@ import "privacy"
 import "weather"
 import "market"
 import "downloads"
+import "clipboardbar"
+import "colorpicker"
+import "colorpicker/colorpicker.js" as ColorPicker
 import "pomodoro"
 import "dnd"
 import "caffeine"
@@ -786,6 +789,15 @@ ShellRoot {
         shell.clipboardColor = list[0]
         shell.clipboardRecent = list
         shell.setPref("clipboardColors", JSON.stringify(list))
+    }
+
+    // The colour picker's own list: the palette's ten are too few for its
+    // preference (4–24), so it keeps up to 24 beside them in bar.ini.
+    function rememberPickerColors(colors) {
+        var list = ColorPicker.stored(shell.prefs.colorpickerColors)
+        for (var index = colors.length - 1; index >= 0; index--)
+            list = ColorPicker.add(list, colors[index], ColorPicker.MAX)
+        shell.setPref("colorpickerColors", JSON.stringify(list))
     }
 
     // An emoji goes into the clipboard and into the field that had the focus:
@@ -2711,6 +2723,17 @@ ShellRoot {
         }
     }
 
+    // The clipboard bar element reads that same list. Re-read it while the
+    // element is in a bar, so its button follows copies made anywhere without
+    // the history ever opening; the popup asks again when it opens.
+    Timer {
+        interval: 8000
+        repeat: true
+        running: shell.barShows("clipboardbar")
+        triggeredOnStart: true
+        onTriggered: if (!clipList.busy) clipList.run(Commands.clipList(), "")
+    }
+
     AsyncRun {
         id: cursorRun
 
@@ -3964,6 +3987,8 @@ ShellRoot {
                     case "notes": return notesWidget
                     case "dnd": return dndWidget
                     case "caffeine": return caffeineWidget
+                    case "clipboardbar": return clipboardBarWidget
+                    case "colorpicker": return colorPickerWidget
                     default: return null
                     }
                 }
@@ -4670,6 +4695,54 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: clipboardBarWidget
+
+                    ClipboardBarButton {
+                        id: clipboardBarButton
+
+                        strings: shell.strings
+                        entries: shell.clipboardEntries
+                        limit: shell.prefNumber("clipboardbarRecent",
+                                                VitrailTokens.ranges.clipboardbarRecent.value)
+                        opened: shell.popupOpen && shell.popupKind === "clipboardbar"
+                                && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("clipboardbar", clipboardBarButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(clipboardBarButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("clipboardbar", clipboardBarButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
+                    id: colorPickerWidget
+
+                    ColorPickerButton {
+                        id: colorPickerButton
+
+                        strings: shell.strings
+                        colors: ColorPicker.recent(shell.prefs.colorpickerColors,
+                                                   shell.prefNumber("colorpickerRecent",
+                                                                    VitrailTokens.ranges.colorpickerRecent.value))
+                        opened: shell.popupOpen && shell.popupKind === "colorpicker"
+                                && shell.popupScreen === monitor.modelData
+                        // The click picks from the screen; the popup is the
+                        // right click, so the picker never has the bar over it.
+                        onClicked: {
+                            shell.closePopup()
+                            shell.pickColor()
+                        }
+                        onRightClicked: shell.togglePopup("colorpicker", colorPickerButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(colorPickerButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("colorpicker", colorPickerButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -4746,6 +4819,8 @@ ShellRoot {
                     case "notes": return monitor.loadedItem("notes")
                     case "dnd": return monitor.loadedItem("dnd")
                     case "caffeine": return monitor.loadedItem("caffeine")
+                    case "clipboardbar": return monitor.loadedItem("clipboardbar")
+                    case "colorpicker": return monitor.loadedItem("colorpicker")
                     default: return null
                     }
                 }
@@ -5820,6 +5895,21 @@ ShellRoot {
                             }
 
                             Popout {
+                                name: "clipboardbar"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: clipboardBarComponent
+                            }
+
+                            Popout {
+                                name: "colorpicker"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: colorPickerComponent
+                            }
+
+
+                            Popout {
                                 name: "pomodoro"
                                 current: popouts.name
                                 handover: popouts.handover
@@ -6415,6 +6505,52 @@ ShellRoot {
                             shell.openNotifications(monitor.modelData)
                         }
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "notes")
+                    }
+                }
+
+
+
+                Component {
+                    id: clipboardBarComponent
+
+                    ClipboardBarPanel {
+                        strings: shell.strings
+                        entries: shell.clipboardEntries
+                        previews: shell.clipboardPreviews
+                        thumbs: shell.clipboardThumbs
+                        limit: shell.prefNumber("clipboardbarRecent",
+                                                VitrailTokens.ranges.clipboardbarRecent.value)
+                        onCopyRequested: function (id) {
+                            shell.pickClip(id, "default")
+                            shell.closePopup()
+                        }
+                        onHistoryRequested: {
+                            shell.closePopup()
+                            shell.openClipboard("history")
+                        }
+                        onRefreshRequested: if (!clipList.busy) clipList.run(Commands.clipList(), "")
+                        onPreviewRequested: function (id) { shell.requestPreview(id) }
+                        onThumbRequested: function (id) { shell.requestThumb(id) }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "clipboardbar")
+                    }
+                }
+
+                Component {
+                    id: colorPickerComponent
+
+                    ColorPickerPanel {
+                        strings: shell.strings
+                        colors: ColorPicker.recent(shell.prefs.colorpickerColors,
+                                                   shell.prefNumber("colorpickerRecent",
+                                                                    VitrailTokens.ranges.colorpickerRecent.value))
+                        limit: shell.prefNumber("colorpickerRecent",
+                                                VitrailTokens.ranges.colorpickerRecent.value)
+                        onCopyRequested: function (hex) { shell.copyColor(hex) }
+                        onPaletteRequested: {
+                            shell.closePopup()
+                            shell.openClipboard("color")
+                        }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "colorpicker")
                     }
                 }
 

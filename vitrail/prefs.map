@@ -141,6 +141,12 @@ bar downloadsRecent
 # tomorrow) and the caffeine element's (minutes; 0 for until turned off).
 bar dndDefaultMinutes
 bar caffeineMinutes
+# The clipboard bar element: how many of the newest copies its popup lists.
+bar clipboardbarRecent
+# The colour picker element: the recent colours it keeps (one JSON array, up to
+# 24) and how many of them its popup lists.
+bar colorpickerColors
+bar colorpickerRecent
 # The dashboard clock widgets: the pomodoro's periods and rounds, and the
 # timer's default length, in minutes.
 bar pomodoroWork

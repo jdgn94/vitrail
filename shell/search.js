@@ -112,6 +112,11 @@ var index = [
     { category: "bar-elements", tab: "caffeine", key: "bar.widget.caffeine", label: "Caffeine",
       terms: ["caffeine", "coffee", "awake", "idle", "inhibitor", "screen", "sleep",
               "suspend", "keep on"] },
+    { category: "bar-elements", tab: "clipboardbar", key: "bar.widget.clipboardbar", label: "Clipboard",
+      terms: ["clipboard", "copies", "history", "paste", "cliphist", "recent"] },
+    { category: "bar-elements", tab: "colorpicker", key: "bar.widget.colorpicker", label: "Colour picker",
+      terms: ["colour", "color", "picker", "eyedropper", "hyprpicker", "palette", "hex",
+              "recent", "swatch"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },

@@ -49,6 +49,8 @@ var WIDGETS = [
     { id: "notes", surfaces: ["bar"], group: "end", labelKey: "bar.widget.notes", icon: "edit_note", sizes: [], styles: [] },
     { id: "dnd", surfaces: ["bar"], group: "end", labelKey: "bar.widget.dnd", icon: "bedtime", sizes: [], styles: [] },
     { id: "caffeine", surfaces: ["bar"], group: "end", labelKey: "bar.widget.caffeine", icon: "coffee", sizes: [], styles: [] },
+    { id: "clipboardbar", surfaces: ["bar"], group: "end", labelKey: "bar.widget.clipboardbar", icon: "content_paste", sizes: [], styles: [] },
+    { id: "colorpicker", surfaces: ["bar"], group: "end", labelKey: "bar.widget.colorpicker", icon: "colorize", sizes: [], styles: [] },
     { id: "keyboard", surfaces: ["bar"], group: "end", labelKey: "bar.widget.keyboard", icon: "keyboard", sizes: [], styles: [] },
     { id: "power", surfaces: ["bar"], group: "end", fixed: true, labelKey: "bar.widget.power", icon: "power_settings_new", sizes: [], styles: [] },
     // A structural element a document may place as many times as it likes

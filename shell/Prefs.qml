@@ -104,6 +104,9 @@ QtObject {
     property alias downloadsRecent: barFile.downloadsRecent
     property alias dndDefaultMinutes: barFile.dndDefaultMinutes
     property alias caffeineMinutes: barFile.caffeineMinutes
+    property alias clipboardbarRecent: barFile.clipboardbarRecent
+    property alias colorpickerColors: barFile.colorpickerColors
+    property alias colorpickerRecent: barFile.colorpickerRecent
     property alias nightLightEnabled: barFile.nightLightEnabled
     property alias nightLightTemperature: barFile.nightLightTemperature
     property alias nightLightSchedule: barFile.nightLightSchedule
@@ -367,6 +370,12 @@ QtObject {
         // The caffeine element: the duration its click starts and its popup
         // marks (minutes; 0 is until turned off).
         property int caffeineMinutes: 30
+        // The clipboard element: how many of the newest copies its popup lists.
+        property int clipboardbarRecent: VitrailTokens.ranges.clipboardbarRecent.value
+        // The colour picker: the recent colours it keeps (up to 24) and how
+        // many of them its popup lists.
+        property string colorpickerColors: ""
+        property int colorpickerRecent: VitrailTokens.ranges.colorpickerRecent.value
         property bool nightLightEnabled: false
         property int nightLightTemperature: 4000
         property string nightLightSchedule: '{"mode":"off","start":"20:00","end":"07:00"}'

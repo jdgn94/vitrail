@@ -79,8 +79,9 @@ function format(color, kind) {
     return "#" + hex2(r) + hex2(g) + hex2(b)
 }
 
-// The stored preference as a list: a JSON array of hex values, cleaned.
-function recentFrom(text) {
+// The stored preference as a list: a JSON array of hex values, cleaned and
+// cut to `max` (the palette keeps ten; the picker keeps its own twenty-four).
+function recentFrom(text, max) {
     var value = String(text || "").trim()
     if (value === "")
         return []
@@ -88,7 +89,7 @@ function recentFrom(text) {
         var list = JSON.parse(value)
         if (!Array.isArray(list))
             return []
-        return list.filter(isColor).slice(0, RECENT)
+        return list.filter(isColor).slice(0, max || RECENT)
     } catch (error) {
         return []
     }

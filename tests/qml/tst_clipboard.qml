@@ -74,6 +74,14 @@ TestCase {
         compare(Clipboard.label({ preview: "[[ binary data 12 KiB jpeg 800x600 ]]" }), "JPEG · 800×600")
     }
 
+    function test_a_label_keeps_a_secret_value_out_of_sight() {
+        verify(Clipboard.label({ preview: "password=hunter2" }).indexOf("hunter2") < 0)
+        verify(Clipboard.label({ preview: "token: abc123" }).indexOf("abc123") < 0)
+        verify(Clipboard.label({ preview: "Bearer abc.def" }).indexOf("abc.def") < 0)
+        verify(Clipboard.label({ preview: "https://user:pw@example.com" }).indexOf("pw") < 0)
+        compare(Clipboard.label({ preview: "hola" }), "hola")
+    }
+
     function test_the_card_sits_at_the_pointer() {
         var place = Clipboard.clamp(100, 200, 380, 300, 2560, 1440, 12)
         compare(place.x, 100)

@@ -91,3 +91,42 @@ The emoji groups are a `VitrailSegmented` with ten icon-only segments: the row
 scrolls sideways in the panel's width (wheel, drag) and the chosen group is
 revealed. The selection pill must not scroll past the first group when the tab
 opens — the control starts from width 0, so `reveal()` has to wait for a width.
+
+## The bar's clipboard element (`bar/clipboardbar/`)
+
+- **Button:** the history's count and the newest copy's redacted first line in
+  `tooltip`, the oldest copy the popup shows in `tooltipDetail`. `active` is
+  "there is at least one copy"; the element is hidden by default and starts in
+  "only while active" when the user enables it.
+- **Cut:** `clipboardbar.js` takes the history's entries (`cliphist list`, the
+  same list `Super+V` reads), de-duplicates them like the history, drops
+  colour copies (a colour is not a copy) and keeps `clipboardbarRecent`
+  (1–10, default 5).
+- **Popup rows:** the same `ClipboardPreview` as the hover card with
+  `compact: true`: no surface of its own, `rowWidth`/`rowHeight`/`rowLines`
+  from `VitrailTokens.clipboard.preview`, and a fixed row height so the list
+  has a size before its delegates exist. A click copies through
+  `shell.pickClip` (the history's `cliphist decode | wl-copy`), never a second
+  copy path.
+- **Full history:** the footer button calls `shell.openClipboard("history")`,
+  exactly what `vitrail-bar ipc call clipboard toggle` runs. Do not build a
+  second list.
+- **Redaction:** `Clipboard.redact` in `bar/clipboard/clipboard.js` (also used
+  by the history's own labels) keeps a secret's key and drops its value:
+  private keys, URL credentials, bearer tokens, JWTs and `key=value` for
+  password/token/secret-style keys.
+
+## The colour picker element (`bar/colorpicker/`)
+
+- **Button:** an eyedropper. A click runs the palette's own picker
+  (`shell.pickColor` → `hyprpicker -f hex`) and copies the result the palette's
+  way (`shell.useColor`); the popup is a right click, so the pick never grabs
+  the bar's own card.
+- **Popup:** the recent colours as a `Flow` of swatch cells (a swatch and its
+  hex); a click copies one, the footer button calls
+  `shell.openClipboard("color")`, which is the `Super+P`/`clipboard colors`
+  path.
+- **Store:** `colorpickerColors` in `bar.ini` (up to 24) beside the palette's
+  `clipboardColors` in `misc.ini` (ten). `shell.useColor` writes both. The
+  palette's ten were too few for `colorpickerRecent` (4–24, default 12), so
+  the two bounds stay separate.
