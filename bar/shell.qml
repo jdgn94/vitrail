@@ -2125,12 +2125,11 @@ ShellRoot {
     }
 
     // A unit change must not wait for the next poll: the snapshot's units and
-    // its cache key both change with the preference.
-    Connections {
-        target: shell.prefs
-
-        function onWeatherUnitsChanged() { weatherData.refresh() }
-    }
+    // its cache key both change with the preference. `prefs` is a plain JS
+    // object (Prefs.merge), so it cannot be a Connections target; this copies
+    // the one key and reacts to it.
+    readonly property string weatherUnits: String(shell.prefs.weatherUnits || "")
+    onWeatherUnitsChanged: weatherData.refresh()
 
     // The market bar element's data (vitrail/market.py): one keyless CoinGecko
     // request per poll for every chosen symbol, cached for five minutes by the
