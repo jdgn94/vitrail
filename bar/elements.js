@@ -10,8 +10,9 @@
 // whole message, so it starts in "only while active". The disks element joins
 // it: with nothing plugged in there is no drive to name. The peripherals
 // battery joins them: no watched device reporting a percentage means no number
-// for the bar. An explicit preference (even "[]") always wins.
-var DEFAULT_ACTIVE_ONLY = ["updates", "disks", "peripherals"]
+// for the bar. The containers element joins them too: without docker or podman
+// there is no engine to count. An explicit preference (even "[]") always wins.
+var DEFAULT_ACTIVE_ONLY = ["updates", "disks", "containers", "peripherals"]
 
 // The ids that show only while active, from the preference's text.
 function parseActiveOnly(text) {

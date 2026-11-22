@@ -73,6 +73,8 @@ var index = [
       terms: ["updates", "packages", "aur", "flatpak", "pacman", "checkupdates", "paru", "yay"] },
     { category: "bar-elements", tab: "disks", key: "bar.widget.disks", label: "Drives",
       terms: ["disks", "drives", "usb", "removable", "mount", "unmount", "eject", "udisks", "automount"] },
+    { category: "bar-elements", tab: "containers", key: "bar.widget.containers", label: "Containers",
+      terms: ["containers", "docker", "podman", "engine", "start", "stop", "logs", "pin"] },
     { category: "bar-elements", tab: "peripherals", key: "bar.widget.peripherals", label: "Peripherals battery",
       terms: ["battery", "peripherals", "mouse", "keyboard", "headset", "headphones", "gamepad",
               "upower", "low battery", "warning"] },

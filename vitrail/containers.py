@@ -153,10 +153,18 @@ def logs(name: str, ident: str) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
-    if args == ["state"]:
-        print(json.dumps(state(), separators=(",", ":")))
+    option: str | None = None
+    if args and args[0] == "state":
+        rest = args[1:]
+        if rest:
+            if len(rest) == 2 and rest[0] == "--engine" and rest[1] in ENGINES + ("auto",):
+                option = None if rest[1] == "auto" else rest[1]
+            else:
+                print("usage: containers state [--engine auto|docker|podman]", file=sys.stderr)
+                return 2
+        print(json.dumps(state(option=option), separators=(",", ":")))
         return 0
-    print("usage: containers state", file=sys.stderr)
+    print("usage: containers state [--engine auto|docker|podman]", file=sys.stderr)
     return 2
 
 

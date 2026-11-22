@@ -7,6 +7,7 @@ import "../bar"
 import "../bar/volume"
 import "../bar/updates"
 import "../bar/disks"
+import "../bar/containers"
 import "../bar/brightness"
 import "../bar/battery"
 import "../bar/kit" as BarKit
@@ -1283,6 +1284,104 @@ Window {
                     x: VitrailTokens.gap("md")
                     y: VitrailTokens.gap("md")
                     snapshot: ({ error: "unreadable" })
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "ContainersButton · running × stopped × no engine"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            ContainersButton {
+                showMode: "always"
+                snapshot: ({
+                    engine: "docker", running: 2, error: null,
+                    containers: [
+                        { id: "a1", name: "web", image: "nginx:latest", state: "running",
+                          status: "Up 2 hours (healthy)", health: "healthy",
+                          ports: "0.0.0.0:8080->80/tcp" },
+                        { id: "b2", name: "db", image: "postgres:16", state: "running",
+                          status: "Up 3 hours", health: "", ports: "" }
+                    ]
+                })
+            }
+
+            ContainersButton {
+                showMode: "always"
+                snapshot: ({
+                    engine: "podman", running: 0, error: null,
+                    containers: [
+                        { id: "p1", name: "worker", image: "example/worker:1", state: "exited",
+                          status: "Exited (0) 1 hour ago", health: "", ports: "" }
+                    ]
+                })
+            }
+
+            ContainersButton {
+                showMode: "always"
+                snapshot: ({ engine: null, running: 0, containers: [], error: null })
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "ContainersPanel · running and stopped × no engine × an engine error"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: containersFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: containersFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ContainersPanel {
+                    id: containersFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    pinned: '["db"]'
+                    snapshot: ({
+                        engine: "docker", running: 1, error: null,
+                        containers: [
+                            { id: "a1", name: "web", image: "nginx:latest", state: "running",
+                              status: "Up 2 hours (healthy)", health: "healthy",
+                              ports: "0.0.0.0:8080->80/tcp, :::8080->80/tcp" },
+                            { id: "b2", name: "db", image: "docker.io/library/postgres:16",
+                              state: "exited", status: "Exited (0) 1 hour ago", health: "",
+                              ports: "" }
+                        ]
+                    })
+                }
+            }
+
+            VitrailSurface {
+                width: containersNoEngine.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: containersNoEngine.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ContainersPanel {
+                    id: containersNoEngine
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ engine: null, running: 0, containers: [], error: null })
+                }
+            }
+
+            VitrailSurface {
+                width: containersBroken.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: containersBroken.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ContainersPanel {
+                    id: containersBroken
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ engine: "docker", running: 0, containers: [], error: "docker ps failed" })
                 }
             }
         }

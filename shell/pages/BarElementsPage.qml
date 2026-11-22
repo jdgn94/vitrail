@@ -4,6 +4,7 @@ import "../../kit"
 import "../../kit/base"
 import "../../bar/updates/updates.js" as Updates
 import "../../bar/disks/disks.js" as Disks
+import "../../bar/containers/containers.js" as Containers
 import "../../bar/brightness/brightness.js" as Brightness
 import "../../bar/battery/battery.js" as Battery
 
@@ -313,6 +314,117 @@ Item {
                         onClicked: {
                             page.prefs.disksIgnore = Disks.withIgnore(page.prefs.disksIgnore, ignoreField.text, true)
                             ignoreField.text = ""
+                        }
+                    }
+                }
+            }
+
+            BarElementSection {
+                id: containersSection
+
+                Layout.fillWidth: true
+                elementId: "containers"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSelect {
+                    objectName: "containersEngine"
+
+                    Layout.fillWidth: true
+                    label: containersSection.t("bar.containers.engine")
+                    options: [
+                        { key: "auto", label: containersSection.t("bar.containers.engine.auto") },
+                        { key: "docker", label: "docker" },
+                        { key: "podman", label: "podman" }
+                    ]
+                    current: page.prefs.containersEngine || "auto"
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.containersEngine = key }
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: containersSection.t("bar.containers.engine.help")
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    text: containersSection.t("bar.containers.pins")
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: containersSection.t("bar.containers.pins.help")
+                }
+
+                Repeater {
+                    model: Containers.parsePinned(page.prefs.containersPinned)
+
+                    delegate: VitrailSettingRow {
+                        id: pinned
+
+                        required property string modelData
+
+                        objectName: "containersPinnedEntry"
+
+                        Layout.fillWidth: true
+                        icon: "push_pin"
+                        label: pinned.modelData
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailButton {
+                            objectName: "containersPinnedRemove"
+
+                            variant: "text"
+                            tone: "error"
+                            icon: "delete"
+                            onClicked: page.prefs.containersPinned =
+                                Containers.withPinned(page.prefs.containersPinned, pinned.modelData, false)
+                        }
+                    }
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    visible: Containers.parsePinned(page.prefs.containersPinned).length === 0
+                    variant: "label"
+                    text: containersSection.t("bar.containers.pins.empty")
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: VitrailTokens.gap("sm")
+
+                    VitrailField {
+                        id: pinField
+
+                        Layout.fillWidth: true
+                        label: containersSection.t("bar.containers.pins.add")
+                    }
+
+                    VitrailButton {
+                        objectName: "containersPinnedAdd"
+
+                        Layout.alignment: Qt.AlignBottom
+                        variant: "tonal"
+                        icon: "add"
+                        text: containersSection.t("action.add")
+                        enabled: pinField.text.trim() !== ""
+                        onClicked: {
+                            page.prefs.containersPinned =
+                                Containers.withPinned(page.prefs.containersPinned, pinField.text, true)
+                            pinField.text = ""
                         }
                     }
                 }

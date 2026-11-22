@@ -84,6 +84,8 @@ QtObject {
     property alias updatesAurHelper: barFile.updatesAurHelper
     property alias disksAutomount: barFile.disksAutomount
     property alias disksIgnore: barFile.disksIgnore
+    property alias containersEngine: barFile.containersEngine
+    property alias containersPinned: barFile.containersPinned
     property alias peripheralsHide: barFile.peripheralsHide
     property alias peripheralsLow: barFile.peripheralsLow
     property alias brightnessStep: barFile.brightnessStep
@@ -273,10 +275,10 @@ QtObject {
         property bool barBatteryChip: true
         property bool barBluetoothChip: true
         // The elements that show only while they have something to say: a JSON
-        // array of ids (bar/elements.js). The updates, disks and peripherals
-        // elements start here; an explicit value (even "[]") wins over the
-        // built-in default.
-        property string barActiveOnly: "[\"updates\",\"disks\",\"peripherals\"]"
+        // array of ids (bar/elements.js). The updates, disks, containers and
+        // peripherals elements start here; an explicit value (even "[]") wins
+        // over the built-in default.
+        property string barActiveOnly: "[\"updates\",\"disks\",\"containers\",\"peripherals\"]"
         // The keyboard layout chip, with its switcher and on-screen keyboard.
         property bool barKeyboard: true
         // The OSD: whether keys show it, how long a key's slider stays, how far
@@ -301,6 +303,11 @@ QtObject {
         // its own, and the labels or UUIDs it leaves alone (one JSON array).
         property bool disksAutomount: false
         property string disksIgnore: ""
+        // The containers bar element: which engine to use ("auto" follows
+        // docker, then podman) and the containers pinned first in its popup
+        // (one JSON array of names).
+        property string containersEngine: "auto"
+        property string containersPinned: "[]"
         // The peripherals battery element: the kinds it leaves out ("mouse",
         // "keyboard", "headphones", "gamepad" as one JSON array) and the
         // percentage below which the icon warns.

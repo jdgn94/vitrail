@@ -199,7 +199,7 @@ TestCase {
     }
 
     function test_an_unwritten_preference_starts_the_updates_element_active_only() {
-        compare(Elements.activeOnly(undefined), ["updates", "disks", "peripherals"])
+        compare(Elements.activeOnly(undefined), ["updates", "disks", "containers", "peripherals"])
         compare(Elements.activeOnly('["sample"]'), ["sample"])
         compare(Elements.activeOnly("[]"), [])
     }

@@ -5,8 +5,11 @@ No docker, no podman, no daemon: every engine answer is injected.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import unittest
+from unittest import mock
 
 from vitrail import containers
 
@@ -132,6 +135,33 @@ class StateTests(unittest.TestCase):
         found = json.loads(json.dumps(containers.state(both()), separators=(",", ":")))
         self.assertEqual(set(found), {"engine", "running", "containers", "error"})
         self.assertEqual(set(found["containers"][0]), {"id", "name", "image", "state", "status", "health", "ports"})
+
+
+class MainTests(unittest.TestCase):
+    def run_main(self, args: list[str]) -> tuple[int, str, mock.MagicMock]:
+        output = io.StringIO()
+        answer = {"engine": "podman", "running": 0, "containers": [], "error": None}
+        with mock.patch("vitrail.containers.state", return_value=answer) as state, contextlib.redirect_stdout(output):
+            code = containers.main(args)
+        return code, output.getvalue(), state
+
+    def test_state_takes_the_engine_option(self) -> None:
+        code, out, state = self.run_main(["state", "--engine", "podman"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out)["engine"], "podman")
+        state.assert_called_once_with(option="podman")
+
+    def test_auto_asks_for_no_engine(self) -> None:
+        code, _, state = self.run_main(["state", "--engine", "auto"])
+        self.assertEqual(code, 0)
+        state.assert_called_once_with(option=None)
+
+    def test_an_unknown_engine_is_usage(self) -> None:
+        for args in (["state", "--engine", "lxc"], ["state", "--engine"], ["state", "extra"]):
+            with self.subTest(args=args):
+                code, out, state = self.run_main(args)
+                self.assertEqual((code, out), (2, ""))
+                state.assert_not_called()
 
 
 class ActionTests(unittest.TestCase):
