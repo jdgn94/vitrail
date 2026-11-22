@@ -28,6 +28,8 @@ var ranges = {
     // The brightness bar element: the percent one wheel notch moves a display.
     brightnessStep: { min: 1, max: 20, step: 1, value: 5 },
     healthDisk: { min: 1, max: 50, step: 1, value: 5 },
+    // The resources bar element: seconds between two readings.
+    resourcesInterval: { min: 1, max: 10, step: 1, value: 2 },
     // The dock's magnification: how many neighbouring icons the planet falloff
     // reaches, and the largest scale it gives the icon under the pointer.
     dockMagnifyRange: { min: 1, max: 5, step: 1, value: 2 },
@@ -91,6 +93,17 @@ font.iconVariantOf = function (key) {
 // The family for a stored variant key.
 font.iconFamilyOf = function (key) {
     return font.iconVariants[font.iconVariantOf(key)]
+}
+
+// Meters and graphs (VitrailMeter, VitrailSparkline): the share of the tone a
+// graph's area keeps under its line, the line's width and the track's share of
+// the foreground. Their colours are palette roles, never literals.
+var graph = {
+    fill: 0.22,
+    line: 2,
+    track: 0.18,
+    // Gridlines of a graph's quarter marks.
+    grid: 0.12
 }
 
 // The container icon style: the glyph sits inside a circular badge that keeps

@@ -89,6 +89,9 @@ QtObject {
     property alias peripheralsHide: barFile.peripheralsHide
     property alias peripheralsLow: barFile.peripheralsLow
     property alias brightnessStep: barFile.brightnessStep
+    property alias resourcesInterval: barFile.resourcesInterval
+    property alias resourcesBar: barFile.resourcesBar
+    property alias resourcesUnits: barFile.resourcesUnits
     property alias healthDiskThreshold: barFile.healthDiskThreshold
     property alias healthChecks: barFile.healthChecks
     property alias privacyWatch: barFile.privacyWatch
@@ -323,6 +326,11 @@ QtObject {
         // its colour temperature (kelvin) and its schedule (mode plus fixed
         // hours, one JSON document).
         property int brightnessStep: VitrailTokens.ranges.brightnessStep.value
+        // The resources bar element: seconds between two readings, what the bar
+        // shows (both, cpu, ram or numbers) and the units (auto, binary, decimal).
+        property int resourcesInterval: VitrailTokens.ranges.resourcesInterval.value
+        property string resourcesBar: "both"
+        property string resourcesUnits: "auto"
         // The system health bar element: the free space (percent) under which a
         // disk is a problem, and the checks that are on (one JSON array of
         // services, disk, hyprland, doctor).

@@ -1,6 +1,8 @@
 """What the machine is doing: CPU, memory, temperature, network and disk.
 
     python3 -m vitrail.resources state
+    python3 -m vitrail.resources state --tick [--top]
+    python3 -m vitrail.resources kill PID [--force]
 
 Everything comes from the kernel's own files (`/proc/stat`, `/proc/meminfo`,
 `/sys/class/thermal/thermal_zone*/temp`, `/proc/net/dev`) and `shutil`, so there
@@ -8,13 +10,23 @@ is no dependency and no program to run. CPU is a percentage between two
 readings: the first one has no delta (`cpu: null`) and keeps its counters under
 `cpuTicks`, which the caller passes back as `previous`. Network counters are
 the totals since boot, loopback aside, in bytes.
+
+`state --tick` is the shell's shared sampler: one cheap read per tick, no pause.
+What the next tick needs (the CPU ticks, the network counters, each process's
+ticks) is kept in a small cache file, so the CPU percentage and the network
+rate are real from the second tick on. `--top` adds the busiest processes,
+read from `/proc/<pid>/stat` (never `ps`). `kill` sends one signal to one
+process, never to pid 1, this program or the shell that started it.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import signal
 import sys
+import tempfile
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -25,6 +37,11 @@ SAMPLE_SECONDS = 0.2
 # Loopback traffic says nothing about the machine's network.
 EXCLUDED_INTERFACES = {"lo"}
 DiskUsage = Callable[[str], tuple[int, int, int]]
+TOP_LIMIT = 5
+# A cache older than this says nothing about "now": the rate would be an average
+# over a gap, not a speed.
+CACHE_MAX_AGE = 60.0
+Sender = Callable[[int, int], None]
 
 
 def _read(path: Path) -> str:
@@ -118,12 +135,212 @@ def temperature(folder: Path = THERMAL) -> float | None:
 
 
 def parse_disk(usage: DiskUsage = shutil.disk_usage, path: str = "/") -> dict:
-    """Used, total and percentage of a filesystem; zeros when it cannot be read."""
+    """Used, total, free and percentage of a filesystem; zeros when it cannot be read."""
     try:
-        total, used, _free = usage(path)
+        total, used, free = usage(path)
     except OSError:
-        return {"used": 0, "total": 0, "percent": 0.0}
-    return {"used": used, "total": total, "percent": round(100 * used / total, 1) if total else 0.0}
+        return {"used": 0, "total": 0, "free": 0, "percent": 0.0}
+    return {
+        "used": used,
+        "total": total,
+        "free": free,
+        "percent": round(100 * used / total, 1) if total else 0.0,
+    }
+
+
+def network_rate(before: dict | None, after: dict | None, seconds: float) -> dict | None:
+    """Bytes per second received and sent between two counter readings; None
+    without a usable pair (the first tick, a gap, a counter that went back)."""
+    if not before or not after or seconds <= 0:
+        return None
+    rx = after["rx"] - before["rx"]
+    tx = after["tx"] - before["tx"]
+    if rx < 0 or tx < 0:
+        return None
+    return {"rx": round(rx / seconds), "tx": round(tx / seconds)}
+
+
+def cpu_count(text: str) -> int:
+    """How many `cpuN` lines /proc/stat has (at least 1)."""
+    count = sum(1 for line in text.splitlines() if line.startswith("cpu") and line[3:4].isdigit())
+    return max(count, 1)
+
+
+def parse_process(pid: int, text: str, page_size: int) -> dict | None:
+    """One `/proc/<pid>/stat` line: name, busy ticks and resident bytes.
+
+    The name sits in parentheses and may hold spaces and parentheses itself,
+    so the fields after it are counted from the last closing one.
+    """
+    start = text.find("(")
+    end = text.rfind(")")
+    if start < 0 or end < start:
+        return None
+    rest = text[end + 1 :].split()
+    # rest[0] is the state (field 3); utime and stime are fields 14 and 15, rss 24.
+    if len(rest) < 22:
+        return None
+    try:
+        ticks = int(rest[11]) + int(rest[12])
+        rss = int(rest[21]) * page_size
+    except ValueError:
+        return None
+    return {"pid": pid, "name": text[start + 1 : end], "ticks": ticks, "rss": max(rss, 0)}
+
+
+def read_processes(proc: Path = PROC, page_size: int | None = None) -> dict[int, dict]:
+    """Every readable process, by pid. One that exits mid-read is skipped."""
+    size = page_size or os.sysconf("SC_PAGE_SIZE")
+    found: dict[int, dict] = {}
+    try:
+        entries = list(proc.iterdir())
+    except OSError:
+        return found
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        parsed = parse_process(int(entry.name), _read(entry / "stat"), size)
+        if parsed:
+            found[parsed["pid"]] = parsed
+    return found
+
+
+def top(
+    current: dict[int, dict],
+    previous: dict | None,
+    elapsed: float,
+    cpus: int,
+    memory_total: int,
+    *,
+    limit: int = TOP_LIMIT,
+    skip: tuple[int, ...] = (),
+) -> list[dict]:
+    """The busiest processes. `previous` maps a pid (as text) to its ticks at
+    the last tick and `elapsed` is how many ticks all CPUs gained since, so
+    `cpu` is a share of one core (it can pass 100) and None without a delta.
+    Sorted by CPU, then by memory."""
+    rows = []
+    per_core = elapsed / cpus if cpus and elapsed > 0 else 0
+    for pid, item in current.items():
+        if pid in skip:
+            continue
+        before = previous.get(str(pid)) if isinstance(previous, dict) else None
+        cpu = None
+        if per_core > 0 and before is not None and item["ticks"] >= before:
+            cpu = round(100 * (item["ticks"] - before) / per_core, 1)
+        rows.append(
+            {
+                "pid": pid,
+                "name": item["name"],
+                "cpu": cpu,
+                "memory": item["rss"],
+                "percent": round(100 * item["rss"] / memory_total, 1) if memory_total else 0.0,
+            }
+        )
+    rows.sort(key=lambda row: (row["cpu"] or 0, row["memory"]), reverse=True)
+    return rows[:limit]
+
+
+def kill_plan(pid: object, force: bool = False, *, own: tuple[int, ...] | None = None) -> dict:
+    """What a click may do to `pid`: `{"signal": n}`, or `{"error": code}`.
+
+    SIGTERM by default; SIGKILL only when `force` is asked for. Pid 1 and
+    anything below it, this program and the shell that started it are refused.
+    """
+    protected = (os.getpid(), os.getppid()) if own is None else own
+    if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 1:
+        return {"error": "refused"}
+    if pid in protected:
+        return {"error": "refused"}
+    return {"signal": int(signal.SIGKILL if force else signal.SIGTERM)}
+
+
+def kill(pid: object, force: bool = False, *, sender: Sender = os.kill, own: tuple[int, ...] | None = None) -> dict:
+    """Send the signal `kill_plan` allows. `{"ok": true}` or `{"error": code}`
+    (`refused`, `gone`, `denied`, `failed`); never raises."""
+    plan = kill_plan(pid, force, own=own)
+    if "error" in plan:
+        return plan
+    try:
+        sender(pid, plan["signal"])
+    except ProcessLookupError:
+        return {"error": "gone"}
+    except PermissionError:
+        return {"error": "denied"}
+    except OSError:
+        return {"error": "failed"}
+    return {"ok": True}
+
+
+def cache_path() -> Path:
+    base = os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()
+    return Path(base) / f"vitrail-resources-{os.getuid()}.json"
+
+
+def _load_cache(path: Path, now: float) -> dict | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    at = data.get("at") if isinstance(data, dict) else None
+    if not isinstance(at, (int, float)) or isinstance(at, bool) or not 0 <= now - at <= CACHE_MAX_AGE:
+        return None
+    return data
+
+
+def _store_cache(path: Path, data: dict) -> None:
+    try:
+        temporary = path.with_name(path.name + ".tmp")
+        temporary.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
+        temporary.replace(path)
+    except OSError:
+        pass
+
+
+def tick(
+    with_top: bool = False,
+    *,
+    cache: Path | None = None,
+    clock: Callable[[], float] = time.time,
+    proc: Path = PROC,
+    thermal: Path = THERMAL,
+    disk: str = "/",
+    usage: DiskUsage = shutil.disk_usage,
+    page_size: int | None = None,
+    skip: tuple[int, ...] | None = None,
+) -> dict:
+    """One shared-sampler reading against the last one in the cache.
+
+    `network` is the counters, `rate` bytes per second (None on the first
+    tick), `top` the busiest processes when asked (cpu None until a tick has
+    seen them twice). Never raises: a missing source is None or zeros.
+    """
+    path = cache or cache_path()
+    now = clock()
+    previous = _load_cache(path, now)
+    seconds = now - previous["at"] if previous else 0.0
+    data = state(previous, proc=proc, thermal=thermal, disk=disk, usage=usage)
+    ticks = data.pop("cpuTicks")
+    data["at"] = round(now, 3)
+    data["rate"] = network_rate(previous.get("network") if previous else None, data["network"], seconds)
+    saved = {"at": now, "cpuTicks": ticks, "network": data["network"]}
+    if with_top:
+        current = read_processes(proc, page_size)
+        before = previous.get("procs") if previous else None
+        elapsed = (
+            ticks["total"] - previous["cpuTicks"]["total"] if previous and previous.get("cpuTicks") and ticks else 0
+        )
+        data["top"] = top(
+            current,
+            before,
+            elapsed,
+            cpu_count(_read(proc / "stat")),
+            data["memory"]["total"],
+            skip=(os.getpid(),) if skip is None else skip,
+        )
+        saved["procs"] = {str(pid): item["ticks"] for pid, item in current.items()}
+    _store_cache(path, saved)
+    return data
 
 
 def state(
@@ -161,7 +378,14 @@ def main(argv: list[str] | None = None) -> int:
     if args == ["state"]:
         print(json.dumps(sample(), separators=(",", ":")))
         return 0
-    print("usage: resources state", file=sys.stderr)
+    if args[:2] == ["state", "--tick"] and args[2:] in ([], ["--top"]):
+        print(json.dumps(tick(args[2:] == ["--top"]), separators=(",", ":")))
+        return 0
+    if len(args) in (2, 3) and args[0] == "kill" and args[2:] in ([], ["--force"]) and args[1].isdigit():
+        result = kill(int(args[1]), args[2:] == ["--force"])
+        print(json.dumps(result, separators=(",", ":")))
+        return 0 if result.get("ok") else 1
+    print("usage: resources state [--tick [--top]] | resources kill PID [--force]", file=sys.stderr)
     return 2
 
 
