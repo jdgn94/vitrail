@@ -809,6 +809,9 @@ Window {
                                         palette: app.theme
                                         prefs: app.store
                                         strings: app.strings
+                                        onOpenCategory: function (category, tab) {
+                                            app.jumpTo({ category: category, tab: tab })
+                                        }
                                     }
                                 }
 

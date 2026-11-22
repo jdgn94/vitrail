@@ -132,6 +132,10 @@ bar marketCurrency
 bar marketInterval
 # The downloads bar element: how many finished downloads its popup keeps.
 bar downloadsRecent
+# The Do Not Disturb element's remembered duration (30, 60, or 0 for until
+# tomorrow) and the caffeine element's (minutes; 0 for until turned off).
+bar dndDefaultMinutes
+bar caffeineMinutes
 # The dashboard clock widgets: the pomodoro's periods and rounds, and the
 # timer's default length, in minutes.
 bar pomodoroWork

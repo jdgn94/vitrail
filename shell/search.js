@@ -99,6 +99,12 @@ var index = [
     { category: "bar-elements", tab: "downloads", key: "bar.widget.downloads", label: "Downloads",
       terms: ["downloads", "download", "progress", "speed", "cancel", "recent",
               "open folder", "open file", "part", "crdownload"] },
+    { category: "bar-elements", tab: "dnd", key: "bar.widget.dnd", label: "Do not disturb",
+      terms: ["dnd", "do not disturb", "focus", "mute", "notifications", "moon",
+              "urgent", "allowed applications", "until tomorrow"] },
+    { category: "bar-elements", tab: "caffeine", key: "bar.widget.caffeine", label: "Caffeine",
+      terms: ["caffeine", "coffee", "awake", "idle", "inhibitor", "screen", "sleep",
+              "suspend", "keep on"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },

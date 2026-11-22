@@ -77,6 +77,10 @@ import "privacy"
 import "weather"
 import "market"
 import "downloads"
+import "dnd"
+import "caffeine"
+import "dnd/dnd.js" as Dnd
+import "caffeine/caffeine.js" as Caffeine
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -139,6 +143,15 @@ ShellRoot {
     // The monitor the panel was opened on. It stays there whatever the focus
     // does, until it is opened on another one.
     property var notificationsScreen: null
+    // Caffeine: Quickshell's idle inhibitor, only while the element asked for
+    // it. It is session state; `caffeineMinutes` is the only preference.
+    property bool caffeineOn: false
+    property double caffeineUntil: 0
+    property bool caffeineInhibiting: false
+    readonly property int dndDefaultMinutes: Dnd.minutesOf(
+        shell.prefNumber("dndDefaultMinutes", Dnd.DEFAULT_MINUTES))
+    readonly property int caffeineDuration: Caffeine.minutesOf(
+        shell.prefNumber("caffeineMinutes", Caffeine.DEFAULT_MINUTES))
 
     // The in-place desktop editor (right-click → Edit): every monitor shows it,
     // while one global flag drives the bar, the notification panel and the
@@ -462,6 +475,73 @@ ShellRoot {
             shell.dnd = false
             shell.setPref("notificationDnd", "false")
         }
+    }
+
+    // --- Do Not Disturb: the element writes the notifications layer's keys ---
+    // `minutes` 0 means until tomorrow at 08:00, the moment a snoozed
+    // notification comes back. The expiry timer above ends a timed silence.
+    function setDnd(on, minutes) {
+        shell.dnd = on
+        shell.setPref("notificationDnd", on ? "true" : "false")
+        shell.setPref("notificationMuteUntil",
+                      on ? String(Dnd.untilFor(minutes, Date.now())) : "0")
+    }
+
+    // A left or middle click on the moon and the popup's switch.
+    function toggleDnd() {
+        if (Dnd.state(shell.dnd, shell.prefs.notificationMuteUntil, Date.now()).on)
+            shell.setDnd(false)
+        else
+            shell.setDnd(true, shell.dndDefaultMinutes)
+    }
+
+    function setDndDuration(minutes) {
+        var value = Dnd.minutesOf(minutes)
+        shell.setPref("dndDefaultMinutes", String(value))
+        shell.setDnd(true, value)
+    }
+
+    function setDndApps(text) {
+        shell.prefs.notificationUrgentApps = String(text || "")
+        shell.setPref("notificationUrgentApps", String(text || ""))
+    }
+
+    function setDndBypass(on) {
+        shell.prefs.notificationUrgentBypass = on === true
+        shell.setPref("notificationUrgentBypass", on ? "true" : "false")
+    }
+
+    // --- caffeine: the IdleInhibitor on the primary bar surface --------------
+    function startCaffeine(minutes) {
+        shell.caffeineUntil = Caffeine.untilFor(minutes, Date.now())
+        shell.caffeineOn = true
+    }
+
+    function stopCaffeine() {
+        shell.caffeineOn = false
+        shell.caffeineUntil = 0
+    }
+
+    // A left or middle click on the cup and the popup's switch.
+    function toggleCaffeine() {
+        if (Caffeine.state(shell.caffeineOn, shell.caffeineUntil, Date.now()).on)
+            shell.stopCaffeine()
+        else
+            shell.startCaffeine(shell.caffeineDuration)
+    }
+
+    function setCaffeineDuration(minutes) {
+        var value = Caffeine.minutesOf(minutes)
+        shell.setPref("caffeineMinutes", String(value))
+        shell.startCaffeine(value)
+    }
+
+    function expireCaffeine() {
+        if (!shell.caffeineOn)
+            return
+        if (Caffeine.state(shell.caffeineOn, shell.caffeineUntil, Date.now()).on)
+            return
+        shell.stopCaffeine()
     }
 
     // The muted list and the stats share the panel's second slot.
@@ -3219,6 +3299,15 @@ ShellRoot {
         onTriggered: shell.expireNotificationMute()
     }
 
+    // A timed inhibitor ends by itself; 0 is until turned off.
+    Timer {
+        interval: 30000
+        running: shell.caffeineOn && shell.caffeineUntil > 0
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: shell.expireCaffeine()
+    }
+
     // --- system requests ------------------------------------------------------
     // Vitrail answers the system itself: it is the polkit agent (admin
     // passwords), and scripts/hyprland-dialog.sh hands it Hyprland's dialogs
@@ -3868,6 +3957,8 @@ ShellRoot {
                     case "weather": return weatherWidget
                     case "market": return marketWidget
                     case "downloads": return downloadsWidget
+                    case "dnd": return dndWidget
+                    case "caffeine": return caffeineWidget
                     default: return null
                     }
                 }
@@ -4464,6 +4555,58 @@ ShellRoot {
                     }
                 }
 
+                // Do Not Disturb: a left or middle click toggles it; a right
+                // click opens the popup with the durations and allowed apps.
+                Component {
+                    id: dndWidget
+
+                    DndButton {
+                        id: dndButton
+
+                        strings: shell.strings
+                        dndOn: shell.dnd
+                        muteUntil: Number(shell.prefs.notificationMuteUntil || 0)
+                        apps: shell.prefs.notificationUrgentApps || ""
+                        bypass: shell.prefs.notificationUrgentBypass === undefined
+                                || Notifications.enabled(shell.prefs.notificationUrgentBypass)
+                        now: shell.now.getTime()
+                        showMode: Elements.showMode(shell.activeOnlyIds, "dnd")
+                        opened: shell.popupOpen && shell.popupKind === "dnd" && shell.popupScreen === monitor.modelData
+                        onToggleRequested: shell.toggleDnd()
+                        onMenuRequested: shell.togglePopup("dnd", dndButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(dndButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("dnd", dndButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                // Caffeine: a left or middle click toggles it; a right click
+                // opens the popup with the durations and the inhibitor's state.
+                Component {
+                    id: caffeineWidget
+
+                    CaffeineButton {
+                        id: caffeineButton
+
+                        strings: shell.strings
+                        caffeineOn: shell.caffeineOn
+                        until: shell.caffeineUntil
+                        inhibiting: shell.caffeineInhibiting
+                        now: shell.now.getTime()
+                        showMode: Elements.showMode(shell.activeOnlyIds, "caffeine")
+                        opened: shell.popupOpen && shell.popupKind === "caffeine" && shell.popupScreen === monitor.modelData
+                        onToggleRequested: shell.toggleCaffeine()
+                        onMenuRequested: shell.togglePopup("caffeine", caffeineButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(caffeineButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("caffeine", caffeineButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -4535,6 +4678,8 @@ ShellRoot {
                     case "weather": return monitor.loadedItem("weather")
                     case "market": return monitor.loadedItem("market")
                     case "downloads": return monitor.loadedItem("downloads")
+                    case "dnd": return monitor.loadedItem("dnd")
+                    case "caffeine": return monitor.loadedItem("caffeine")
                     default: return null
                     }
                 }
@@ -4667,6 +4812,8 @@ ShellRoot {
                 // The frame, the bar and the panel: a transparent full-screen
                 // layer that only takes input on the bar and the open panel.
                 PanelWindow {
+                    id: barWindow
+
                     screen: monitor.modelData
                     anchors {
                         top: true
@@ -4702,6 +4849,30 @@ ShellRoot {
                         enabled: shell.popupOpen
                         acceptedButtons: Qt.AllButtons
                         onClicked: shell.closePopup()
+                    }
+
+                    // Caffeine: one inhibitor on the primary bar surface, and
+                    // it exists only while the element is on (Quickshell's
+                    // LazyLoader creates and drops the IdleInhibitor).
+                    LazyLoader {
+                        id: caffeineInhibitor
+
+                        active: shell.caffeineOn && monitor.modelData === shell.primaryScreen
+                        Component {
+                            IdleInhibitor {
+                                window: barWindow
+                                enabled: true
+                            }
+                        }
+                    }
+
+                    Binding {
+                        target: shell
+                        property: "caffeineInhibiting"
+                        value: caffeineInhibitor.item !== null && caffeineInhibitor.item !== undefined
+                               && caffeineInhibitor.item.enabled
+                        when: monitor.modelData === shell.primaryScreen
+                        restoreMode: Binding.RestoreNone
                     }
 
                     VitrailBar {
@@ -5566,6 +5737,20 @@ ShellRoot {
                                 sourceComponent: downloadsComponent
                             }
 
+                            Popout {
+                                name: "dnd"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: dndComponent
+                            }
+
+                            Popout {
+                                name: "caffeine"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: caffeineComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -6056,6 +6241,42 @@ ShellRoot {
                         onOpenFileRequested: function (path) { shell.openAttachment(path) }
                         onCancelRequested: function (path) { shell.cancelDownload(path) }
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "downloads")
+                    }
+                }
+
+                Component {
+                    id: dndComponent
+
+                    DndPanel {
+                        strings: shell.strings
+                        dndOn: shell.dnd
+                        muteUntil: Number(shell.prefs.notificationMuteUntil || 0)
+                        defaultMinutes: shell.dndDefaultMinutes
+                        apps: shell.prefs.notificationUrgentApps || ""
+                        bypass: shell.prefs.notificationUrgentBypass === undefined
+                                || Notifications.enabled(shell.prefs.notificationUrgentBypass)
+                        now: shell.now.getTime()
+                        onToggleRequested: shell.toggleDnd()
+                        onDurationRequested: function (minutes) { shell.setDndDuration(minutes) }
+                        onAppsEdited: function (text) { shell.setDndApps(text) }
+                        onBypassToggled: function (value) { shell.setDndBypass(value) }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "dnd")
+                    }
+                }
+
+                Component {
+                    id: caffeineComponent
+
+                    CaffeinePanel {
+                        strings: shell.strings
+                        caffeineOn: shell.caffeineOn
+                        until: shell.caffeineUntil
+                        inhibiting: shell.caffeineInhibiting
+                        defaultMinutes: shell.caffeineDuration
+                        now: shell.now.getTime()
+                        onToggleRequested: shell.toggleCaffeine()
+                        onDurationRequested: function (minutes) { shell.setCaffeineDuration(minutes) }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "caffeine")
                     }
                 }
 

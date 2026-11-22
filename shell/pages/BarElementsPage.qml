@@ -12,6 +12,8 @@ import "../../bar/health/health.js" as Health
 import "../../bar/privacy/privacy.js" as Privacy
 import "../../bar/weather/weather.js" as Weather
 import "../../bar/market/market.js" as Market
+import "../../bar/dnd/dnd.js" as Dnd
+import "../../bar/caffeine/caffeine.js" as Caffeine
 
 // Bar elements category: one block per new-style bar element, each with the
 // options every element shares (when it shows) and its own. A bar popup's gear
@@ -25,6 +27,10 @@ Item {
     property var strings
     // The element whose block to bring into view (a gear or a search result).
     property string tab: ""
+
+    // A block may send the user to the page that owns a shared setting (the
+    // Do Not Disturb apps live on Bar → Notifications).
+    signal openCategory(string category, string tab)
 
     function reveal() {
         for (var i = 0; i < column.children.length; i++) {
@@ -1108,6 +1114,97 @@ Item {
                     opacity: 0.7
                     wrapMode: Text.WordWrap
                     text: downloadsSection.t("bar.downloads.recentOption.help")
+                }
+            }
+
+            BarElementSection {
+                id: dndSection
+
+                Layout.fillWidth: true
+                elementId: "dnd"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSelect {
+                    objectName: "dndDefaultMinutes"
+
+                    Layout.fillWidth: true
+                    label: dndSection.t("bar.dnd.default")
+                    options: [
+                        { key: "30", label: dndSection.t("bar.dnd.30m") },
+                        { key: "60", label: dndSection.t("bar.dnd.1h") },
+                        { key: "0", label: dndSection.t("bar.dnd.tomorrow") }
+                    ]
+                    current: String(Dnd.minutesOf(page.prefs.dndDefaultMinutes))
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.dndDefaultMinutes = Number(key) }
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: dndSection.t("bar.dnd.default.help")
+                }
+
+                VitrailSettingRow {
+                    Layout.fillWidth: true
+                    icon: "notifications_active"
+                    label: dndSection.t("bar.dnd.settings.apps")
+                    description: dndSection.t("bar.dnd.settings.apps.help")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailButton {
+                        objectName: "dndAppsSettings"
+
+                        variant: "tonal"
+                        tone: "secondary"
+                        size: "sm"
+                        icon: "notifications"
+                        text: dndSection.t("bar.dnd.settings.open")
+                        onClicked: page.openCategory("bar", "notifications")
+                    }
+                }
+            }
+
+            BarElementSection {
+                id: caffeineSection
+
+                Layout.fillWidth: true
+                elementId: "caffeine"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSelect {
+                    objectName: "caffeineMinutes"
+
+                    Layout.fillWidth: true
+                    label: caffeineSection.t("bar.caffeine.default")
+                    options: [
+                        { key: "15", label: caffeineSection.t("bar.caffeine.15m") },
+                        { key: "30", label: caffeineSection.t("bar.caffeine.30m") },
+                        { key: "60", label: caffeineSection.t("bar.caffeine.1h") },
+                        { key: "0", label: caffeineSection.t("bar.caffeine.untilOff") }
+                    ]
+                    current: String(Caffeine.minutesOf(page.prefs.caffeineMinutes))
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.caffeineMinutes = Number(key) }
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: caffeineSection.t("bar.caffeine.default.help")
                 }
             }
 
