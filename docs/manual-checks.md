@@ -174,6 +174,22 @@ ffplay -f v4l2 /dev/video0        # o: pw-v4l2 ffplay /dev/video0
 - [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque «Privacy».
 - [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.privacy` ni `pw-dump` en `ps`.
 
+## Market bar element (2026-11-22)
+
+Código en `bar-market-ui`. Con la barra corriendo y conexión a internet:
+
+- [ ] Mostrar `market` desde el editor de la barra (oculto por defecto): aparece el precio de Bitcoin en euros y un icono de tendencia; el tooltip dice el símbolo y su cambio del día («BTC +1.37%») y debajo el resto de símbolos elegidos.
+- [ ] Clic abre el popup: una fila por símbolo con su nombre, su precio, la flecha y el porcentaje del día coloreados por el signo y su minigráfica; el botón de refrescar lleva al lado la edad («actualizado ahora mismo» o «actualizado hace 3 min»).
+- [ ] La línea pequeña «Precios de CoinGecko por internet» está al pie del popup. Ningún texto dice comprar ni vender.
+- [ ] Cambiar la moneda a USD en el popup (o en Ajustes → Bar elements → Markets): los precios cambian a dólares y la edad vuelve a «ahora mismo»; volver a EUR los devuelve.
+- [ ] En Ajustes → Bar elements → Markets, añadir `ethereum` a la lista: aparece una segunda fila en el popup, con otra minigráfica, y el tooltip del botón la nombra debajo del primer símbolo.
+- [ ] Escribir un id que no existe (por ejemplo `no-existe`) y añadirlo: su fila dice «Sin precio» (no desaparece en silencio); si es el único símbolo, el popup muestra una línea tranquila y el botón queda sin precio.
+- [ ] Con caché caliente, desconectar la red y esperar a que caduque (5 min): el botón conserva el último precio, el popup dice «en caché · actualizado hace X min» y muestra una línea tranquila con el error; el elemento sigue visible.
+- [ ] Sin red y sin caché (`rm ~/.cache/vitrail/market.json`), con «Solo cuando está activo» el botón desaparece; con «Siempre» queda el icono y el tooltip dice que no hay datos de mercado.
+- [ ] El intervalo mínimo es 5 minutos (el del caché del módulo); el valor por defecto es 15. Abrir el popup o pulsar refrescar dentro de esos 5 minutos no lanza una petición nueva a CoinGecko.
+- [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque «Markets».
+- [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.market` en `ps`.
+
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 
 Código en `master` (`5936834..36fab6a`). La automatización ya está verde

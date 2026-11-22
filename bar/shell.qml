@@ -22,6 +22,7 @@ import "containers/containers.js" as Containers
 import "brightness/brightness.js" as Brightness
 import "health/health.js" as Health
 import "privacy/privacy.js" as Privacy
+import "market/market.js" as Market
 import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "kit/wallpaper.js" as WallpaperTransition
@@ -71,6 +72,7 @@ import "battery"
 import "brightness"
 import "health"
 import "privacy"
+import "market"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -784,6 +786,8 @@ ShellRoot {
             healthData.refresh()
         if (kind === "privacy")
             privacyData.refresh()
+        if (kind === "market" && Market.symbolsOf(shell.prefs.marketSymbols).length > 0)
+            marketData.refresh()
         if (kind === "disks") {
             // A failure belongs to the action that caused it, not to a later
             // visit: start the popup with a clean line.
@@ -1763,6 +1767,19 @@ ShellRoot {
         interval: 2000
         arguments: Privacy.watchArguments(shell.prefs.privacyWatch)
         active: shell.barShows("privacy")
+    }
+
+    // The market bar element's data (vitrail/market.py): one keyless CoinGecko
+    // request per poll for every chosen symbol, cached for five minutes by the
+    // module. The preference's floor is that cache, so a poll never makes the
+    // service pay for an answer it already gave.
+    BarSnapshot {
+        id: marketData
+
+        module: "market"
+        arguments: Market.commandArguments(shell.prefs.marketSymbols, shell.prefs.marketCurrency)
+        interval: Market.intervalMs(shell.prefs.marketInterval)
+        active: shell.barShows("market") && Market.symbolsOf(shell.prefs.marketSymbols).length > 0
     }
 
     // Cut off: the module re-reads the graph and destroys that one stream only
@@ -3774,6 +3791,7 @@ ShellRoot {
                     case "brightness": return brightnessWidget
                     case "health": return healthWidget
                     case "privacy": return privacyWidget
+                    case "market": return marketWidget
                     default: return null
                     }
                 }
@@ -4289,6 +4307,27 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: marketWidget
+
+                    MarketButton {
+                        id: marketButton
+
+                        strings: shell.strings
+                        snapshot: marketData.snapshot
+                        symbols: String(shell.prefs.marketSymbols)
+                        currency: String(shell.prefs.marketCurrency)
+                        showMode: Elements.showMode(shell.activeOnlyIds, "market")
+                        opened: shell.popupOpen && shell.popupKind === "market" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("market", marketButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(marketButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("market", marketButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -4356,6 +4395,7 @@ ShellRoot {
                     case "brightness": return monitor.loadedItem("brightness")
                     case "health": return monitor.loadedItem("health")
                     case "privacy": return monitor.loadedItem("privacy")
+                    case "market": return monitor.loadedItem("market")
                     default: return null
                     }
                 }
@@ -5358,6 +5398,13 @@ ShellRoot {
                                 sourceComponent: privacyComponent
                             }
 
+                            Popout {
+                                name: "market"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: marketComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -5788,6 +5835,20 @@ ShellRoot {
                         busy: privacyCutter.running
                         onCutRequested: function (kind, node) { shell.privacyCut(kind, node) }
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "privacy")
+                    }
+                }
+
+                Component {
+                    id: marketComponent
+
+                    MarketPanel {
+                        strings: shell.strings
+                        snapshot: marketData.snapshot
+                        symbols: String(shell.prefs.marketSymbols)
+                        currency: String(shell.prefs.marketCurrency)
+                        onCurrencyRequested: function (code) { shell.setPref("marketCurrency", code) }
+                        onRefreshRequested: marketData.refresh()
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "market")
                     }
                 }
 

@@ -12,6 +12,7 @@ import "../bar/brightness"
 import "../bar/battery"
 import "../bar/health"
 import "../bar/privacy"
+import "../bar/market"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -1702,6 +1703,120 @@ Window {
                     x: VitrailTokens.gap("md")
                     y: VitrailTokens.gap("md")
                     snapshot: ({ uses: [], anyUse: false, watching: {}, error: "pw-dump is not available or did not answer" })
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "MarketButton · up × down × warm cache × no data"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            MarketButton {
+                symbols: '["bitcoin","ethereum"]'
+                currency: "eur"
+                snapshot: ({
+                    currency: "eur", fetchedAt: 1763730000, cached: false,
+                    prices: [
+                        { id: "bitcoin", symbol: "btc", name: "Bitcoin", price: 78420.1,
+                          change24h: 1060.2, change24hPercent: 1.37,
+                          sparkline: [77400.0, 77800.0, 78100.0, 78420.1] },
+                        { id: "ethereum", symbol: "eth", name: "Ethereum", price: 2589.3,
+                          change24h: -39.1, change24hPercent: -1.49,
+                          sparkline: [2660.0, 2620.0, 2600.0, 2589.3] }
+                    ]
+                })
+            }
+
+            MarketButton {
+                symbols: '["ethereum"]'
+                currency: "usd"
+                snapshot: ({
+                    currency: "usd", fetchedAt: 1763730000, cached: false,
+                    prices: [
+                        { id: "ethereum", symbol: "eth", name: "Ethereum", price: 3012.25,
+                          change24h: -45.5, change24hPercent: -1.49,
+                          sparkline: [3100.0, 3050.0, 3012.25] }
+                    ]
+                })
+            }
+
+            MarketButton {
+                symbols: '["bitcoin"]'
+                currency: "eur"
+                snapshot: ({
+                    currency: "eur", fetchedAt: 1763730000, cached: true, error: "offline",
+                    prices: [
+                        { id: "bitcoin", symbol: "btc", name: "Bitcoin", price: 78420.1,
+                          change24h: 1060.2, change24hPercent: 1.37,
+                          sparkline: [77400.0, 77800.0, 78100.0, 78420.1] }
+                    ]
+                })
+            }
+
+            MarketButton {
+                symbols: '["bitcoin"]'
+                snapshot: ({ error: "unreadable" })
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "MarketPanel · one up and one down × a cached answer with an error"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: marketFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: marketFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                MarketPanel {
+                    id: marketFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    now: (1763730000 + 180) * 1000
+                    symbols: '["bitcoin","ethereum"]'
+                    currency: "eur"
+                    snapshot: ({
+                        currency: "eur", fetchedAt: 1763730000, cached: false,
+                        prices: [
+                            { id: "bitcoin", symbol: "btc", name: "Bitcoin", price: 78420.1,
+                              change24h: 1060.2, change24hPercent: 1.37,
+                              sparkline: [77400.0, 77800.0, 78100.0, 78420.1] },
+                            { id: "ethereum", symbol: "eth", name: "Ethereum", price: 2589.3,
+                              change24h: -39.1, change24hPercent: -1.49,
+                              sparkline: [2660.0, 2620.0, 2600.0, 2589.3] }
+                        ]
+                    })
+                }
+            }
+
+            VitrailSurface {
+                width: marketCached.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: marketCached.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                MarketPanel {
+                    id: marketCached
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    now: (1763730000 + 180) * 1000
+                    symbols: '["bitcoin"]'
+                    currency: "eur"
+                    snapshot: ({
+                        currency: "eur", fetchedAt: 1763730000, cached: true, error: "offline",
+                        prices: [
+                            { id: "bitcoin", symbol: "btc", name: "Bitcoin", price: 78420.1,
+                              change24h: 1060.2, change24hPercent: 1.37,
+                              sparkline: [77400.0, 77800.0, 78100.0, 78420.1] }
+                        ]
+                    })
                 }
             }
         }

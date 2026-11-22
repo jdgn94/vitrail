@@ -28,6 +28,9 @@ var ranges = {
     // The brightness bar element: the percent one wheel notch moves a display.
     brightnessStep: { min: 1, max: 20, step: 1, value: 5 },
     healthDisk: { min: 1, max: 50, step: 1, value: 5 },
+    // The market bar element: how often it polls CoinGecko (minutes), never
+    // below the data module's 5-minute cache.
+    marketInterval: { min: 5, max: 720, step: 5, value: 15 },
     // The dock's magnification: how many neighbouring icons the planet falloff
     // reaches, and the largest scale it gives the icon under the pointer.
     dockMagnifyRange: { min: 1, max: 5, step: 1, value: 2 },

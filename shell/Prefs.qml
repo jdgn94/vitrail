@@ -93,6 +93,9 @@ QtObject {
     property alias healthChecks: barFile.healthChecks
     property alias privacyWatch: barFile.privacyWatch
     property alias privacyDotColor: barFile.privacyDotColor
+    property alias marketSymbols: barFile.marketSymbols
+    property alias marketCurrency: barFile.marketCurrency
+    property alias marketInterval: barFile.marketInterval
     property alias nightLightEnabled: barFile.nightLightEnabled
     property alias nightLightTemperature: barFile.nightLightTemperature
     property alias nightLightSchedule: barFile.nightLightSchedule
@@ -282,7 +285,7 @@ QtObject {
         // array of ids (bar/elements.js). Updates, disks, containers, the
         // peripheral batteries, health and privacy start here; an explicit
         // value (even "[]") wins over the built-in default.
-        property string barActiveOnly: "[\"updates\",\"disks\",\"containers\",\"peripherals\",\"health\",\"privacy\"]"
+        property string barActiveOnly: "[\"updates\",\"disks\",\"containers\",\"peripherals\",\"health\",\"privacy\",\"market\"]"
         // The keyboard layout chip, with its switcher and on-screen keyboard.
         property bool barKeyboard: true
         // The OSD: whether keys show it, how long a key's slider stays, how far
@@ -330,6 +333,12 @@ QtObject {
         // microphone, camera, screen) and the dot's palette role.
         property string privacyWatch: "[\"microphone\",\"camera\",\"screen\"]"
         property string privacyDotColor: "error"
+        // The market bar element: the CoinGecko ids on the bar and in the
+        // popup (one JSON array, in order), the currency they are quoted in and
+        // how often the module is polled (minutes, never below its cache).
+        property string marketSymbols: "[\"bitcoin\"]"
+        property string marketCurrency: "eur"
+        property int marketInterval: VitrailTokens.ranges.marketInterval.value
         property bool nightLightEnabled: false
         property int nightLightTemperature: 4000
         property string nightLightSchedule: '{"mode":"off","start":"20:00","end":"07:00"}'

@@ -87,6 +87,9 @@ var index = [
     { category: "bar-elements", tab: "privacy", key: "bar.widget.privacy", label: "Privacy",
       terms: ["privacy", "microphone", "camera", "webcam", "screen sharing", "screencast", "recording",
               "pipewire", "dot", "indicator", "capture"] },
+    { category: "bar-elements", tab: "market", key: "bar.widget.market", label: "Markets",
+      terms: ["market", "markets", "crypto", "stocks", "price", "prices", "coingecko", "bitcoin",
+              "ethereum", "currency", "eur", "usd", "sparkline"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },
