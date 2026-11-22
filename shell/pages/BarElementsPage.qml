@@ -884,6 +884,38 @@ Item {
                 }
             }
 
+            BarElementSection {
+                id: downloadsSection
+
+                Layout.fillWidth: true
+                elementId: "downloads"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSlider {
+                    objectName: "downloadsRecent"
+
+                    Layout.fillWidth: true
+                    label: downloadsSection.t("bar.downloads.recentOption")
+                    from: VitrailTokens.ranges.downloadsRecent.min
+                    to: VitrailTokens.ranges.downloadsRecent.max
+                    stepSize: VitrailTokens.ranges.downloadsRecent.step
+                    value: page.prefs.downloadsRecent
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.downloadsRecent = Math.round(value)
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: downloadsSection.t("bar.downloads.recentOption.help")
+                }
+            }
+
             Item { Layout.preferredHeight: VitrailTokens.gap("xl") }
         }
     }

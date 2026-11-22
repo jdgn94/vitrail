@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
+import json
 import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from vitrail import downloads
 
@@ -88,8 +92,7 @@ class AppTests(Folder):
         config.mkdir()
         (config / "user-dirs.dirs").write_text('XDG_DOWNLOAD_DIR="$HOME/Descargas"\n', encoding="utf-8")
         home = self.root / "home"
-        self.assertEqual(downloads.download_dirs(home, config),
-                         [home / "Descargas", home / "Downloads"])
+        self.assertEqual(downloads.download_dirs(home, config), [home / "Descargas", home / "Downloads"])
 
     def test_the_home_itself_is_never_watched(self) -> None:
         config = self.root / "config"
@@ -196,16 +199,19 @@ class FakeNotifier:
         self.sent: list[dict] = []
 
     def send(self, summary, body, actions=None, hints=None, replace=0, timeout=0) -> int:
-        self.sent.append({"summary": summary, "body": body, "actions": actions,
-                          "hints": hints, "replace": replace})
+        self.sent.append({"summary": summary, "body": body, "actions": actions, "hints": hints, "replace": replace})
         return len(self.sent) + 10
 
 
 class DaemonTests(Folder):
     def daemon(self, opened=None):
         notifier = FakeNotifier()
-        daemon = downloads.Daemon(self.watcher(), notifier, language="en",
-                                  open_path=(opened.append if opened is not None else (lambda path: None)))
+        daemon = downloads.Daemon(
+            self.watcher(),
+            notifier,
+            language="en",
+            open_path=(opened.append if opened is not None else (lambda path: None)),
+        )
         return daemon, notifier
 
     def test_a_live_download_is_one_notification_replaced_in_place(self) -> None:
@@ -283,6 +289,165 @@ class WordsTests(Folder):
         self.assertEqual(downloads.announce_text("started", item, "es")[0], "Descargando a")
         self.assertEqual(downloads.actions_for("finished", "es")[1], "Eliminar")
         self.assertEqual(downloads.t("downloads.body.of", "1 B", "2 B", language="de"), "1 B von 2 B")
+
+
+class StateTests(Folder):
+    """The bar element's one-shot snapshot: active, recent, and the little
+    history that lets a fresh process know speed and elapsed time."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.cache = self.root / "cache"
+
+    def snapshot(self, now: float, limit: int = downloads.RECENT_MAX) -> dict:
+        # A new Watcher per call, exactly like the one-shot CLI: nothing but the
+        # cache survives between polls.
+        watcher = downloads.Watcher([self.downloads], lambda: 1_000.0, lambda path: "Firefox")
+        return downloads.state(cache=self.cache, watcher=watcher, now=now, limit=limit)
+
+    def test_a_running_download_is_one_active_entry_with_numbers_only(self) -> None:
+        (self.downloads / "big.iso.part").write_bytes(b"x" * 500)
+        result = self.snapshot(1_000)
+        self.assertEqual(result["updated"], 1_000)
+        self.assertEqual(len(result["active"]), 1)
+        item = result["active"][0]
+        self.assertEqual(item["name"], "big.iso")
+        self.assertEqual(item["size"], 500)
+        self.assertIsNone(item["total"])
+        self.assertIsNone(item["percent"])
+        self.assertEqual(item["speed"], 0)
+        self.assertEqual(item["elapsed"], 0)
+        self.assertEqual(item["state"], "live")
+        self.assertFalse(item["finalExists"])
+        self.assertEqual(item["app"], "Firefox")
+        self.assertTrue(item["path"].endswith("big.iso.part"))
+        self.assertTrue(item["final"].endswith("big.iso"))
+        self.assertEqual(result["recent"], [])
+        self.assertNotIn("error", result)
+
+    def test_speed_and_elapsed_come_from_the_previous_poll(self) -> None:
+        path = self.downloads / "big.iso.part"
+        path.write_bytes(b"x" * 500)
+        first = self.snapshot(1_000)["active"][0]
+        path.write_bytes(b"x" * 2_500)
+        second = self.snapshot(1_002)["active"][0]
+        self.assertEqual(second["size"], 2_500)
+        self.assertEqual(second["elapsed"], 2)
+        self.assertEqual(second["speed"], 1_000)
+        self.assertEqual(first["id"], second["id"])
+
+    def test_a_reserved_file_has_a_percentage(self) -> None:
+        path = self.downloads / "big.iso.part"
+        with path.open("wb") as out:
+            out.truncate(10_000_000)
+            out.write(b"x" * 1_000_000)
+        item = self.snapshot(1_000)["active"][0]
+        self.assertEqual(item["total"], 10_000_000)
+        self.assertTrue(5 <= item["percent"] <= 15)
+
+    def test_a_finished_download_moves_to_recent_with_the_same_id(self) -> None:
+        path = self.downloads / "big.iso.part"
+        path.write_bytes(b"x" * 100)
+        running = self.snapshot(1_000)["active"][0]
+        path.rename(self.downloads / "big.iso")
+        result = self.snapshot(1_003)
+        self.assertEqual(result["active"], [])
+        self.assertEqual(len(result["recent"]), 1)
+        item = result["recent"][0]
+        self.assertEqual(item["id"], running["id"])
+        self.assertEqual(item["name"], "big.iso")
+        self.assertEqual(item["size"], 100)
+        self.assertEqual(item["state"], "done")
+        self.assertEqual(item["finishedAt"], 1_003)
+        self.assertTrue(item["path"].endswith("big.iso"))
+
+    def test_a_cancelled_download_leaves_no_recent_entry(self) -> None:
+        path = self.downloads / "big.iso.part"
+        path.write_bytes(b"x" * 100)
+        self.snapshot(1_000)
+        path.unlink()
+        result = self.snapshot(1_001)
+        self.assertEqual(result["active"], [])
+        self.assertEqual(result["recent"], [])
+
+    def test_recent_is_capped_and_newest_first(self) -> None:
+        for index, name in enumerate(("a.iso", "b.iso", "c.iso")):
+            partial = self.downloads / f"{name}.part"
+            partial.write_bytes(b"x" * (index + 1))
+            self.snapshot(1_000 + index * 2)
+            partial.rename(self.downloads / name)
+            self.snapshot(1_001 + index * 2, limit=2)
+        result = self.snapshot(1_010, limit=2)
+        self.assertEqual([item["name"] for item in result["recent"]], ["c.iso", "b.iso"])
+
+    def test_a_broken_cache_is_replaced_not_raised(self) -> None:
+        self.cache.mkdir(parents=True)
+        (self.cache / downloads.STATE_CACHE).write_text("{not json", encoding="utf-8")
+        (self.downloads / "big.iso.part").write_bytes(b"x" * 100)
+        result = self.snapshot(1_000)
+        self.assertEqual(len(result["active"]), 1)
+        self.assertIn("active", json.loads((self.cache / downloads.STATE_CACHE).read_text(encoding="utf-8")))
+
+    def test_an_unwritable_cache_is_an_error_in_the_data(self) -> None:
+        blocked = self.root / "blocked"
+        blocked.write_text("", encoding="utf-8")
+        (self.downloads / "big.iso.part").write_bytes(b"x" * 100)
+        watcher = downloads.Watcher([self.downloads], lambda: 1_000.0, lambda path: "")
+        result = downloads.state(cache=blocked / "inside", watcher=watcher, now=1_000)
+        self.assertEqual(result["error"], "cache")
+        self.assertEqual(len(result["active"]), 1)
+
+    def test_state_prints_one_json_object_and_exits_zero(self) -> None:
+        with mock.patch.object(downloads, "state", return_value={"active": [], "recent": [], "updated": 1.0}):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = downloads.main(["state"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out.getvalue())["active"], [])
+
+    def test_state_with_an_error_exits_one_and_still_prints_json(self) -> None:
+        with mock.patch.object(downloads, "state", return_value={"active": [], "recent": [], "error": "cache"}):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = downloads.main(["state"])
+        self.assertEqual(code, 1)
+        self.assertEqual(json.loads(out.getvalue())["error"], "cache")
+
+    def test_anything_else_is_usage_on_stderr_and_nothing_on_stdout(self) -> None:
+        for args in (["bad"], [], ["state", "extra"], ["cancel"]):
+            with self.subTest(args=args):
+                out, err = io.StringIO(), io.StringIO()
+                with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                    code = downloads.main(args)
+                self.assertEqual((code, out.getvalue()), (2, ""))
+                self.assertIn("usage", err.getvalue())
+
+
+class CancelTests(Folder):
+    def test_cancel_removes_only_a_partial_file_inside_a_download_folder(self) -> None:
+        part = self.downloads / "big.iso.part"
+        part.write_bytes(b"x" * 100)
+        self.assertTrue(downloads.cancel_partial(part, [self.downloads]))
+        self.assertFalse(part.exists())
+
+        final = self.downloads / "big.iso"
+        final.write_bytes(b"x" * 100)
+        self.assertFalse(downloads.cancel_partial(final, [self.downloads]))
+        self.assertTrue(final.exists())
+
+        outside = self.root / "other.part"
+        outside.write_bytes(b"x" * 100)
+        self.assertFalse(downloads.cancel_partial(outside, [self.downloads]))
+        self.assertTrue(outside.exists())
+
+    def test_the_cancel_command_says_whether_it_worked(self) -> None:
+        part = self.downloads / "big.iso.part"
+        part.write_bytes(b"x" * 100)
+        with mock.patch.object(downloads, "download_dirs", return_value=[self.downloads]):
+            self.assertEqual(downloads.main(["cancel", str(part)]), 0)
+        self.assertFalse(part.exists())
+        with mock.patch.object(downloads, "download_dirs", return_value=[self.downloads]):
+            self.assertEqual(downloads.main(["cancel", str(self.downloads / "final.iso")]), 1)
 
 
 class LockTests(unittest.TestCase):

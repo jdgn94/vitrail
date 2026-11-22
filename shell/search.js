@@ -90,6 +90,9 @@ var index = [
     { category: "bar-elements", tab: "weather", key: "bar.widget.weather", label: "Weather",
       terms: ["weather", "city", "units", "metric", "imperial", "temperature", "forecast",
               "hourly", "daily", "open-meteo"] },
+    { category: "bar-elements", tab: "downloads", key: "bar.widget.downloads", label: "Downloads",
+      terms: ["downloads", "download", "progress", "speed", "cancel", "recent",
+              "open folder", "open file", "part", "crdownload"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },

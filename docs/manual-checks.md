@@ -187,6 +187,27 @@ Código en `bar-weather-ui`. Con la barra corriendo:
 - [ ] Apagar y encender el elemento con «Solo cuando está activo»: sin temperatura no ocupa sitio en la barra y con un snapshot bueno vuelve; con «Siempre» queda el glifo de nube.
 - [ ] `weatherInterval` (15 min por defecto) cambia cada cuánto corre `python3 -m vitrail.weather state`; con el elemento fuera de la barra y el night light apagado no hay ningún proceso del módulo en `ps`.
 
+## Downloads bar element (2026-11-22)
+
+Código en `bar-downloads-ui`. Para probarlo sin un navegador, cualquier descarga real sirve:
+
+```sh
+# Un archivo grande, en la carpeta de descargas
+cd ~/Downloads && wget https://speed.hetzner.de/100MB.bin
+# Uno que reserva el tamaño final (porcentaje conocido), con curl
+cd ~/Downloads && curl -L -o video.mp4.part https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_10mb.mp4
+```
+
+- [ ] Mostrar `downloads` desde el editor de la barra (está oculto por defecto). Con `wget` en marcha aparece el glifo con la barra: sin total reservado la barra se desliza y el tooltip dice «1 descarga» y debajo el nombre del archivo; `text` está vacío (no hay porcentaje inventado).
+- [ ] Con dos descargas de total desconocido (dos `wget` a la vez) la barra sigue siendo indeterminada, el tooltip dice «2 descargas» con la velocidad sumada y debajo el nombre de la primera; el botón no muestra ningún porcentaje.
+- [ ] Clic abre el popup: una fila por descarga con el nombre, la barra, «midiendo» donde no hay total, el tamaño, la velocidad y el tiempo transcurrido; **Open folder** abre la carpeta, **Open file** está desactivado mientras el `.part` no se ha renombrado y **Cancel** está disponible.
+- [ ] Al terminar `wget`, el `.part` desaparece, la fila activa se va y la descarga pasa a **Recent** con su nombre final y su tamaño; **Open file** abre el archivo ya terminado.
+- [ ] **Cancel** sobre una descarga en marcha borra solo el `.part` (el archivo final no existe y no aparece en Recent); el popup se refresca y, si el programa sigue escribiendo, el archivo vuelve a aparecer.
+- [ ] Ajustes → Bar elements → Downloads: bajar «Descargas recientes guardadas» a 0 vacía la lista de recientes del popup sin tocar los archivos; subirlo a 20 muestra las que el caché conserva. El engranaje del popup abre este mismo bloque.
+- [ ] Con el modo «Solo cuando está activo» (el valor por defecto) el botón desaparece al terminar todo y no hay descargas en curso; con «Siempre» queda el glifo con la barra vacía y el tooltip «No hay descargas».
+- [ ] Monte que se llena: crear un tmpfs pequeño y descargar dentro hasta agotarlo (`sudo mount -t tmpfs -o size=1M tmpfs /tmp/lleno && cd /tmp/lleno && wget -O grande.bin https://speed.hetzner.de/100MB.bin`). La descarga se queda sin espacio, el archivo deja de crecer y la fila sigue con el tamaño real (sin porcentaje si no había total); al desaparecer el `.part` no se inventa una entrada en Recent. `sudo umount /tmp/lleno` al terminar.
+- [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.downloads state` en `ps`; `python3 -m vitrail.downloads state` a mano imprime un solo objeto JSON (`active`, `recent`, `updated`) y sale con 0.
+
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 
 Código en `master` (`5936834..36fab6a`). La automatización ya está verde

@@ -12,7 +12,8 @@
 // battery joins them: no watched device reporting a percentage means no number
 // for the bar. Updates, disks, containers, the peripheral batteries, health
 // and privacy start here; an explicit preference (even "[]") always wins.
-var DEFAULT_ACTIVE_ONLY = ["updates", "disks", "containers", "peripherals", "health", "privacy"]
+// The downloads element joins them: with nothing downloading there is no number.
+var DEFAULT_ACTIVE_ONLY = ["updates", "disks", "containers", "peripherals", "health", "privacy", "downloads"]
 
 // The ids that show only while active, from the preference's text.
 function parseActiveOnly(text) {

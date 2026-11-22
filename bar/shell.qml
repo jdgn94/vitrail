@@ -73,6 +73,7 @@ import "brightness"
 import "health"
 import "privacy"
 import "weather"
+import "downloads"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -788,6 +789,8 @@ ShellRoot {
             privacyData.refresh()
         if (kind === "weather")
             weatherData.refresh()
+        if (kind === "downloads")
+            downloadsData.refresh()
         if (kind === "disks") {
             // A failure belongs to the action that caused it, not to a later
             // visit: start the popup with a clean line.
@@ -2001,6 +2004,18 @@ ShellRoot {
         active: shell.barShows("weather") || shell.barShows("brightness") || shell.nightLightOn
     }
 
+    // The downloads bar element's data (vitrail/downloads.py): the files a
+    // downloader is still writing. One scan a second while the element is in a
+    // bar, and again when its popup opens; the module's cache carries speed,
+    // elapsed time and the finished ones between the one-shot polls.
+    BarSnapshot {
+        id: downloadsData
+
+        module: "downloads"
+        interval: 1000
+        active: shell.barShows("downloads")
+    }
+
     // A unit change must not wait for the next poll: the snapshot's units and
     // its cache key both change with the preference.
     Connections {
@@ -2422,6 +2437,22 @@ ShellRoot {
         running: true
         command: ["python3", "-m", "vitrail.downloads", "watch"]
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
+    // Cancel in the downloads popup: the module removes that one partial file
+    // (never anything outside a download folder), then the snapshot is re-read.
+    function cancelDownload(path) {
+        if (downloadsCancel.running || String(path || "") === "")
+            return
+        downloadsCancel.command = ["python3", "-m", "vitrail.downloads", "cancel", String(path)]
+        downloadsCancel.running = true
+    }
+
+    Process {
+        id: downloadsCancel
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        onExited: downloadsData.refresh()
     }
 
     // The visualiser's cava runs only while the preference is on and an app
@@ -3788,6 +3819,7 @@ ShellRoot {
                     case "health": return healthWidget
                     case "privacy": return privacyWidget
                     case "weather": return weatherWidget
+                    case "downloads": return downloadsWidget
                     default: return null
                     }
                 }
@@ -4322,6 +4354,25 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: downloadsWidget
+
+                    DownloadsButton {
+                        id: downloadsButton
+
+                        strings: shell.strings
+                        snapshot: downloadsData.snapshot
+                        showMode: Elements.showMode(shell.activeOnlyIds, "downloads")
+                        opened: shell.popupOpen && shell.popupKind === "downloads" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("downloads", downloadsButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(downloadsButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("downloads", downloadsButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -4390,6 +4441,7 @@ ShellRoot {
                     case "health": return monitor.loadedItem("health")
                     case "privacy": return monitor.loadedItem("privacy")
                     case "weather": return monitor.loadedItem("weather")
+                    case "downloads": return monitor.loadedItem("downloads")
                     default: return null
                     }
                 }
@@ -5399,6 +5451,13 @@ ShellRoot {
                                 sourceComponent: weatherComponent
                             }
 
+                            Popout {
+                                name: "downloads"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: downloadsComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -5847,6 +5906,21 @@ ShellRoot {
                             weatherData.refresh()
                         }
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "weather")
+                    }
+                }
+
+                Component {
+                    id: downloadsComponent
+
+                    DownloadsPanel {
+                        strings: shell.strings
+                        snapshot: downloadsData.snapshot
+                        recentLimit: shell.prefNumber("downloadsRecent",
+                                                     VitrailTokens.ranges.downloadsRecent.value)
+                        onOpenFolderRequested: function (path) { shell.openAttachment(path) }
+                        onOpenFileRequested: function (path) { shell.openAttachment(path) }
+                        onCancelRequested: function (path) { shell.cancelDownload(path) }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "downloads")
                     }
                 }
 

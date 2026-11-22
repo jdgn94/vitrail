@@ -13,6 +13,7 @@ import "../bar/battery"
 import "../bar/health"
 import "../bar/privacy"
 import "../bar/weather"
+import "../bar/downloads"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -2038,6 +2039,109 @@ Window {
                 VitrailText { text: "◆" },
                 VitrailText { text: "◆" }
             ]
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "DownloadsButton · a known total × two unknown totals × idle × unreadable"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            DownloadsButton {
+                snapshot: ({
+                    active: [{
+                        id: "a1", name: "big.iso", path: "/home/u/Downloads/big.iso.part",
+                        final: "/home/u/Downloads/big.iso", folder: "/home/u/Downloads",
+                        size: 4000000, total: 10000000, percent: 40, speed: 1250000,
+                        elapsed: 6, app: "Firefox", state: "live", finalExists: false
+                    }],
+                    recent: [], updated: 1763730000
+                })
+            }
+
+            DownloadsButton {
+                showMode: "always"
+                snapshot: ({
+                    active: [
+                        { id: "b1", name: "photo.jpg", path: "/home/u/Downloads/photo.jpg.part",
+                          final: "/home/u/Downloads/photo.jpg", folder: "/home/u/Downloads",
+                          size: 900000, total: null, percent: null, speed: 220000,
+                          elapsed: 12, app: "Firefox", state: "live", finalExists: false },
+                        { id: "b2", name: "video.mkv", path: "/home/u/Downloads/video.mkv.crdownload",
+                          final: "/home/u/Downloads/video.mkv", folder: "/home/u/Downloads",
+                          size: 12000000, total: null, percent: null, speed: 480000,
+                          elapsed: 41, app: "Chromium", state: "live", finalExists: false }
+                    ],
+                    recent: [], updated: 1763730000
+                })
+            }
+
+            DownloadsButton {
+                showMode: "always"
+                snapshot: ({ active: [], recent: [], updated: 1763730000 })
+            }
+
+            DownloadsButton {
+                showMode: "always"
+                snapshot: ({ error: "unreadable" })
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "DownloadsPanel · running (known and measuring) × recent × nothing"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: downloadsFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: downloadsFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                DownloadsPanel {
+                    id: downloadsFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({
+                        active: [
+                            { id: "a1", name: "big.iso", path: "/home/u/Downloads/big.iso.part",
+                              final: "/home/u/Downloads/big.iso", folder: "/home/u/Downloads",
+                              size: 4000000, total: 10000000, percent: 40, speed: 1250000,
+                              elapsed: 6, app: "Firefox", state: "live", finalExists: false },
+                            { id: "a2", name: "photo.jpg", path: "/home/u/Downloads/photo.jpg.part",
+                              final: "/home/u/Downloads/photo.jpg", folder: "/home/u/Downloads",
+                              size: 900000, total: null, percent: null, speed: 220000,
+                              elapsed: 12, app: "Firefox", state: "live", finalExists: false }
+                        ],
+                        recent: [
+                            { id: "r1", name: "notes.pdf", path: "/home/u/Downloads/notes.pdf",
+                              folder: "/home/u/Downloads", size: 145000, app: "Firefox",
+                              finishedAt: 1763729000, state: "done" },
+                            { id: "r2", name: "wallpaper.png", path: "/home/u/Downloads/wallpaper.png",
+                              folder: "/home/u/Downloads", size: 6800000, app: "Chromium",
+                              finishedAt: 1763728000, state: "done" }
+                        ],
+                        updated: 1763730000
+                    })
+                }
+            }
+
+            VitrailSurface {
+                width: downloadsEmpty.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: downloadsEmpty.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                DownloadsPanel {
+                    id: downloadsEmpty
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ active: [], recent: [], updated: 1763730000 })
+                }
+            }
         }
 
         VitrailText {
