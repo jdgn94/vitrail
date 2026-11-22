@@ -4848,14 +4848,17 @@ ShellRoot {
                                         contentVisible: monitor.entryVisible(startEntry.modelData)
                                         sourceComponent: monitor.entryComponent(startEntry.modelData)
                                         onFailedChanged: shell.noteBarFailure(startEntry.modelData, startEntry.failed)
-                                        Component.onDestruction: if (startEntry.failed) shell.noteBarFailure(startEntry.modelData, false)
+                                        Component.onDestruction: {
+                                            if (startEntry.failed)
+                                                shell.noteBarFailure(startEntry.modelData, false)
+                                            monitor.unregister(startEntry.modelData.id)
+                                        }
                                         onLoaded: {
                                             if (startEntry.modelData.chip !== undefined)
                                                 item.ids = startEntry.modelData.ids
                                             else
                                                 monitor.register(startEntry.modelData.id, item)
                                         }
-                                        Component.onDestruction: monitor.unregister(startEntry.modelData.id)
                                     }
                                 }
                             }
@@ -4884,14 +4887,17 @@ ShellRoot {
                                         contentVisible: monitor.entryVisible(centerEntry.modelData)
                                         sourceComponent: monitor.entryComponent(centerEntry.modelData)
                                         onFailedChanged: shell.noteBarFailure(centerEntry.modelData, centerEntry.failed)
-                                        Component.onDestruction: if (centerEntry.failed) shell.noteBarFailure(centerEntry.modelData, false)
+                                        Component.onDestruction: {
+                                            if (centerEntry.failed)
+                                                shell.noteBarFailure(centerEntry.modelData, false)
+                                            monitor.unregister(centerEntry.modelData.id)
+                                        }
                                         onLoaded: {
                                             if (centerEntry.modelData.chip !== undefined)
                                                 item.ids = centerEntry.modelData.ids
                                             else
                                                 monitor.register(centerEntry.modelData.id, item)
                                         }
-                                        Component.onDestruction: monitor.unregister(centerEntry.modelData.id)
                                     }
                                 }
                             }
@@ -4921,14 +4927,17 @@ ShellRoot {
                                         contentVisible: monitor.entryVisible(endEntry.modelData)
                                         sourceComponent: monitor.entryComponent(endEntry.modelData)
                                         onFailedChanged: shell.noteBarFailure(endEntry.modelData, endEntry.failed)
-                                        Component.onDestruction: if (endEntry.failed) shell.noteBarFailure(endEntry.modelData, false)
+                                        Component.onDestruction: {
+                                            if (endEntry.failed)
+                                                shell.noteBarFailure(endEntry.modelData, false)
+                                            monitor.unregister(endEntry.modelData.id)
+                                        }
                                         onLoaded: {
                                             if (endEntry.modelData.chip !== undefined)
                                                 item.ids = endEntry.modelData.ids
                                             else
                                                 monitor.register(endEntry.modelData.id, item)
                                         }
-                                        Component.onDestruction: monitor.unregister(endEntry.modelData.id)
                                     }
                                 }
                             }
