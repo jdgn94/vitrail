@@ -76,6 +76,10 @@ Item {
     signal layoutChanged(string surface, string text)
     signal prefChanged(string key, var value)
     signal finished()
+    // A pick in the tab bar: the shell owns the tab, so every monitor's editor
+    // (and the rule that keeps the bar tab on the screen that opened it) reads
+    // one value.
+    signal tabSelected(string key)
 
     readonly property var document: Layouts.effective(root.layoutText, root.monitor, null, "desktop", root.sync)
     readonly property var placed: root.document.widgets
@@ -324,7 +328,7 @@ Item {
                 current: root.tab
                 foreground: VitrailTokens.color("foreground", "#e2e2e9")
                 accent: VitrailTokens.color("primary", "#a8c7fa")
-                onSelected: root.tab = key
+                onSelected: root.tabSelected(key)
             }
 
             Item { Layout.fillWidth: true }

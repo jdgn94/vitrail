@@ -11,11 +11,24 @@ PanelWindow {
     id: root
 
     required property var screen
-    property bool active: false
+    // Whether the shell asked for the editor at all, on which monitor it
+    // started, and whether the desktop is one set of widgets everywhere.
+    property bool requested: false
+    property bool initiating: false
+    property bool desktopShared: true
+    // The editor shows on the monitor that opened it. The others carry it only
+    // while the desktop is the document being edited there (sync off): the bar,
+    // dock and panel documents are global, so one screen is enough.
+    property bool active: root.requested
+                          && (root.initiating
+                              || (!root.desktopShared && root.tab === "desktop"))
     // Only the monitor that started the edit takes the keyboard; the others
     // show the same editor while the pointer and their buttons keep working.
     property bool focused: false
-    property string monitor: ""
+    // Not called `monitor`: that is the per-screen scope's id in bar/shell.qml,
+    // and a property with that name shadows it, so `screen: monitor.modelData`
+    // resolved to this string and every editor landed on the default output.
+    property string monitorName: ""
     property string layoutText: ""
     // The output this layer sits on: the "on this monitor" placement selectors
     // write its override.
@@ -52,6 +65,9 @@ PanelWindow {
     // and the smoke fixture drive the real editor through it.
     property alias tab: editor.tab
 
+    // A pick in the tab bar goes up to the shell, which owns the value.
+    signal tabPicked(string key)
+
     visible: root.active || editor.progress > 0
     anchors {
         top: true
@@ -73,7 +89,8 @@ PanelWindow {
 
         anchors.fill: parent
         active: root.active
-        monitor: root.monitor
+        monitor: root.monitorName
+        onTabSelected: root.tabPicked(key)
         layoutText: root.layoutText
         strings: root.strings
         screenWidth: root.screenWidth

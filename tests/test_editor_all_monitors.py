@@ -23,14 +23,32 @@ class EditorWiringTests(unittest.TestCase):
         self.layer = (ROOT / "bar/desktop/DesktopEditLayer.qml").read_text(encoding="utf-8")
         self.mode = (ROOT / "bar/desktop/DesktopEditMode.qml").read_text(encoding="utf-8")
 
-    def test_the_layer_opens_on_every_monitor(self) -> None:
-        self.assertIn("active: shell.editMode", self.shell)
+    def test_the_editor_opens_on_the_monitor_that_started_it(self) -> None:
+        self.assertIn("requested: shell.editMode", self.shell)
+        self.assertIn("initiating: shell.editScreen === monitor.modelData", self.shell)
         self.assertIn("focused: shell.editScreen === monitor.modelData", self.shell)
         self.assertIn("keyboardFocus: root.focused", self.layer)
 
+    def test_the_other_monitors_only_carry_the_desktop_tab(self) -> None:
+        # With the desktop shared there is one document: the monitor that
+        # opened the editor is enough. With sync off each monitor has its own,
+        # so the others show the editor too, but only while the desktop tab is
+        # up: bar, dock and panel documents are global.
+        self.assertIn('desktopShared: shell.prefBool("desktopSync", true)', self.shell)
+        self.assertIn('(!root.desktopShared && root.tab === "desktop")', self.layer)
+
     def test_the_desktop_tab_keeps_the_initiating_monitor(self) -> None:
-        self.assertIn("monitor: shell.editScreen ? shell.editScreen.name : monitor.modelData.name", self.shell)
+        self.assertIn("monitorName: shell.editScreen ? shell.editScreen.name : monitor.modelData.name", self.shell)
         self.assertIn("screenMonitor: monitor.modelData.name", self.shell)
+
+    def test_the_editor_screen_is_not_shadowed_by_its_own_property(self) -> None:
+        # `screen: monitor.modelData` means the per-screen scope's screen only
+        # while the layer has no property called `monitor`: with one, the
+        # binding reads the layer's own string and every editor lands on the
+        # default output (two editors stacked on one monitor).
+        self.assertNotIn("property string monitor:", self.layer)
+        self.assertIn("property string monitorName:", self.layer)
+        self.assertIn("screen: monitor.modelData", self.shell)
 
     def test_the_global_documents_reach_every_editor(self) -> None:
         for marker in (
