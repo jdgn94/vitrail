@@ -1,0 +1,191 @@
+# Bar elements — execution ledger
+
+Plan: `docs/bar-elements-plan.md` (agreed 2026-11-21). This file tracks who does
+what, in which worktree, and in which order it merges. It is not committed.
+
+## Strategy
+
+The plan says "one step at a time, committed on its own"; the user asked for
+parallel work with Claude and OpenCode. Both hold if we run **waves**:
+
+- Every step gets **its own child worktree**, branched from `master`.
+- Steps merge back **in plan order** (0 → 16). A worker whose step is next
+  rebases on `master` before committing if its base is stale.
+- The hot shared files (`bar/widgets.js`, `vitrail/prefs.map`,
+  `shell/Prefs.qml`, `shell/main.qml`, `kit/i18n/*.json`, `packages/*.txt`,
+  `tests/test_dependencies.py`, `docs/features.md`,
+  `docs/manual-checks.md`) get **additive edits only**: one line per entry,
+  inside the existing block for that family, never a reorder. That keeps the
+  merges conflict-free.
+- Step 0 is the blocker: every other element builds its button on the
+  `BarElement` base. Nothing that touches QML fans out until it lands.
+- Work that does not touch QML (Python snapshot providers + their tests, new
+  files only) runs in parallel from the start.
+
+## Owners
+
+| Who | Gets |
+| --- | --- |
+| Claude `claude-sonnet-5-5` | the hardest steps: base architecture, PipeWire streams, clock group, sampler/graphs, privacy, system health |
+| OpenCode worker | the mechanical steps: reusing existing modules, Python providers, forms and lists |
+
+## Prerequisites
+
+- `master` has unrelated uncommitted work (capture editor, monitors). Workers
+  never touch it, and nothing merges into those files.
+- `docs/bar-elements-plan.md` is untracked, so each spec quotes its step.
+- Open questions gate steps 2, 3, 10 and 16 (see below).
+
+## Wave 1 (running)
+
+| Step | Task | Owner | Worktree | Status |
+| --- | --- | --- | --- | --- |
+| 0 | Foundation: `BarElement`, popup host, "only while active", Python snapshot pattern, settings section, sample element | Claude sonnet 4.6 | `bar-foundation` | dispatched |
+| 1a | `vitrail/audio.py` snapshot provider + `tests/test_audio.py` (new files only) | OpenCode | `bar-volume-data` | retried after an OpenCode auth failure |
+| 10a | `vitrail/updates.py` (official/AUR/Flatpak) + tests, new files only | OpenCode | `bar-updates-data` | dispatched |
+| 12a | `vitrail/disks.py` (removable drives, udisksctl) + tests, new files only | OpenCode | `bar-disks-data` | dispatched |
+| 14a | `vitrail/battery.py` (UPower peripherals) + tests | OpenCode | `bar-battery-data` | **done, `5f94eb3`, 1190 tests OK** |
+
+## Wave 2+ (queued)
+
+| Step | Task | Owner | Notes |
+| --- | --- | --- | --- |
+| 1b | Volume button + popup (master, per-app streams, devices, mic mute) | Claude | needs 0 and 1a |
+| 2 | Brightness + night light (`hyprsunset`) | OpenCode | needs 0; open question 4 |
+| 3 | Clock with grouped popup | Claude | needs 0; open question 1 |
+| 4 | Resources + network usage, shared sampler | Claude | needs 0 |
+| 5 | Weather | OpenCode | needs 0 |
+| 6 | Pomodoro/timer + notes | OpenCode | needs 0 |
+| 7 | Privacy | Claude | needs 0 |
+| 8 | DND/focus + caffeine | OpenCode | needs 0 |
+| 9 | Clipboard + colour picker | OpenCode | needs 0 |
+| 10 | Updates | OpenCode | needs 0; open question 2 |
+| 11 | Downloads | OpenCode | needs 0 |
+| 12 | Disks | OpenCode | needs 0 |
+| 13 | System health | Claude | needs 0 |
+| 14 | Peripherals battery | OpenCode | needs 0 |
+| 15 | Containers | OpenCode | needs 0 |
+| 16 | Crypto/stocks | Claude | needs 0; open question 3 |
+
+## Wave 2 (running)
+
+| Step | Task | Owner | Worktree | Status |
+| --- | --- | --- | --- | --- |
+| 2a | `vitrail/nightlight.py` (hyprsunset, schedule, plan()) | OpenCode flash | `bar-nightlight-data` | dispatched |
+| 13a | `vitrail/health.py` (services, disk, hyprctl, doctor) | OpenCode flash | `bar-health-data` | dispatched |
+| 15a | `vitrail/containers.py` (docker/podman, optional) | OpenCode flash | `bar-containers-data` | dispatched |
+| 16a | `vitrail/market.py` (CoinGecko, cache) | OpenCode flash | `bar-market-data` | dispatched |
+
+Waiting on step 0's review before the UI halves of steps 1, 10, 12 and 14:
+they need the merged `BarElementBase`.
+
+## Housekeeping
+
+Finished workers are released as soon as their task is verified
+(`orchestration worker-release`), so Orca does not keep their windows open.
+
+## Verification policy
+
+**A task is only committed when it is complete and its tests pass.** When a
+worker reports `worker_done`:
+
+1. read its report and `git show --stat` in its worktree;
+2. run the worktree's own test file, then the whole suite
+   (`uv run python -m unittest discover -s tests`) and `ruff`;
+3. if the tree is clean and green, the worker's commit stands (I amend only a
+   wrong message); if it left work uncommitted, I commit it with a
+   conventional message;
+4. if something fails, the worker gets the failure back before any commit.
+
+Every step that Claude writes is reviewed by a **second Claude worker on
+`claude-sonnet-5-5`** before it merges: it reads the diff, runs the step's own
+tests plus the enforced ones (`test_design_system`, `test_prefs_map`,
+`test_tooltips`, `test_dependencies`, `test_i18n`, `qml_smoke.sh`), checks the
+"Every element ships with" contract, and **fixes what it finds** in the same
+worktree (a follow-up commit; the branch is squashed into one commit at
+merge). This applies first to step 0 (written by `claude-sonnet-4-6`).
+
+Steps merge into `master` in plan order, one commit per step, once the step's
+data and UI halves are both green.
+
+## Open questions (from the plan)
+
+1. Calendar events (step 3): none, local ICS, or CalDAV?
+2. Updates (step 10): notify, or counter only?
+3. Crypto/stocks (step 16): provider and API key?
+4. Night light (step 2): is `hyprsunset` acceptable? (already installed here)
+
+## Log
+
+- 2026-11-21: wave 1 dispatched (step 0 → Claude, step 1a → OpenCode).
+- 2026-11-21: OpenCode workers now run `opencode-go/deepseek-v4.1-flash`
+  (`--model` needs an existing worktree first: `worktree create`, then
+  `worker-start --worktree path:…`). The three workers already dispatched keep
+  the CLI default; new ones use deepseek flash.
+- 2026-11-21: Claude workers now run `claude-sonnet-5-5`. The step 0 worker
+  already in flight keeps `claude-sonnet-4-6` (it is mid-task with 15 files
+  touched); every later Claude dispatch uses 5.5.
+
+## Answers (2026-11-21)
+
+1. Calendar (step 3): events come from a calendar stack installed for this,
+   with Microsoft/Google sign-in, and the **popup shows them** (not just a
+   button to the app). Decision: GNOME Calendar as the frontend and
+   Evolution Data Server (`evolution-data-server`, `evolution-ews`,
+   `gnome-online-accounts`) as the source — the only Linux stack with
+   first-class Google/Microsoft OAuth. A small `vitrail/calendar.py` reads the
+   events over EDS and the popup renders them in Vitrail style, so the visible
+   UI stays ours. Declare all three packages when step 3 runs.
+2. Updates (step 10): counter **and** a notification when new packages appear.
+3. Crypto/stocks (step 16): CoinGecko, public endpoint, no API key.
+4. Night light (step 2): `hyprsunset` approved (already installed here).
+- 2026-11-21: the three OpenCode workers died at startup with "Sign in to
+  OpenCode / Permission denied on the service" and their `new-child` worktrees
+  were never created. Relaunched on `opencode-go/deepseek-v4.1-flash` after
+  creating `bar-volume-data`, `bar-updates-data`, `bar-disks-data` by hand.
+  Working launch pattern: `worktree create` then
+  `worker-start --worktree path:<dir> --model opencode-go/deepseek-v4.1-flash`.
+- 2026-11-21: user asked for step 0 to be verified by Sonnet 5.5 when the
+  4.6 worker finishes, fixing whatever it finds (see Verification policy).
+- 2026-11-21: all five workers succeeded with their own commits and clean trees.
+  Verified here: foundation `9bafd99` (1174 tests OK, `qml_smoke.sh` 123/123),
+  volume `ed91ea5` (1189 OK), updates `3cfb9f0` (1185 OK), disks `cc7b716`
+  (1185 OK), battery `5f94eb3` (1190 OK); ruff clean on the three providers.
+- 2026-11-21: step 0 review dispatched to `claude-sonnet-5-5` on the same
+  worktree (dispatch `ctx_b114747499db`), with an explicit defect checklist
+  (reusability for the next 16 elements, dead bindings, weakened tests,
+  prefs/i18n/docs contract). Fixes land as a follow-up commit, squashed at
+  integration.
+- 2026-11-21: convergence done. `bar-elements` (all nine task branches merged,
+  PKGBUILD `depends` unions and the README dependency table resolved) merged
+  `master` and then `master` fast-forwarded to it: `4cbf485`. The user's
+  uncommitted monitors/capture work survived (README stashed and re-applied
+  with `git apply --3way`; every other modified file untouched).
+  Green: 1373 Python tests, 124 QML renders.
+- 2026-11-21: `tests/test_docs.py` failed on the untracked
+  `docs/bar-elements-plan.md` (index must link every document). Added its row
+  to `docs/index.md`, uncommitted like the rest of the user's tree.
+- 2026-11-21: UI halves are **serialised**, unlike the data providers: each one
+  edits the same regions of `bar/shell.qml`, `BarElementsPage.qml`, the i18n
+  files and the gallery, so two in parallel would conflict by construction.
+  Step 1b (volume) dispatched to `claude-sonnet-5-5` in `bar-volume-ui`.
+- 2026-11-21: step 1b (volume) committed `69af1ad` in `bar-volume-ui`
+  (1378 tests OK, 124 QML) — pending my merge, blocked only by the user's dirty
+  `kit/tokens.js`/`README.md` (stash + `git apply --3way`, as before).
+- 2026-11-21: UI branches now **chain**: `bar-updates-ui` was branched from
+  `bar-volume-ui`, so each finished element carries the previous wiring and the
+  merge into `master` is one fast-forward per step. Step 10b dispatched to
+  OpenCode flash on that branch.
+- 2026-11-21: step 7a (privacy provider) dispatched to Claude 5.5 in
+  `bar-privacy-data` (new files only, no conflict with the UI chain).
+- 2026-11-22: volume `69af1ad`, updates `071c5ec`, disks `85d74a0` and the privacy
+  provider `e8c29d9` are merged in `master` (1413 Python tests, 124 QML).
+  Conflicts resolved: README dependency rows (one row per package group) and the
+  `tests/test_dependencies.py` allowlist (`pactl` + `pw-cli`).
+- 2026-11-22: two UI elements run in parallel for the first time (14b battery,
+  2b brightness), each branch from `master`, with an explicit "additive lines
+  only, never reorder" rule; their `bar/shell.qml` conflicts are resolved here
+  by keeping both.
+- 2026-11-22: step 14b (peripherals battery) `9d7212d` verified and merged
+  (`1413` tests, `124` QML); window released. Options: `peripheralsHide`
+  (JSON array, default none hidden), `peripheralsLow` (20 %).

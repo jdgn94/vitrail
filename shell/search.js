@@ -76,6 +76,9 @@ var index = [
     { category: "bar-elements", tab: "peripherals", key: "bar.widget.peripherals", label: "Peripherals battery",
       terms: ["battery", "peripherals", "mouse", "keyboard", "headset", "headphones", "gamepad",
               "upower", "low battery", "warning"] },
+    { category: "bar-elements", tab: "brightness", key: "bar.widget.brightness", label: "Brightness",
+      terms: ["brightness", "screen", "display", "sun", "night light", "temperature",
+              "schedule", "sunset", "sunrise", "hyprsunset", "ddcutil", "brightnessctl"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },

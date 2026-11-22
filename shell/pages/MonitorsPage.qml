@@ -121,8 +121,17 @@ Item {
         page.ensureSelection()
     }
 
+    // The lines the dragged output lines up with (View.guides), drawn over the
+    // canvas until the pointer lets go.
+    property var guideLines: []
+
     function dragMonitor(name, x, y) {
         page.draftDoc = View.moveTo(page.draftDoc, page.live, name, x, y, false)
+        var moving = View.rectOfName(page.live, page.draftDoc, name)
+        var around = View.rects(page.live, page.draftDoc).filter(function (one) {
+            return one.name !== name
+        })
+        page.guideLines = moving ? View.guides(moving, around, View.threshold(moving)) : []
     }
 
     function dropMonitor(name) {
@@ -148,6 +157,7 @@ Item {
 
     function endDrag() {
         page.dragFrame = null
+        page.guideLines = []
     }
 
     // --- the applied document ------------------------------------------------
@@ -333,7 +343,7 @@ Item {
             }
 
             // The canvas: each output at its logical place, dragged with the
-            // pointer and snapped to the others on release.
+            // pointer and joined to the others on release.
             Item {
                 id: canvas
 
@@ -355,6 +365,34 @@ Item {
                     variant: "label"
                     text: page.t("monitors.canvas.help")
                     color: page.palette.muted
+                }
+
+                // The alignment guides, over the tiles while one is dragged.
+                Repeater {
+                    model: page.guideLines
+
+                    delegate: Rectangle {
+                        id: guide
+
+                        required property var modelData
+
+                        readonly property bool vertical: guide.modelData.axis === "x"
+                        readonly property var look: guide.modelData.kind === "flush"
+                                                    ? VitrailTokens.monitorCanvas.flush
+                                                    : VitrailTokens.monitorCanvas.guide
+                        readonly property var frame: page.frameFor(canvas.width, canvas.height)
+                        readonly property real at: guide.vertical
+                                                   ? guide.frame.x + guide.modelData.at * guide.frame.scale
+                                                   : guide.frame.y + guide.modelData.at * guide.frame.scale
+
+                        objectName: "guide." + guide.modelData.axis + "." + guide.modelData.at
+                        z: 4
+                        x: guide.vertical ? guide.at - guide.look.width / 2 : 0
+                        y: guide.vertical ? 0 : guide.at - guide.look.width / 2
+                        width: guide.vertical ? guide.look.width : canvas.width
+                        height: guide.vertical ? canvas.height : guide.look.width
+                        color: VitrailTokens.solid("primary", guide.look.alpha, page.canvasColor)
+                    }
                 }
 
                 // One tile per output, counted rather than listed: the model

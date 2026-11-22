@@ -364,65 +364,285 @@ function distance(one, x, y) {
     return dx * dx + dy * dy
 }
 
-// A dropped rectangle snaps against the edges of the others and never
-// overlaps one. The nearest such place to the pointer wins; with no edges to
-// touch at all, it stays where it is.
+// The layout has no gaps and no overlaps: every output shares an edge segment
+// with another, so the outputs form one group. Two rectangles touch when one
+// edge is flush against the other and the overlap along it is more than a
+// point.
+function touching(one, other) {
+    if (overlaps(one, other))
+        return false
+    var rows = Math.min(one.y + one.height, other.y + other.height) - Math.max(one.y, other.y)
+    var columns = Math.min(one.x + one.width, other.x + other.width) - Math.max(one.x, other.x)
+    var sideways = one.x + one.width === other.x || other.x + other.width === one.x
+    var stacked = one.y + one.height === other.y || other.y + other.height === one.y
+    return (sideways && rows > 0) || (stacked && columns > 0)
+}
+
+// The groups of indices that reach each other through touching edges.
+function groups(list) {
+    var seen = []
+    var out = []
+    for (var i = 0; i < list.length; i++) {
+        if (seen[i])
+            continue
+        var group = [i]
+        seen[i] = true
+        for (var at = 0; at < group.length; at++) {
+            for (var j = 0; j < list.length; j++) {
+                if (!seen[j] && touching(list[group[at]], list[j])) {
+                    seen[j] = true
+                    group.push(j)
+                }
+            }
+        }
+        out.push(group)
+    }
+    return out
+}
+
+function connected(list) {
+    return groups(list || []).length <= 1
+}
+
+// How close, in logical points, an edge or a centre must be to another to
+// count as lined up: a share of the smaller side, so it follows the output's
+// size. It is also the least overlap a joined edge keeps.
+var alignShare = 0.04
+
+function threshold(size) {
+    return Math.max(1, Math.round(alignShare * Math.min(size.width, size.height)))
+}
+
+// The start of a span of `length` that overlaps [low, high) by at least
+// `grip`, the nearest to `start`.
+function within(start, length, low, high, grip) {
+    var most = Math.min(grip, length, high - low)
+    return Math.min(Math.max(start, low - length + most), high - most)
+}
+
+// The starts a span of `length` can take to line one of its edges or its
+// centre up with the same part of any of `spans` ({ start, length }).
+function lined(length, spans) {
+    var out = []
+    for (var i = 0; i < spans.length; i++) {
+        out.push(spans[i].start,
+                 spans[i].start + (spans[i].length - length) / 2,
+                 spans[i].start + spans[i].length - length)
+    }
+    return out
+}
+
+// The offset a dropped rectangle takes along the edge it joins: the nearest
+// line-up within `near`, then the user's own offset; both kept overlapping
+// that edge. Each is offered, the line-up first.
+function slides(want, length, low, high, near, aligned) {
+    var pick = null
+    for (var i = 0; i < aligned.length; i++) {
+        if (Math.abs(aligned[i] - want) <= near
+                && (pick === null || Math.abs(aligned[i] - want) < Math.abs(pick - want)))
+            pick = aligned[i]
+    }
+    var grip = Math.min(near, length)
+    var out = []
+    if (pick !== null)
+        out.push(Math.round(within(pick, length, low, high, grip)))
+    out.push(Math.round(within(want, length, low, high, grip)))
+    return out
+}
+
+// A dropped rectangle joins the others: it goes flush against one of their
+// edges, overlapping none and sharing a segment of that edge. The nearest such
+// place to where it was dropped wins, so the side it was dropped on is kept.
+// Along the edge, it lines up with the others' edges or centres when it is
+// within the threshold and keeps its own offset otherwise.
 function snap(moving, others, x, y) {
     var targetX = Math.round(x)
     var targetY = Math.round(y)
     var list = others || []
     if (list.length === 0)
         return { x: targetX, y: targetY }
-    var candidates = []
-    function offer(cx, cy) {
-        candidates.push({ x: Math.round(cx), y: Math.round(cy) })
-    }
+    var near = threshold(moving)
+    var columns = []
+    var rows = []
     for (var i = 0; i < list.length; i++) {
-        var other = list[i]
-        var xs = [other.x, other.x + other.width,
-                  other.x - moving.width, other.x + other.width - moving.width]
-        var ys = [other.y, other.y + other.height,
-                  other.y - moving.height, other.y + other.height - moving.height]
-        for (var a = 0; a < xs.length; a++) {
-            offer(xs[a], targetY)
-            for (var b = 0; b < ys.length; b++)
-                offer(xs[a], ys[b])
+        columns.push({ start: list[i].x, length: list[i].width })
+        rows.push({ start: list[i].y, length: list[i].height })
+    }
+    var alignedX = lined(moving.width, columns)
+    var alignedY = lined(moving.height, rows)
+    function free(cx, cy) {
+        var box = { x: cx, y: cy, width: moving.width, height: moving.height }
+        for (var k = 0; k < list.length; k++) {
+            if (overlaps(box, list[k]))
+                return false
         }
-        for (var c = 0; c < ys.length; c++)
-            offer(targetX, ys[c])
+        return true
     }
     var best = null
     var bestDistance = 0
-    for (var j = 0; j < candidates.length; j++) {
-        var candidate = candidates[j]
-        var free = true
-        for (var k = 0; k < list.length; k++) {
-            if (overlaps({ x: candidate.x, y: candidate.y,
-                           width: moving.width, height: moving.height }, list[k])) {
-                free = false
-                break
+    function offer(cx, cy) {
+        if (!free(cx, cy))
+            return false
+        var gap = distance({ x: cx, y: cy }, targetX, targetY)
+        if (best === null || gap < bestDistance) {
+            best = { x: cx, y: cy }
+            bestDistance = gap
+        }
+        return true
+    }
+    for (var n = 0; n < list.length; n++) {
+        var other = list[n]
+        var sides = [other.x + other.width, other.x - moving.width]
+        var offsets = slides(targetY, moving.height, other.y, other.y + other.height, near, alignedY)
+        for (var a = 0; a < sides.length; a++) {
+            for (var b = 0; b < offsets.length; b++) {
+                if (offer(sides[a], offsets[b]))
+                    break
             }
         }
-        if (!free)
-            continue
-        var gap = distance(candidate, targetX, targetY)
+        var floors = [other.y + other.height, other.y - moving.height]
+        offsets = slides(targetX, moving.width, other.x, other.x + other.width, near, alignedX)
+        for (var c = 0; c < floors.length; c++) {
+            for (var d = 0; d < offsets.length; d++) {
+                if (offer(offsets[d], floors[c]))
+                    break
+            }
+        }
+    }
+    return best
+}
+
+// How far a group of rectangles must slide to join the placed ones: flush
+// against one of them, along the axis it shares, overlapping none.
+function pull(group, placed) {
+    var best = null
+    var bestDistance = 0
+    function consider(dx, dy) {
+        for (var i = 0; i < group.length; i++) {
+            var box = { x: group[i].x + dx, y: group[i].y + dy, width: group[i].width, height: group[i].height }
+            for (var j = 0; j < placed.length; j++) {
+                if (overlaps(box, placed[j]))
+                    return
+            }
+        }
+        var gap = dx * dx + dy * dy
         if (best === null || gap < bestDistance) {
-            best = candidate
+            best = { x: dx, y: dy }
             bestDistance = gap
         }
     }
-    if (best !== null)
-        return best
-    // The others are arranged around the pointer: the nearest free place is
-    // beyond their right edge.
-    var right = targetX
-    for (var n = 0; n < list.length; n++)
-        right = Math.max(right, list[n].x + list[n].width)
-    return { x: right, y: targetY }
+    for (var a = 0; a < group.length; a++) {
+        var one = group[a]
+        var grip = threshold(one)
+        for (var b = 0; b < placed.length; b++) {
+            var other = placed[b]
+            var along = within(one.y, one.height, other.y, other.y + other.height, grip) - one.y
+            var across = within(one.x, one.width, other.x, other.x + other.width, grip) - one.x
+            consider(other.x + other.width - one.x, along)
+            consider(other.x - one.width - one.x, along)
+            consider(across, other.y + other.height - one.y)
+            consider(across, other.y - one.height - one.y)
+        }
+    }
+    return best
+}
+
+// Closes the gaps of a layout: the group that holds `anchor` stays put and
+// every other group slides, the nearest first, until it touches the ones
+// already placed. Returns the outputs that move, with their new places.
+function tidy(list, anchor) {
+    var parts = groups(list || [])
+    if (parts.length <= 1)
+        return []
+    var first = 0
+    for (var p = 0; p < parts.length; p++) {
+        if (parts[p].some(function (index) { return list[index].name === anchor }))
+            first = p
+    }
+    var placed = parts[first].map(function (index) { return list[index] })
+    var rest = parts.filter(function (part, at) { return at !== first })
+    var moves = []
+    while (rest.length > 0) {
+        var pickAt = -1
+        var pickBy = null
+        var pickDistance = 0
+        for (var r = 0; r < rest.length; r++) {
+            var group = rest[r].map(function (index) { return list[index] })
+            var by = pull(group, placed)
+            if (by === null)
+                continue
+            var gap = by.x * by.x + by.y * by.y
+            if (pickBy === null || gap < pickDistance) {
+                pickAt = r
+                pickBy = by
+                pickDistance = gap
+            }
+        }
+        if (pickBy === null)
+            break
+        rest[pickAt].forEach(function (index) {
+            var one = list[index]
+            var next = { name: one.name, x: one.x + pickBy.x, y: one.y + pickBy.y,
+                         width: one.width, height: one.height }
+            placed.push(next)
+            if (pickBy.x !== 0 || pickBy.y !== 0)
+                moves.push({ name: next.name, x: next.x, y: next.y })
+        })
+        rest.splice(pickAt, 1)
+    }
+    return moves
+}
+
+// The lines a dragged rectangle lines up with: for each other output, its
+// left / centre / right (or top / centre / bottom) within `near` of the same
+// part of the other, and the edge it lies flush against. Each is { axis, at,
+// kind }, `at` being the coordinate of the other's edge or centre on that
+// axis ("x" for a vertical line).
+function guides(moving, others, near) {
+    var out = []
+    var seen = {}
+    function add(axis, at, kind) {
+        var key = axis + ":" + at + ":" + kind
+        if (seen[key])
+            return
+        seen[key] = true
+        out.push({ axis: axis, at: at, kind: kind })
+    }
+    var list = others || []
+    for (var i = 0; i < list.length; i++) {
+        var other = list[i]
+        var rows = Math.min(moving.y + moving.height, other.y + other.height) - Math.max(moving.y, other.y)
+        var columns = Math.min(moving.x + moving.width, other.x + other.width) - Math.max(moving.x, other.x)
+        var pairs = [
+            ["x", moving.x, other.x, "edge"],
+            ["x", moving.x + moving.width / 2, other.x + other.width / 2, "centre"],
+            ["x", moving.x + moving.width, other.x + other.width, "edge"],
+            ["y", moving.y, other.y, "edge"],
+            ["y", moving.y + moving.height / 2, other.y + other.height / 2, "centre"],
+            ["y", moving.y + moving.height, other.y + other.height, "edge"]
+        ]
+        for (var p = 0; p < pairs.length; p++) {
+            if (Math.abs(pairs[p][1] - pairs[p][2]) <= near)
+                add(pairs[p][0], pairs[p][2], pairs[p][3])
+        }
+        if (rows > 0) {
+            if (Math.abs(moving.x + moving.width - other.x) <= near)
+                add("x", other.x, "flush")
+            if (Math.abs(moving.x - (other.x + other.width)) <= near)
+                add("x", other.x + other.width, "flush")
+        }
+        if (columns > 0) {
+            if (Math.abs(moving.y + moving.height - other.y) <= near)
+                add("y", other.y, "flush")
+            if (Math.abs(moving.y - (other.y + other.height)) <= near)
+                add("y", other.y + other.height, "flush")
+        }
+    }
+    return out
 }
 
 // Moves one output to a logical point. While dragging, `snapIt` is false; on
-// release it is true and the output snaps to its neighbours.
+// release it is true and the output joins its neighbours.
 function moveTo(doc, monitors, name, x, y, snapIt) {
     var monitor = live(monitors, name)
     if (!monitor)
@@ -443,7 +663,13 @@ function drop(doc, monitors, name) {
     var current = rectOfName(monitors, doc, name)
     if (!current)
         return doc
-    return moveTo(doc, monitors, name, current.x, current.y, true)
+    var next = moveTo(doc, monitors, name, current.x, current.y, true)
+    // Taking an output out of the middle can leave the rest apart: they slide
+    // together, and only they, never the one the user placed.
+    var moves = tidy(rects(monitors, next), name)
+    for (var i = 0; i < moves.length; i++)
+        next = set(next, monitors, moves[i].name, { position: moves[i].x + "x" + moves[i].y })
+    return next
 }
 
 // The document text Apply writes. Sorted fields make the applied document

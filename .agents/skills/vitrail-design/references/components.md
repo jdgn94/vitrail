@@ -209,8 +209,16 @@ that the pill starts half cut off (the emoji groups were).
 The canvas and the selected output's settings share **one scroll**: the canvas
 leaves the top when the settings come up (no pinned strip). Dragging freezes
 the canvas frame (`page.dragFrame`): the scale must not change under the
-pointer; it re-fits once on release, with `View.snap` landing the output on its
-neighbour's edges. Every physical output shows a `MonitorEditLayer` card at the
+pointer; it re-fits once on release. On release `View.drop` joins the layout:
+`View.snap` puts the output flush against the nearest edge (no gap, no overlap,
+a shared segment of at least `View.threshold`, keeping the side it was dropped
+on and lining its offset up with the others' edges / centres within that
+threshold); then `View.tidy` slides any output left stranded (taking one out of
+the middle) along the axis it shares until the layout is one group again, never
+moving the dropped one. Positions are not normalised to 0,0 (negatives are
+valid). While dragging, `View.guides` feeds `page.guideLines`: thin primary
+lines (`VitrailTokens.monitorCanvas`) where edges / centres line up, a thicker
+one on the flush edge; they go on release. Every physical output shows a `MonitorEditLayer` card at the
 top centre while the page is open — the output's name, the same on every
 screen; the old accent frame around the screen is gone, and the canvas
 ring stays as the selection. The output's picture and bar overrides live in

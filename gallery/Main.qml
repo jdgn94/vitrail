@@ -7,6 +7,7 @@ import "../bar"
 import "../bar/volume"
 import "../bar/updates"
 import "../bar/disks"
+import "../bar/brightness"
 import "../bar/battery"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
@@ -1282,6 +1283,127 @@ Window {
                     x: VitrailTokens.gap("md")
                     y: VitrailTokens.gap("md")
                     snapshot: ({ error: "unreadable" })
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "BrightnessButton · level × primary × no displays"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            BrightnessButton {
+                snapshot: ({ status: "ok", devices: [
+                    { name: "eDP-1", kind: "backlight", device: "intel_backlight", percent: 60, max: 10000 },
+                    { name: "DP-1", kind: "ddc", bus: 6, percent: 40, max: 100 }
+                ] })
+                primary: "DP-1"
+            }
+
+            BrightnessButton {
+                snapshot: ({ status: "ok", devices: [
+                    { name: "DP-1", kind: "ddc", bus: 6, percent: 90, max: 100 }
+                ] })
+                primary: "DP-1"
+            }
+
+            BrightnessButton {
+                opened: true
+                snapshot: ({ status: "ok", devices: [
+                    { name: "DP-1", kind: "ddc", bus: 6, percent: 40, max: 100 }
+                ] })
+                primary: "DP-1"
+            }
+
+            BrightnessButton {
+                snapshot: ({ status: "access", devices: [] })
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "BrightnessPanel · monitors × a missing DDC display × night light × sun schedule"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: brightnessFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: brightnessFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                BrightnessPanel {
+                    id: brightnessFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    screens: ["eDP-1", "DP-1", "HDMI-A-1"]
+                    snapshot: ({
+                        status: "ok",
+                        devices: [
+                            { name: "eDP-1", kind: "backlight", device: "intel_backlight", percent: 60, max: 10000 },
+                            { name: "DP-1", kind: "ddc", bus: 6, percent: 40, max: 100 }
+                        ]
+                    })
+                    nightlight: ({
+                        enabled: true,
+                        temperature: 4000,
+                        schedule: { mode: "fixed", start: "20:00", end: "07:00", sunrise: "06:30", sunset: "19:45" },
+                        effective: { temperature: 4000, active: true },
+                        next: { at: "07:00", temperature: 6500, active: false },
+                        error: null
+                    })
+                    schedule: ({ mode: "fixed", start: "20:00", end: "07:00" })
+                    temperature: 4000
+                    nightLightOn: true
+                }
+            }
+
+            VitrailSurface {
+                width: brightnessSun.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: brightnessSun.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                BrightnessPanel {
+                    id: brightnessSun
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    screens: ["DP-1"]
+                    snapshot: ({ status: "ok", devices: [{ name: "DP-1", kind: "ddc", bus: 6, percent: 70, max: 100 }] })
+                    nightlight: ({
+                        enabled: true,
+                        temperature: 3500,
+                        schedule: { mode: "sun", start: "20:00", end: "07:00", sunrise: "06:30", sunset: "19:45" },
+                        effective: { temperature: 3500, active: true },
+                        next: { at: "19:45", temperature: 3500, active: true },
+                        error: null
+                    })
+                    schedule: ({ mode: "sun", start: "20:00", end: "07:00" })
+                    temperature: 3500
+                    nightLightOn: true
+                }
+            }
+
+            VitrailSurface {
+                width: brokenBrightness.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: brokenBrightness.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                BrightnessPanel {
+                    id: brokenBrightness
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    screens: ["eDP-1", "DP-1"]
+                    snapshot: ({ error: "unreadable" })
+                    nightlight: ({ enabled: false, temperature: 4000,
+                                   schedule: { mode: "off", start: "20:00", end: "07:00" },
+                                   effective: { temperature: 6500, active: false }, next: null,
+                                   error: "hyprsunset is not installed (package hyprsunset)" })
+                    schedule: ({ mode: "off", start: "20:00", end: "07:00" })
+                    temperature: 4000
                 }
             }
         }

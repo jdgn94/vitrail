@@ -41,6 +41,7 @@ QtObject {
     readonly property var colorPicker: Tokens.colorPicker
     readonly property var osd: Tokens.osd
     readonly property var monitorEdit: Tokens.monitorEdit
+    readonly property var monitorCanvas: Tokens.monitorCanvas
     readonly property var desktopEdit: Tokens.desktopEdit
     readonly property var capture: Tokens.capture
     readonly property var clipboard: Tokens.clipboard

@@ -33,7 +33,7 @@ TIMEOUT = 8
 MAX_BYTES = 1024 * 1024
 # The fields the bar and the dashboard show, and nothing else.
 CURRENT_FIELDS = "temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code"
-DAILY_FIELDS = "temperature_2m_max,temperature_2m_min,weather_code"
+DAILY_FIELDS = "temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset"
 DAY_COUNT = 7
 UNITS = {
     "metric": {},
@@ -107,6 +107,15 @@ def _number(value: object, field: str) -> float:
     return float(value)
 
 
+def _clock(value: object) -> str | None:
+    """`2026-11-04T07:32` (Open-Meteo's sun time) -> `07:32`; None if it is not one."""
+    text = str(value or "")
+    text = text.split("T")[-1][:5]
+    if len(text) == 5 and text[2] == ":" and text[:2].isdigit() and text[3:].isdigit():
+        return text
+    return None
+
+
 def _place(
     name: object, latitude: object, longitude: object, timezone: object = "", admin1: object = "", country: object = ""
 ) -> dict:
@@ -169,7 +178,7 @@ def parse_forecast(text: str) -> dict:
             }
         )
     units = data.get("current_units") if isinstance(data.get("current_units"), dict) else {}
-    return {
+    result = {
         "units": {
             "temperature": str(units.get("temperature_2m") or "°C"),
             "humidity": str(units.get("relative_humidity_2m") or "%"),
@@ -178,6 +187,14 @@ def parse_forecast(text: str) -> dict:
         "current": now,
         "daily": forecast,
     }
+    # The night light's sun mode needs today's two times; older answers (and
+    # the tests that do not ask for them) simply have none.
+    rises, sets = daily.get("sunrise"), daily.get("sunset")
+    if isinstance(rises, list) and isinstance(sets, list) and rises and sets:
+        sunrise, sunset = _clock(rises[0]), _clock(sets[0])
+        if sunrise and sunset:
+            result["sun"] = {"sunrise": sunrise, "sunset": sunset}
+    return result
 
 
 def forecast_url(location: dict, unit_kind: str) -> str:

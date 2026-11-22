@@ -240,6 +240,12 @@ document, no manual Hyprland editing, gallery and tests green.
 
 ---
 
+## Bar elements
+
+New bar elements with their own popups (volume, brightness, a clock that groups
+widgets, resources, weather, privacy, updates and more) follow
+[bar-elements-plan.md](bar-elements-plan.md), one step at a time.
+
 ## Waiting on Hyprland 0.57
 
 Not started until the 0.57 package reaches the repositories (Manjaro had 0.56.2

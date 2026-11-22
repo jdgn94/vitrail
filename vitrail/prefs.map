@@ -101,6 +101,13 @@ bar disksIgnore
 # array) and the percentage below which the icon warns.
 bar peripheralsHide
 bar peripheralsLow
+# The brightness bar element: the wheel step (percent), the night light's
+# switch, colour temperature and schedule (mode plus fixed hours, one JSON
+# document; sun mode uses the weather's times).
+bar brightnessStep
+bar nightLightEnabled
+bar nightLightTemperature
+bar nightLightSchedule
 # The dashboard clock widgets: the pomodoro's periods and rounds, and the
 # timer's default length, in minutes.
 bar pomodoroWork

@@ -4,6 +4,7 @@ import "../../kit"
 import "../../kit/base"
 import "../../bar/updates/updates.js" as Updates
 import "../../bar/disks/disks.js" as Disks
+import "../../bar/brightness/brightness.js" as Brightness
 import "../../bar/battery/battery.js" as Battery
 
 // Bar elements category: one block per new-style bar element, each with the
@@ -314,6 +315,130 @@ Item {
                             ignoreField.text = ""
                         }
                     }
+                }
+            }
+
+            BarElementSection {
+                id: brightnessSection
+
+                Layout.fillWidth: true
+                elementId: "brightness"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSlider {
+                    objectName: "brightnessStep"
+
+                    Layout.fillWidth: true
+                    label: brightnessSection.t("bar.brightness.step")
+                    suffix: "%"
+                    from: VitrailTokens.ranges.brightnessStep.min
+                    to: VitrailTokens.ranges.brightnessStep.max
+                    stepSize: VitrailTokens.ranges.brightnessStep.step
+                    value: page.prefs.brightnessStep
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.brightnessStep = value
+                }
+
+                VitrailSettingRow {
+                    Layout.fillWidth: true
+                    icon: "bedtime"
+                    label: brightnessSection.t("bar.brightness.nightLight")
+                    description: brightnessSection.t("bar.brightness.nightLight.help")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSwitch {
+                        objectName: "nightLightEnabled"
+                        checked: page.prefs.nightLightEnabled === true
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        onToggled: function (value) { page.prefs.nightLightEnabled = value }
+                    }
+                }
+
+                VitrailSlider {
+                    objectName: "nightLightTemperature"
+
+                    Layout.fillWidth: true
+                    label: brightnessSection.t("bar.brightness.temperature")
+                    suffix: " K"
+                    from: Brightness.TEMPERATURE_MIN
+                    to: Brightness.TEMPERATURE_MAX
+                    stepSize: Brightness.TEMPERATURE_STEP
+                    value: page.prefs.nightLightTemperature
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.nightLightTemperature = Math.round(value)
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    wrapMode: Text.WordWrap
+                    text: brightnessSection.t("bar.brightness.temperature.help")
+                }
+
+                VitrailSelect {
+                    objectName: "nightLightSchedule"
+
+                    Layout.fillWidth: true
+                    label: brightnessSection.t("bar.brightness.schedule")
+                    options: [
+                        { key: "off", label: brightnessSection.t("bar.brightness.schedule.off") },
+                        { key: "fixed", label: brightnessSection.t("bar.brightness.schedule.fixed") },
+                        { key: "sun", label: brightnessSection.t("bar.brightness.schedule.sun") }
+                    ]
+                    current: Brightness.scheduleOf(page.prefs.nightLightSchedule).mode
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) {
+                        page.prefs.nightLightSchedule = Brightness.withMode(page.prefs.nightLightSchedule, key)
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: VitrailTokens.gap("sm")
+
+                    VitrailField {
+                        id: nightLightStart
+
+                        Layout.fillWidth: true
+                        label: brightnessSection.t("bar.brightness.start")
+                        text: Brightness.scheduleOf(page.prefs.nightLightSchedule).start
+                        error: Brightness.clock(nightLightStart.text) === null
+                        errorText: brightnessSection.t("bar.brightness.timeInvalid")
+                        onAccepted: {
+                            page.prefs.nightLightSchedule =
+                                Brightness.withTime(page.prefs.nightLightSchedule, "start", nightLightStart.text)
+                        }
+                    }
+
+                    VitrailField {
+                        id: nightLightEnd
+
+                        Layout.fillWidth: true
+                        label: brightnessSection.t("bar.brightness.end")
+                        text: Brightness.scheduleOf(page.prefs.nightLightSchedule).end
+                        error: Brightness.clock(nightLightEnd.text) === null
+                        errorText: brightnessSection.t("bar.brightness.timeInvalid")
+                        onAccepted: {
+                            page.prefs.nightLightSchedule =
+                                Brightness.withTime(page.prefs.nightLightSchedule, "end", nightLightEnd.text)
+                        }
+                    }
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    visible: Brightness.scheduleOf(page.prefs.nightLightSchedule).mode === "sun"
+                    variant: "label"
+                    wrapMode: Text.WordWrap
+                    text: brightnessSection.t("bar.brightness.sun.hint")
                 }
             }
 

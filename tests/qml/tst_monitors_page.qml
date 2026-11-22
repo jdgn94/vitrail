@@ -256,6 +256,34 @@ TestCase {
         compare(mockPrefs.monitorOverrides, "", "nothing is written before Apply")
     }
 
+    function test_the_drop_joins_the_outputs_without_a_gap() {
+        var page = make()
+        var other = View.rectOfName(page.live, page.draftDoc, "DP-1")
+        // Dropped below the first output with a gap, then released.
+        page.dragMonitor("HDMI-A-1", 300, other.height + 400)
+        page.dropMonitor("HDMI-A-1")
+        var landed = View.rectOfName(page.live, page.draftDoc, "HDMI-A-1")
+        compare(landed.y, other.y + other.height, "flush below, not floating under it")
+        verify(View.touching(landed, other))
+    }
+
+    function test_guide_lines_show_while_dragging_and_go_on_release() {
+        var page = make()
+        var other = View.rectOfName(page.live, page.draftDoc, "DP-1")
+        compare(page.guideLines.length, 0)
+        page.beginDrag()
+        // Its top lines up with the first output's top, a little to the right.
+        page.dragMonitor("HDMI-A-1", other.width + 40, other.y + 6)
+        verify(page.guideLines.some(function (guide) { return guide.axis === "y" && guide.at === other.y }),
+               "the tops line up")
+        var line = findChild(page, "guide.y." + other.y)
+        verify(line, "the line is drawn")
+        verify(line.visible && line.width > 0)
+        page.endDrag()
+        compare(page.guideLines.length, 0, "no guides after the release")
+        compare(findChild(page, "guide.y." + other.y), null)
+    }
+
     function test_an_automatic_output_can_be_dragged_and_is_pinned() {
         mockPrefs.monitorOverrides = JSON.stringify({ "HDMI-A-1": { position: "auto" } })
         var page = createTemporaryObject(pageComponent, testCase, { width: 900, height: 640 })

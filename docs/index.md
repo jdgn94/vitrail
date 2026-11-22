@@ -15,6 +15,7 @@ Start here.
 | [`roadmap.md`](roadmap.md) | what is done and what comes next |
 | [`manual-checks.md`](manual-checks.md) | the checks a release needs a person for |
 | [`bar-elements.md`](bar-elements.md) | how to add a new bar element (architecture, recipe, sample element) |
+| [`bar-elements-plan.md`](bar-elements-plan.md) | the plan for the bar elements that come next, step by step |
 
 The installer, the shell and the tests live at the repository root; the README
 describes the layout.

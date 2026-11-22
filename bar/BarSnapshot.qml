@@ -13,6 +13,8 @@ Item {
 
     // The vitrail module's name: a constant of the element, never user text.
     property string module: ""
+    // Extra arguments for its `state` command (the night light's schedule).
+    property var arguments: []
     property int interval: 60000
     property bool active: false
     property var snapshot: ({})
@@ -24,6 +26,8 @@ Item {
         if (root.module !== "" && !fetch.running)
             fetch.running = true
     }
+
+    onArgumentsChanged: root.refresh()
 
     Timer {
         interval: root.interval
@@ -37,6 +41,7 @@ Item {
         id: fetch
 
         command: ["python3", "-m", "vitrail." + root.module, "state"]
+                 .concat(root.arguments || []).map(function (argument) { return String(argument) })
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
         stdout: StdioCollector {
             onStreamFinished: root.snapshot = Elements.snapshot(this.text)
