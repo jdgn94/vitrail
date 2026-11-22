@@ -10,6 +10,7 @@ import "../bar/disks"
 import "../bar/brightness"
 import "../bar/battery"
 import "../bar/health"
+import "../bar/privacy"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -1492,6 +1493,116 @@ Window {
                     x: VitrailTokens.gap("md")
                     y: VitrailTokens.gap("md")
                     snapshot: ({ problems: [], count: 0, checkedAt: "2026-11-22T10:00:00Z", error: null })
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "PrivacyButton · idle (always) × microphone × camera and screen × a tone × unreadable"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            PrivacyButton {
+                showMode: "always"
+                snapshot: ({ uses: [], anyUse: false, watching: { microphone: true, camera: true, screen: true }, error: null })
+            }
+
+            PrivacyButton {
+                snapshot: ({ uses: [
+                    { kind: "microphone", app: "Firefox", label: "Firefox input", node: 61, since: null }
+                ], anyUse: true, watching: { microphone: true, camera: true, screen: true }, error: null })
+            }
+
+            PrivacyButton {
+                dotColor: "primary"
+                snapshot: ({ uses: [
+                    { kind: "camera", app: "Zoom", label: "v4l2_input", node: 70, since: null },
+                    { kind: "screen", app: "OBS", label: "obs-screen", node: 71, since: null }
+                ], anyUse: true, watching: { microphone: true, camera: true, screen: true }, error: null })
+            }
+
+            PrivacyButton {
+                dotColor: "info"
+                opened: true
+                snapshot: ({ uses: [
+                    { kind: "microphone", app: "Discord", label: "WEBRTC VoiceEngine", node: 72, since: null }
+                ], anyUse: true, watching: { microphone: true, camera: true, screen: true }, error: null })
+            }
+
+            PrivacyButton {
+                showMode: "always"
+                snapshot: ({ uses: [], anyUse: false, watching: {}, error: "pw-dump is not available or did not answer" })
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "PrivacyPanel · microphone, camera and screen × only the microphone × nothing in use × no PipeWire"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: privacyFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: privacyFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                PrivacyPanel {
+                    id: privacyFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ uses: [
+                        { kind: "microphone", app: "Firefox", label: "Firefox input", node: 61, since: null },
+                        { kind: "microphone", app: "Discord", label: "WEBRTC VoiceEngine", node: 62, since: null },
+                        { kind: "camera", app: "Zoom", label: "v4l2_input.usb-cam", node: 70, since: null },
+                        { kind: "screen", app: "OBS", label: "obs-screen", node: 71, since: null }
+                    ], anyUse: true, watching: { microphone: true, camera: true, screen: true }, error: null })
+                }
+            }
+
+            VitrailSurface {
+                width: privacyMic.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: privacyMic.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                PrivacyPanel {
+                    id: privacyMic
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    busy: true
+                    snapshot: ({ uses: [
+                        { kind: "microphone", app: "Firefox", label: "Firefox input", node: 61, since: null }
+                    ], anyUse: true, watching: { microphone: true, camera: true, screen: true }, error: null })
+                }
+            }
+
+            VitrailSurface {
+                width: privacyIdle.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: privacyIdle.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                PrivacyPanel {
+                    id: privacyIdle
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ uses: [], anyUse: false, watching: { microphone: true, camera: true, screen: true }, error: null })
+                }
+            }
+
+            VitrailSurface {
+                width: privacyError.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: privacyError.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                PrivacyPanel {
+                    id: privacyError
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ uses: [], anyUse: false, watching: {}, error: "pw-dump is not available or did not answer" })
                 }
             }
         }

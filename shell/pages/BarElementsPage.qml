@@ -7,6 +7,7 @@ import "../../bar/disks/disks.js" as Disks
 import "../../bar/brightness/brightness.js" as Brightness
 import "../../bar/battery/battery.js" as Battery
 import "../../bar/health/health.js" as Health
+import "../../bar/privacy/privacy.js" as Privacy
 
 // Bar elements category: one block per new-style bar element, each with the
 // options every element shares (when it shows) and its own. A bar popup's gear
@@ -579,6 +580,64 @@ Item {
                                                                            checkRow.modelData, value)
                             }
                         }
+                    }
+                }
+            }
+
+            BarElementSection {
+                id: privacySection
+
+                Layout.fillWidth: true
+                elementId: "privacy"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                Repeater {
+                    model: Privacy.KINDS
+
+                    delegate: VitrailSettingRow {
+                        id: watchRow
+
+                        required property string modelData
+
+                        Layout.fillWidth: true
+                        label: privacySection.t("bar.privacy.watch." + watchRow.modelData)
+                        description: privacySection.t("bar.privacy.watch." + watchRow.modelData + ".help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            objectName: "privacyWatch-" + watchRow.modelData
+                            checked: Privacy.watching(page.prefs.privacyWatch, watchRow.modelData)
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) {
+                                page.prefs.privacyWatch = Privacy.withWatch(page.prefs.privacyWatch,
+                                                                            watchRow.modelData, value)
+                            }
+                        }
+                    }
+                }
+
+                VitrailSettingRow {
+                    Layout.fillWidth: true
+                    label: privacySection.t("bar.privacy.dotColor")
+                    description: privacySection.t("bar.privacy.dotColor.help")
+                    foreground: page.palette.foreground
+                    muted: page.palette.muted
+
+                    VitrailSelect {
+                        objectName: "privacyDotColor"
+
+                        Layout.preferredWidth: VitrailTokens.size("display") * 5
+                        current: Privacy.dotToken(page.prefs.privacyDotColor)
+                        foreground: page.palette.foreground
+                        accent: page.palette.primary
+                        options: Privacy.DOT_COLORS.map(function (key) {
+                            return { key: key, label: privacySection.t("bar.privacy.dotColor." + key) }
+                        })
+                        onSelected: function (key) { page.prefs.privacyDotColor = Privacy.dotToken(key) }
                     }
                 }
             }

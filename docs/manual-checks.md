@@ -132,6 +132,33 @@ sudo umount /mnt/health && rm /tmp/health.img && sudo rmdir /mnt/health
 - [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.health` en `ps`.
 - [ ] Un elemento de la barra que no cargue (no se puede provocar sin tocar el código: un error de compilación aborta toda la barra; solo se detecta el fallo al crear el componente) aparecería como «Un elemento de la barra no se pudo cargar», con los ids en el detalle; la señal está cubierta por `tests/qml/tst_bar_entry.qml`.
 
+## Privacy bar element (2026-11-22)
+
+Código en `bar-privacy-ui`. Para capturar a propósito (sin aplicaciones de terceros) y deshacerlo:
+
+```sh
+# Micrófono: una captura de audio de 60 s (Ctrl+C la termina)
+pw-record --media-category Capture /tmp/privacy-mic.wav
+# Cámara: cualquier lector de la cámara, p. ej.
+ffplay -f v4l2 /dev/video0        # o: pw-v4l2 ffplay /dev/video0
+# Pantalla: compartirla desde un navegador (getDisplayMedia) o con OBS (fuente «Captura de pantalla (PipeWire)»)
+# deshacer: Ctrl+C en cada comando, y rm /tmp/privacy-mic.wav
+```
+
+- [ ] Mostrar `privacy` desde el editor de la barra (oculto por defecto): sin ninguna captura el botón no se ve (modo "Solo cuando está activo"); con "Siempre" aparece un escudo apagado y el tooltip dice «Nada está usando el micrófono, la cámara ni la pantalla».
+- [ ] Lanzar `pw-record`: en un par de segundos aparece un punto del color elegido; el tooltip dice «En uso: Micrófono» y debajo «pw-record».
+- [ ] El popup tiene un bloque «Micrófono · En uso» con una fila «pw-record» y su flujo, y un botón **Cortar**; no aparecen bloques de cámara ni de pantalla vacíos, y en ningún sitio dice «grabando».
+- [ ] **Cortar**: el flujo de `pw-record` se destruye (el proceso termina o se queda sin audio), el punto desaparece en el siguiente ciclo y el popup muestra la línea tranquila. La aplicación no se mata.
+- [ ] Lanzar la captura y terminarla con Ctrl+C: el punto **desaparece** solo, sin tocar nada (y con el modo "Siempre" vuelve el escudo).
+- [ ] Un reproductor (`pw-play`, un vídeo) y un medidor de volumen **no** encienden el punto; un navegador con la cámara solo presente (sin abrirla) tampoco.
+- [ ] Cámara: el punto aparece mientras `ffplay` la tiene abierta y el bloque dice «Cámara». Compartir pantalla: el bloque dice «Pantalla compartida» (no «Cámara»).
+- [ ] Ajustes → Bar elements → Privacy: apagar «Vigilar el micrófono» y lanzar `pw-record` no enciende el punto ni muestra el bloque; apagar los tres deja la barra sin punto aunque haya capturas.
+- [ ] El selector «Color del punto» cambia el punto a rojo, acento o azul de la paleta al momento, y respeta el tema claro y el oscuro.
+- [ ] Con un solo proceso `pw-record` y dos aplicaciones más, el tooltip nombra las dos primeras y «y N más».
+- [ ] Sin PipeWire (`systemctl --user stop pipewire pipewire-pulse wireplumber`; volver a arrancarlos después) el popup dice la línea tranquila «No se puede leer PipeWire…» y el botón no muestra ningún punto.
+- [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque «Privacy».
+- [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.privacy` ni `pw-dump` en `ps`.
+
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 
 Código en `master` (`5936834..36fab6a`). La automatización ya está verde

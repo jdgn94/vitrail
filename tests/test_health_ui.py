@@ -44,7 +44,7 @@ class HealthWiringTests(unittest.TestCase):
     def test_it_starts_in_only_while_active_and_hidden(self) -> None:
         self.assertIn('"health"', read("bar/elements.js"))
         self.assertIn('\\"health\\"', read("shell/Prefs.qml"))
-        self.assertIn('"health"]', read("bar/layouts.js"))
+        self.assertRegex(read("bar/layouts.js"), r'DEFAULT_HIDDEN = \{ bar: \[[^\]]*"health"')
 
     def test_every_problem_kind_has_a_translated_title(self) -> None:
         kinds = re.search(r"var KINDS = \[([^\]]*)\]", read("bar/health/health.js")).group(1)

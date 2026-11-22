@@ -30,7 +30,9 @@ sandboxed app that reads the camera through the portal still appears as its own
 stream, but under whatever name the portal gave it.
 
 Stopping a use destroys the capture stream node (`pw-cli destroy`); the
-application is never killed and may simply reconnect.
+application is never killed and may simply reconnect. `privacy stop KIND NODE`
+(what the popup runs) reads the graph again first and destroys the node only
+while it is still that use, so a recycled id is never cut by mistake.
 """
 
 from __future__ import annotations
@@ -220,12 +222,36 @@ def stop(kind: str, node: object) -> list[str] | None:
     return ["pw-cli", "destroy", str(node_id)]
 
 
+def cut_off(kind: str, node: object, *, runner: Runner = run_text) -> str:
+    """Cut one use off, only if the node is still that use right now.
+
+    PipeWire may have recycled the id since the popup drew it, so the graph is
+    read again and the node destroyed only while it is still a running use of
+    `kind`. Returns "stopped", "gone" (nothing to cut) or "failed".
+    """
+    argv = stop(kind, node)
+    if argv is None:
+        return "failed"
+    text = runner(dump_command())
+    try:
+        dump = json.loads(text) if text is not None else None
+    except ValueError:
+        dump = None
+    if not isinstance(dump, list):
+        return "failed"
+    if not any(use["kind"] == kind and use["node"] == node for use in find_uses(dump)):
+        return "gone"
+    return "stopped" if runner(argv) is not None else "failed"
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    if len(args) == 3 and args[0] == "stop" and args[1] in KINDS and args[2].isdigit():
+        return 1 if cut_off(args[1], int(args[2])) == "failed" else 0
     if args[:1] == ["state"] and all(kind in KINDS for kind in args[1:]):
         print(json.dumps(state(watch=args[1:] or None), separators=(",", ":")))
         return 0
-    print("usage: privacy state [microphone|camera|screen ...]", file=sys.stderr)
+    print("usage: privacy state [microphone|camera|screen ...] | privacy stop KIND NODE", file=sys.stderr)
     return 2
 
 

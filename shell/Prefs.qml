@@ -89,6 +89,8 @@ QtObject {
     property alias brightnessStep: barFile.brightnessStep
     property alias healthDiskThreshold: barFile.healthDiskThreshold
     property alias healthChecks: barFile.healthChecks
+    property alias privacyWatch: barFile.privacyWatch
+    property alias privacyDotColor: barFile.privacyDotColor
     property alias nightLightEnabled: barFile.nightLightEnabled
     property alias nightLightTemperature: barFile.nightLightTemperature
     property alias nightLightSchedule: barFile.nightLightSchedule
@@ -278,7 +280,7 @@ QtObject {
         // array of ids (bar/elements.js). The updates, disks and peripherals
         // elements start here; an explicit value (even "[]") wins over the
         // built-in default.
-        property string barActiveOnly: "[\"updates\",\"disks\",\"peripherals\",\"health\"]"
+        property string barActiveOnly: "[\"updates\",\"disks\",\"peripherals\",\"health\",\"privacy\"]"
         // The keyboard layout chip, with its switcher and on-screen keyboard.
         property bool barKeyboard: true
         // The OSD: whether keys show it, how long a key's slider stays, how far
@@ -317,6 +319,10 @@ QtObject {
         // services, disk, hyprland, doctor).
         property int healthDiskThreshold: VitrailTokens.ranges.healthDisk.value
         property string healthChecks: "[\"services\",\"disk\",\"hyprland\",\"doctor\"]"
+        // The privacy bar element: the kinds it watches (one JSON array of
+        // microphone, camera, screen) and the dot's palette role.
+        property string privacyWatch: "[\"microphone\",\"camera\",\"screen\"]"
+        property string privacyDotColor: "error"
         property bool nightLightEnabled: false
         property int nightLightTemperature: 4000
         property string nightLightSchedule: '{"mode":"off","start":"20:00","end":"07:00"}'

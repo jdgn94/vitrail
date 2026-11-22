@@ -20,6 +20,7 @@ import "updates/updates.js" as Updates
 import "disks/disks.js" as Disks
 import "brightness/brightness.js" as Brightness
 import "health/health.js" as Health
+import "privacy/privacy.js" as Privacy
 import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "kit/wallpaper.js" as WallpaperTransition
@@ -67,6 +68,7 @@ import "disks"
 import "battery"
 import "brightness"
 import "health"
+import "privacy"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -778,6 +780,8 @@ ShellRoot {
             updatesData.refresh()
         if (kind === "health")
             healthData.refresh()
+        if (kind === "privacy")
+            privacyData.refresh()
         if (kind === "disks") {
             // A failure belongs to the action that caused it, not to a later
             // visit: start the popup with a clean line.
@@ -1738,6 +1742,36 @@ ShellRoot {
     readonly property string healthKey: String(shell.prefs.healthChecks) + "|" + String(shell.prefs.healthDiskThreshold)
 
     onHealthKeyChanged: healthData.refresh()
+
+    // The privacy bar element's data (vitrail/privacy.py), read every two
+    // seconds while the element is in a bar (a capture should show at once) and
+    // again when the popup opens. Only the watched kinds are asked for; a
+    // preference that watches nothing asks for all and the element ignores
+    // them (bar/privacy/privacy.js).
+    BarSnapshot {
+        id: privacyData
+
+        module: "privacy"
+        interval: 2000
+        arguments: Privacy.watchArguments(shell.prefs.privacyWatch)
+        active: shell.barShows("privacy")
+    }
+
+    // Cut off: the module re-reads the graph and destroys that one stream only
+    // while it is still that use. One at a time.
+    function privacyCut(kind, node) {
+        if (privacyCutter.running || kind === "" || !isFinite(node) || node < 0)
+            return
+        privacyCutter.command = ["python3", "-m", "vitrail.privacy", "stop", String(kind), String(Math.floor(node))]
+        privacyCutter.running = true
+    }
+
+    Process {
+        id: privacyCutter
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        onExited: privacyData.refresh()
+    }
 
     // The bar's own load failures, for the health list (bar/health/health.js,
     // the documented `bar` problem): how many entries of each element id sit in
@@ -3671,6 +3705,7 @@ ShellRoot {
                     case "peripherals": return peripheralsWidget
                     case "brightness": return brightnessWidget
                     case "health": return healthWidget
+                    case "privacy": return privacyWidget
                     default: return null
                     }
                 }
@@ -4140,6 +4175,27 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: privacyWidget
+
+                    PrivacyButton {
+                        id: privacyButton
+
+                        strings: shell.strings
+                        snapshot: privacyData.snapshot
+                        watch: String(shell.prefs.privacyWatch)
+                        dotColor: String(shell.prefs.privacyDotColor)
+                        showMode: Elements.showMode(shell.activeOnlyIds, "privacy")
+                        opened: shell.popupOpen && shell.popupKind === "privacy" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("privacy", privacyButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(privacyButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("privacy", privacyButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -4206,6 +4262,7 @@ ShellRoot {
                     case "peripherals": return monitor.loadedItem("peripherals")
                     case "brightness": return monitor.loadedItem("brightness")
                     case "health": return monitor.loadedItem("health")
+                    case "privacy": return monitor.loadedItem("privacy")
                     default: return null
                     }
                 }
@@ -5194,6 +5251,13 @@ ShellRoot {
                                 sourceComponent: healthComponent
                             }
 
+                            Popout {
+                                name: "privacy"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: privacyComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -5589,6 +5653,19 @@ ShellRoot {
                         onLogsRequested: function (argv) { shell.runHealth(argv) }
                         onRefreshRequested: healthData.refresh()
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "health")
+                    }
+                }
+
+                Component {
+                    id: privacyComponent
+
+                    PrivacyPanel {
+                        strings: shell.strings
+                        snapshot: privacyData.snapshot
+                        watch: String(shell.prefs.privacyWatch)
+                        busy: privacyCutter.running
+                        onCutRequested: function (kind, node) { shell.privacyCut(kind, node) }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "privacy")
                     }
                 }
 

@@ -82,6 +82,9 @@ var index = [
     { category: "bar-elements", tab: "health", key: "bar.widget.health", label: "System health",
       terms: ["health", "problems", "failed", "services", "systemd", "disk space", "hyprland",
               "config errors", "doctor", "warning"] },
+    { category: "bar-elements", tab: "privacy", key: "bar.widget.privacy", label: "Privacy",
+      terms: ["privacy", "microphone", "camera", "webcam", "screen sharing", "screencast", "recording",
+              "pipewire", "dot", "indicator", "capture"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },
