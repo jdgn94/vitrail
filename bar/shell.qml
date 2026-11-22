@@ -76,6 +76,7 @@ import "health"
 import "privacy"
 import "weather"
 import "market"
+import "downloads"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -795,6 +796,8 @@ ShellRoot {
             weatherData.refresh()
         if (kind === "market" && Market.symbolsOf(shell.prefs.marketSymbols).length > 0)
             marketData.refresh()
+        if (kind === "downloads")
+            downloadsData.refresh()
         if (kind === "disks") {
             // A failure belongs to the action that caused it, not to a later
             // visit: start the popup with a clean line.
@@ -2042,6 +2045,19 @@ ShellRoot {
         active: shell.barShows("market") && Market.symbolsOf(shell.prefs.marketSymbols).length > 0
     }
 
+
+    // The downloads bar element's data (vitrail/downloads.py): the files a
+    // downloader is still writing. One scan a second while the element is in a
+    // bar, and again when its popup opens; the module's cache carries speed,
+    // elapsed time and the finished ones between the one-shot polls.
+    BarSnapshot {
+        id: downloadsData
+
+        module: "downloads"
+        interval: 1000
+        active: shell.barShows("downloads")
+    }
+
     // The popup's night light state. BarSnapshot asks the module's `state`
     // with this element's schedule, so the maths and the next change stay in
     // vitrail/nightlight.py.
@@ -2455,6 +2471,34 @@ ShellRoot {
         running: true
         command: ["python3", "-m", "vitrail.downloads", "watch"]
         environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
+
+    // Downloads: the watcher turns the files a downloader is still writing
+    // (.part, .crdownload…) into notifications on this same server, replaced
+    // in place as they grow, with Cancel and the finished file's buttons
+    // (vitrail/downloads.py). It scans once a second and exits with the bar, so a
+    // bar restart never leaves an orphan behind.
+    Process {
+        running: true
+        command: ["python3", "-m", "vitrail.downloads", "watch"]
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+    }
+
+    // Cancel in the downloads popup: the module removes that one partial file
+    // (never anything outside a download folder), then the snapshot is re-read.
+    function cancelDownload(path) {
+        if (downloadsCancel.running || String(path || "") === "")
+            return
+        downloadsCancel.command = ["python3", "-m", "vitrail.downloads", "cancel", String(path)]
+        downloadsCancel.running = true
+    }
+
+    Process {
+        id: downloadsCancel
+
+        environment: ({ PYTHONPATH: Quickshell.shellDir + "/.." })
+        onExited: downloadsData.refresh()
     }
 
     // The visualiser's cava runs only while the preference is on and an app
@@ -3823,6 +3867,7 @@ ShellRoot {
                     case "privacy": return privacyWidget
                     case "weather": return weatherWidget
                     case "market": return marketWidget
+                    case "downloads": return downloadsWidget
                     default: return null
                     }
                 }
@@ -4399,6 +4444,26 @@ ShellRoot {
                     }
                 }
 
+
+                Component {
+                    id: downloadsWidget
+
+                    DownloadsButton {
+                        id: downloadsButton
+
+                        strings: shell.strings
+                        snapshot: downloadsData.snapshot
+                        showMode: Elements.showMode(shell.activeOnlyIds, "downloads")
+                        opened: shell.popupOpen && shell.popupKind === "downloads" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("downloads", downloadsButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(downloadsButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("downloads", downloadsButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -4469,6 +4534,7 @@ ShellRoot {
                     case "privacy": return monitor.loadedItem("privacy")
                     case "weather": return monitor.loadedItem("weather")
                     case "market": return monitor.loadedItem("market")
+                    case "downloads": return monitor.loadedItem("downloads")
                     default: return null
                     }
                 }
@@ -5492,6 +5558,14 @@ ShellRoot {
                                 sourceComponent: marketComponent
                             }
 
+
+                            Popout {
+                                name: "downloads"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: downloadsComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -5967,6 +6041,21 @@ ShellRoot {
                         onCurrencyRequested: function (code) { shell.setPref("marketCurrency", code) }
                         onRefreshRequested: marketData.refresh()
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "market")
+                    }
+                }
+
+                Component {
+                    id: downloadsComponent
+
+                    DownloadsPanel {
+                        strings: shell.strings
+                        snapshot: downloadsData.snapshot
+                        recentLimit: shell.prefNumber("downloadsRecent",
+                                                     VitrailTokens.ranges.downloadsRecent.value)
+                        onOpenFolderRequested: function (path) { shell.openAttachment(path) }
+                        onOpenFileRequested: function (path) { shell.openAttachment(path) }
+                        onCancelRequested: function (path) { shell.cancelDownload(path) }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "downloads")
                     }
                 }
 

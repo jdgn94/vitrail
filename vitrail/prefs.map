@@ -130,6 +130,8 @@ bar privacyDotColor
 bar marketSymbols
 bar marketCurrency
 bar marketInterval
+# The downloads bar element: how many finished downloads its popup keeps.
+bar downloadsRecent
 # The dashboard clock widgets: the pomodoro's periods and rounds, and the
 # timer's default length, in minutes.
 bar pomodoroWork

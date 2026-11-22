@@ -124,6 +124,17 @@ out and stops its timers when not running. `VitrailButton { busy }` swaps the
 icon (or starts the label) with it and ignores clicks; use it for anything that
 waits (polkit check, connecting).
 
+## Progress tracks (`bar/notifications/ProgressRow.qml`, `bar/downloads/`)
+
+A long task draws the same thin track: `VitrailTokens.slider.thin` high,
+rounded, `VitrailTokens.solid("foreground", 0.15)` under
+`VitrailTokens.color("primary")`. A known total grows the fill from the left;
+an unknown one slides a quarter-width fill back and forth for
+`VitrailTokens.duration("slow")`, and the row says "measuring" — never a
+percentage the source did not give. The notification card (`ProgressRow`) and
+the downloads button and popup share the look; the downloads button puts the
+track under the download glyph as its `content` face.
+
 ## VitrailColorPicker (`kit/composed`, built from `kit/base`)
 
 The one colour picker: a wheel, a tone slider and a hex field that are one colour

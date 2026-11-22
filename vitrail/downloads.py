@@ -17,12 +17,21 @@ what aborts the download; if the app keeps writing it says so rather than
 pretending), Delete removes the finished file, Open folder and Open file use
 the desktop's own file manager (`vitrail/files.py`).
 
+The bar element does not run the daemon: it asks for one JSON snapshot per
+poll and draws it itself, and its Cancel button calls the same rule through
+the `cancel` command. Both are one-shot, so the little state a snapshot needs
+between polls (when a download started, its last size, the finished ones) is
+cached in `~/.cache/vitrail/downloads-state.json`.
+
     python3 -m vitrail.downloads watch      # started with the bar
+    python3 -m vitrail.downloads state      # one snapshot for the bar element
+    python3 -m vitrail.downloads cancel PATH  # the partial file, never another
 """
 
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import json
 import os
 import sys
@@ -39,12 +48,24 @@ TEMP = (".part", ".crdownload", ".download", ".tmp")
 BY_SUFFIX = {".crdownload": "Chromium", ".part": "Firefox", ".download": "Safari", ".tmp": ""}
 # Process names worth a nicer label.
 BY_PROCESS = {
-    "firefox": "Firefox", "firefox-bin": "Firefox", "librewolf": "LibreWolf",
-    "chrome": "Google Chrome", "google-chrome": "Google Chrome", "chromium": "Chromium",
-    "brave": "Brave", "vivaldi-bin": "Vivaldi", "opera": "Opera",
-    "wget": "wget", "curl": "curl", "aria2c": "aria2", "transmission-gtk": "Transmission",
-    "transmission-qt": "Transmission", "qbittorrent": "qBittorrent", "steam": "Steam",
-    "mega-cmd": "MEGA", "yt-dlp": "yt-dlp",
+    "firefox": "Firefox",
+    "firefox-bin": "Firefox",
+    "librewolf": "LibreWolf",
+    "chrome": "Google Chrome",
+    "google-chrome": "Google Chrome",
+    "chromium": "Chromium",
+    "brave": "Brave",
+    "vivaldi-bin": "Vivaldi",
+    "opera": "Opera",
+    "wget": "wget",
+    "curl": "curl",
+    "aria2c": "aria2",
+    "transmission-gtk": "Transmission",
+    "transmission-qt": "Transmission",
+    "qbittorrent": "qBittorrent",
+    "steam": "Steam",
+    "mega-cmd": "MEGA",
+    "yt-dlp": "yt-dlp",
 }
 
 # One scan a second; the speed covers the last few seconds of samples.
@@ -67,6 +88,10 @@ CANCEL = "cancel"
 DELETE = "delete"
 FOLDER = "folder"
 FILE = "file"
+# The bar element's one-shot snapshot keeps a small history between polls: how
+# many finished downloads survive, and where it remembers them.
+STATE_CACHE = "downloads-state.json"
+RECENT_MAX = 20
 
 
 def human_size(size: float) -> str:
@@ -302,6 +327,192 @@ class Watcher:
             pass
 
 
+def cancel_partial(path: Path, dirs: list[Path] | None = None) -> bool:
+    """Remove one downloader's part file, and nothing else.
+
+    The bar element is read-only: its Cancel button is a click that reaches this
+    rule. A path outside the download folders, or a name without one of the
+    downloader suffixes (a finished file, a user's document), is refused.
+    """
+    try:
+        target = Path(path)
+    except TypeError:
+        return False
+    if target.suffix.lower() not in TEMP or not target.is_file():
+        return False
+    folders = [folder.resolve() for folder in (dirs if dirs is not None else download_dirs())]
+    try:
+        parent = target.resolve().parent
+    except OSError:
+        return False
+    if parent not in folders:
+        return False
+    try:
+        target.unlink()
+    except OSError:
+        return False
+    return True
+
+
+# --- the bar element's snapshot ---------------------------------------------
+
+
+def state_cache_file(folder: Path | None = None) -> Path:
+    base = folder or Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "vitrail"
+    return base / STATE_CACHE
+
+
+def download_id(path: Path) -> str:
+    """A stable id for one download: the same on every poll, and after it ends."""
+    return hashlib.sha1(str(path).encode("utf-8")).hexdigest()[:16]
+
+
+def load_state(path: Path) -> dict:
+    """The stored history, or an empty one. A broken file is data, not a crash."""
+    try:
+        stored = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"active": [], "recent": []}
+    if not isinstance(stored, dict):
+        return {"active": [], "recent": []}
+    active = stored.get("active")
+    recent = stored.get("recent")
+    return {"active": active if isinstance(active, list) else [], "recent": recent if isinstance(recent, list) else []}
+
+
+def save_state(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    partial = path.with_name(f".{path.name}.part")
+    partial.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+    os.replace(partial, path)
+
+
+def _number(value: object, fallback: float = 0.0) -> float:
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return fallback
+
+
+def active_entry(item: Download, first: float, now: float, speed: float) -> dict:
+    """One running download: numbers and short codes, no words (the QML has them)."""
+    return {
+        "id": download_id(item.path),
+        "name": item.name,
+        "path": str(item.path),
+        "final": str(item.final),
+        "folder": str(item.final.parent),
+        "size": int(item.size),
+        "total": int(item.total) if item.total else None,
+        "percent": item.percent(),
+        "speed": round(max(0.0, speed), 1),
+        "elapsed": round(max(0.0, now - first), 1),
+        "app": item.app,
+        "state": item.state if item.state in ("cancelling", "busy") else "live",
+        # A finished name may exist while the part file is still there (a
+        # downloader copying into place); Open file waits for it.
+        "finalExists": item.final.is_file(),
+    }
+
+
+def recent_entry(path: Path, final: Path, size: int, app: str, finished_at: float) -> dict:
+    """One finished download, with the final file the buttons open."""
+    return {
+        "id": download_id(path),
+        "name": final.name,
+        "path": str(final),
+        "folder": str(final.parent),
+        "size": int(size),
+        "app": app,
+        "finishedAt": round(finished_at, 3),
+        "state": "done",
+    }
+
+
+def state(
+    dirs: list[Path] | None = None,
+    cache: Path | None = None,
+    watcher: Watcher | None = None,
+    now: float | None = None,
+    limit: int = RECENT_MAX,
+) -> dict:
+    """One snapshot for the bar element: `{"active", "recent", "updated"}`.
+
+    A fresh process every poll, so the few things a one-shot scan cannot know
+    are remembered in the cache: when each download started (elapsed), its last
+    size and time (speed), and the finished ones (recent). `limit` caps that
+    history; the settings window asks for a smaller slice of the same list.
+    """
+    path = state_cache_file(cache)
+    stored = load_state(path)
+    now = time.time() if now is None else float(now)
+    watcher = watcher or Watcher(dirs)
+    error = ""
+    try:
+        watcher.scan()
+    except OSError:
+        # A file disappearing between the listing and its measurement is a
+        # scan that lost the race: the next poll sees the truth.
+        error = "scan"
+
+    previous: dict[str, dict] = {}
+    for record in stored["active"]:
+        if isinstance(record, dict) and isinstance(record.get("path"), str):
+            previous[record["path"]] = record
+
+    active: list[dict] = []
+    kept: list[dict] = []
+    for item in watcher.live.values():
+        before = previous.get(str(item.path))
+        first = _number(before.get("first"), now) if before else now
+        speed = 0.0
+        if before:
+            span = now - _number(before.get("at"), now)
+            if span > 0:
+                speed = max(0.0, (item.size - _number(before.get("size"), item.size)) / span)
+        entry = active_entry(item, first, now, speed)
+        active.append(entry)
+        kept.append(
+            {
+                "id": entry["id"],
+                "path": str(item.path),
+                "final": str(item.final),
+                "first": first,
+                "size": int(item.size),
+                "at": now,
+                "app": item.app,
+            }
+        )
+
+    recent = [
+        record
+        for record in stored["recent"]
+        if isinstance(record, dict) and isinstance(record.get("id"), str) and isinstance(record.get("path"), str)
+    ]
+    seen = {record["id"] for record in recent}
+    live = {str(item.path) for item in watcher.live.values()}
+    for partial, before in previous.items():
+        if partial in live:
+            continue
+        final = Path(str(before.get("final") or ""))
+        if not final.is_file():
+            continue
+        entry = recent_entry(Path(partial), final, final.stat().st_size, str(before.get("app") or ""), now)
+        if entry["id"] not in seen:
+            recent.insert(0, entry)
+            seen.add(entry["id"])
+    recent = recent[: max(0, int(limit))]
+
+    result: dict = {"active": active, "recent": recent, "updated": round(now, 3)}
+    if error:
+        result["error"] = error
+    try:
+        save_state(path, {"saved_at": now, "active": kept, "recent": recent})
+    except OSError:
+        result["error"] = "cache"
+    return result
+
+
 # --- the words (kit/i18n, so the card is translated) -------------------------
 I18N = Path(__file__).resolve().parent.parent / "kit" / "i18n"
 _TABLES: dict[str, dict] = {}
@@ -331,6 +542,7 @@ def t(key: str, *values: object, language: str | None = None) -> str:
 
 # --- the notification --------------------------------------------------------
 
+
 def announce_text(kind: str, item: Download, language: str | None = None) -> tuple[str, str]:
     """(summary, body) of one change, in the user's language. The app, when it
     was recognized, leads the body; the summary is the file."""
@@ -347,27 +559,35 @@ def announce_text(kind: str, item: Download, language: str | None = None) -> tup
         parts += [say("downloads.speed", human_size(item.speed)), human_time(item.duration or 0)]
         return summary, with_app(" · ".join(parts))
     if kind == "finished":
-        return (say("downloads.summary.done", item.name),
-                with_app(say("downloads.body.done", human_size(item.size), human_time(item.duration))))
+        return (
+            say("downloads.summary.done", item.name),
+            with_app(say("downloads.body.done", human_size(item.size), human_time(item.duration))),
+        )
     if kind == "cancelling":
         return say("downloads.summary.cancelling", item.name), say("downloads.body.cancelling")
     if kind == "cancelled":
-        return (say("downloads.summary.cancelled"),
-                with_app(say("downloads.body.cancelled", human_time(item.duration), human_size(item.size))))
+        return (
+            say("downloads.summary.cancelled"),
+            with_app(say("downloads.body.cancelled", human_time(item.duration), human_size(item.size))),
+        )
     if kind == "busy":
         return say("downloads.summary.busy", item.name), say("downloads.body.busy")
     if kind == "deleted":
         return say("downloads.summary.done", item.name), say("downloads.body.deleted")
-    return (say("downloads.summary.failed", item.name),
-            with_app(say("downloads.body.gone", human_size(item.size))))
+    return (say("downloads.summary.failed", item.name), with_app(say("downloads.body.gone", human_size(item.size))))
 
 
 def actions_for(kind: str, language: str | None = None) -> list[str]:
     say = lambda key: t(key, language=language)  # noqa: E731
     if kind == "finished":
-        return [DELETE, say("downloads.action.delete"),
-                FOLDER, say("downloads.action.folder"),
-                FILE, say("downloads.action.file")]
+        return [
+            DELETE,
+            say("downloads.action.delete"),
+            FOLDER,
+            say("downloads.action.folder"),
+            FILE,
+            say("downloads.action.file"),
+        ]
     if kind == "deleted":
         return [FOLDER, say("downloads.action.folder"), FILE, say("downloads.action.file")]
     if kind in ("live", "started", "updated", "cancelling", "busy"):
@@ -398,8 +618,15 @@ class Notifier:
         self.bus = bus
         self.iface = self.bus.get_object(SERVICE, PATH)
 
-    def send(self, summary: str, body: str, actions: list[str] | None = None,
-             hints: dict | None = None, replace: int = 0, timeout: int = 0) -> int:
+    def send(
+        self,
+        summary: str,
+        body: str,
+        actions: list[str] | None = None,
+        hints: dict | None = None,
+        replace: int = 0,
+        timeout: int = 0,
+    ) -> int:
         import dbus
 
         if self.iface is None:
@@ -407,9 +634,18 @@ class Notifier:
         mapped = dbus.Dictionary(signature="sv")
         for key, value in (hints or {}).items():
             mapped[key] = dbus.Int32(value) if isinstance(value, int) else dbus.String(str(value))
-        return int(self.iface.Notify(self.app, dbus.UInt32(replace), self.icon, summary, body,
-                                     dbus.Array(actions or [], signature="s"), mapped,
-                                     dbus.Int32(timeout)))
+        return int(
+            self.iface.Notify(
+                self.app,
+                dbus.UInt32(replace),
+                self.icon,
+                summary,
+                body,
+                dbus.Array(actions or [], signature="s"),
+                mapped,
+                dbus.Int32(timeout),
+            )
+        )
 
 
 class Daemon:
@@ -432,8 +668,9 @@ class Daemon:
     def announce(self, kind: str, item: Download) -> int | None:
         item.state = {"started": "live", "updated": "live", "finished": "done"}.get(kind, kind)
         summary, body = announce_text(kind, item, self.language)
-        nid = self.notifier.send(summary, body, actions_for(kind, self.language),
-                                 hints_for(item), replace=item.nid or 0)
+        nid = self.notifier.send(
+            summary, body, actions_for(kind, self.language), hints_for(item), replace=item.nid or 0
+        )
         item.nid = nid
         self.by_id[nid] = item
         self.order.append(nid)
@@ -477,8 +714,7 @@ class Daemon:
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         bus = dbus.SessionBus()
         self.notifier.attach(bus)
-        bus.add_signal_receiver(self.on_action, signal_name="ActionInvoked",
-                                dbus_interface=SERVICE, path=PATH)
+        bus.add_signal_receiver(self.on_action, signal_name="ActionInvoked", dbus_interface=SERVICE, path=PATH)
         GLib.timeout_add(int(poll * 1000), self.tick)
         GLib.MainLoop().run()
 
@@ -493,7 +729,13 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         Daemon(Watcher(), Notifier()).run()
         return 0
-    print("usage: downloads watch", file=sys.stderr)
+    if args == ["state"]:
+        data = state()
+        print(json.dumps(data, separators=(",", ":")))
+        return 1 if "error" in data else 0
+    if len(args) == 2 and args[0] == "cancel":
+        return 0 if cancel_partial(Path(args[1])) else 1
+    print("usage: downloads watch | state | cancel PATH", file=sys.stderr)
     return 2
 
 

@@ -96,6 +96,9 @@ var index = [
     { category: "bar-elements", tab: "market", key: "bar.widget.market", label: "Markets",
       terms: ["market", "markets", "crypto", "stocks", "price", "prices", "coingecko", "bitcoin",
               "ethereum", "currency", "eur", "usd", "sparkline"] },
+    { category: "bar-elements", tab: "downloads", key: "bar.widget.downloads", label: "Downloads",
+      terms: ["downloads", "download", "progress", "speed", "cancel", "recent",
+              "open folder", "open file", "part", "crdownload"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },

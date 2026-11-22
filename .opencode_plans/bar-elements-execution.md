@@ -232,3 +232,14 @@ data and UI halves are both green.
   new worktree on an old commit (bar-market-ui landed on `b215644`). Always
   check `git -C <worktree> rev-parse HEAD` against `master` before starting a
   worker on it.
+- 2026-11-22: step 16b (market) `d9de6d7` merged as `4ec3b20`, and step 4a
+  (resources + shared sampler) `e8574d7` merged as `497f9d9` (1498 tests, 126
+  QML). `tests/qml_smoke.sh`'s qml-unit timeout raised 45 s → 120 s: the suite
+  grew past 1600 unit tests and the old limit tripped under load, not because
+  of a real failure.
+- 2026-11-22: 4b (network usage) and 6 (pomodoro + notes) dispatched in parallel
+  from `master`; both worktrees had to be fast-forwarded from `b215644` first.
+- 2026-11-22: user instruction recorded — **when every task is finished, unify
+  all remaining branches into the main branch** (`master`): the task branches,
+  `bar-elements`, and the `docs/index.md` line plus the plan document, leaving
+  the user's monitors/capture WIP untouched.

@@ -33,6 +33,8 @@ var ranges = {
     marketInterval: { min: 5, max: 720, step: 5, value: 15 },
     // The resources bar element: seconds between two readings.
     resourcesInterval: { min: 1, max: 10, step: 1, value: 2 },
+    // The downloads element: how many finished downloads its popup keeps.
+    downloadsRecent: { min: 0, max: 20, step: 1, value: 5 },
     // The dock's magnification: how many neighbouring icons the planet falloff
     // reaches, and the largest scale it gives the icon under the pointer.
     dockMagnifyRange: { min: 1, max: 5, step: 1, value: 2 },
