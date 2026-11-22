@@ -114,6 +114,7 @@ QtObject {
     property alias pomodoroRest: barFile.pomodoroRest
     property alias pomodoroCycles: barFile.pomodoroCycles
     property alias timerMinutes: barFile.timerMinutes
+    property alias dashboardWidgets: barFile.dashboardWidgets
     property alias notesPopupMax: barFile.notesPopupMax
     property alias soundOutputApps: soundFile.soundOutputApps
     property alias soundInputApps: soundFile.soundInputApps
@@ -385,6 +386,9 @@ QtObject {
         property int pomodoroRest: VitrailTokens.ranges.pomodoroRest.value
         property int pomodoroCycles: VitrailTokens.ranges.pomodoroCycles.value
         property int timerMinutes: VitrailTokens.ranges.timerMinutes.value
+        // The widgets the clock's popup shows, in their order (one JSON
+        // array). Empty or missing keeps all five in the built-in order.
+        property string dashboardWidgets: ""
         // The notes bar element: how many notes its popup lists.
         property int notesPopupMax: VitrailTokens.ranges.notesPopupMax.value
     }

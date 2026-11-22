@@ -65,6 +65,9 @@ var index = [
 
     { category: "bar-elements", tab: "", key: "section.barElements", label: "Bar elements",
       terms: ["element", "widget", "only while active", "show", "hide"] },
+    { category: "bar-elements", tab: "clock", key: "bar.widget.clock", label: "Clock",
+      terms: ["clock", "dashboard", "popup", "calendar", "weather", "performance",
+              "focus", "media", "order"] },
     { category: "bar-elements", tab: "sample", key: "bar.widget.sample", label: "Sample",
       terms: ["sample", "example"] },
     { category: "bar-elements", tab: "volume", key: "bar.widget.volume", label: "Volume",

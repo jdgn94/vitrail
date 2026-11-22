@@ -22,8 +22,11 @@ Item {
     property string mediaStyle: "disc"
     // The shell's clock engine: the popup only draws and asks.
     property var timerEngine: null
+    // The clock popup's widgets, in order (bar.ini `dashboardWidgets`).
+    property string dashboardWidgets: ""
 
     signal playerChosen(int index)
+    signal settingsRequested()
 
     property var weather: ({})
     property var resources: ({})
@@ -54,8 +57,10 @@ Item {
         mediaIndex: root.mediaIndex
         mediaStyle: root.mediaStyle
         timerEngine: root.timerEngine
+        dashboardWidgets: root.dashboardWidgets
         mediaPanel: mediaComponent
         onPlayerChosen: function (index) { root.playerChosen(index) }
+        onSettingsRequested: root.settingsRequested()
     }
 
     Timer {

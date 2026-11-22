@@ -153,6 +153,9 @@ bar pomodoroWork
 bar pomodoroRest
 bar pomodoroCycles
 bar timerMinutes
+# The widgets the clock's popup shows, in their order (one JSON array). Empty
+# or missing keeps all five in the built-in order.
+bar dashboardWidgets
 # The notes bar element: how many notes its popup lists.
 bar notesPopupMax
 
