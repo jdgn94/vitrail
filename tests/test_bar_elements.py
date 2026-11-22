@@ -90,11 +90,20 @@ def widget_ids() -> list[str]:
 
 def element_ids() -> list[str]:
     """The widgets whose button extends BarElementBase (bar/<id>/*Button.qml)."""
+    # The peripherals battery's element id is "peripherals", while its folder
+    # is named for the area it reads (bar/battery/), so its files can sit next
+    # to battery.js. Every other element's folder is its id.
+    folders = {"battery": "peripherals"}
     found = []
     for widget in widget_ids():
-        for path in (ROOT / "bar" / widget).glob("*Button.qml") if (ROOT / "bar" / widget).is_dir() else []:
+        folder = ROOT / "bar" / widget
+        if not folder.is_dir():
+            continue
+        element = folders.get(widget, widget)
+        for path in folder.glob("*Button.qml"):
             if re.search(r"^BarElementBase\s*\{", path.read_text(encoding="utf-8"), re.M):
-                found.append(widget)
+                if element not in found:
+                    found.append(element)
     return found
 
 

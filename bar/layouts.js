@@ -74,7 +74,7 @@ var DESKTOP = { desktop: true }
 
 // Elements the bar does not draw until the user asks for them: the screenshot
 // button is an editor option, not a change to today's bar.
-var DEFAULT_HIDDEN = { bar: ["capture", "sample", "volume", "updates", "disks"] }
+var DEFAULT_HIDDEN = { bar: ["capture", "sample", "volume", "updates", "disks", "peripherals"] }
 
 // Chips: several elements that share one pill. The document stores them in
 // `chips` and places the chip itself with its token (`"@connections"`) in a

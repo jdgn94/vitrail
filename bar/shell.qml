@@ -62,6 +62,7 @@ import "sample"
 import "volume"
 import "updates"
 import "disks"
+import "battery"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -777,6 +778,8 @@ ShellRoot {
             shell.disksError = ""
             disksData.refresh()
         }
+        if (kind === "peripherals")
+            peripheralsData.refresh()
         if (kind === "network" || kind === "vpn")
             if (!linkRead.running)
                 linkRead.running = true
@@ -1791,6 +1794,17 @@ ShellRoot {
                 shell.closePopup()
             Qt.callLater(shell.runNextDiskAction)
         }
+    }
+
+    // The peripherals battery bar element's data (vitrail/battery.py): UPower
+    // answers at once, so the bar's own poll is slow; the open popup asks more
+    // often to follow a device that is charging.
+    BarSnapshot {
+        id: peripheralsData
+
+        module: "battery"
+        interval: shell.popupOpen && shell.popupKind === "peripherals" ? 3000 : 30000
+        active: shell.barShows("peripherals")
     }
 
     function syncTokens() {
@@ -3487,6 +3501,7 @@ ShellRoot {
                     case "volume": return volumeWidget
                     case "updates": return updatesWidget
                     case "disks": return disksWidget
+                    case "peripherals": return peripheralsWidget
                     default: return null
                     }
                 }
@@ -3896,6 +3911,27 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: peripheralsWidget
+
+                    BatteryPeripheralsButton {
+                        id: peripheralsButton
+
+                        strings: shell.strings
+                        snapshot: peripheralsData.snapshot
+                        hide: shell.prefs.peripheralsHide || ""
+                        low: shell.prefNumber("peripheralsLow", VitrailTokens.ranges.peripheralLow.value)
+                        showMode: Elements.showMode(shell.activeOnlyIds, "peripherals")
+                        opened: shell.popupOpen && shell.popupKind === "peripherals" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("peripherals", peripheralsButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(peripheralsButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("peripherals", peripheralsButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -3959,6 +3995,7 @@ ShellRoot {
                     case "volume": return monitor.loadedItem("volume")
                     case "updates": return monitor.loadedItem("updates")
                     case "disks": return monitor.loadedItem("disks")
+                    case "peripherals": return monitor.loadedItem("peripherals")
                     default: return null
                     }
                 }
@@ -4920,6 +4957,13 @@ ShellRoot {
                                 sourceComponent: disksComponent
                             }
 
+                            Popout {
+                                name: "peripherals"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: peripheralsComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -5266,6 +5310,17 @@ ShellRoot {
                         error: shell.disksError
                         onActionRequested: function (action, target) { shell.disksAct([action, target]) }
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "disks")
+                    }
+                }
+
+                Component {
+                    id: peripheralsComponent
+
+                    PeripheralsPanel {
+                        strings: shell.strings
+                        snapshot: peripheralsData.snapshot
+                        hide: shell.prefs.peripheralsHide || ""
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "peripherals")
                     }
                 }
 

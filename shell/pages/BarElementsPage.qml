@@ -4,6 +4,7 @@ import "../../kit"
 import "../../kit/base"
 import "../../bar/updates/updates.js" as Updates
 import "../../bar/disks/disks.js" as Disks
+import "../../bar/battery/battery.js" as Battery
 
 // Bar elements category: one block per new-style bar element, each with the
 // options every element shares (when it shows) and its own. A bar popup's gear
@@ -313,6 +314,86 @@ Item {
                             ignoreField.text = ""
                         }
                     }
+                }
+            }
+
+            BarElementSection {
+                id: peripheralsSection
+
+                Layout.fillWidth: true
+                elementId: "peripherals"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    text: peripheralsSection.t("bar.peripherals.hide")
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: peripheralsSection.t("bar.peripherals.hide.help")
+                }
+
+                Repeater {
+                    model: [
+                        { kind: "mouse", icon: "mouse" },
+                        { kind: "keyboard", icon: "keyboard" },
+                        { kind: "headphones", icon: "headphones" },
+                        { kind: "gamepad", icon: "sports_esports" }
+                    ]
+
+                    delegate: VitrailSettingRow {
+                        id: hiddenKind
+
+                        required property var modelData
+
+                        Layout.fillWidth: true
+                        icon: hiddenKind.modelData.icon
+                        label: peripheralsSection.t("bar.peripherals.kind." + hiddenKind.modelData.kind)
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            objectName: "peripheralsHide-" + hiddenKind.modelData.kind
+                            checked: Battery.hidden({ kind: hiddenKind.modelData.kind },
+                                                    Battery.parseHide(page.prefs.peripheralsHide))
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) {
+                                page.prefs.peripheralsHide = Battery.withKind(page.prefs.peripheralsHide,
+                                                                              hiddenKind.modelData.kind, value)
+                            }
+                        }
+                    }
+                }
+
+                VitrailSlider {
+                    objectName: "peripheralsLow"
+
+                    Layout.fillWidth: true
+                    label: peripheralsSection.t("bar.peripherals.low")
+                    suffix: "%"
+                    from: VitrailTokens.ranges.peripheralLow.min
+                    to: VitrailTokens.ranges.peripheralLow.max
+                    stepSize: VitrailTokens.ranges.peripheralLow.step
+                    value: page.prefs.peripheralsLow
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.peripheralsLow = value
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: peripheralsSection.t("bar.peripherals.low.help")
                 }
             }
 

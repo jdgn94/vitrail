@@ -7,6 +7,7 @@ import "../bar"
 import "../bar/volume"
 import "../bar/updates"
 import "../bar/disks"
+import "../bar/battery"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -1277,6 +1278,123 @@ Window {
 
                 DisksPanel {
                     id: brokenDisks
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ error: "unreadable" })
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "PeripheralsButton · three devices × a hidden kind × low × no data"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            BatteryPeripheralsButton {
+                showMode: "always"
+                snapshot: ({
+                    devices: [
+                        { path: "mouse_0", name: "Logitech G305", kind: "mouse", percentage: 55,
+                          state: "discharging", timeToEmpty: 270, model: "Logitech G305", serial: "46-f4-18-ad" },
+                        { path: "headset_1", name: "WH-1000XM4", kind: "headphones", percentage: 30,
+                          state: "charging", timeToEmpty: null, model: "WH-1000XM4", serial: "AC:80:0A:12:34:56" },
+                        { path: "gamepad_2", name: "Xbox Wireless Controller", kind: "gamepad", percentage: 80,
+                          state: "discharging", timeToEmpty: 720, model: "Xbox Wireless Controller", serial: "E4:17:D8:AA:BB:CC" }
+                    ],
+                    lowest: { name: "Logitech G305", percentage: 55 },
+                    error: null
+                })
+            }
+
+            BatteryPeripheralsButton {
+                showMode: "always"
+                hide: '["mouse"]'
+                snapshot: ({
+                    devices: [
+                        { path: "mouse_0", name: "Logitech G305", kind: "mouse", percentage: 55,
+                          state: "discharging", timeToEmpty: 270, model: "Logitech G305", serial: "46-f4-18-ad" },
+                        { path: "headset_1", name: "WH-1000XM4", kind: "headphones", percentage: 30,
+                          state: "charging", timeToEmpty: null, model: "WH-1000XM4", serial: "AC:80:0A:12:34:56" },
+                        { path: "gamepad_2", name: "Xbox Wireless Controller", kind: "gamepad", percentage: 80,
+                          state: "discharging", timeToEmpty: 720, model: "Xbox Wireless Controller", serial: "E4:17:D8:AA:BB:CC" }
+                    ],
+                    lowest: { name: "Logitech G305", percentage: 55 },
+                    error: null
+                })
+            }
+
+            BatteryPeripheralsButton {
+                showMode: "always"
+                low: 20
+                snapshot: ({
+                    devices: [{ path: "mouse_0", name: "Logitech G305", kind: "mouse", percentage: 12,
+                                state: "discharging", timeToEmpty: 45, model: "Logitech G305", serial: "46-f4-18-ad" }],
+                    lowest: { name: "Logitech G305", percentage: 12 },
+                    error: null
+                })
+            }
+
+            BatteryPeripheralsButton {
+                showMode: "always"
+                snapshot: ({ devices: [], lowest: null, error: null })
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "PeripheralsPanel · three devices, one charging × no device × no data"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: peripheralsFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: peripheralsFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                PeripheralsPanel {
+                    id: peripheralsFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({
+                        devices: [
+                            { path: "mouse_0", name: "Logitech G305", kind: "mouse", percentage: 55,
+                              state: "discharging", timeToEmpty: 270, model: "Logitech G305", serial: "46-f4-18-ad" },
+                            { path: "headset_1", name: "WH-1000XM4", kind: "headphones", percentage: 30,
+                              state: "charging", timeToEmpty: null, model: "WH-1000XM4", serial: "AC:80:0A:12:34:56" },
+                            { path: "gamepad_2", name: "Xbox Wireless Controller", kind: "gamepad", percentage: 80,
+                              state: "discharging", timeToEmpty: 720, model: "Xbox Wireless Controller", serial: "E4:17:D8:AA:BB:CC" }
+                        ],
+                        lowest: { name: "Logitech G305", percentage: 55 },
+                        error: null
+                    })
+                }
+            }
+
+            VitrailSurface {
+                width: peripheralsEmpty.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: peripheralsEmpty.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                PeripheralsPanel {
+                    id: peripheralsEmpty
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ devices: [], lowest: null, error: null })
+                }
+            }
+
+            VitrailSurface {
+                width: brokenPeripherals.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: brokenPeripherals.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                PeripheralsPanel {
+                    id: brokenPeripherals
 
                     x: VitrailTokens.gap("md")
                     y: VitrailTokens.gap("md")

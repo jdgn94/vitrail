@@ -97,6 +97,10 @@ bar updatesAurHelper
 # and the labels or UUIDs it leaves alone (one JSON array).
 bar disksAutomount
 bar disksIgnore
+# The peripherals battery element: the device kinds it leaves out (one JSON
+# array) and the percentage below which the icon warns.
+bar peripheralsHide
+bar peripheralsLow
 # The dashboard clock widgets: the pomodoro's periods and rounds, and the
 # timer's default length, in minutes.
 bar pomodoroWork

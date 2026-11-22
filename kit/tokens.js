@@ -23,6 +23,8 @@ var ranges = {
     osdBrightnessStep: { min: 1, max: 20, step: 1, value: 5 },
     // The volume bar element: the percent one wheel notch on its button moves.
     volumeStep: { min: 1, max: 25, step: 1, value: 5 },
+    // The peripherals battery element: the level below which the icon warns.
+    peripheralLow: { min: 5, max: 50, step: 5, value: 20 },
     // The dock's magnification: how many neighbouring icons the planet falloff
     // reaches, and the largest scale it gives the icon under the pointer.
     dockMagnifyRange: { min: 1, max: 5, step: 1, value: 2 },

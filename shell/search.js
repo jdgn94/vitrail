@@ -73,6 +73,9 @@ var index = [
       terms: ["updates", "packages", "aur", "flatpak", "pacman", "checkupdates", "paru", "yay"] },
     { category: "bar-elements", tab: "disks", key: "bar.widget.disks", label: "Drives",
       terms: ["disks", "drives", "usb", "removable", "mount", "unmount", "eject", "udisks", "automount"] },
+    { category: "bar-elements", tab: "peripherals", key: "bar.widget.peripherals", label: "Peripherals battery",
+      terms: ["battery", "peripherals", "mouse", "keyboard", "headset", "headphones", "gamepad",
+              "upower", "low battery", "warning"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },

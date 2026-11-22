@@ -71,6 +71,21 @@ Código en `bar-disks-ui`. Con la barra corriendo y un lápiz USB desmontado (o 
 - [ ] "Montar las unidades nuevas automáticamente" está apagado por defecto. Encendido, enchufar una unidad desmontada la monta sola en un ciclo; no se vuelve a montar mientras siga conectada, y al desenchufarla y volver a enchufarla se monta otra vez.
 - [ ] Con el elemento fuera de la barra y el automontaje apagado no hay ningún proceso `python3 -m vitrail.disks` en `ps`; con el automontaje encendido sí hay uno, aunque el elemento no esté en la barra.
 
+## Peripherals battery bar element (2026-11-22)
+
+Código en `bar-battery-ui`. Con la barra corriendo y al menos un ratón, teclado,
+auriculares o mando inalámbrico emparejado que UPower vea (`upower -e` lo lista,
+`upower -i <ruta>` enseña su porcentaje):
+
+- [ ] Mostrar `peripherals` desde el editor de la barra (está oculto por defecto): aparece el icono con el porcentaje más bajo de los dispositivos vistos; el tooltip dice su nombre y su nivel, y debajo los demás dispositivos ("Nombre 30% · Nombre 80%") o, si solo hay uno, su estado.
+- [ ] Con dos dispositivos, uno descargándose al 55 % y otro cargándose al 30 %, la barra muestra 55 % (el que se descarga manda); el icono del que se carga solo aparece cuando no queda ninguno descargándose.
+- [ ] Clic abre el popup: una fila por dispositivo con su icono de tipo, su barra de nivel, su porcentaje y su estado ("En carga", "Descargando", "Llena"), con "Quedan 4 h 30 min" cuando UPower lo sabe. El engranaje abre Ajustes → Bar elements ya desplazado al bloque "Peripherals battery".
+- [ ] Ajustes → Bar elements → Peripherals battery → *Dispositivos que ocultar*: marcar "Ratón" quita su fila del popup y, si era el más bajo, la barra pasa al siguiente porcentaje; desmarcarlo lo devuelve. "Auriculares" oculta el tipo `headphones` y "Mando" el `gamepad`.
+- [ ] *Aviso de batería baja* (20 % por defecto, de 5 a 50): con un dispositivo descargándose por debajo del nivel, el icono y el número cambian al tono de aviso; por encima vuelven al normal. Un dispositivo cargándose no avisa aunque esté bajo (lleva el rayo y el tono primario).
+- [ ] Sin ningún dispositivo que informe de un porcentaje y con el modo "Solo cuando está activo" (el valor por defecto de este elemento), el botón desaparece de la barra; con "Siempre" se queda con el icono vacío y el tooltip "Ningún periférico informa de su batería". El popup, sin dispositivos, muestra una sola línea tranquila, no una tarjeta vacía.
+- [ ] Parar UPower (`systemctl stop upower`, y `systemctl start upower` al terminar): la barra se vacía, el popup dice que no puede leer las baterías y no se rompe nada.
+- [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.battery` en `ps`.
+
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 
 Código en `master` (`5936834..36fab6a`). La automatización ya está verde
