@@ -53,6 +53,17 @@ TestCase {
 
     // --- the workspace mapping ------------------------------------------------
 
+    function test_collect_reads_a_quickshell_sequence() {
+        // `Hyprland.workspaces.values` arrives as a QJSValue sequence: length
+        // and indices, but not an Array. Treating it as "not an array" empties
+        // the pills, which is exactly what the bar did.
+        var sequence = ({ length: 2, 0: workspace(1, true, []), 1: workspace(2, false, []) })
+        var entries = Workspaces.collect(sequence, "")
+        compare(entries.length, 2)
+        compare(entries[0].id, 1)
+        compare(entries[1].id, 2)
+    }
+
     function test_collect_lists_existing_workspaces_in_number_order() {
         var entries = Workspaces.collect([
             workspace(3, false, []),

@@ -10,11 +10,23 @@ function text(value) {
     return String(value === undefined || value === null ? "" : value)
 }
 
-// The raw model list, whether it is an array or an ObjectModel's `values`.
+// The raw model list. Quickshell hands a `list<T>` property to QML as a
+// QJSValue sequence: it has `length` and indices, but `Array.isArray` is
+// false, so a plain array check would silently empty the pills.
 function listOf(source) {
+    if (!source)
+        return []
     if (Array.isArray(source))
         return source
-    return source && Array.isArray(source.values) ? source.values : []
+    if (Array.isArray(source.values))
+        return source.values
+    if (typeof source.length === "number") {
+        var out = []
+        for (var i = 0; i < source.length; i++)
+            out.push(source[i])
+        return out
+    }
+    return source.values && typeof source.values.length === "number" ? listOf(source.values) : []
 }
 
 // The windows of one workspace, as the plain toplevels Hyprland hands out.
@@ -58,7 +70,7 @@ function namedWindow(windows, activeAddress) {
 // the workspace's own `windows`.
 function collect(workspaces, activeAddress) {
     var out = []
-    var list = Array.isArray(workspaces) ? workspaces : []
+    var list = listOf(workspaces)
     for (var i = 0; i < list.length; i++) {
         var workspace = list[i]
         if (!workspace)
