@@ -243,3 +243,13 @@ data and UI halves are both green.
   all remaining branches into the main branch** (`master`): the task branches,
   `bar-elements`, and the `docs/index.md` line plus the plan document, leaving
   the user's monitors/capture WIP untouched.
+- 2026-11-22: step 11 (downloads) `b238ec7` merged as `53c3991` (1511 tests, 126
+  QML). It added `vitrail/downloads.py state()` and a guarded `cancel`.
+  Merge note: the union glue hit `bar/shell.qml`, `gallery/Main.qml` and
+  `shell/pages/BarElementsPage.qml` again; the fix is now routine — rebuild
+  `ours` and insert the other branch's blocks at unique anchors (import, refresh
+  guard, BarSnapshot, watch Process, case, widget, loadedItem case, popout,
+  component), then run `test_qml_balance` and the smoke before committing.
+- 2026-11-22: steps 8 (dnd + caffeine) and 9 (clipboard + colour picker)
+  dispatched in parallel from `master`; 4b (netusage) and 6 (pomodoro + notes)
+  still running, so four workers are in flight.

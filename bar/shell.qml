@@ -77,6 +77,7 @@ import "privacy"
 import "weather"
 import "market"
 import "downloads"
+import "pomodoro"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -3868,6 +3869,8 @@ ShellRoot {
                     case "weather": return weatherWidget
                     case "market": return marketWidget
                     case "downloads": return downloadsWidget
+                    case "pomodoro": return pomodoroWidget
+                    case "notes": return notesWidget
                     default: return null
                     }
                 }
@@ -4464,6 +4467,44 @@ ShellRoot {
                     }
                 }
 
+
+                Component {
+                    id: pomodoroWidget
+
+                    PomodoroButton {
+                        id: pomodoroButton
+
+                        strings: shell.strings
+                        engine: focusTimers
+                        showMode: Elements.showMode(shell.activeOnlyIds, "pomodoro")
+                        opened: shell.popupOpen && shell.popupKind === "pomodoro" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("pomodoro", pomodoroButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(pomodoroButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("pomodoro", pomodoroButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
+                    id: notesWidget
+
+                    NotesButton {
+                        id: notesButton
+
+                        strings: shell.strings
+                        notes: shell.notes
+                        opened: shell.popupOpen && shell.popupKind === "notes" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("notes", notesButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(notesButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("notes", notesButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -4535,6 +4576,8 @@ ShellRoot {
                     case "weather": return monitor.loadedItem("weather")
                     case "market": return monitor.loadedItem("market")
                     case "downloads": return monitor.loadedItem("downloads")
+                    case "pomodoro": return monitor.loadedItem("pomodoro")
+                    case "notes": return monitor.loadedItem("notes")
                     default: return null
                     }
                 }
@@ -5566,6 +5609,20 @@ ShellRoot {
                                 sourceComponent: downloadsComponent
                             }
 
+                            Popout {
+                                name: "pomodoro"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: pomodoroComponent
+                            }
+
+                            Popout {
+                                name: "notes"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: notesComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -6056,6 +6113,35 @@ ShellRoot {
                         onOpenFileRequested: function (path) { shell.openAttachment(path) }
                         onCancelRequested: function (path) { shell.cancelDownload(path) }
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "downloads")
+                    }
+                }
+
+                Component {
+                    id: pomodoroComponent
+
+                    PomodoroPanel {
+                        strings: shell.strings
+                        engine: focusTimers
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "pomodoro")
+                    }
+                }
+
+                Component {
+                    id: notesComponent
+
+                    NotesPanel {
+                        strings: shell.strings
+                        notes: shell.notes
+                        maxNotes: shell.prefNumber("notesPopupMax", VitrailTokens.ranges.notesPopupMax.value)
+                        onNoteAdded: function (note) {
+                            shell.notes = Notes.add(shell.notes, note, Date.now())
+                            shell.setPref("quickNotes", shell.notes)
+                        }
+                        onNoteOpenRequested: {
+                            shell.closePopup()
+                            shell.openNotifications(monitor.modelData)
+                        }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "notes")
                     }
                 }
 

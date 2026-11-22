@@ -107,6 +107,7 @@ QtObject {
     property alias pomodoroRest: barFile.pomodoroRest
     property alias pomodoroCycles: barFile.pomodoroCycles
     property alias timerMinutes: barFile.timerMinutes
+    property alias notesPopupMax: barFile.notesPopupMax
     property alias soundOutputApps: soundFile.soundOutputApps
     property alias soundInputApps: soundFile.soundInputApps
     property alias soundFocusApps: soundFile.soundFocusApps
@@ -291,7 +292,7 @@ QtObject {
         // array of ids (bar/elements.js). Updates, disks, containers, the
         // peripheral batteries, health and privacy start here; an explicit
         // value (even "[]") wins over the built-in default.
-        property string barActiveOnly: "[\"updates\",\"disks\",\"containers\",\"peripherals\",\"health\",\"privacy\",\"market\",\"downloads\"]"
+        property string barActiveOnly: "[\"updates\",\"disks\",\"containers\",\"peripherals\",\"health\",\"privacy\",\"market\",\"downloads\",\"pomodoro\"]"
         // The keyboard layout chip, with its switcher and on-screen keyboard.
         property bool barKeyboard: true
         // The OSD: whether keys show it, how long a key's slider stays, how far
@@ -361,6 +362,8 @@ QtObject {
         property int pomodoroRest: VitrailTokens.ranges.pomodoroRest.value
         property int pomodoroCycles: VitrailTokens.ranges.pomodoroCycles.value
         property int timerMinutes: VitrailTokens.ranges.timerMinutes.value
+        // The notes bar element: how many notes its popup lists.
+        property int notesPopupMax: VitrailTokens.ranges.notesPopupMax.value
     }
 
     property Settings dockSettings: Settings {

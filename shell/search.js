@@ -99,6 +99,10 @@ var index = [
     { category: "bar-elements", tab: "downloads", key: "bar.widget.downloads", label: "Downloads",
       terms: ["downloads", "download", "progress", "speed", "cancel", "recent",
               "open folder", "open file", "part", "crdownload"] },
+    { category: "bar-elements", tab: "pomodoro", key: "bar.widget.pomodoro", label: "Pomodoro & timer",
+      terms: ["pomodoro", "timer", "countdown", "focus", "work", "break", "cycles", "quick timer"] },
+    { category: "bar-elements", tab: "notes", key: "bar.widget.notes", label: "Notes",
+      terms: ["notes", "quick notes", "note", "write", "list", "memo"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },

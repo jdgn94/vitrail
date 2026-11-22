@@ -16,6 +16,8 @@ import "../bar/privacy"
 import "../bar/weather"
 import "../bar/market"
 import "../bar/downloads"
+import "../bar/pomodoro"
+import "../bar/notes"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -38,6 +40,31 @@ Window {
     // Each preview is a full screen scaled down, so tokens keep real sizes.
     readonly property size screenSize: Qt.size(1280, 720)
     readonly property real scale: Number(Args.value("--scale", "0.24"))
+    // The pomodoro element's demo engine: the shape TimerEngine exposes, with
+    // a running session, a paused one and a fresh one.
+    readonly property var pomodoroRunning: ({
+        pomodoro: { kind: "pomodoro", phase: "work", running: true, end: 1240000, left: 1240,
+                    duration: 1500, completed: 1, work: 25, rest: 5, cycles: 4, done: false },
+        timer: { kind: "timer", running: false, end: 0, left: 600, duration: 600, minutes: 10, done: false },
+        now: 0, workMinutes: 25, restMinutes: 5, cycles: 4, timerMinutes: 10
+    })
+    readonly property var pomodoroPaused: ({
+        pomodoro: { kind: "pomodoro", phase: "rest", running: false, end: 0, left: 180,
+                    duration: 300, completed: 2, work: 25, rest: 5, cycles: 4, done: false },
+        timer: { kind: "timer", running: false, end: 0, left: 600, duration: 600, minutes: 10, done: false },
+        now: 0, workMinutes: 25, restMinutes: 5, cycles: 4, timerMinutes: 10
+    })
+    readonly property var pomodoroIdle: ({
+        pomodoro: { kind: "pomodoro", phase: "work", running: false, end: 0, left: 1500,
+                    duration: 1500, completed: 0, work: 25, rest: 5, cycles: 4, done: false },
+        timer: { kind: "timer", running: false, end: 0, left: 600, duration: 600, minutes: 10, done: false },
+        now: 0, workMinutes: 25, restMinutes: 5, cycles: 4, timerMinutes: 10
+    })
+    readonly property string notesDemo: JSON.stringify([
+        { text: "Call the plumber", at: Date.now() - 3600000 },
+        { text: "Buy milk", at: Date.now() - 86400000 },
+        { text: "Read the QML notes", at: 0 }
+    ])
     // A fixed spectrum for the visualiser previews: no audio in the gallery.
     readonly property var sampleLevels: {
         var out = []
@@ -2157,98 +2184,6 @@ Window {
                 }
             }
         }
-    }
-
-    // One scaled-down screen: wallpaper, frame and bar.
-    component Preview: Item {
-        id: tile
-
-        property string edge: "left"
-        property string bar: ""
-        property string frame: ""
-        property string fit: ""
-        // An open bar popup and a notification stack; docked bars grow
-        // them out of the frame.
-        property bool cards: false
-        // Where the liquid motion of the popup is, 0 closed .. 1 open.
-        property real progress: 1
-        readonly property var look: VitrailTokens.glass ? Frame.liquid(tile.progress, VitrailTokens.motion.liquid)
-                                                        : Frame.smooth(tile.progress, VitrailTokens.motion.smooth)
-        // The popup at rest: docked, flush with the frame; floating, a gap past the bar.
-        readonly property rect restRect: {
-            var h = screen.layout.dock, r = screen.layout.reserve
-            var g = VitrailTokens.gap("md")
-            var o = screen.style.docked ? h : { left: r.left + g, top: r.top + g, right: r.right + g, bottom: r.bottom + g }
-            var w = tile.card.width, ht = tile.card.height
-            var midX = (app.screenSize.width - w) / 2, midY = (app.screenSize.height - ht) / 2
-            switch (screen.layout.edge) {
-            case "right": return Qt.rect(app.screenSize.width - o.right - w, midY, w, ht)
-            case "top": return Qt.rect(midX, o.top, w, ht)
-            case "bottom": return Qt.rect(midX, app.screenSize.height - o.bottom - ht, w, ht)
-            default: return Qt.rect(o.left, midY, w, ht)
-            }
-        }
-        readonly property rect button: Qt.rect(app.screenSize.width / 2 - 15, app.screenSize.height / 2 - 15, 30, 30)
-        readonly property size card: Qt.size(320, 180)
-        readonly property var stack: Frame.stackRect(tile.edge === "top" ? "bottom-right" : "top-right",
-                                                     app.screenSize.width, app.screenSize.height,
-                                                     tile.card.width, tile.card.height, screen.layout,
-                                                     screen.style.docked, VitrailTokens.gap("md"))
-
-        implicitWidth: app.screenSize.width * app.scale
-        implicitHeight: app.screenSize.height * app.scale
-        clip: true
-
-        // Stand-in for the wallpaper when --wallpaper is not given.
-        Rectangle {
-            anchors.fill: parent
-            gradient: Gradient {
-                GradientStop { position: 0; color: wallpaper.primary }
-                GradientStop { position: 1; color: wallpaper.surface }
-            }
-        }
-
-        VitrailWallpaper {
-            width: app.screenSize.width
-            height: app.screenSize.height
-            scale: app.scale
-            transformOrigin: Item.TopLeft
-            visible: app.wallpaperFile !== ""
-            variant: tile.fit
-            source: app.wallpaperFile
-            hole: screen.layout.hole
-            radius: screen.layout.radius
-        }
-
-        VitrailBar {
-            id: screen
-
-            width: app.screenSize.width
-            height: app.screenSize.height
-            scale: app.scale
-            transformOrigin: Item.TopLeft
-            edge: tile.edge
-            variant: tile.bar
-            frameVariant: tile.frame
-            popupLook: tile.cards && screen.style.docked ? tile.look : null
-            popupOrigin: tile.button
-            popup: tile.restRect
-            tabs: tile.cards && screen.style.docked
-                  ? [{ edge: tile.stack.edge, reveal: 1, swell: 1,
-                       rect: Qt.rect(tile.stack.x, tile.stack.y, tile.card.width, tile.card.height) }]
-                  : []
-
-            start: [
-                VitrailText { text: "●" },
-                VitrailText { text: "●" },
-                VitrailText { text: "●" }
-            ]
-            center: VitrailText { variant: "label"; text: tile.edge }
-            end: [
-                VitrailText { text: "◆" },
-                VitrailText { text: "◆" }
-            ]
-        }
 
         VitrailText {
             variant: "title"
@@ -2351,6 +2286,197 @@ Window {
                     snapshot: ({ active: [], recent: [], updated: 1763730000 })
                 }
             }
+        }
+
+
+        VitrailText {
+            variant: "title"
+            text: "PomodoroButton · running × paused break × idle"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            PomodoroButton {
+                showMode: "always"
+                engine: app.pomodoroRunning
+            }
+
+            PomodoroButton {
+                showMode: "always"
+                engine: app.pomodoroPaused
+            }
+
+            PomodoroButton {
+                showMode: "always"
+                engine: app.pomodoroIdle
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "PomodoroPanel · a running pomodoro"
+        }
+
+        VitrailSurface {
+            width: pomodoroDemoPanel.implicitWidth + 2 * VitrailTokens.gap("md")
+            height: pomodoroDemoPanel.implicitHeight + 2 * VitrailTokens.gap("md")
+
+            PomodoroPanel {
+                id: pomodoroDemoPanel
+
+                x: VitrailTokens.gap("md")
+                y: VitrailTokens.gap("md")
+                engine: app.pomodoroRunning
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "NotesButton · three notes × empty"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            NotesButton {
+                showMode: "always"
+                notes: app.notesDemo
+            }
+
+            NotesButton {
+                showMode: "always"
+                notes: ""
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "NotesPanel · three notes with ages × two kept"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: notesDemoPanel.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: notesDemoPanel.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                NotesPanel {
+                    id: notesDemoPanel
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    notes: app.notesDemo
+                    maxNotes: 3
+                }
+            }
+
+            VitrailSurface {
+                width: notesCappedPanel.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: notesCappedPanel.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                NotesPanel {
+                    id: notesCappedPanel
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    notes: app.notesDemo
+                    maxNotes: 2
+                }
+            }
+        }
+    }
+
+    // One scaled-down screen: wallpaper, frame and bar.
+    component Preview: Item {
+        id: tile
+
+        property string edge: "left"
+        property string bar: ""
+        property string frame: ""
+        property string fit: ""
+        // An open bar popup and a notification stack; docked bars grow
+        // them out of the frame.
+        property bool cards: false
+        // Where the liquid motion of the popup is, 0 closed .. 1 open.
+        property real progress: 1
+        readonly property var look: VitrailTokens.glass ? Frame.liquid(tile.progress, VitrailTokens.motion.liquid)
+                                                        : Frame.smooth(tile.progress, VitrailTokens.motion.smooth)
+        // The popup at rest: docked, flush with the frame; floating, a gap past the bar.
+        readonly property rect restRect: {
+            var h = screen.layout.dock, r = screen.layout.reserve
+            var g = VitrailTokens.gap("md")
+            var o = screen.style.docked ? h : { left: r.left + g, top: r.top + g, right: r.right + g, bottom: r.bottom + g }
+            var w = tile.card.width, ht = tile.card.height
+            var midX = (app.screenSize.width - w) / 2, midY = (app.screenSize.height - ht) / 2
+            switch (screen.layout.edge) {
+            case "right": return Qt.rect(app.screenSize.width - o.right - w, midY, w, ht)
+            case "top": return Qt.rect(midX, o.top, w, ht)
+            case "bottom": return Qt.rect(midX, app.screenSize.height - o.bottom - ht, w, ht)
+            default: return Qt.rect(o.left, midY, w, ht)
+            }
+        }
+        readonly property rect button: Qt.rect(app.screenSize.width / 2 - 15, app.screenSize.height / 2 - 15, 30, 30)
+        readonly property size card: Qt.size(320, 180)
+        readonly property var stack: Frame.stackRect(tile.edge === "top" ? "bottom-right" : "top-right",
+                                                     app.screenSize.width, app.screenSize.height,
+                                                     tile.card.width, tile.card.height, screen.layout,
+                                                     screen.style.docked, VitrailTokens.gap("md"))
+
+        implicitWidth: app.screenSize.width * app.scale
+        implicitHeight: app.screenSize.height * app.scale
+        clip: true
+
+        // Stand-in for the wallpaper when --wallpaper is not given.
+        Rectangle {
+            anchors.fill: parent
+            gradient: Gradient {
+                GradientStop { position: 0; color: wallpaper.primary }
+                GradientStop { position: 1; color: wallpaper.surface }
+            }
+        }
+
+        VitrailWallpaper {
+            width: app.screenSize.width
+            height: app.screenSize.height
+            scale: app.scale
+            transformOrigin: Item.TopLeft
+            visible: app.wallpaperFile !== ""
+            variant: tile.fit
+            source: app.wallpaperFile
+            hole: screen.layout.hole
+            radius: screen.layout.radius
+        }
+
+        VitrailBar {
+            id: screen
+
+            width: app.screenSize.width
+            height: app.screenSize.height
+            scale: app.scale
+            transformOrigin: Item.TopLeft
+            edge: tile.edge
+            variant: tile.bar
+            frameVariant: tile.frame
+            popupLook: tile.cards && screen.style.docked ? tile.look : null
+            popupOrigin: tile.button
+            popup: tile.restRect
+            tabs: tile.cards && screen.style.docked
+                  ? [{ edge: tile.stack.edge, reveal: 1, swell: 1,
+                       rect: Qt.rect(tile.stack.x, tile.stack.y, tile.card.width, tile.card.height) }]
+                  : []
+
+            start: [
+                VitrailText { text: "●" },
+                VitrailText { text: "●" },
+                VitrailText { text: "●" }
+            ]
+            center: VitrailText { variant: "label"; text: tile.edge }
+            end: [
+                VitrailText { text: "◆" },
+                VitrailText { text: "◆" }
+            ]
         }
 
         VitrailText {

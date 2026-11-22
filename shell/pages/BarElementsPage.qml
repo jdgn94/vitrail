@@ -1111,6 +1111,107 @@ Item {
                 }
             }
 
+            BarElementSection {
+                id: pomodoroSection
+
+                Layout.fillWidth: true
+                elementId: "pomodoro"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSlider {
+                    objectName: "pomodoroWork"
+
+                    Layout.fillWidth: true
+                    label: pomodoroSection.t("bar.widgets.pomodoroWork")
+                    suffix: " min"
+                    from: VitrailTokens.ranges.pomodoroWork.min
+                    to: VitrailTokens.ranges.pomodoroWork.max
+                    stepSize: VitrailTokens.ranges.pomodoroWork.step
+                    value: page.prefs.pomodoroWork
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.pomodoroWork = value
+                }
+
+                VitrailSlider {
+                    objectName: "pomodoroRest"
+
+                    Layout.fillWidth: true
+                    label: pomodoroSection.t("bar.widgets.pomodoroRest")
+                    suffix: " min"
+                    from: VitrailTokens.ranges.pomodoroRest.min
+                    to: VitrailTokens.ranges.pomodoroRest.max
+                    stepSize: VitrailTokens.ranges.pomodoroRest.step
+                    value: page.prefs.pomodoroRest
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.pomodoroRest = value
+                }
+
+                VitrailSlider {
+                    objectName: "pomodoroCycles"
+
+                    Layout.fillWidth: true
+                    label: pomodoroSection.t("bar.widgets.pomodoroCycles")
+                    from: VitrailTokens.ranges.pomodoroCycles.min
+                    to: VitrailTokens.ranges.pomodoroCycles.max
+                    stepSize: VitrailTokens.ranges.pomodoroCycles.step
+                    value: page.prefs.pomodoroCycles
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.pomodoroCycles = value
+                }
+
+                VitrailSlider {
+                    objectName: "pomodoroTimerMinutes"
+
+                    Layout.fillWidth: true
+                    label: pomodoroSection.t("bar.widgets.timerMinutes")
+                    suffix: " min"
+                    from: VitrailTokens.ranges.timerMinutes.min
+                    to: VitrailTokens.ranges.timerMinutes.max
+                    stepSize: VitrailTokens.ranges.timerMinutes.step
+                    value: page.prefs.timerMinutes
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.timerMinutes = value
+                }
+            }
+
+            BarElementSection {
+                id: notesSection
+
+                Layout.fillWidth: true
+                elementId: "notes"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSlider {
+                    objectName: "notesPopupMax"
+
+                    Layout.fillWidth: true
+                    label: notesSection.t("bar.notes.popupMax")
+                    from: VitrailTokens.ranges.notesPopupMax.min
+                    to: VitrailTokens.ranges.notesPopupMax.max
+                    stepSize: VitrailTokens.ranges.notesPopupMax.step
+                    value: page.prefs.notesPopupMax
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.notesPopupMax = value
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: notesSection.t("bar.notes.popupMax.help")
+                }
+            }
+
             Item { Layout.preferredHeight: VitrailTokens.gap("xl") }
         }
     }

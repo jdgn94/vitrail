@@ -138,6 +138,8 @@ bar pomodoroWork
 bar pomodoroRest
 bar pomodoroCycles
 bar timerMinutes
+# The notes bar element: how many notes its popup lists.
+bar notesPopupMax
 
 # The dock: whether it is shown, which edge it takes, whether it hides until
 # the pointer reaches the edge, whether it is flush or floating, how its icons

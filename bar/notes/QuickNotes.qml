@@ -40,6 +40,7 @@ ColumnLayout {
     VitrailField {
         id: field
 
+        objectName: "quickNoteField"
         Layout.fillWidth: true
         size: root.size === "lg" ? "md" : "sm"
         leadingIcon: "edit_note"
