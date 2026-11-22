@@ -992,6 +992,10 @@ ShellRoot {
         shell.clipboardOpen = false
         shell.desktopEditLayout = shell.prefs.desktopLayout || "{}"
         shell.barEditLayout = shell.prefs.barLayout || ""
+        // An empty or wiped document would open the editor with every element
+        // hidden; start from the built-in one instead of writing that back.
+        if (shell.barEditLayout === "" || shell.barEditLayout === "{}")
+            shell.barEditLayout = Layouts.write("", "", {}, "bar")
         shell.panelEditLayout = shell.prefs.panelLayout || ""
         shell.barMonitorsEditLayout = shell.prefs.barMonitors || "{}"
         shell.editScreen = screen
@@ -5310,6 +5314,9 @@ ShellRoot {
                     })
                     onLayoutChanged: function (surface, text) {
                         if (surface === "bar") {
+                            // Never persist a wiped document over a good one.
+                            if (text === "" || text === "{}")
+                                return
                             shell.barEditLayout = text
                             shell.setPref("barLayout", text)
                         } else if (surface === "panel") {
