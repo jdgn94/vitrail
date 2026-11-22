@@ -72,6 +72,7 @@ import "containers"
 import "battery"
 import "brightness"
 import "resources"
+import "netusage"
 import "health"
 import "privacy"
 import "weather"
@@ -1832,14 +1833,14 @@ ShellRoot {
 
     // The shell's one resources sampler (vitrail/resources.py `state --tick`),
     // read once per tick for every consumer: the Resources element's button
-    // and popup now, the network usage element next. It runs only while one of
-    // them is in a bar, and asks for the top processes only while the popup
-    // is open. One process per tick, one timer, one history ring.
+    // and popup, and the Network usage element's. It runs only while one of
+    // them is in a bar, and asks for the top processes only while the Resources
+    // popup is open. One process per tick, one timer, one history ring.
     ResourcesSampler {
         id: resourcesSampler
 
         interval: shell.prefs.resourcesInterval
-        active: shell.barShows("resources")
+        active: shell.barShows("resources") || shell.barShows("netusage")
         withTop: shell.popupOpen && shell.popupKind === "resources"
     }
 
@@ -3953,6 +3954,7 @@ ShellRoot {
                     case "peripherals": return peripheralsWidget
                     case "brightness": return brightnessWidget
                     case "resources": return resourcesWidget
+                    case "netusage": return netusageWidget
                     case "health": return healthWidget
                     case "privacy": return privacyWidget
                     case "weather": return weatherWidget
@@ -4458,6 +4460,27 @@ ShellRoot {
                 }
 
                 Component {
+                    id: netusageWidget
+
+                    NetUsageButton {
+                        id: netusageButton
+
+                        strings: shell.strings
+                        snapshot: resourcesSampler.snapshot
+                        barMode: shell.prefs.netusageBar
+                        units: shell.prefs.netusageUnits
+                        showMode: Elements.showMode(shell.activeOnlyIds, "netusage")
+                        opened: shell.popupOpen && shell.popupKind === "netusage" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("netusage", netusageButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(netusageButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("netusage", netusageButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
                     id: healthWidget
 
                     HealthButton {
@@ -4713,6 +4736,7 @@ ShellRoot {
                     case "peripherals": return monitor.loadedItem("peripherals")
                     case "brightness": return monitor.loadedItem("brightness")
                     case "resources": return monitor.loadedItem("resources")
+                    case "netusage": return monitor.loadedItem("netusage")
                     case "health": return monitor.loadedItem("health")
                     case "privacy": return monitor.loadedItem("privacy")
                     case "weather": return monitor.loadedItem("weather")
@@ -5753,6 +5777,13 @@ ShellRoot {
                             }
 
                             Popout {
+                                name: "netusage"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: netusageComponent
+                            }
+
+                            Popout {
                                 name: "health"
                                 current: popouts.name
                                 handover: popouts.handover
@@ -6233,6 +6264,18 @@ ShellRoot {
                         killResult: resourcesSampler.killResult
                         onKillRequested: function (pid, force) { resourcesSampler.kill(pid, force) }
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "resources")
+                    }
+                }
+
+                Component {
+                    id: netusageComponent
+
+                    NetUsagePanel {
+                        strings: shell.strings
+                        snapshot: resourcesSampler.snapshot
+                        history: resourcesSampler.history
+                        units: shell.prefs.netusageUnits
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "netusage")
                     }
                 }
 

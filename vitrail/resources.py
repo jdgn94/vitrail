@@ -17,6 +17,12 @@ ticks) is kept in a small cache file, so the CPU percentage and the network
 rate are real from the second tick on. `--top` adds the busiest processes,
 read from `/proc/<pid>/stat` (never `ps`). `kill` sends one signal to one
 process, never to pid 1, this program or the shell that started it.
+
+The kernel counts network bytes since boot, not since midnight: the tick also
+carries `today`, the bytes received and sent since the day began. Its baseline
+(date and the totals at the day's first reading) lives in
+`~/.cache/vitrail/netusage.json`, outside the runtime cache, because a day
+outlives a reboot.
 """
 
 from __future__ import annotations
@@ -160,6 +166,35 @@ def network_rate(before: dict | None, after: dict | None, seconds: float) -> dic
     return {"rx": round(rx / seconds), "tx": round(tx / seconds)}
 
 
+def _counter(value: object) -> int | None:
+    """A byte counter as a non-negative integer; anything else is absent."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        return None
+    return int(value)
+
+
+def today(previous: dict | None, current: dict, date: str) -> tuple[dict, dict]:
+    """The day's baseline and the bytes used since it began.
+
+    `previous` is the stored baseline (`{"date", "rx", "tx"}`) or None, `current`
+    the network counters now and `date` the local day ("YYYY-MM-DD"). The first
+    reading of a day, and the first after a missed one, starts the baseline at
+    `current` and reads zero. A counter that went back within the day is a
+    reboot: that direction restarts at `current` too, so a total is never
+    negative. Returns `(baseline, {"rx", "tx"})`, both pure.
+    """
+    now = {"rx": _counter(current.get("rx")) or 0, "tx": _counter(current.get("tx")) or 0}
+    baseline = dict(now)
+    used = {"rx": 0, "tx": 0}
+    if isinstance(previous, dict) and previous.get("date") == date:
+        for key in ("rx", "tx"):
+            start = _counter(previous.get(key))
+            if start is not None and start <= now[key]:
+                baseline[key] = start
+                used[key] = now[key] - start
+    return {"date": date, **baseline}, used
+
+
 def cpu_count(text: str) -> int:
     """How many `cpuN` lines /proc/stat has (at least 1)."""
     count = sum(1 for line in text.splitlines() if line.startswith("cpu") and line[3:4].isdigit())
@@ -277,6 +312,31 @@ def cache_path() -> Path:
     return Path(base) / f"vitrail-resources-{os.getuid()}.json"
 
 
+def day_path() -> Path:
+    """Where today's network baseline lives: outside the runtime folder, since
+    a day outlives a reboot."""
+    base = os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")
+    return Path(base) / "vitrail" / "netusage.json"
+
+
+def _load_day(path: Path) -> dict | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _store_day(path: Path, data: dict) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(path.name + ".tmp")
+        temporary.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
+        temporary.replace(path)
+    except OSError:
+        pass
+
+
 def _load_cache(path: Path, now: float) -> dict | None:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -301,6 +361,7 @@ def tick(
     with_top: bool = False,
     *,
     cache: Path | None = None,
+    day_file: Path | None = None,
     clock: Callable[[], float] = time.time,
     proc: Path = PROC,
     thermal: Path = THERMAL,
@@ -312,8 +373,9 @@ def tick(
     """One shared-sampler reading against the last one in the cache.
 
     `network` is the counters, `rate` bytes per second (None on the first
-    tick), `top` the busiest processes when asked (cpu None until a tick has
-    seen them twice). Never raises: a missing source is None or zeros.
+    tick), `today` the bytes since local midnight, `top` the busiest processes
+    when asked (cpu None until a tick has seen them twice). Never raises: a
+    missing source is None or zeros.
     """
     path = cache or cache_path()
     now = clock()
@@ -323,6 +385,10 @@ def tick(
     ticks = data.pop("cpuTicks")
     data["at"] = round(now, 3)
     data["rate"] = network_rate(previous.get("network") if previous else None, data["network"], seconds)
+    baseline_file = day_file or day_path()
+    day = time.strftime("%Y-%m-%d", time.localtime(now))
+    baseline, data["today"] = today(_load_day(baseline_file), data["network"], day)
+    _store_day(baseline_file, baseline)
     saved = {"at": now, "cpuTicks": ticks, "network": data["network"]}
     if with_top:
         current = read_processes(proc, page_size)

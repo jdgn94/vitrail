@@ -25,6 +25,7 @@ POPUPS = {
     "bar/battery/PeripheralsPanel.qml": ("bar-elements", "peripherals"),
     "bar/brightness/BrightnessPanel.qml": ("bar-elements", "brightness"),
     "bar/resources/ResourcesPanel.qml": ("bar-elements", "resources"),
+    "bar/netusage/NetUsagePanel.qml": ("bar-elements", "netusage"),
     "bar/health/HealthPanel.qml": ("bar-elements", "health"),
     "bar/privacy/PrivacyPanel.qml": ("bar-elements", "privacy"),
     "bar/weather/WeatherPanel.qml": ("bar-elements", "weather"),

@@ -8,11 +8,14 @@ and never look at the real /proc.
 from __future__ import annotations
 
 import json
+import os
 import tempfile
+import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
+from unittest import mock
 
 from vitrail import resources
 
@@ -181,11 +184,54 @@ def process_stat(name: str, utime: int, stime: int, rss_pages: int) -> str:
     return f"42 ({name}) " + " ".join(fields) + " 0 0\n"
 
 
+class DayTests(unittest.TestCase):
+    """Today's usage: the baseline is the day's first reading, and no total can
+    go below zero (a new day, a missed day, a reboot)."""
+
+    def test_the_first_reading_of_a_day_is_the_baseline_and_reads_zero(self) -> None:
+        baseline, used = resources.today(None, {"rx": 100, "tx": 50}, "2026-11-22")
+        self.assertEqual(baseline, {"date": "2026-11-22", "rx": 100, "tx": 50})
+        self.assertEqual(used, {"rx": 0, "tx": 0})
+
+    def test_a_later_reading_counts_the_difference(self) -> None:
+        baseline = {"date": "2026-11-22", "rx": 100, "tx": 50}
+        kept, used = resources.today(baseline, {"rx": 300, "tx": 70}, "2026-11-22")
+        self.assertEqual(kept, baseline)
+        self.assertEqual(used, {"rx": 200, "tx": 20})
+
+    def test_a_new_day_and_a_missed_day_both_start_over(self) -> None:
+        for previous_date in ("2026-11-21", "2026-11-19"):
+            with self.subTest(previous=previous_date):
+                previous = {"date": previous_date, "rx": 100, "tx": 50}
+                baseline, used = resources.today(previous, {"rx": 300, "tx": 70}, "2026-11-22")
+                self.assertEqual(baseline, {"date": "2026-11-22", "rx": 300, "tx": 70})
+                self.assertEqual(used, {"rx": 0, "tx": 0})
+
+    def test_a_reboot_restarts_only_the_counter_that_went_back(self) -> None:
+        baseline = {"date": "2026-11-22", "rx": 9000, "tx": 50}
+        kept, used = resources.today(baseline, {"rx": 200, "tx": 70}, "2026-11-22")
+        self.assertEqual(kept, {"date": "2026-11-22", "rx": 200, "tx": 50})
+        self.assertEqual(used, {"rx": 0, "tx": 20})
+
+    def test_a_broken_baseline_is_a_new_day(self) -> None:
+        for previous in (None, {}, {"date": "2026-11-22"}, {"date": "2026-11-22", "rx": "x", "tx": -1}):
+            with self.subTest(previous=previous):
+                baseline, used = resources.today(previous, {"rx": 10, "tx": 5}, "2026-11-22")
+                self.assertGreaterEqual(baseline["rx"], 0)
+                self.assertGreaterEqual(baseline["tx"], 0)
+                self.assertEqual(used, {"rx": 0, "tx": 0})
+
+    def test_the_day_file_lives_under_the_cache_folder(self) -> None:
+        with mock.patch.dict(os.environ, {"XDG_CACHE_HOME": "/tmp/here"}):
+            self.assertEqual(resources.day_path(), Path("/tmp/here") / "vitrail" / "netusage.json")
+
+
 class TickTests(Fixture):
     def tick(self, now: float, with_top: bool = False) -> dict:
         return resources.tick(
             with_top,
             cache=self.root / "cache.json",
+            day_file=self.root / "netusage.json",
             clock=lambda: now,
             proc=self.proc,
             thermal=self.thermal,
@@ -214,6 +260,39 @@ class TickTests(Fixture):
         data = self.tick(1002.0)
         self.assertEqual(data["cpu"], 50.0)
         self.assertEqual(data["rate"], {"rx": 2000, "tx": 1000})
+        self.assertEqual(data["today"], {"rx": 4000, "tx": 2000})
+
+    def test_the_day_file_holds_the_date_and_the_first_totals(self) -> None:
+        self.tick(1000.0)
+        stored = json.loads((self.root / "netusage.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(stored), {"date", "rx", "tx"})
+        self.assertEqual((stored["rx"], stored["tx"]), (7000, 4000))
+
+    def test_the_first_tick_reads_zero_today(self) -> None:
+        self.assertEqual(self.tick(1000.0)["today"], {"rx": 0, "tx": 0})
+
+    def test_a_tick_on_the_next_day_starts_today_over(self) -> None:
+        self.tick(1732233600.0)
+        later = resources.tick(
+            cache=self.root / "cache.json",
+            day_file=self.root / "netusage.json",
+            clock=lambda: 1732233600.0 + 86400,
+            proc=self.proc,
+            thermal=self.thermal,
+            disk="/nowhere",
+            usage=lambda _path: (200, 50, 150),
+        )
+        self.assertEqual(later["today"], {"rx": 0, "tx": 0})
+        stored = json.loads((self.root / "netusage.json").read_text(encoding="utf-8"))
+        self.assertNotEqual(stored["date"], time.strftime("%Y-%m-%d", time.localtime(1732233600.0)))
+
+    def test_a_counter_that_went_back_never_reads_below_zero(self) -> None:
+        self.tick(1000.0)
+        self.write("net/dev", NET_DEV.replace("5000 ", "1 ").replace("3000 ", "1 "))
+        data = self.tick(1002.0)
+        self.assertGreaterEqual(data["today"]["rx"], 0)
+        self.assertGreaterEqual(data["today"]["tx"], 0)
+        self.assertEqual(data["today"], {"rx": 0, "tx": 0})
 
     def test_a_counter_that_went_back_gives_no_rate(self) -> None:
         self.write("net/dev", NET_DEV.replace("5000 ", "9000 "))
@@ -237,6 +316,7 @@ class TickTests(Fixture):
     def test_an_unwritable_cache_is_not_an_error(self) -> None:
         data = resources.tick(
             cache=self.root / "missing" / "cache.json",
+            day_file=self.root / "missing" / "netusage.json",
             clock=lambda: 1.0,
             proc=self.proc,
             thermal=self.thermal,

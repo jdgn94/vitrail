@@ -260,3 +260,12 @@ data and UI halves are both green.
   `component Preview` and duplicated 195 lines; always render the gallery with
   `qml6 gallery/Main.qml -- --palette '{}' --grab` before believing the smoke,
   and rebuild from the branch that renders when in doubt.
+- 2026-11-22: step 8 (dnd + caffeine) `277347c` merged as `8de5591` (1511
+  tests, 127 QML). It also exposed a master defect: the start/center/end bar
+  delegates each carried **two** `Component.onDestruction` handlers (the union
+  glue of an earlier merge), which QML collapses to one and made a direct
+  quickshell launch fail. Fixed separately in `93d5f8c` (one handler that
+  reports the failure and unregisters). Gallery lesson repeated: section
+  extraction from master can carry the trailing `component Preview`; check
+  `grep -c 'component Preview'` is 1 and render with `qmlscene`/`qml6` before
+  committing.
