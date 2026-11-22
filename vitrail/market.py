@@ -32,6 +32,9 @@ CACHE_SECONDS = 5 * 60
 TIMEOUT = 8
 MAX_BYTES = 1024 * 1024
 DEFAULT_CURRENCY = "usd"
+# The currencies the bar's popup offers, in the chooser's order. `state` still
+# accepts any CoinGecko code; these are only the ones the element names.
+CURRENCIES = ("eur", "usd")
 CHANGE = "24h"
 
 Fetcher = Callable[[str], str]

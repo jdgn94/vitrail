@@ -120,6 +120,11 @@ bar healthChecks
 # colour (a palette role).
 bar privacyWatch
 bar privacyDotColor
+# The market bar element: the CoinGecko ids (one JSON array), the currency and
+# how often to poll (minutes, never below the module's 5-minute cache).
+bar marketSymbols
+bar marketCurrency
+bar marketInterval
 # The dashboard clock widgets: the pomodoro's periods and rounds, and the
 # timer's default length, in minutes.
 bar pomodoroWork

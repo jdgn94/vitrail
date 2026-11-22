@@ -23,6 +23,7 @@ import "brightness/brightness.js" as Brightness
 import "health/health.js" as Health
 import "privacy/privacy.js" as Privacy
 import "weather/weather.js" as Weather
+import "market/market.js" as Market
 import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "kit/wallpaper.js" as WallpaperTransition
@@ -73,6 +74,7 @@ import "brightness"
 import "health"
 import "privacy"
 import "weather"
+import "market"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -788,6 +790,8 @@ ShellRoot {
             privacyData.refresh()
         if (kind === "weather")
             weatherData.refresh()
+        if (kind === "market" && Market.symbolsOf(shell.prefs.marketSymbols).length > 0)
+            marketData.refresh()
         if (kind === "disks") {
             // A failure belongs to the action that caused it, not to a later
             // visit: start the popup with a clean line.
@@ -2007,6 +2011,19 @@ ShellRoot {
         target: shell.prefs
 
         function onWeatherUnitsChanged() { weatherData.refresh() }
+    }
+
+    // The market bar element's data (vitrail/market.py): one keyless CoinGecko
+    // request per poll for every chosen symbol, cached for five minutes by the
+    // module. The preference's floor is that cache, so a poll never makes the
+    // service pay for an answer it already gave.
+    BarSnapshot {
+        id: marketData
+
+        module: "market"
+        arguments: Market.commandArguments(shell.prefs.marketSymbols, shell.prefs.marketCurrency)
+        interval: Market.intervalMs(shell.prefs.marketInterval)
+        active: shell.barShows("market") && Market.symbolsOf(shell.prefs.marketSymbols).length > 0
     }
 
     // The popup's night light state. BarSnapshot asks the module's `state`
@@ -3788,6 +3805,7 @@ ShellRoot {
                     case "health": return healthWidget
                     case "privacy": return privacyWidget
                     case "weather": return weatherWidget
+                    case "market": return marketWidget
                     default: return null
                     }
                 }
@@ -4322,6 +4340,27 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: marketWidget
+
+                    MarketButton {
+                        id: marketButton
+
+                        strings: shell.strings
+                        snapshot: marketData.snapshot
+                        symbols: String(shell.prefs.marketSymbols)
+                        currency: String(shell.prefs.marketCurrency)
+                        showMode: Elements.showMode(shell.activeOnlyIds, "market")
+                        opened: shell.popupOpen && shell.popupKind === "market" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("market", marketButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(marketButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("market", marketButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -4390,6 +4429,7 @@ ShellRoot {
                     case "health": return monitor.loadedItem("health")
                     case "privacy": return monitor.loadedItem("privacy")
                     case "weather": return monitor.loadedItem("weather")
+                    case "market": return monitor.loadedItem("market")
                     default: return null
                     }
                 }
@@ -5399,6 +5439,13 @@ ShellRoot {
                                 sourceComponent: weatherComponent
                             }
 
+                            Popout {
+                                name: "market"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: marketComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -5849,6 +5896,20 @@ ShellRoot {
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "weather")
                     }
                 }
+                Component {
+                    id: marketComponent
+
+                    MarketPanel {
+                        strings: shell.strings
+                        snapshot: marketData.snapshot
+                        symbols: String(shell.prefs.marketSymbols)
+                        currency: String(shell.prefs.marketCurrency)
+                        onCurrencyRequested: function (code) { shell.setPref("marketCurrency", code) }
+                        onRefreshRequested: marketData.refresh()
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "market")
+                    }
+                }
+
 
                 // The on-screen keyboard: a floating overlay at the bottom of
                 // the focused screen. It is not focusable, so `wtype` types

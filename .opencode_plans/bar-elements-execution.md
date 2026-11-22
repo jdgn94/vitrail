@@ -213,3 +213,22 @@ data and UI halves are both green.
   matches brackets, rejects `<<<<<<<`); it flags the four braces in the broken
   revision and passes now. Lesson: after any union merge, check bracket balance
   before trusting the suite.
+- 2026-11-22: step 7b (privacy) `a4ea33b` merged as `a93d332` (1461 tests, 124
+  QML). It added `vitrail/privacy.py stop` + `cut_off()` (re-reads the graph and
+  destroys the node only if it is still that use) with tests, and relaxed one
+  health assertion from `"health"]` to a regex because health is no longer last
+  in `DEFAULT_HIDDEN`.
+- 2026-11-22: 16b (crypto) and 5 (weather) dispatched in parallel from `master`.
+  Remaining after them: steps 3 (blocked on the calendar stack), 4, 6, 8, 9, 11.
+- 2026-11-22: step 5 (weather) `cb6d76e` merged by fast-forward (1473 tests, 124
+  QML). It shares `Dash.temperature/degrees/condition/weekday` with the desktop
+  widget instead of copying, and `vitrail/weather.py` now returns 12 hourly
+  points. Options: `weatherCities`, `weatherUnits`, `weatherInterval`.
+- 2026-11-22: 4a (shared sampler + resources, Claude 5.5) and 11 (downloads,
+  OpenCode flash) dispatched from `master`. Split because step 4 is two
+  elements: 4a owns the sampler and the history buffers, 4b (network usage)
+  plugs into them without touching the sampler.
+- 2026-11-22: note for later merges — a `worktree create` can silently base a
+  new worktree on an old commit (bar-market-ui landed on `b215644`). Always
+  check `git -C <worktree> rev-parse HEAD` against `master` before starting a
+  worker on it.

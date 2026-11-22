@@ -10,6 +10,7 @@ import "../../bar/battery/battery.js" as Battery
 import "../../bar/health/health.js" as Health
 import "../../bar/privacy/privacy.js" as Privacy
 import "../../bar/weather/weather.js" as Weather
+import "../../bar/market/market.js" as Market
 
 // Bar elements category: one block per new-style bar element, each with the
 // options every element shares (when it shows) and its own. A bar popup's gear
@@ -881,6 +882,128 @@ Item {
                     accent: page.palette.primary
                     panel: page.palette.surfaceHigh
                     onSelected: function (key) { page.prefs.weatherInterval = Number(key) }
+                }
+            }
+
+            BarElementSection {
+                id: marketSection
+
+                Layout.fillWidth: true
+                elementId: "market"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSelect {
+                    objectName: "marketCurrency"
+
+                    Layout.fillWidth: true
+                    label: marketSection.t("bar.market.currency")
+                    options: Market.currencyOptions()
+                    current: Market.currencyOf(page.prefs.marketCurrency)
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.marketCurrency = key }
+                }
+
+                VitrailSelect {
+                    objectName: "marketInterval"
+
+                    Layout.fillWidth: true
+                    label: marketSection.t("bar.market.interval")
+                    options: {
+                        var minutes = Market.INTERVALS.slice()
+                        var now = Market.intervalMinutes(page.prefs.marketInterval)
+                        if (minutes.indexOf(now) < 0)
+                            minutes.push(now)
+                        minutes.sort(function (a, b) { return a - b })
+                        return minutes.map(function (value) {
+                            return { key: String(value),
+                                     label: marketSection.t("bar.market.intervalOption").replace("%1", value) }
+                        })
+                    }
+                    current: String(Market.intervalMinutes(page.prefs.marketInterval))
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.marketInterval = Number(key) }
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    text: marketSection.t("bar.market.symbols")
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: marketSection.t("bar.market.symbols.help")
+                }
+
+                Repeater {
+                    model: Market.symbolsOf(page.prefs.marketSymbols)
+
+                    delegate: VitrailSettingRow {
+                        id: symbolRow
+
+                        required property string modelData
+
+                        objectName: "marketSymbolEntry"
+
+                        Layout.fillWidth: true
+                        icon: "monitoring"
+                        label: symbolRow.modelData
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailButton {
+                            objectName: "marketSymbolRemove"
+
+                            variant: "text"
+                            tone: "error"
+                            icon: "delete"
+                            onClicked: page.prefs.marketSymbols =
+                                Market.withSymbol(page.prefs.marketSymbols, symbolRow.modelData, false)
+                        }
+                    }
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    visible: Market.symbolsOf(page.prefs.marketSymbols).length === 0
+                    variant: "label"
+                    text: marketSection.t("bar.market.symbols.empty")
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: VitrailTokens.gap("sm")
+
+                    VitrailField {
+                        id: symbolField
+
+                        Layout.fillWidth: true
+                        label: marketSection.t("bar.market.symbols.add")
+                    }
+
+                    VitrailButton {
+                        objectName: "marketSymbolAdd"
+
+                        Layout.alignment: Qt.AlignBottom
+                        variant: "tonal"
+                        icon: "add"
+                        text: marketSection.t("action.add")
+                        enabled: Market.normalizeSymbol(symbolField.text) !== ""
+                        onClicked: {
+                            page.prefs.marketSymbols =
+                                Market.withSymbol(page.prefs.marketSymbols, symbolField.text, true)
+                            symbolField.text = ""
+                        }
+                    }
                 }
             }
 

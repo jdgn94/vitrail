@@ -45,7 +45,7 @@ class PrivacyWiringTests(unittest.TestCase):
     def test_it_starts_in_only_while_active_and_hidden(self) -> None:
         self.assertIn('"privacy"', read("bar/elements.js"))
         self.assertIn('\\"privacy\\"', read("shell/Prefs.qml"))
-        self.assertIn('"privacy"]', read("bar/layouts.js"))
+        self.assertRegex(read("bar/layouts.js"), r'DEFAULT_HIDDEN = \{ bar: \[[^\]]*"privacy"')
 
     def test_the_settings_block_has_every_kind_and_the_colour(self) -> None:
         page = read("shell/pages/BarElementsPage.qml")

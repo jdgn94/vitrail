@@ -8,6 +8,7 @@ network or the clock.
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -254,6 +255,14 @@ class StateTests(Fixture):
         self.assertEqual(stored["currency"], "usd")
         self.assertEqual(stored["symbols"], ["bitcoin", "ethereum"])
         self.assertEqual(set(stored["state"]), {"currency", "prices", "fetchedAt"})
+
+
+class CurrencyListTests(unittest.TestCase):
+    def test_the_qml_chooser_offers_the_modules_currencies(self) -> None:
+        source = (Path(__file__).resolve().parent.parent / "bar" / "market" / "market.js").read_text(encoding="utf-8")
+        match = re.search(r"var CURRENCIES = \[([^\]]*)\]", source)
+        self.assertIsNotNone(match)
+        self.assertEqual(re.findall(r'"([^"]+)"', match.group(1)), list(market.CURRENCIES))
 
 
 if __name__ == "__main__":

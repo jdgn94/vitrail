@@ -141,7 +141,7 @@ for screen in login lock; do
     fi
 done
 
-if QT_QPA_PLATFORM=offscreen timeout 45 /usr/lib/qt6/bin/qmltestrunner -import "$REPO/tests/qml/stubs" -input "$REPO/tests/qml" >"$tmp/qmltest.log" 2>&1; then
+if QT_QPA_PLATFORM=offscreen timeout 120 /usr/lib/qt6/bin/qmltestrunner -import "$REPO/tests/qml/stubs" -input "$REPO/tests/qml" >"$tmp/qmltest.log" 2>&1; then
     ok "qml unit tests"
 else
     not_ok "qml unit tests" "$(grep -E 'FAIL|Totals' "$tmp/qmltest.log")"

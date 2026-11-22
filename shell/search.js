@@ -90,6 +90,9 @@ var index = [
     { category: "bar-elements", tab: "weather", key: "bar.widget.weather", label: "Weather",
       terms: ["weather", "city", "units", "metric", "imperial", "temperature", "forecast",
               "hourly", "daily", "open-meteo"] },
+    { category: "bar-elements", tab: "market", key: "bar.widget.market", label: "Markets",
+      terms: ["market", "markets", "crypto", "stocks", "price", "prices", "coingecko", "bitcoin",
+              "ethereum", "currency", "eur", "usd", "sparkline"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },
