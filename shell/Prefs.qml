@@ -92,6 +92,8 @@ QtObject {
     property alias resourcesInterval: barFile.resourcesInterval
     property alias resourcesBar: barFile.resourcesBar
     property alias resourcesUnits: barFile.resourcesUnits
+    property alias netusageBar: barFile.netusageBar
+    property alias netusageUnits: barFile.netusageUnits
     property alias healthDiskThreshold: barFile.healthDiskThreshold
     property alias healthChecks: barFile.healthChecks
     property alias privacyWatch: barFile.privacyWatch
@@ -334,6 +336,10 @@ QtObject {
         property int resourcesInterval: VitrailTokens.ranges.resourcesInterval.value
         property string resourcesBar: "both"
         property string resourcesUnits: "auto"
+        // The network usage bar element: what the bar shows (both, down, up)
+        // and the units of its rates and today's totals (auto, binary, decimal).
+        property string netusageBar: "both"
+        property string netusageUnits: "auto"
         // The system health bar element: the free space (percent) under which a
         // disk is a problem, and the checks that are on (one JSON array of
         // services, disk, hyprland, doctor).

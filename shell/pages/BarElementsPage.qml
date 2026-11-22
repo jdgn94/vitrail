@@ -8,6 +8,7 @@ import "../../bar/containers/containers.js" as Containers
 import "../../bar/brightness/brightness.js" as Brightness
 import "../../bar/battery/battery.js" as Battery
 import "../../bar/resources/resources.js" as Resources
+import "../../bar/netusage/netusage.js" as NetUsage
 import "../../bar/health/health.js" as Health
 import "../../bar/privacy/privacy.js" as Privacy
 import "../../bar/weather/weather.js" as Weather
@@ -707,6 +708,62 @@ Item {
                     opacity: 0.7
                     wrapMode: Text.WordWrap
                     text: resourcesSection.t("bar.resources.units.help")
+                }
+            }
+
+            BarElementSection {
+                id: netusageSection
+
+                Layout.fillWidth: true
+                elementId: "netusage"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSelect {
+                    objectName: "netusageBar"
+
+                    Layout.fillWidth: true
+                    label: netusageSection.t("bar.netusage.bar")
+                    options: NetUsage.BAR_MODES.map(function (mode) {
+                        return { key: mode, label: netusageSection.t("bar.netusage.bar." + mode) }
+                    })
+                    current: NetUsage.barMode(page.prefs.netusageBar)
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.netusageBar = key }
+                }
+
+                VitrailSelect {
+                    objectName: "netusageUnits"
+
+                    Layout.fillWidth: true
+                    label: netusageSection.t("bar.netusage.units")
+                    options: NetUsage.UNITS.map(function (mode) {
+                        return { key: mode, label: netusageSection.t("bar.netusage.units." + mode) }
+                    })
+                    current: Resources.unitsMode(page.prefs.netusageUnits)
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.netusageUnits = key }
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: netusageSection.t("bar.netusage.units.help")
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: netusageSection.t("bar.netusage.interval.help")
                 }
             }
 

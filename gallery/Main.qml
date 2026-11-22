@@ -12,6 +12,7 @@ import "../bar/brightness"
 import "../bar/battery"
 import "../bar/health"
 import "../bar/resources"
+import "../bar/netusage"
 import "../bar/privacy"
 import "../bar/weather"
 import "../bar/market"
@@ -1602,6 +1603,80 @@ Window {
                     snapshot: resourcesDemo.snapshotNoSensor
                     history: resourcesDemo.historyNoSensor
                     units: "decimal"
+                }
+            }
+        }
+
+        QtObject {
+            id: netusageDemo
+
+            function wave(base, swing, phase) {
+                var list = []
+                for (var i = 0; i < 60; i++)
+                    list.push(Math.max(0, base + swing * Math.sin(i / 4 + phase)))
+                return list
+            }
+
+            readonly property var history: ({
+                rx: wave(1500000, 1400000, 0),
+                tx: wave(250000, 200000, 3)
+            })
+            readonly property var snapshot: ({
+                cpu: 22, memory: { used: 6000000000, total: 16000000000, percent: 37.5 },
+                temperature: 52, disk: { used: 310000000000, total: 500000000000, free: 190000000000, percent: 62 },
+                network: { rx: 1, tx: 1 }, rate: { rx: 1800000, tx: 240000 },
+                today: { date: Qt.formatDate(new Date(), "yyyy-MM-dd"), rx: 4700000000, tx: 620000000 }
+            })
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "NetUsageButton · both × down only × up only × open × not read yet"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            NetUsageButton { snapshot: netusageDemo.snapshot }
+            NetUsageButton { snapshot: netusageDemo.snapshot; barMode: "down" }
+            NetUsageButton { snapshot: netusageDemo.snapshot; barMode: "up"; opened: true }
+            NetUsageButton { snapshot: ({}) }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "NetUsagePanel · a busy link × no interface"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: netusageFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: netusageFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                NetUsagePanel {
+                    id: netusageFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    width: implicitWidth
+                    snapshot: netusageDemo.snapshot
+                    history: netusageDemo.history
+                }
+            }
+
+            VitrailSurface {
+                width: netusageBare.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: netusageBare.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                NetUsagePanel {
+                    id: netusageBare
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    width: implicitWidth
+                    snapshot: ({ error: "unreadable" })
                 }
             }
         }

@@ -39,6 +39,7 @@ var WIDGETS = [
     { id: "peripherals", surfaces: ["bar"], group: "end", labelKey: "bar.widget.peripherals", icon: "battery_full", sizes: [], styles: [] },
     { id: "brightness", surfaces: ["bar"], group: "end", labelKey: "bar.widget.brightness", icon: "brightness_high", sizes: [], styles: [] },
     { id: "resources", surfaces: ["bar"], group: "end", labelKey: "bar.widget.resources", icon: "monitoring", sizes: [], styles: [] },
+    { id: "netusage", surfaces: ["bar"], group: "end", labelKey: "bar.widget.netusage", icon: "swap_vert", sizes: [], styles: [] },
     { id: "health", surfaces: ["bar"], group: "end", labelKey: "bar.widget.health", icon: "warning", sizes: [], styles: [] },
     { id: "privacy", surfaces: ["bar"], group: "end", labelKey: "bar.widget.privacy", icon: "shield_lock", sizes: [], styles: [] },
     { id: "weather", surfaces: ["bar"], group: "end", labelKey: "bar.widget.weather", icon: "partly_cloudy_day", sizes: [], styles: [] },

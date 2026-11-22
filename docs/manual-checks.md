@@ -131,6 +131,20 @@ Código en `bar-resources-ui`. Para tener un proceso ocupado, y deshacerlo: `yes
 - [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.resources` en `ps` (ni siquiera cada segundo); con él puesto y el popup cerrado hay uno cada intervalo, nunca dos a la vez.
 - [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque «Resources».
 
+## Network usage bar element (2026-11-22)
+
+Código en `bar-netusage-ui`. Para una descarga de verdad: `curl -o /dev/null https://speed.cloudflare.com/__down?bytes=200000000` (o cualquier archivo grande), y para una subida, `dd if=/dev/zero bs=1M count=200 | curl -T - -o /dev/null https://speed.cloudflare.com/__up`.
+
+- [ ] Mostrar `netusage` desde el editor de la barra (está oculto por defecto): dos líneas cortas, ↓ y ↑, que se mueven con el tráfico; en una barra vertical caben sin desbordar.
+- [ ] En Ajustes → Bar elements → Network usage, *En la barra* cambia entre las dos líneas, solo la bajada y solo la subida, y cada opción se aplica al momento. *Unidades* en binario cambia kB↔KiB en las velocidades y en los totales de hoy.
+- [ ] Durante la descarga real la línea ↓ sube en la barra y su curva en el popup; al terminar, la gráfica baja sola. El eje es el mismo para las dos direcciones (una subida grande también lo estira) y nunca hay una línea plana pegada al borde.
+- [ ] El tooltip dice «↓ x/s ↑ y/s» y debajo «Hoy: x recibidos · y enviados». Con el popup abierto, esas cifras son las mismas que las dos filas del popup.
+- [ ] **Cambio de día**: dejar el portátil dormido pasada la medianoche (o en una VM, `sudo date -s` al día siguiente y volver a la hora real): la primera lectura del día nuevo pone «Hoy» en 0 B, no en el total de ayer ni en un número negativo, y sigue contando desde ahí. Un salto de varios días hace lo mismo.
+- [ ] **Reinicio**: reiniciar el equipo el mismo día; los contadores del kernel vuelven a cero y «Hoy» tampoco resta (empieza de nuevo en esa dirección). El archivo `~/.cache/vitrail/netusage.json` guarda `{"date": "AAAA-MM-DD", "rx": …, "tx": …}`.
+- [ ] Sin ninguna interfaz de red (o con el sampler recién arrancado, sin contadores): la barra muestra «--» (nunca 0) y el popup una línea tranquila; la barra no se rompe. Una red inactiva sí muestra 0 B/s.
+- [ ] Con `netusage` y `resources` en la barra a la vez, `ps` muestra **un** `python3 -m vitrail.resources state --tick` por intervalo, nunca dos en paralelo ni un proceso propio del elemento de red; con ninguno de los dos, ninguno.
+- [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque «Network usage».
+
 ## System health bar element (2026-11-22)
 
 Código en `bar-health-ui`. Para provocar los problemas sin romper nada, y deshacerlos:

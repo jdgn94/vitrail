@@ -6,8 +6,8 @@ import "../elements.js" as Elements
 import "resources.js" as Resources
 
 // The shell's one resources sampler. Every consumer (the Resources element's
-// button and popup, and the network element that comes after it) reads this
-// object; none of them runs a process or a timer of its own.
+// button and popup, and the Network usage element's) reads this object; none
+// of them runs a process or a timer of its own.
 //
 // - One `python3 -m vitrail.resources state --tick` per tick, through
 //   BarSnapshot: one process at a time, none while `active` is false (the shell

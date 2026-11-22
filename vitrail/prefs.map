@@ -117,6 +117,11 @@ bar nightLightSchedule
 bar resourcesInterval
 bar resourcesBar
 bar resourcesUnits
+# The network usage bar element: what the bar shows (both, down or up) and
+# the units of its rates and of today's totals (auto, binary or decimal). Its
+# interval is the resources sampler's.
+bar netusageBar
+bar netusageUnits
 # The system health bar element: the free space (percent) under which a disk
 # is a problem, and the checks that are on (one JSON array).
 bar healthDiskThreshold
