@@ -9,6 +9,7 @@ import "../../bar/brightness/brightness.js" as Brightness
 import "../../bar/battery/battery.js" as Battery
 import "../../bar/health/health.js" as Health
 import "../../bar/privacy/privacy.js" as Privacy
+import "../../bar/weather/weather.js" as Weather
 
 // Bar elements category: one block per new-style bar element, each with the
 // options every element shares (when it shows) and its own. A bar popup's gear
@@ -751,6 +752,135 @@ Item {
                         })
                         onSelected: function (key) { page.prefs.privacyDotColor = Privacy.dotToken(key) }
                     }
+                }
+            }
+
+            BarElementSection {
+                id: weatherSection
+
+                Layout.fillWidth: true
+                elementId: "weather"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    text: weatherSection.t("bar.weather.cities")
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: weatherSection.t("bar.weather.cities.help")
+                }
+
+                Repeater {
+                    model: Weather.cities(page.prefs.weatherCities, "")
+
+                    delegate: VitrailSettingRow {
+                        id: weatherCity
+
+                        required property string modelData
+
+                        objectName: "weatherCityEntry"
+
+                        Layout.fillWidth: true
+                        icon: "place"
+                        label: weatherCity.modelData
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailButton {
+                            objectName: "weatherCityRemove"
+
+                            variant: "text"
+                            tone: "error"
+                            icon: "delete"
+                            onClicked: {
+                                var rest = Weather.cities(page.prefs.weatherCities, "")
+                                        .filter(function (name) { return name !== weatherCity.modelData })
+                                page.prefs.weatherCities = Weather.withCities(rest)
+                            }
+                        }
+                    }
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    visible: Weather.cities(page.prefs.weatherCities, "").length === 0
+                    variant: "label"
+                    text: weatherSection.t("bar.weather.cities.empty")
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: VitrailTokens.gap("sm")
+
+                    VitrailField {
+                        id: weatherCityField
+
+                        Layout.fillWidth: true
+                        label: weatherSection.t("bar.weather.cities.add")
+                    }
+
+                    VitrailButton {
+                        objectName: "weatherCityAdd"
+
+                        Layout.alignment: Qt.AlignBottom
+                        variant: "tonal"
+                        icon: "add"
+                        text: weatherSection.t("action.add")
+                        enabled: weatherCityField.text.trim() !== ""
+                        onClicked: {
+                            var names = Weather.cities(page.prefs.weatherCities, "")
+                            names.push(weatherCityField.text)
+                            page.prefs.weatherCities = Weather.withCities(names)
+                            weatherCityField.text = ""
+                        }
+                    }
+                }
+
+                VitrailSelect {
+                    objectName: "weatherUnits"
+
+                    Layout.fillWidth: true
+                    label: weatherSection.t("bar.weather.units")
+                    options: [
+                        { key: "metric", label: weatherSection.t("bar.weather.units.metric") },
+                        { key: "imperial", label: weatherSection.t("bar.weather.units.imperial") }
+                    ]
+                    current: page.prefs.weatherUnits || "metric"
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.weatherUnits = key }
+                }
+
+                VitrailSelect {
+                    objectName: "weatherInterval"
+
+                    Layout.fillWidth: true
+                    label: weatherSection.t("bar.weather.interval")
+                    options: {
+                        var minutes = [15, 30, 60, 120, 360, 720]
+                        var now = Weather.intervalMinutes(page.prefs.weatherInterval)
+                        if (minutes.indexOf(now) < 0)
+                            minutes.push(now)
+                        minutes.sort(function (a, b) { return a - b })
+                        return minutes.map(function (value) {
+                            return { key: String(value),
+                                     label: weatherSection.t("bar.weather.intervalOption").replace("%1", value) }
+                        })
+                    }
+                    current: String(Weather.intervalMinutes(page.prefs.weatherInterval))
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.weatherInterval = Number(key) }
                 }
             }
 

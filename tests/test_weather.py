@@ -61,6 +61,11 @@ FORECAST = json.dumps(
             "temperature_2m_min": [10.0, 9.5, 9.0, 8.0, 7.5, 6.0, 5.5],
             "weather_code": [2, 3, 61, 61, 80, 0, 1],
         },
+        "hourly": {
+            "time": [f"2026-11-04T{hour:02d}:00" for hour in (15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2)],
+            "temperature_2m": [18.4 + i * 0.2 for i in range(12)],
+            "weather_code": [2, 2, 3, 3, 61, 61, 61, 80, 80, 1, 0, 0],
+        },
     }
 )
 IMPERIAL = json.dumps(
@@ -146,6 +151,17 @@ class ForecastTests(unittest.TestCase):
         self.assertEqual(data["daily"][2]["condition"], "Light rain")
         self.assertEqual(len(data["daily"]), 7)
 
+    def test_the_hourly_forecast_is_flat_and_keeps_the_service_unit(self) -> None:
+        data = weather.parse_forecast(FORECAST)
+        self.assertEqual(len(data["hourly"]), weather.HOUR_COUNT)
+        self.assertEqual(data["hourly"][0], {"time": "2026-11-04T15:00", "temperature": 18.4, "code": 2})
+        self.assertEqual(data["hourly"][4]["code"], 61)
+
+    def test_an_answer_without_hourly_still_parses(self) -> None:
+        answer = json.loads(FORECAST)
+        del answer["hourly"]
+        self.assertNotIn("hourly", weather.parse_forecast(json.dumps(answer)))
+
     def test_an_unknown_code_is_still_described(self) -> None:
         self.assertEqual(weather.describe(1234), "Unknown")
 
@@ -211,6 +227,8 @@ class LocationTests(unittest.TestCase):
             "wind_speed_unit=mph",
             "relative_humidity_2m",
             "temperature_2m_max",
+            "hourly=",
+            f"forecast_hours={weather.HOUR_COUNT}",
         ):
             self.assertIn(part, url)
         self.assertNotIn("temperature_unit", weather.forecast_url({"latitude": 1.5, "longitude": -2.5}, "metric"))

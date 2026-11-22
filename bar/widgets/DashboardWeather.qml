@@ -45,17 +45,11 @@ Item {
     }
 
     function weekday(iso) {
-        var date = new Date(String(iso || "") + "T12:00:00")
-        if (isNaN(date.getTime()))
-            return String(iso || "")
-        return date.toLocaleDateString(Qt.locale(root.language), "ddd")
+        return Dash.weekday(iso, root.language)
     }
 
-    // The words for a WMO code in the user's language (weather.code.<n>); the
-    // service's English falls back for a code the table does not name.
     function condition(code, fallback) {
-        var text = root.strings["weather.code." + Number(code)]
-        return text === undefined || text === "" ? (fallback || "") : text
+        return Dash.condition(root.strings, code, fallback)
     }
 
     ColumnLayout {

@@ -34,7 +34,9 @@ MAX_BYTES = 1024 * 1024
 # The fields the bar and the dashboard show, and nothing else.
 CURRENT_FIELDS = "temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code"
 DAILY_FIELDS = "temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset"
+HOURLY_FIELDS = "temperature_2m,weather_code"
 DAY_COUNT = 7
+HOUR_COUNT = 12
 UNITS = {
     "metric": {},
     "imperial": {"temperature_unit": "fahrenheit", "wind_speed_unit": "mph"},
@@ -177,6 +179,24 @@ def parse_forecast(text: str) -> dict:
                 "condition": describe(number),
             }
         )
+    hours = data.get("hourly")
+    if isinstance(hours, dict):
+        times = hours.get("time")
+        temperatures = hours.get("temperature_2m")
+        hour_codes = hours.get("weather_code")
+        if all(isinstance(one, list) for one in (times, temperatures, hour_codes)):
+            forecast_hours = []
+            for moment, temperature, hour_code in zip(times, temperatures, hour_codes):
+                number = int(_number(hour_code, "weather code"))
+                forecast_hours.append(
+                    {
+                        "time": str(moment or ""),
+                        "temperature": _number(temperature, "temperature"),
+                        "code": number,
+                    }
+                )
+    else:
+        forecast_hours = []
     units = data.get("current_units") if isinstance(data.get("current_units"), dict) else {}
     result = {
         "units": {
@@ -187,6 +207,8 @@ def parse_forecast(text: str) -> dict:
         "current": now,
         "daily": forecast,
     }
+    if forecast_hours:
+        result["hourly"] = forecast_hours
     # The night light's sun mode needs today's two times; older answers (and
     # the tests that do not ask for them) simply have none.
     rises, sets = daily.get("sunrise"), daily.get("sunset")
@@ -203,7 +225,9 @@ def forecast_url(location: dict, unit_kind: str) -> str:
         "longitude": location["longitude"],
         "current": CURRENT_FIELDS,
         "daily": DAILY_FIELDS,
+        "hourly": HOURLY_FIELDS,
         "forecast_days": DAY_COUNT,
+        "forecast_hours": HOUR_COUNT,
         "timezone": "auto",
     } | UNITS.get(unit_kind, {})
     return f"{FORECAST}?{urllib.parse.urlencode(query)}"

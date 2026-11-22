@@ -174,6 +174,19 @@ ffplay -f v4l2 /dev/video0        # o: pw-v4l2 ffplay /dev/video0
 - [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque «Privacy».
 - [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.privacy` ni `pw-dump` en `ps`.
 
+## Weather bar element (2026-11-22)
+
+Código en `bar-weather-ui`. Con la barra corriendo:
+
+- [ ] Mostrar `weather` desde el editor de la barra (está oculto por defecto): aparece el glifo de la condición y la temperatura redondeada con su unidad ("18 °C"); el tooltip dice «Madrid · Parcialmente nublado» y debajo «Máx 21° · Mín 10°».
+- [ ] Clic abre el popup: la lectura actual (condición, temperatura, máxima/mínima y viento cuando lo hay), la tira de las próximas doce horas y las cinco filas de los próximos días; el engranaje abre Ajustes → Bar elements ya desplazado al bloque «Weather».
+- [ ] Ajustes → Bar elements → Weather: añadir «Valencia» a las ciudades la ofrece en el selector del popup; elegirla escribe `weatherLocation=Valencia` en `weather.ini`, el snapshot se refresca y el tooltip y la temperatura pasan a Valencia. Quitarla de la lista la quita del selector sin cambiar la ciudad actual.
+- [ ] Cambiar «Unidades» de métrico a imperial cambia la misma lectura a °F y el viento a mph en el siguiente snapshot (sin esperar al intervalo); volver a métrico la devuelve a °C y km/h.
+- [ ] Sin red con caché tibia (desconectar la red después de un snapshot bueno y esperar a que caduque el caché de 15 min): el botón sigue mostrando la última temperatura y el popup añade una línea tranquila «No se pudo actualizar el último pronóstico: …» sin perder horas ni días.
+- [ ] Ciudad desconocida (añadir «Atlantis» a las ciudades, elegirla): el popup muestra una línea tranquila con el motivo, no una traza ni una tarjeta vacía; con caché de otra ciudad mantiene la última lectura, y sin caché el botón desaparece en «Solo cuando está activo».
+- [ ] Apagar y encender el elemento con «Solo cuando está activo»: sin temperatura no ocupa sitio en la barra y con un snapshot bueno vuelve; con «Siempre» queda el glifo de nube.
+- [ ] `weatherInterval` (15 min por defecto) cambia cada cuánto corre `python3 -m vitrail.weather state`; con el elemento fuera de la barra y el night light apagado no hay ningún proceso del módulo en `ps`.
+
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 
 Código en `master` (`5936834..36fab6a`). La automatización ya está verde

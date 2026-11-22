@@ -269,6 +269,9 @@ misc clipboardColors
 misc pomodoroState
 misc timerState
 
-# The place and units of the bar's weather (`vitrail/weather.py`).
+# The place and units of the bar's weather (`vitrail/weather.py`), the cities
+# its popup offers (one JSON array) and how often it refreshes (minutes).
 weather weatherLocation
 weather weatherUnits
+weather weatherCities
+weather weatherInterval

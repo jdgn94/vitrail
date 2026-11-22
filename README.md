@@ -351,7 +351,7 @@ the window declares it in another file, or the path unit watches another set.
 | `language.ini` | `language`, `languageSystem` |
 | `datetime.ini` | `timezone`, `ntp` |
 | `connection.ini` | `connectionRequest`, `connectionSeq` (the Connection page's request, run once per counter value), `networkMetrics` (the bar's latency and traffic line) |
-| `weather.ini` | `weatherLocation` (the city; empty follows the IP's guess), `weatherUnits` (`metric` or `imperial`) |
+| `weather.ini` | `weatherLocation` (the city; empty follows the IP's guess), `weatherUnits` (`metric` or `imperial`), `weatherCities` (the popup's city switcher, one JSON array), `weatherInterval` (minutes between snapshots) |
 | `misc.ini` | `selftest` (written by the smoke test), `quickNotes`, `clipboardColors`, `pomodoroState`, `timerState` (the clock widgets' running state) and any key the map does not list |
 
 The VPN keeps its own document outside these files, in a folder of its own:

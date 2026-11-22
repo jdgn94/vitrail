@@ -22,6 +22,7 @@ import "containers/containers.js" as Containers
 import "brightness/brightness.js" as Brightness
 import "health/health.js" as Health
 import "privacy/privacy.js" as Privacy
+import "weather/weather.js" as Weather
 import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "kit/wallpaper.js" as WallpaperTransition
@@ -71,6 +72,7 @@ import "battery"
 import "brightness"
 import "health"
 import "privacy"
+import "weather"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -784,6 +786,8 @@ ShellRoot {
             healthData.refresh()
         if (kind === "privacy")
             privacyData.refresh()
+        if (kind === "weather")
+            weatherData.refresh()
         if (kind === "disks") {
             // A failure belongs to the action that caused it, not to a later
             // visit: start the popup with a clean line.
@@ -1987,13 +1991,22 @@ ShellRoot {
 
     // The weather is only needed while the element is in a bar or the night
     // light switch is on (the schedule may use the sun while the popup is
-    // closed). Its own cache makes the fifteen-minute poll cheap.
+    // closed). The bar element owns the interval; its own cache keeps a poll
+    // inside the module's window cheap.
     BarSnapshot {
         id: weatherData
 
         module: "weather"
-        interval: 900000
-        active: shell.barShows("brightness") || shell.nightLightOn
+        interval: Weather.intervalMs(shell.prefs.weatherInterval)
+        active: shell.barShows("weather") || shell.barShows("brightness") || shell.nightLightOn
+    }
+
+    // A unit change must not wait for the next poll: the snapshot's units and
+    // its cache key both change with the preference.
+    Connections {
+        target: shell.prefs
+
+        function onWeatherUnitsChanged() { weatherData.refresh() }
     }
 
     // The popup's night light state. BarSnapshot asks the module's `state`
@@ -3774,6 +3787,7 @@ ShellRoot {
                     case "brightness": return brightnessWidget
                     case "health": return healthWidget
                     case "privacy": return privacyWidget
+                    case "weather": return weatherWidget
                     default: return null
                     }
                 }
@@ -4289,6 +4303,25 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: weatherWidget
+
+                    WeatherButton {
+                        id: weatherButton
+
+                        strings: shell.strings
+                        snapshot: weatherData.snapshot
+                        showMode: Elements.showMode(shell.activeOnlyIds, "weather")
+                        opened: shell.popupOpen && shell.popupKind === "weather" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("weather", weatherButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(weatherButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("weather", weatherButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -4356,6 +4389,7 @@ ShellRoot {
                     case "brightness": return monitor.loadedItem("brightness")
                     case "health": return monitor.loadedItem("health")
                     case "privacy": return monitor.loadedItem("privacy")
+                    case "weather": return monitor.loadedItem("weather")
                     default: return null
                     }
                 }
@@ -5358,6 +5392,13 @@ ShellRoot {
                                 sourceComponent: privacyComponent
                             }
 
+                            Popout {
+                                name: "weather"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: weatherComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -5788,6 +5829,24 @@ ShellRoot {
                         busy: privacyCutter.running
                         onCutRequested: function (kind, node) { shell.privacyCut(kind, node) }
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "privacy")
+                    }
+                }
+
+                Component {
+                    id: weatherComponent
+
+                    WeatherPanel {
+                        strings: shell.strings
+                        snapshot: weatherData.snapshot
+                        cities: shell.prefs.weatherCities || ""
+                        currentCity: weatherData.snapshot && weatherData.snapshot.location
+                                     ? weatherData.snapshot.location.name : ""
+                        language: shell.prefs.language || "en"
+                        onCitySelected: function (city) {
+                            shell.prefs.weatherLocation = city
+                            weatherData.refresh()
+                        }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "weather")
                     }
                 }
 

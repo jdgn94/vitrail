@@ -12,6 +12,7 @@ import "../bar/brightness"
 import "../bar/battery"
 import "../bar/health"
 import "../bar/privacy"
+import "../bar/weather"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -1702,6 +1703,130 @@ Window {
                     x: VitrailTokens.gap("md")
                     y: VitrailTokens.gap("md")
                     snapshot: ({ uses: [], anyUse: false, watching: {}, error: "pw-dump is not available or did not answer" })
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "WeatherButton · clear × partly cloudy × rain × snow × storm × offline"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            WeatherButton {
+                snapshot: ({
+                    location: { name: "Madrid", country: "Spain" },
+                    units: { temperature: "°C", humidity: "%", wind: "km/h" },
+                    current: { temperature: 18.4, humidity: 62, wind: 11.2, code: 2, condition: "Partly cloudy" },
+                    daily: [
+                        { date: "2026-11-04", high: 21.0, low: 10.0, code: 2, condition: "Partly cloudy" },
+                        { date: "2026-11-05", high: 20.5, low: 9.5, code: 61, condition: "Light rain" }
+                    ]
+                })
+            }
+
+            WeatherButton {
+                snapshot: ({
+                    location: { name: "Valencia", country: "Spain" },
+                    units: { temperature: "°C" },
+                    current: { temperature: 24.0, code: 0, condition: "Clear sky" },
+                    daily: [{ date: "2026-11-04", high: 27.0, low: 15.0, code: 0, condition: "Clear sky" }]
+                })
+            }
+
+            WeatherButton {
+                snapshot: ({
+                    location: { name: "Bilbao", country: "Spain" },
+                    units: { temperature: "°C" },
+                    current: { temperature: 13.0, code: 61, condition: "Light rain" },
+                    daily: [{ date: "2026-11-04", high: 15.0, low: 8.0, code: 61, condition: "Light rain" }]
+                })
+            }
+
+            WeatherButton {
+                snapshot: ({
+                    location: { name: "Oslo", country: "Norway" },
+                    units: { temperature: "°C" },
+                    current: { temperature: -4.0, code: 71, condition: "Light snow" },
+                    daily: [{ date: "2026-11-04", high: -1.0, low: -8.0, code: 71, condition: "Light snow" }]
+                })
+            }
+
+            WeatherButton {
+                snapshot: ({
+                    location: { name: "Seville", country: "Spain" },
+                    units: { temperature: "°C" },
+                    current: { temperature: 31.0, code: 95, condition: "Thunderstorm" },
+                    daily: [{ date: "2026-11-04", high: 34.0, low: 22.0, code: 95, condition: "Thunderstorm" }]
+                })
+            }
+
+            WeatherButton {
+                showMode: "always"
+                snapshot: ({ error: "offline" })
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "WeatherPanel · warm cache × city switcher × offline with no cache"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: weatherFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: weatherFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                WeatherPanel {
+                    id: weatherFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    cities: '["Madrid","Valencia","Bilbao"]'
+                    currentCity: "Madrid"
+                    snapshot: ({
+                        location: { name: "Madrid", country: "Spain" },
+                        units: { temperature: "°C", humidity: "%", wind: "km/h" },
+                        current: { temperature: 18.4, humidity: 62, wind: 11.2, code: 2, condition: "Partly cloudy" },
+                        hourly: [
+                            { time: "2026-11-04T15:00", temperature: 18.4, code: 2 },
+                            { time: "2026-11-04T16:00", temperature: 18.9, code: 3 },
+                            { time: "2026-11-04T17:00", temperature: 18.1, code: 61 },
+                            { time: "2026-11-04T18:00", temperature: 17.2, code: 61 },
+                            { time: "2026-11-04T19:00", temperature: 16.4, code: 80 },
+                            { time: "2026-11-04T20:00", temperature: 15.7, code: 1 }
+                        ],
+                        daily: [
+                            { date: "2026-11-04", high: 21.0, low: 10.0, code: 2, condition: "Partly cloudy" },
+                            { date: "2026-11-05", high: 20.5, low: 9.5, code: 3, condition: "Overcast" },
+                            { date: "2026-11-06", high: 19.0, low: 9.0, code: 61, condition: "Light rain" },
+                            { date: "2026-11-07", high: 18.0, low: 8.0, code: 61, condition: "Light rain" },
+                            { date: "2026-11-08", high: 17.5, low: 7.5, code: 80, condition: "Light showers" },
+                            { date: "2026-11-09", high: 16.0, low: 6.0, code: 0, condition: "Clear sky" }
+                        ],
+                        updated: 1763730000,
+                        cached: true,
+                        error: "offline"
+                    })
+                }
+            }
+
+            VitrailSurface {
+                width: weatherEmpty.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: weatherEmpty.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                WeatherPanel {
+                    id: weatherEmpty
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    cities: '["Madrid"]'
+                    currentCity: ""
+                    snapshot: ({ error: "offline" })
                 }
             }
         }

@@ -57,6 +57,22 @@ function degrees(value) {
     return isFinite(number) ? Math.round(number) + "°" : "--"
 }
 
+// The words for a WMO code in the user's language (weather.code.<n>); the
+// service's English falls back for a code the table does not name.
+function condition(strings, code, fallback) {
+    var table = strings || ({})
+    var text = table["weather.code." + Number(code)]
+    return text === undefined || text === "" ? (fallback || "") : text
+}
+
+// An ISO day ("2026-11-04") as the locale's short weekday ("Wed").
+function weekday(iso, language) {
+    var date = new Date(String(iso || "") + "T12:00:00")
+    if (isNaN(date.getTime()))
+        return String(iso || "")
+    return date.toLocaleDateString(Qt.locale(language || "en"), "ddd")
+}
+
 // "used / total · percent" for memory and disk.
 function usage(part) {
     if (!part || typeof part !== "object")

@@ -187,6 +187,8 @@ QtObject {
     property alias networkMetrics: connectionFile.networkMetrics
     property alias weatherLocation: weatherFile.weatherLocation
     property alias weatherUnits: weatherFile.weatherUnits
+    property alias weatherCities: weatherFile.weatherCities
+    property alias weatherInterval: weatherFile.weatherInterval
     property alias selftest: miscFile.selftest
     property alias quickNotes: miscFile.quickNotes
     property alias clipboardColors: miscFile.clipboardColors
@@ -610,6 +612,11 @@ QtObject {
         property string weatherLocation: ""
         // "metric" (°C, km/h) or "imperial" (°F, mph).
         property string weatherUnits: "metric"
+        // The cities the popup's switcher offers, one JSON array in order.
+        // Empty follows the snapshot's own city (the module's default).
+        property string weatherCities: "[]"
+        // How often the bar asks for a snapshot, in whole minutes.
+        property int weatherInterval: 15
     }
 
     property Settings miscSettings: Settings {
