@@ -82,6 +82,7 @@ import "clipboardbar"
 import "colorpicker"
 import "colorpicker/colorpicker.js" as ColorPicker
 import "pomodoro"
+import "notes"
 import "dnd"
 import "caffeine"
 import "dnd/dnd.js" as Dnd
@@ -166,6 +167,10 @@ ShellRoot {
     // never lose a change.
     property bool editMode: false
     property var editScreen: null
+    // The tab the editor shows. One value for every monitor's editor, so the
+    // bar, dock and panel tabs (global documents) can stay on the screen that
+    // opened the editor while the desktop tab follows sync.
+    property string editTab: "desktop"
     property string desktopEditLayout: ""
     property string barEditLayout: ""
     property string panelEditLayout: ""
@@ -990,6 +995,7 @@ ShellRoot {
         shell.panelEditLayout = shell.prefs.panelLayout || ""
         shell.barMonitorsEditLayout = shell.prefs.barMonitors || "{}"
         shell.editScreen = screen
+        shell.editTab = "desktop"
         shell.editMode = true
     }
 
@@ -1851,7 +1857,7 @@ ShellRoot {
     ResourcesSampler {
         id: resourcesSampler
 
-        interval: shell.prefs.resourcesInterval
+        interval: shell.prefNumber("resourcesInterval", VitrailTokens.ranges.resourcesInterval.value)
         active: shell.barShows("resources") || shell.barShows("netusage")
         withTop: shell.popupOpen && shell.popupKind === "resources"
     }
@@ -5254,13 +5260,17 @@ ShellRoot {
                     id: desktopEditLayer
 
                     screen: monitor.modelData
-                    // Every monitor shows the editor; only the one that started
-                    // it keeps the keyboard. The Desktop tab keeps that monitor's
-                    // document, while the position selectors write this screen's
-                    // override.
-                    active: shell.editMode
+                    // The monitor that started the edit shows it. The others
+                    // carry it only while the desktop is the document being
+                    // edited there (sync off): bar, dock and panel are global,
+                    // so one screen is enough for them.
+                    requested: shell.editMode
+                    initiating: shell.editScreen === monitor.modelData
+                    desktopShared: shell.prefBool("desktopSync", true)
+                    tab: shell.editTab
+                    onTabPicked: shell.editTab = key
                     focused: shell.editScreen === monitor.modelData
-                    monitor: shell.editScreen ? shell.editScreen.name : monitor.modelData.name
+                    monitorName: shell.editScreen ? shell.editScreen.name : monitor.modelData.name
                     screenMonitor: monitor.modelData.name
                     layoutText: shell.desktopEditLayout
                     strings: shell.strings
