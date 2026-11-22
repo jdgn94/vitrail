@@ -2,6 +2,7 @@ import QtQuick
 import QtTest
 import "../../bar/desktop"
 import "../../bar/layouts.js" as Layouts
+import "../../bar/elements.js" as Elements
 import "../../kit"
 
 // The in-place editor's Bar and Panel tabs: the bar's groups, chips, dividers,
@@ -284,6 +285,11 @@ TestCase {
         compare(tab.previewDoc.order.start[0], "clock")
         compare(tab.doc.order.center.indexOf("clock") >= 0, true)
         compare(preview.doc.order.start[0], "clock")
+        // The strip draws the proposed arrangement and marks the target group.
+        verify(findChild(preview, "barPreviewTarget-start").visible)
+        var moved = findChild(findChild(preview, "barPreviewGroup-start"), "barPreviewElement-clock")
+        verify(moved !== null)
+        compare(moved.icon, "schedule")
         compare(spy.count, 0)
 
         verify(tab.finishDrag())
@@ -292,6 +298,37 @@ TestCase {
         compare(barDocument(spy).order.start[0], "clock")
         verify(!tab.dragging)
         verify(!findChild(mode, "editorBarGhost").visible)
+    }
+
+    function test_the_preview_strip_sits_on_the_bars_edge_with_its_style() {
+        var mode = makeMode()
+        mode.tab = "bar"
+        wait(20)
+        var preview = findChild(mode, "editorBarPreview")
+        var scroller = findChild(mode, "editorBarScroller")
+        mode.bar = { edge: "left", style: "floating" }
+        wait(20)
+        verify(preview.vertical)
+        compare(preview.variant, "floating")
+        verify(preview.x + preview.width <= scroller.x)
+        mode.bar = { edge: "bottom", style: "docked" }
+        wait(20)
+        verify(!preview.vertical)
+        verify(preview.y >= scroller.y + scroller.height)
+        compare(findChild(preview, "barPreviewSurface").radius, 0)
+        // Only the strip: the old card behind the preview is gone.
+        compare(findChild(mode, "editorBarPreviewCard"), null)
+    }
+
+    function test_the_rows_wear_the_registry_glyph() {
+        var mode = makeMode()
+        mode.tab = "bar"
+        wait(20)
+        var tab = barTab(mode)
+        compare(tab.entryIcon("weather"), Elements.icon("weather"))
+        compare(tab.entryIcon("weather"), "partly_cloudy_day")
+        compare(tab.entryIcon("divider-2"), "vertical_split")
+        compare(tab.entryIcon("@connections"), "link")
     }
 
     function test_a_member_can_be_dragged_out_of_its_chip_and_onto_another() {

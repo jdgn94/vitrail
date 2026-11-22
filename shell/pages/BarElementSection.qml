@@ -4,10 +4,11 @@ import "../../kit"
 import "../../kit/base"
 import "../../bar/elements.js" as Elements
 
-// One bar element's block in Settings → Bar elements: its title, the "only
-// while active" switch every element has, and (as children) its own options.
-// `elementId` is the element's id in bar/widgets.js and the tab its popup's
-// gear opens.
+// One bar element's block in Settings → Bar elements: its glyph and title, the
+// "only while active" switch every element has, and (as children) its own
+// options. `elementId` is the element's id in bar/widgets.js and the tab its
+// popup's gear opens; the glyph is the registry's and the block's row on the
+// page comes from its group (bar/elements.js PAGE_GROUPS).
 Section {
     id: section
 
@@ -23,6 +24,11 @@ Section {
         return value === undefined ? key : value
     }
 
+    // A block outside PAGE_GROUPS (the clock, which is not a BarElementBase
+    // button) names its own row; the grouped ones take theirs from the table.
+    property int row: -1
+    Layout.row: section.row >= 0 ? section.row : Elements.pageRow(section.elementId)
+    icon: Elements.icon(section.elementId)
     title: section.t("bar.widget." + section.elementId)
     foreground: section.palette.foreground
     accent: section.palette.primary

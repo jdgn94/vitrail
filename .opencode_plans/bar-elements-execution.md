@@ -269,3 +269,29 @@ data and UI halves are both green.
   extraction from master can carry the trailing `component Preview`; check
   `grep -c 'component Preview'` is 1 and render with `qmlscene`/`qml6` before
   committing.
+- 2026-11-22: after the plan, the owner reported four things; opened a second
+  round.
+  1. Settings → Bar elements icons/order and a bar-shaped preview: dispatched
+     to **claude-opus-5-5** (`bar-panel-redesign`).
+  2. Workspaces enabled but invisible: fixed in `3a411d4`. Root cause:
+     `Hyprland.workspaces.values` is a QJSValue sequence (length + indices,
+     `Array.isArray` false), so `Workspaces.collect` started from an empty list.
+     `listOf` now accepts a sequence; a test feeds that shape. Verified in the
+     running shell: 2 entries after the fix, 0 before.
+  3. Clock popup had no way to choose its widgets: dispatched to OpenCode flash
+     (`bar-clock-widgets`, `dashboardWidgets` + gear + section).
+  4. Workspaces "will have several styles": noted, not built yet.
+- Also fixed on the way (all committed): missing `import "notes"` (the bar
+  refused to start), the resources sampler reading a string as an int, the
+  weather unit `Connections` on a non-QObject, and a guard test
+  (`tests/test_shell_imports.py`) that every type the shell instantiates has
+  its folder imported.
+- 2026-11-22: clock popup widgets merged (`7dff1e3` → `326520a`): `dashboardWidgets`
+  (bar.ini JSON array, empty/unknown falls back to all five), a gear in the
+  popup that opens Settings → Bar elements → Clock, and a section with each
+  widget's switch and up/down. 1538 tests, 127 QML.
+- 2026-11-22: workspace pills confirmed live on DP-1 (two pills with the app
+  icons of workspaces 1 and 2). A crash in the shell came from a temporary
+  debug line that indexed `Hyprland.workspaces.values[0]` while the sequence
+  was still empty ("pure virtual method called"); the line is gone and the bar
+  runs again. `listOf` only indexes up to `length`, so the fix is safe.

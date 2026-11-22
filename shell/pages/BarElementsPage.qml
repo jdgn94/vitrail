@@ -15,10 +15,14 @@ import "../../bar/weather/weather.js" as Weather
 import "../../bar/market/market.js" as Market
 import "../../bar/dnd/dnd.js" as Dnd
 import "../../bar/caffeine/caffeine.js" as Caffeine
+import "../../bar/elements.js" as Elements
 import "../../bar/dashboard/dashboard.js" as Dash
 
 // Bar elements category: one block per new-style bar element, each with the
-// options every element shares (when it shows) and its own. A bar popup's gear
+// options every element shares (when it shows) and its own. The blocks sit in
+// a one-column grid under their group headings, in the order of
+// bar/elements.js PAGE_GROUPS (each block takes its row from there), so the
+// order the blocks are written in below does not matter. A bar popup's gear
 // lands on its element's block through `tab` (the element's id). A new
 // element adds its BarElementSection here (docs/bar-elements.md).
 Item {
@@ -54,11 +58,34 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         clip: true
 
-        ColumnLayout {
+        GridLayout {
             id: column
 
             width: parent.width
-            spacing: VitrailTokens.gap("xl")
+            columns: 1
+            rowSpacing: VitrailTokens.gap("xl")
+            columnSpacing: 0
+
+            // One heading per group, on the row before its elements.
+            Repeater {
+                model: Elements.PAGE_GROUPS
+
+                delegate: VitrailText {
+                    required property var modelData
+
+                    objectName: "barElementsGroup-" + modelData.key
+                    Layout.row: Elements.headingRow(modelData.key)
+                    Layout.fillWidth: true
+                    Layout.topMargin: VitrailTokens.gap("md")
+                    variant: "title"
+                    color: page.palette.primary
+                    text: {
+                        var key = "bar.elements.group." + modelData.key
+                        var value = page.strings[key]
+                        return value === undefined ? key : value
+                    }
+                }
+            }
 
             BarElementSection {
                 Layout.fillWidth: true
@@ -66,79 +93,6 @@ Item {
                 palette: page.palette
                 prefs: page.prefs
                 strings: page.strings
-            }
-
-            BarElementSection {
-                id: clockSection
-
-                Layout.fillWidth: true
-                elementId: "clock"
-                palette: page.palette
-                prefs: page.prefs
-                strings: page.strings
-
-                VitrailText {
-                    Layout.fillWidth: true
-                    variant: "label"
-                    opacity: 0.7
-                    wrapMode: Text.WordWrap
-                    text: clockSection.t("bar.clock.widgets.help")
-                }
-
-                Repeater {
-                    model: Dash.widgetRows(page.prefs.dashboardWidgets)
-
-                    delegate: VitrailSettingRow {
-                        id: widgetRow
-
-                        required property var modelData
-
-                        objectName: "dashboardWidgetRow-" + widgetRow.modelData.key
-                        Layout.fillWidth: true
-                        icon: Dash.widgetIcon(widgetRow.modelData.key)
-                        label: clockSection.t("bar.clock.widget." + widgetRow.modelData.key)
-                        foreground: page.palette.foreground
-                        muted: page.palette.muted
-
-                        VitrailSwitch {
-                            objectName: "dashboardWidgetToggle-" + widgetRow.modelData.key
-                            checked: widgetRow.modelData.shown
-                            // Hiding the last one would leave no popup: the
-                            // empty preference means all five again.
-                            enabled: !widgetRow.modelData.shown
-                                     || Dash.shownCount(page.prefs.dashboardWidgets) > 1
-                            foreground: page.palette.foreground
-                            accent: page.palette.primary
-                            onToggled: function (value) {
-                                page.prefs.dashboardWidgets =
-                                    Dash.withWidget(page.prefs.dashboardWidgets,
-                                                    widgetRow.modelData.key, value)
-                            }
-                        }
-
-                        VitrailButton {
-                            objectName: "dashboardWidgetMoveUp-" + widgetRow.modelData.key
-                            variant: "text"
-                            size: "sm"
-                            text: clockSection.t("bar.clock.moveUp")
-                            enabled: widgetRow.modelData.canUp
-                            onClicked: page.prefs.dashboardWidgets =
-                                Dash.moveWidget(page.prefs.dashboardWidgets,
-                                                widgetRow.modelData.key, -1)
-                        }
-
-                        VitrailButton {
-                            objectName: "dashboardWidgetMoveDown-" + widgetRow.modelData.key
-                            variant: "text"
-                            size: "sm"
-                            text: clockSection.t("bar.clock.moveDown")
-                            enabled: widgetRow.modelData.canDown
-                            onClicked: page.prefs.dashboardWidgets =
-                                Dash.moveWidget(page.prefs.dashboardWidgets,
-                                                widgetRow.modelData.key, 1)
-                        }
-                    }
-                }
             }
 
             BarElementSection {
@@ -1340,6 +1294,80 @@ Item {
             }
 
             BarElementSection {
+                id: clockSection
+
+                Layout.fillWidth: true
+                row: Elements.pageRows()
+                elementId: "clock"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: clockSection.t("bar.clock.widgets.help")
+                }
+
+                Repeater {
+                    model: Dash.widgetRows(page.prefs.dashboardWidgets)
+
+                    delegate: VitrailSettingRow {
+                        id: widgetRow
+
+                        required property var modelData
+
+                        objectName: "dashboardWidgetRow-" + widgetRow.modelData.key
+                        Layout.fillWidth: true
+                        icon: Dash.widgetIcon(widgetRow.modelData.key)
+                        label: clockSection.t("bar.clock.widget." + widgetRow.modelData.key)
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            objectName: "dashboardWidgetToggle-" + widgetRow.modelData.key
+                            checked: widgetRow.modelData.shown
+                            // Hiding the last one would leave no popup: the
+                            // empty preference means all five again.
+                            enabled: !widgetRow.modelData.shown
+                                     || Dash.shownCount(page.prefs.dashboardWidgets) > 1
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) {
+                                page.prefs.dashboardWidgets =
+                                    Dash.withWidget(page.prefs.dashboardWidgets,
+                                                    widgetRow.modelData.key, value)
+                            }
+                        }
+
+                        VitrailButton {
+                            objectName: "dashboardWidgetMoveUp-" + widgetRow.modelData.key
+                            variant: "text"
+                            size: "sm"
+                            text: clockSection.t("bar.clock.moveUp")
+                            enabled: widgetRow.modelData.canUp
+                            onClicked: page.prefs.dashboardWidgets =
+                                Dash.moveWidget(page.prefs.dashboardWidgets,
+                                                widgetRow.modelData.key, -1)
+                        }
+
+                        VitrailButton {
+                            objectName: "dashboardWidgetMoveDown-" + widgetRow.modelData.key
+                            variant: "text"
+                            size: "sm"
+                            text: clockSection.t("bar.clock.moveDown")
+                            enabled: widgetRow.modelData.canDown
+                            onClicked: page.prefs.dashboardWidgets =
+                                Dash.moveWidget(page.prefs.dashboardWidgets,
+                                                widgetRow.modelData.key, 1)
+                        }
+                    }
+                }
+            }
+
+            BarElementSection {
                 id: pomodoroSection
 
                 Layout.fillWidth: true
@@ -1504,7 +1532,10 @@ Item {
                 }
             }
 
-            Item { Layout.preferredHeight: VitrailTokens.gap("xl") }
+            Item {
+                Layout.row: Elements.pageRows() + 1
+                Layout.preferredHeight: VitrailTokens.gap("xl")
+            }
         }
     }
 }

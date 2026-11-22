@@ -107,6 +107,72 @@ def element_ids() -> list[str]:
     return found
 
 
+def page_groups() -> list[tuple[str, list[str]]]:
+    """Settings → Bar elements' groups, in order (bar/elements.js PAGE_GROUPS)."""
+    source = (ROOT / "bar" / "elements.js").read_text(encoding="utf-8")
+    block = re.search(r"var PAGE_GROUPS = \[(.*?)\n\]", source, re.S).group(1)
+    return [
+        (key, re.findall(r'"([\w-]+)"', ids))
+        for key, ids in re.findall(r'\{ key: "(\w+)", ids: \[([^\]]*)\] \}', block)
+    ]
+
+
+def documented_order() -> list[tuple[str, list[str]]]:
+    """The page order docs/bar-elements.md states: `| <group key> | `a`, `b` |`."""
+    doc = (ROOT / "docs" / "bar-elements.md").read_text(encoding="utf-8")
+    section = doc.split("## The settings page", 1)[1].split("\n## ", 1)[0]
+    return [
+        (key, re.findall(r"`([\w-]+)`", ids))
+        for key, ids in re.findall(r"^\| `(\w+)` \| [^|]+ \| ([^|]+) \|$", section, re.M)
+    ]
+
+
+def registry_icons() -> dict[str, str]:
+    source = (ROOT / "bar" / "widgets.js").read_text(encoding="utf-8")
+    return dict(re.findall(r'\{ id: "([\w-]+)", surfaces: \["bar"\][^}]*?icon: "(\w+)"', source))
+
+
+class SettingsPageTests(unittest.TestCase):
+    """Settings → Bar elements: registry glyphs, a deliberate grouped order."""
+
+    def test_every_element_is_in_exactly_one_group(self) -> None:
+        placed = [element for _, ids in page_groups() for element in ids]
+        self.assertEqual(len(placed), len(set(placed)), "an element in two groups")
+        self.assertEqual(sorted(placed), sorted(element_ids()))
+
+    def test_the_order_is_the_documented_one(self) -> None:
+        self.assertEqual(page_groups(), documented_order())
+        self.assertEqual(page_groups()[-1][0], "example", "the sample stays last")
+
+    def test_every_element_wears_its_registry_icon(self) -> None:
+        icons = registry_icons()
+        table = (ROOT / "kit" / "icons.js").read_text(encoding="utf-8")
+        for element in element_ids():
+            with self.subTest(element=element):
+                self.assertIn(element, icons, "no icon in bar/widgets.js")
+                self.assertRegex(table, rf"(?m)^\s+{icons[element]}:", "icon missing from kit/icons.js")
+        section = (ROOT / "shell" / "pages" / "BarElementSection.qml").read_text(encoding="utf-8")
+        self.assertIn("icon: Elements.icon(section.elementId)", section)
+        self.assertIn("Layout.row: section.row >= 0 ? section.row : Elements.pageRow(section.elementId)", section)
+        # The registry is the one place: no section names its own glyph.
+        page = (ROOT / "shell" / "pages" / "BarElementsPage.qml").read_text(encoding="utf-8")
+        for block in re.findall(r"BarElementSection \{(.*?)elementId:", page, re.S):
+            self.assertNotRegex(block, r"(?m)^\s+icon:")
+        editor = (ROOT / "bar" / "desktop" / "BarEditTab.qml").read_text(encoding="utf-8")
+        self.assertIn("Elements.icon(entry)", editor)
+        self.assertNotIn("widget: {", editor, "a second icon table in the editor")
+
+    def test_every_group_title_is_translated_in_every_language(self) -> None:
+        files = sorted((ROOT / "kit" / "i18n").glob("*.json"))
+        self.assertEqual(len(files), 6)
+        for path in files:
+            table = json.loads(path.read_text(encoding="utf-8"))
+            for key, _ in page_groups():
+                with self.subTest(language=path.stem, group=key):
+                    self.assertTrue(table.get(f"bar.elements.group.{key}"))
+            self.assertTrue(table.get("bar.editor.preview.hidden"), path.stem)
+
+
 class ElementContractTests(unittest.TestCase):
     """What every BarElementBase element ships with, so the next one cannot forget."""
 

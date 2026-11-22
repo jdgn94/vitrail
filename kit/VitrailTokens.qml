@@ -52,6 +52,7 @@ QtObject {
     readonly property var dock: Tokens.dock
     readonly property var droplet: Tokens.droplet
     readonly property var tray: Tokens.tray
+    readonly property var barPreview: Tokens.barPreview
     readonly property var dashboard: Tokens.dashboard
     readonly property var visualiser: Tokens.visualiser
     readonly property var density: Tokens.density
