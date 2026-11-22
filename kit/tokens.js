@@ -268,6 +268,15 @@ var monitorEdit = {
     top: "xl"
 }
 
+// The Monitors canvas's alignment guides while an output is dragged: a line
+// across the canvas where its edges or centre line up with another output's
+// (`guide`), and a stronger one where it lies flush against another's edge
+// (`flush`). `width` px of the primary colour at `alpha`.
+var monitorCanvas = {
+    guide: { width: 1, alpha: 0.55 },
+    flush: { width: 2, alpha: 1 }
+}
+
 // The in-place desktop editor: the right-click menu's width, the palette's
 // height, the card heights per registry size and the resize handle.
 var desktopEdit = {
