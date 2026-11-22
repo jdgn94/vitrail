@@ -6195,7 +6195,9 @@ ShellRoot {
                         mediaIndex: shell.mprisIndex
                         mediaStyle: shell.prefs.mediaStyle || "disc"
                         timerEngine: focusTimers
+                        dashboardWidgets: shell.prefs.dashboardWidgets || ""
                         onPlayerChosen: function (index) { shell.mprisIndex = index }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "clock")
                     }
                 }
 

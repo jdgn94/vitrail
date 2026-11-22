@@ -3,13 +3,14 @@ import QtQuick.Layouts
 import "../kit"
 import "../kit/base"
 import "../widgets"
+import "dashboard.js" as Dash
 
 // The dashboard popup: the clock and date, then the month with today marked,
 // the weather, the machine's performance, the focus widgets and now playing,
-// in five tabs. Only
-// the content lives here: the caller owns the data (see DashboardPopout, which
-// runs the services while the popup is open), so the panel renders, and is
-// tested, without a process.
+// as tabs. `dashboardWidgets` chooses which ones it shows and their order.
+// Only the content lives here: the caller owns the data (see DashboardPopout,
+// which runs the services while the popup is open), so the panel renders, and
+// is tested, without a process.
 Item {
     id: root
 
@@ -18,6 +19,9 @@ Item {
     // The state of vitrail/weather.py and vitrail/resources.py; {} is empty.
     property var weather: ({})
     property var resources: ({})
+    // The widget keys the popup shows, in order (DashboardPopout forwards
+    // `dashboardWidgets`; empty shows all five in the built-in order).
+    property string dashboardWidgets: ""
     property string currentTab: "calendar"
     // The header's time, and the month the calendar shows (its paging).
     property date now: new Date()
@@ -34,14 +38,12 @@ Item {
     property var timerEngine: null
 
     signal playerChosen(int index)
+    signal settingsRequested()
 
-    readonly property var tabs: [
-        { key: "calendar", label: root.t("dashboard.tab.calendar"), icon: "calendar_month" },
-        { key: "weather", label: root.t("dashboard.tab.weather"), icon: "partly_cloudy_day" },
-        { key: "performance", label: root.t("dashboard.tab.performance"), icon: "monitoring" },
-        { key: "focus", label: root.t("dashboard.tab.focus"), icon: "timer" },
-        { key: "media", label: root.t("dashboard.tab.media"), icon: "music_note" }
-    ]
+    readonly property var widgetKeys: Dash.shownWidgets(root.dashboardWidgets)
+    readonly property var tabs: root.widgetKeys.map(function (key) {
+        return { key: key, label: root.t("dashboard.tab." + key), icon: Dash.widgetIcon(key) }
+    })
     readonly property bool hasMedia: (root.mediaPlayer !== null && root.mediaPlayer !== undefined)
                                      || root.mediaPlayers.length > 0
 
@@ -59,6 +61,18 @@ Item {
         if (root.tabs.some(function (tab) { return tab.key === key }))
             root.currentTab = key
     }
+
+    // The tab on screen disappeared with its widget: land on the first one.
+    function ensureCurrentTab() {
+        var tabs = root.tabs || []
+        if (tabs.length === 0)
+            return
+        if (!tabs.some(function (tab) { return tab.key === root.currentTab }))
+            root.currentTab = tabs[0].key
+    }
+
+    onTabsChanged: root.ensureCurrentTab()
+    Component.onCompleted: root.ensureCurrentTab()
 
     function page(step) {
         root.shown = new Date(root.shown.getFullYear(), root.shown.getMonth() + step, 1)
@@ -104,6 +118,11 @@ Item {
                 size: "md"
                 tone: "primary"
             }
+
+            VitrailPopupGear {
+                Layout.alignment: Qt.AlignTop
+                onClicked: root.settingsRequested()
+            }
         }
 
         VitrailTabs {
@@ -131,13 +150,24 @@ Item {
 
                 objectName: "dashboardPages"
                 width: scroller.width
-                currentIndex: root.tabs.findIndex(function (tab) { return tab.key === root.currentTab })
+                // The pages keep their built-in order as children; the tab
+                // decides which one the stack shows (and its scroll height).
+                currentIndex: pageOrder.indexOf(pageOf[root.currentTab] || null)
                 // Only the tab on screen sets the scrollable height. The card
                 // keeps its fixed size, so a taller page scrolls rather than
                 // growing the popup; a shorter one leaves the rest empty
                 // instead of padding it to the tallest sibling.
-                readonly property var pageFor: [calendarPage, weatherPage, performancePage, focusPage, mediaPage]
-                readonly property var currentPage: pageFor[currentIndex] || null
+                readonly property var pageOf: ({
+                    calendar: calendarPage,
+                    weather: weatherPage,
+                    performance: performancePage,
+                    focus: focusPage,
+                    media: mediaPage
+                })
+                readonly property var pageOrder: [calendarPage, weatherPage, performancePage,
+                                                  focusPage, mediaPage]
+                readonly property var pageFor: root.widgetKeys.map(function (key) { return pageOf[key] || null })
+                readonly property var currentPage: pageFor[Math.max(0, root.widgetKeys.indexOf(root.currentTab))] || null
                 height: currentPage ? currentPage.implicitHeight : 0
 
                 // --- calendar: the month, with today in the accent circle

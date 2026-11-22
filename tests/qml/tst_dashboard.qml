@@ -74,6 +74,10 @@ TestCase {
         return box
     }
 
+    function tabKeys(box) {
+        return box.tabs.map(function (tab) { return tab.key })
+    }
+
     function test_there_are_five_tabs_and_the_calendar_is_first() {
         var box = make()
         compare(box.tabs.length, 5)
@@ -121,6 +125,38 @@ TestCase {
         var box = make()
         box.showTab("nonsense")
         compare(box.currentTab, "calendar")
+    }
+
+    function test_the_tabs_follow_the_preference_in_order() {
+        var box = make({ dashboardWidgets: '["weather","media","calendar"]' })
+        compare(tabKeys(box), ["weather", "media", "calendar"])
+        // The calendar is still the tab the popup opens on.
+        compare(box.currentTab, "calendar")
+        verify(findChild(box, "dashboardCalendar").visible)
+    }
+
+    function test_unknown_and_repeated_keys_are_dropped() {
+        var box = make({ dashboardWidgets: '["media","nonsense","media","focus","weather"]' })
+        compare(tabKeys(box), ["media", "focus", "weather"])
+        var onlyUnknown = make({ dashboardWidgets: '["nonsense"]' })
+        compare(tabKeys(onlyUnknown), ["calendar", "weather", "performance", "focus", "media"])
+    }
+
+    function test_an_empty_preference_shows_all_five() {
+        var missing = make({ dashboardWidgets: "" })
+        compare(tabKeys(missing), ["calendar", "weather", "performance", "focus", "media"])
+        var empty = make({ dashboardWidgets: "[]" })
+        compare(tabKeys(empty), ["calendar", "weather", "performance", "focus", "media"])
+        var broken = make({ dashboardWidgets: "not json" })
+        compare(tabKeys(broken), ["calendar", "weather", "performance", "focus", "media"])
+    }
+
+    function test_a_hidden_current_tab_lands_on_the_first_shown() {
+        var box = make({ dashboardWidgets: '["media","focus"]' })
+        compare(tabKeys(box), ["media", "focus"])
+        compare(box.currentTab, "media")
+        verify(findChild(box, "dashboardMedia").visible)
+        verify(!findChild(box, "dashboardCalendar").visible)
     }
 
     function test_the_weather_and_performance_pages_have_an_empty_state() {
