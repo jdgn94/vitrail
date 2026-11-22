@@ -1814,6 +1814,8 @@ ShellRoot {
         module: "battery"
         interval: shell.popupOpen && shell.popupKind === "peripherals" ? 3000 : 30000
         active: shell.barShows("peripherals")
+    }
+
     // --- brightness: the OSD's monitors and the night light -----------------
     // One reader for both the OSD and this popup: `vitrail brightness list`
     // (brightnessctl for a laptop panel, ddcutil for external monitors) is
@@ -4050,6 +4052,11 @@ ShellRoot {
                             tooltips.hover(peripheralsButton, hovered)
                             if (hovered)
                                 shell.hoverPopup("peripherals", peripheralsButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
                     id: brightnessWidget
 
                     BrightnessButton {
@@ -5470,6 +5477,10 @@ ShellRoot {
                         snapshot: peripheralsData.snapshot
                         hide: shell.prefs.peripheralsHide || ""
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "peripherals")
+                    }
+                }
+
+                Component {
                     id: brightnessComponent
 
                     BrightnessPanel {
