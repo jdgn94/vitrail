@@ -116,6 +116,10 @@ bar nightLightSchedule
 # is a problem, and the checks that are on (one JSON array).
 bar healthDiskThreshold
 bar healthChecks
+# The privacy bar element: the kinds it watches (one JSON array) and the dot's
+# colour (a palette role).
+bar privacyWatch
+bar privacyDotColor
 # The dashboard clock widgets: the pomodoro's periods and rounds, and the
 # timer's default length, in minutes.
 bar pomodoroWork

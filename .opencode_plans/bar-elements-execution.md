@@ -205,3 +205,11 @@ data and UI halves are both green.
   parallel load — rerun alone before calling it broken.
 - 2026-11-22: 7b (privacy UI, Claude 5.5) dispatched from `master` while 15b
   (containers) is still running.
+- 2026-11-22: step 15b (containers) `df9d30b` merged as `f94a670`. Its
+  prerequisite `8bcd214` repaired a real defect **my** brightness merge left in
+  `bar/shell.qml`: the union glue dropped four closers, the bar did not parse,
+  and every test stayed green because nothing loaded that file. Added
+  `tests/test_qml_balance.py` (strips comments, strings and regex literals,
+  matches brackets, rejects `<<<<<<<`); it flags the four braces in the broken
+  revision and passes now. Lesson: after any union merge, check bracket balance
+  before trusting the suite.

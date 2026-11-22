@@ -257,5 +257,51 @@ class Stop(unittest.TestCase):
         run.assert_not_called()
 
 
+class CutOff(unittest.TestCase):
+    def runner(self, graph: list[dict], calls: list[list[str]]):
+        def run(argv: list[str]) -> str | None:
+            calls.append(argv)
+            return json.dumps(graph) if argv == ["pw-dump"] else ""
+
+        return run
+
+    def test_a_live_use_is_destroyed_once(self) -> None:
+        calls: list[list[str]] = []
+        self.assertEqual(privacy.cut_off("microphone", 61, runner=self.runner(ONE_MIC, calls)), "stopped")
+        self.assertEqual(calls, [["pw-dump"], ["pw-cli", "destroy", "61"]])
+
+    def test_a_node_that_is_no_longer_that_use_is_left_alone(self) -> None:
+        for kind, node_id in (("microphone", 62), ("camera", 61)):
+            with self.subTest(kind=kind, node=node_id):
+                calls: list[list[str]] = []
+                self.assertEqual(privacy.cut_off(kind, node_id, runner=self.runner(ONE_MIC, calls)), "gone")
+                self.assertEqual(calls, [["pw-dump"]])
+
+    def test_failures_are_reported_and_destroy_nothing(self) -> None:
+        calls: list[list[str]] = []
+        self.assertEqual(privacy.cut_off("radar", 61, runner=self.runner(ONE_MIC, calls)), "failed")
+        self.assertEqual(privacy.cut_off("microphone", 61, runner=lambda argv: None), "failed")
+        self.assertEqual(privacy.cut_off("microphone", 61, runner=lambda argv: "nope"), "failed")
+        self.assertEqual(calls, [])
+
+    def test_a_failing_destroy_is_failed(self) -> None:
+        def run(argv: list[str]) -> str | None:
+            return json.dumps(ONE_MIC) if argv == ["pw-dump"] else None
+
+        self.assertEqual(privacy.cut_off("microphone", 61, runner=run), "failed")
+
+    def test_the_cli_stop_validates_its_arguments(self) -> None:
+        with redirect_stderr(StringIO()):
+            for args in (["stop"], ["stop", "radar", "1"], ["stop", "camera", "x"], ["stop", "camera", "-1"]):
+                with self.subTest(args=args):
+                    self.assertEqual(privacy.main(args), 2)
+
+    def test_the_cli_stop_exits_by_outcome(self) -> None:
+        for outcome, code in (("stopped", 0), ("gone", 0), ("failed", 1)):
+            with self.subTest(outcome=outcome), mock.patch("vitrail.privacy.cut_off", return_value=outcome) as cut:
+                self.assertEqual(privacy.main(["stop", "screen", "7"]), code)
+                cut.assert_called_once_with("screen", 7)
+
+
 if __name__ == "__main__":
     unittest.main()
