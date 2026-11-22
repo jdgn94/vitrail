@@ -112,6 +112,11 @@ bar brightnessStep
 bar nightLightEnabled
 bar nightLightTemperature
 bar nightLightSchedule
+# The resources bar element: seconds between two readings, what the bar shows
+# (both, cpu, ram or numbers) and the units (auto, binary or decimal).
+bar resourcesInterval
+bar resourcesBar
+bar resourcesUnits
 # The system health bar element: the free space (percent) under which a disk
 # is a problem, and the checks that are on (one JSON array).
 bar healthDiskThreshold

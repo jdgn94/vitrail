@@ -11,6 +11,7 @@ import "../bar/containers"
 import "../bar/brightness"
 import "../bar/battery"
 import "../bar/health"
+import "../bar/resources"
 import "../bar/privacy"
 import "../bar/weather"
 import "../bar/market"
@@ -1511,6 +1512,99 @@ Window {
             }
         }
 
+
+        QtObject {
+            id: resourcesDemo
+
+            function wave(base, swing, phase) {
+                var list = []
+                for (var i = 0; i < 60; i++)
+                    list.push(Math.max(0, base + swing * Math.sin(i / 5 + phase)))
+                return list
+            }
+
+            readonly property var snapshot: ({
+                cpu: 37.5, memory: { used: 6800000000, total: 16000000000, percent: 42.5 },
+                temperature: 58.4, disk: { used: 310000000000, total: 500000000000, free: 190000000000, percent: 62 },
+                network: { rx: 1, tx: 1 }, rate: { rx: 1800000, tx: 240000 },
+                top: [
+                    { pid: 4121, name: "firefox", cpu: 41.2, memory: 1900000000, percent: 11.9 },
+                    { pid: 2210, name: "quickshell", cpu: 12.8, memory: 720000000, percent: 4.5 },
+                    { pid: 9034, name: "cc1plus", cpu: 8.1, memory: 410000000, percent: 2.6 },
+                    { pid: 733, name: "Hyprland", cpu: 3.4, memory: 190000000, percent: 1.2 },
+                    { pid: 5120, name: "pipewire", cpu: null, memory: 40000000, percent: 0.3 }
+                ]
+            })
+            // Without a thermal zone: the temperature is missing everywhere.
+            readonly property var snapshotNoSensor: ({
+                cpu: 8.0, memory: { used: 2000000000, total: 8000000000, percent: 25 }, temperature: null,
+                disk: { used: 0, total: 0, free: 0, percent: 0 }, network: { rx: 1, tx: 1 },
+                rate: null, top: []
+            })
+            readonly property var history: ({
+                cpu: wave(40, 30, 0), memory: wave(42, 4, 1), temperature: wave(58, 6, 2),
+                disk: wave(38, 0.2, 0), rx: wave(1500000, 1400000, 0), tx: wave(250000, 200000, 3)
+            })
+            readonly property var historyNoSensor: ({
+                cpu: wave(8, 6, 0), memory: wave(25, 2, 1), temperature: wave(0, 0, 0).map(function () { return null }),
+                disk: [], rx: [], tx: []
+            })
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "ResourcesButton · both bars × CPU only × RAM only × numbers × not read yet"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            ResourcesButton { snapshot: resourcesDemo.snapshot }
+            ResourcesButton { snapshot: resourcesDemo.snapshot; barMode: "cpu" }
+            ResourcesButton { snapshot: resourcesDemo.snapshot; barMode: "ram"; opened: true }
+            ResourcesButton { snapshot: resourcesDemo.snapshot; barMode: "numbers" }
+            ResourcesButton { snapshot: ({}) }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "ResourcesPanel · a busy machine × no thermal zone, no disk and no processes"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: resourcesFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: resourcesFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ResourcesPanel {
+                    id: resourcesFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    width: implicitWidth
+                    snapshot: resourcesDemo.snapshot
+                    history: resourcesDemo.history
+                }
+            }
+
+            VitrailSurface {
+                width: resourcesBare.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: resourcesBare.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ResourcesPanel {
+                    id: resourcesBare
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    width: implicitWidth
+                    snapshot: resourcesDemo.snapshotNoSensor
+                    history: resourcesDemo.historyNoSensor
+                    units: "decimal"
+                }
+            }
+        }
 
         VitrailText {
             variant: "title"

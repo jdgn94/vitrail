@@ -7,6 +7,7 @@ import "../../bar/disks/disks.js" as Disks
 import "../../bar/containers/containers.js" as Containers
 import "../../bar/brightness/brightness.js" as Brightness
 import "../../bar/battery/battery.js" as Battery
+import "../../bar/resources/resources.js" as Resources
 import "../../bar/health/health.js" as Health
 import "../../bar/privacy/privacy.js" as Privacy
 import "../../bar/weather/weather.js" as Weather
@@ -635,6 +636,77 @@ Item {
                     opacity: 0.7
                     wrapMode: Text.WordWrap
                     text: peripheralsSection.t("bar.peripherals.low.help")
+                }
+            }
+
+            BarElementSection {
+                id: resourcesSection
+
+                Layout.fillWidth: true
+                elementId: "resources"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSlider {
+                    objectName: "resourcesInterval"
+
+                    Layout.fillWidth: true
+                    label: resourcesSection.t("bar.resources.interval")
+                    suffix: " s"
+                    from: VitrailTokens.ranges.resourcesInterval.min
+                    to: VitrailTokens.ranges.resourcesInterval.max
+                    stepSize: VitrailTokens.ranges.resourcesInterval.step
+                    value: Resources.interval(page.prefs.resourcesInterval)
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.resourcesInterval = value
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: resourcesSection.t("bar.resources.interval.help")
+                }
+
+                VitrailSelect {
+                    objectName: "resourcesBar"
+
+                    Layout.fillWidth: true
+                    label: resourcesSection.t("bar.resources.bar")
+                    options: Resources.BAR_MODES.map(function (mode) {
+                        return { key: mode, label: resourcesSection.t("bar.resources.bar." + mode) }
+                    })
+                    current: Resources.barMode(page.prefs.resourcesBar)
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.resourcesBar = key }
+                }
+
+                VitrailSelect {
+                    objectName: "resourcesUnits"
+
+                    Layout.fillWidth: true
+                    label: resourcesSection.t("bar.resources.units")
+                    options: Resources.UNITS.map(function (mode) {
+                        return { key: mode, label: resourcesSection.t("bar.resources.units." + mode) }
+                    })
+                    current: Resources.unitsMode(page.prefs.resourcesUnits)
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    panel: page.palette.surfaceHigh
+                    onSelected: function (key) { page.prefs.resourcesUnits = key }
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: resourcesSection.t("bar.resources.units.help")
                 }
             }
 

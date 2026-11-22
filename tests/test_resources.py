@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
 
@@ -140,7 +140,7 @@ class NetworkTests(Fixture):
 
 class DiskTests(Fixture):
     def test_the_root_filesystem_percentage(self) -> None:
-        self.assertEqual(self.state()["disk"], {"used": 50, "total": 200, "percent": 25.0})
+        self.assertEqual(self.state()["disk"], {"used": 50, "total": 200, "free": 150, "percent": 25.0})
 
     def test_a_failing_usage_leaves_zeros(self) -> None:
         data = resources.state(
@@ -150,7 +150,7 @@ class DiskTests(Fixture):
             disk="/nowhere",
             usage=lambda _path: (_ for _ in ()).throw(OSError("boom")),
         )
-        self.assertEqual(data["disk"], {"used": 0, "total": 0, "percent": 0.0})
+        self.assertEqual(data["disk"], {"used": 0, "total": 0, "free": 0, "percent": 0.0})
 
 
 class StateTests(Fixture):
@@ -172,6 +172,187 @@ class StateTests(Fixture):
         self.assertEqual(data["memory"], {"used": 0, "total": 0, "percent": 0.0})
         self.assertIsNone(data["temperature"])
         self.assertEqual(data["network"], {"rx": 0, "tx": 0})
+
+
+def process_stat(name: str, utime: int, stime: int, rss_pages: int) -> str:
+    # pid (name) state ppid ... utime(14) stime(15) ... rss(24)
+    fields = ["S", "1", "1", "1", "0", "-1", "0", "0", "0", "0", "0", str(utime), str(stime)]
+    fields += ["0"] * 6 + ["1", "0", str(rss_pages)]
+    return f"42 ({name}) " + " ".join(fields) + " 0 0\n"
+
+
+class TickTests(Fixture):
+    def tick(self, now: float, with_top: bool = False) -> dict:
+        return resources.tick(
+            with_top,
+            cache=self.root / "cache.json",
+            clock=lambda: now,
+            proc=self.proc,
+            thermal=self.thermal,
+            disk="/nowhere",
+            usage=lambda _path: (200, 50, 150),
+            page_size=4096,
+            skip=(),
+        )
+
+    def process(self, pid: int, name: str, utime: int, stime: int, rss_pages: int) -> None:
+        (self.proc / str(pid)).mkdir(exist_ok=True)
+        (self.proc / str(pid) / "stat").write_text(process_stat(name, utime, stime, rss_pages), encoding="utf-8")
+
+    def test_the_first_tick_has_no_cpu_and_no_rate(self) -> None:
+        data = self.tick(1000.0)
+        self.assertIsNone(data["cpu"])
+        self.assertIsNone(data["rate"])
+        self.assertEqual(data["at"], 1000.0)
+        self.assertNotIn("cpuTicks", data)
+        self.assertEqual(data["disk"]["free"], 150)
+
+    def test_the_second_tick_carries_the_counters_over(self) -> None:
+        self.tick(1000.0)
+        self.write("stat", STAT_LATER)
+        self.write("net/dev", NET_DEV.replace("5000 ", "9000 ").replace("3000 ", "5000 "))
+        data = self.tick(1002.0)
+        self.assertEqual(data["cpu"], 50.0)
+        self.assertEqual(data["rate"], {"rx": 2000, "tx": 1000})
+
+    def test_a_counter_that_went_back_gives_no_rate(self) -> None:
+        self.write("net/dev", NET_DEV.replace("5000 ", "9000 "))
+        self.tick(1000.0)
+        self.write("net/dev", NET_DEV)
+        self.assertIsNone(self.tick(1002.0)["rate"])
+
+    def test_a_stale_cache_is_ignored(self) -> None:
+        self.tick(1000.0)
+        self.write("stat", STAT_LATER)
+        data = self.tick(1000.0 + resources.CACHE_MAX_AGE + 1)
+        self.assertIsNone(data["cpu"])
+        self.assertIsNone(data["rate"])
+
+    def test_a_broken_cache_is_replaced(self) -> None:
+        (self.root / "cache.json").write_text("{nope", encoding="utf-8")
+        self.assertIsNone(self.tick(1000.0)["cpu"])
+        self.assertEqual(self.tick(1001.0)["cpu"], None)  # nothing moved, still no delta
+        json.loads((self.root / "cache.json").read_text(encoding="utf-8"))
+
+    def test_an_unwritable_cache_is_not_an_error(self) -> None:
+        data = resources.tick(
+            cache=self.root / "missing" / "cache.json",
+            clock=lambda: 1.0,
+            proc=self.proc,
+            thermal=self.thermal,
+            usage=lambda _path: (200, 50, 150),
+        )
+        self.assertIn("memory", data)
+
+    def test_the_top_is_absent_unless_asked(self) -> None:
+        self.assertNotIn("top", self.tick(1000.0))
+
+    def test_the_top_has_no_cpu_until_a_process_was_seen_twice(self) -> None:
+        self.process(10, "busy", 100, 0, 500)
+        first = self.tick(1000.0, with_top=True)["top"]
+        self.assertEqual([row["pid"] for row in first], [10])
+        self.assertIsNone(first[0]["cpu"])
+        self.assertEqual(first[0]["memory"], 500 * 4096)
+        self.assertEqual(first[0]["percent"], round(100 * 500 * 4096 / (8000000 * 1024), 1))
+
+    def test_the_top_ranks_by_cpu_share_of_one_core(self) -> None:
+        self.process(10, "idle", 10, 0, 900)
+        self.process(11, "busy", 10, 0, 100)
+        self.tick(1000.0, with_top=True)
+        self.write("stat", STAT_LATER)  # all CPUs gained 200 ticks; one cpu line: 1 core
+        self.process(10, "idle", 10, 0, 900)
+        self.process(11, "busy", 130, 0, 100)
+        rows = self.tick(1002.0, with_top=True)["top"]
+        self.assertEqual([row["name"] for row in rows], ["busy", "idle"])
+        self.assertEqual(rows[0]["cpu"], 60.0)
+        self.assertEqual(rows[1]["cpu"], 0.0)
+
+    def test_the_top_is_cut_to_five(self) -> None:
+        for pid in range(10, 20):
+            self.process(pid, f"p{pid}", 1, 0, pid)
+        self.assertEqual(len(self.tick(1000.0, with_top=True)["top"]), 5)
+
+    def test_this_program_is_not_in_the_top(self) -> None:
+        self.process(10, "other", 1, 0, 1)
+        rows = resources.top(resources.read_processes(self.proc, 4096), None, 0, 1, 1000, skip=(10,))
+        self.assertEqual(rows, [])
+
+
+class ProcessParserTests(unittest.TestCase):
+    def test_a_name_with_spaces_and_parentheses(self) -> None:
+        found = resources.parse_process(42, process_stat("Web Content (x)", 7, 3, 25), 4096)
+        self.assertEqual(found, {"pid": 42, "name": "Web Content (x)", "ticks": 10, "rss": 25 * 4096})
+
+    def test_a_short_or_broken_line_is_none(self) -> None:
+        self.assertIsNone(resources.parse_process(1, "", 4096))
+        self.assertIsNone(resources.parse_process(1, "1 (a) S 1 2", 4096))
+        self.assertIsNone(resources.parse_process(1, "1 (a) " + " ".join(["x"] * 30), 4096))
+
+    def test_a_missing_proc_folder_is_empty(self) -> None:
+        self.assertEqual(resources.read_processes(Path("/nowhere/proc"), 4096), {})
+
+
+class KillTests(unittest.TestCase):
+    def test_terminate_is_the_default(self) -> None:
+        import signal
+
+        self.assertEqual(resources.kill_plan(500, own=(7,)), {"signal": int(signal.SIGTERM)})
+
+    def test_kill_only_when_forced(self) -> None:
+        import signal
+
+        self.assertEqual(resources.kill_plan(500, True, own=(7,)), {"signal": int(signal.SIGKILL)})
+
+    def test_pid_one_and_below_are_refused(self) -> None:
+        for pid in (1, 0, -5):
+            with self.subTest(pid=pid):
+                self.assertEqual(resources.kill_plan(pid, True, own=()), {"error": "refused"})
+
+    def test_this_program_and_its_parent_are_refused(self) -> None:
+        import os
+
+        self.assertEqual(resources.kill_plan(os.getpid(), False), {"error": "refused"})
+        self.assertEqual(resources.kill_plan(os.getppid(), False), {"error": "refused"})
+
+    def test_a_pid_that_is_not_an_integer_is_refused(self) -> None:
+        for pid in ("12", None, 1.5, True):
+            with self.subTest(pid=pid):
+                self.assertEqual(resources.kill_plan(pid, own=()), {"error": "refused"})
+
+    def test_a_refusal_never_reaches_the_sender(self) -> None:
+        sent = []
+        resources.kill(1, True, sender=lambda *a: sent.append(a), own=())
+        self.assertEqual(sent, [])
+
+    def test_the_signal_is_sent_once(self) -> None:
+        import signal
+
+        sent = []
+        self.assertEqual(resources.kill(500, sender=lambda *a: sent.append(a), own=()), {"ok": True})
+        self.assertEqual(sent, [(500, int(signal.SIGTERM))])
+
+    def test_failures_are_codes_not_tracebacks(self) -> None:
+        def raiser(error: Exception):
+            def send(_pid: int, _signal: int) -> None:
+                raise error
+
+            return send
+
+        cases = {ProcessLookupError(): "gone", PermissionError(): "denied", OSError(): "failed"}
+        for error, code in cases.items():
+            with self.subTest(code=code):
+                self.assertEqual(resources.kill(500, sender=raiser(error), own=()), {"error": code})
+
+    def test_the_command_line_refuses_pid_one(self) -> None:
+        out = StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(resources.main(["kill", "1"]), 1)
+        self.assertEqual(json.loads(out.getvalue()), {"error": "refused"})
+
+    def test_a_malformed_kill_is_usage(self) -> None:
+        for args in (["kill"], ["kill", "abc"], ["kill", "5", "--hard"]):
+            with self.subTest(args=args), redirect_stderr(StringIO()):
+                self.assertEqual(resources.main(args), 2)
 
 
 class MainTests(unittest.TestCase):

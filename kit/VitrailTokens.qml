@@ -36,6 +36,7 @@ QtObject {
     readonly property var ranges: Tokens.ranges
     readonly property var font: Tokens.font
     readonly property var icon: Tokens.icon
+    readonly property var graph: Tokens.graph
     readonly property var motion: Tokens.motion
     readonly property var slider: Tokens.slider
     readonly property var colorPicker: Tokens.colorPicker

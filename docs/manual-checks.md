@@ -117,6 +117,20 @@ Código en `bar-brightness-ui`. Con la barra corriendo, un portátil (panel inte
 - [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque "Brightness".
 - [ ] Con el elemento fuera de la barra y el interruptor apagado no hay ningún proceso `python3 -m vitrail.nightlight` en `ps` (el brillo de los monitores lo lee el OSD, que solo consulta `vitrail.cli brightness list` cuando hace falta); con el interruptor encendido solo corre el `apply` del horario una vez por minuto.
 
+## Resources bar element (2026-11-22)
+
+Código en `bar-resources-ui`. Para tener un proceso ocupado, y deshacerlo: `yes > /dev/null &` (y `kill %1` al terminar); para uno que ignora SIGTERM: `bash -c 'trap "" TERM; sleep 600' &`.
+
+- [ ] Mostrar `resources` desde el editor de la barra (está oculto por defecto): dos barras finas (CPU y RAM) que se mueven; en una barra vertical caben sin desbordar. En Ajustes → Bar elements → Resources, *En la barra* cambia a solo CPU, solo RAM y números; cada opción se aplica al momento.
+- [ ] El tooltip dice «CPU x % · RAM y % · t °C» y debajo el disco libre y la velocidad de red (↓ ↑).
+- [ ] Abrir el popup: cinco gráficas que avanzan con cada lectura, con el valor actual y su unidad, y los cinco procesos más activos. Con `yes > /dev/null &` en marcha aparece arriba con ~100 % de CPU en pocos segundos.
+- [ ] **Terminar** en `yes`: desaparece de la lista en la lectura siguiente. Con el proceso que ignora SIGTERM: **Terminar** lo deja y el botón pasa a **Forzar cierre**; al pulsarlo pide «¿Seguro?» con una ✕ para cancelar (cancelar no mata nada); confirmar lo mata y se va. Ningún proceso muere sin un clic.
+- [ ] Un proceso de otro usuario (por ejemplo `systemd` de root): **Terminar** dice «No tienes permiso para terminar ese proceso.». `vitrail`… `python3 -m vitrail.resources kill 1` devuelve `{"error":"refused"}` y no hace nada.
+- [ ] En una máquina sin zona térmica (`ls /sys/class/thermal` vacío, o una VM): la barra y el tooltip no mencionan la temperatura y en el popup la gráfica de temperatura es una línea «No se encontró ningún sensor de temperatura…»; las demás gráficas siguen.
+- [ ] El intervalo de Ajustes (1–10 s) cambia el ritmo de la gráfica; *Unidades* en binario o decimal cambia KiB↔kB en memoria, disco y red.
+- [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.resources` en `ps` (ni siquiera cada segundo); con él puesto y el popup cerrado hay uno cada intervalo, nunca dos a la vez.
+- [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque «Resources».
+
 ## System health bar element (2026-11-22)
 
 Código en `bar-health-ui`. Para provocar los problemas sin romper nada, y deshacerlos:

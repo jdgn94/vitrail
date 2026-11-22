@@ -71,6 +71,7 @@ import "disks"
 import "containers"
 import "battery"
 import "brightness"
+import "resources"
 import "health"
 import "privacy"
 import "weather"
@@ -784,6 +785,8 @@ ShellRoot {
         // The list may be an hour old: the popup asks for today's answer.
         if (kind === "updates")
             updatesData.refresh()
+        if (kind === "resources")
+            resourcesSampler.refresh()
         if (kind === "health")
             healthData.refresh()
         if (kind === "privacy")
@@ -1741,6 +1744,19 @@ ShellRoot {
         target: updatesData
 
         function onSnapshotChanged() { shell.considerUpdates(updatesData.snapshot) }
+    }
+
+    // The shell's one resources sampler (vitrail/resources.py `state --tick`),
+    // read once per tick for every consumer: the Resources element's button
+    // and popup now, the network usage element next. It runs only while one of
+    // them is in a bar, and asks for the top processes only while the popup
+    // is open. One process per tick, one timer, one history ring.
+    ResourcesSampler {
+        id: resourcesSampler
+
+        interval: shell.prefs.resourcesInterval
+        active: shell.barShows("resources")
+        withTop: shell.popupOpen && shell.popupKind === "resources"
     }
 
     // The system health bar element's data (vitrail/health.py), read once a
@@ -3802,6 +3818,7 @@ ShellRoot {
                     case "containers": return containersWidget
                     case "peripherals": return peripheralsWidget
                     case "brightness": return brightnessWidget
+                    case "resources": return resourcesWidget
                     case "health": return healthWidget
                     case "privacy": return privacyWidget
                     case "weather": return weatherWidget
@@ -4281,6 +4298,27 @@ ShellRoot {
                 }
 
                 Component {
+                    id: resourcesWidget
+
+                    ResourcesButton {
+                        id: resourcesButton
+
+                        strings: shell.strings
+                        snapshot: resourcesSampler.snapshot
+                        barMode: shell.prefs.resourcesBar
+                        units: shell.prefs.resourcesUnits
+                        showMode: Elements.showMode(shell.activeOnlyIds, "resources")
+                        opened: shell.popupOpen && shell.popupKind === "resources" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("resources", resourcesButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(resourcesButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("resources", resourcesButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
                     id: healthWidget
 
                     HealthButton {
@@ -4426,6 +4464,7 @@ ShellRoot {
                     case "disks": return monitor.loadedItem("disks")
                     case "peripherals": return monitor.loadedItem("peripherals")
                     case "brightness": return monitor.loadedItem("brightness")
+                    case "resources": return monitor.loadedItem("resources")
                     case "health": return monitor.loadedItem("health")
                     case "privacy": return monitor.loadedItem("privacy")
                     case "weather": return monitor.loadedItem("weather")
@@ -5419,6 +5458,13 @@ ShellRoot {
                             }
 
                             Popout {
+                                name: "resources"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: resourcesComponent
+                            }
+
+                            Popout {
                                 name: "health"
                                 current: popouts.name
                                 handover: popouts.handover
@@ -5849,6 +5895,20 @@ ShellRoot {
                             nightlightData.refresh()
                         }
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "brightness")
+                    }
+                }
+
+                Component {
+                    id: resourcesComponent
+
+                    ResourcesPanel {
+                        strings: shell.strings
+                        snapshot: resourcesSampler.snapshot
+                        history: resourcesSampler.history
+                        units: shell.prefs.resourcesUnits
+                        killResult: resourcesSampler.killResult
+                        onKillRequested: function (pid, force) { resourcesSampler.kill(pid, force) }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "resources")
                     }
                 }
 
