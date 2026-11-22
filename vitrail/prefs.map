@@ -97,6 +97,10 @@ bar updatesAurHelper
 # and the labels or UUIDs it leaves alone (one JSON array).
 bar disksAutomount
 bar disksIgnore
+# The containers bar element: the engine to use ("auto" follows docker, then
+# podman) and the containers pinned first in the popup (one JSON array of names).
+bar containersEngine
+bar containersPinned
 # The peripherals battery element: the device kinds it leaves out (one JSON
 # array) and the percentage below which the icon warns.
 bar peripheralsHide

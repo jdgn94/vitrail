@@ -35,6 +35,7 @@ var WIDGETS = [
     { id: "volume", surfaces: ["bar"], group: "end", labelKey: "bar.widget.volume", icon: "volume_up", sizes: [], styles: [] },
     { id: "updates", surfaces: ["bar"], group: "end", labelKey: "bar.widget.updates", icon: "update", sizes: [], styles: [] },
     { id: "disks", surfaces: ["bar"], group: "end", labelKey: "bar.widget.disks", icon: "storage", sizes: [], styles: [] },
+    { id: "containers", surfaces: ["bar"], group: "end", labelKey: "bar.widget.containers", icon: "deployed_code", sizes: [], styles: [] },
     { id: "peripherals", surfaces: ["bar"], group: "end", labelKey: "bar.widget.peripherals", icon: "battery_full", sizes: [], styles: [] },
     { id: "brightness", surfaces: ["bar"], group: "end", labelKey: "bar.widget.brightness", icon: "brightness_high", sizes: [], styles: [] },
     { id: "health", surfaces: ["bar"], group: "end", labelKey: "bar.widget.health", icon: "warning", sizes: [], styles: [] },

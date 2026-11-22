@@ -189,3 +189,19 @@ data and UI halves are both green.
 - 2026-11-22: step 14b (peripherals battery) `9d7212d` verified and merged
   (`1413` tests, `124` QML); window released. Options: `peripheralsHide`
   (JSON array, default none hidden), `peripheralsLow` (20 %).
+- 2026-11-22: step 2b (brightness + night light) `1d9d29f` merged as `cb0874b`
+  (1424 tests, 124 QML). The parallel merge needed real surgery, now the known
+  recipe: (a) `git merge-file --union` for the additive files, (b) rebuild the
+  three files where union glues two blocks (`shell/pages/BarElementsPage.qml`,
+  `gallery/Main.qml`, `tests/qml/tst_layouts.qml`) by composing ours+theirs
+  with `difflib` against the merge base, (c) merge the duplicated long README
+  rows by hand. Keep this recipe for the next parallel pair.
+- 2026-11-22: 13b (health, Claude 5.5) and 15b (containers, OpenCode flash)
+  dispatched in parallel from `master`; windows of finished workers released.
+- 2026-11-22: step 13b (health) `9aba6ef` verified and merged by fast-forward
+  (1439 tests, 124 QML). It fast-forwarded its own branch to `master` before
+  committing, which is the pattern to ask for. Warning for the suite: the
+  qml-smoke unit step runs ~42 s against its 45 s timeout, so it can fail under
+  parallel load — rerun alone before calling it broken.
+- 2026-11-22: 7b (privacy UI, Claude 5.5) dispatched from `master` while 15b
+  (containers) is still running.

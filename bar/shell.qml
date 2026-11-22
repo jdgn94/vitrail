@@ -18,6 +18,7 @@ import "layouts.js" as Layouts
 import "elements.js" as Elements
 import "updates/updates.js" as Updates
 import "disks/disks.js" as Disks
+import "containers/containers.js" as Containers
 import "brightness/brightness.js" as Brightness
 import "health/health.js" as Health
 import "popup.js" as Popup
@@ -64,6 +65,7 @@ import "sample"
 import "volume"
 import "updates"
 import "disks"
+import "containers"
 import "battery"
 import "brightness"
 import "health"
@@ -783,6 +785,12 @@ ShellRoot {
             // visit: start the popup with a clean line.
             shell.disksError = ""
             disksData.refresh()
+        }
+        if (kind === "containers") {
+            // The engine listing is cheap; refresh it and forget the last
+            // action's failure, which belonged to that action.
+            shell.containersError = ""
+            containersData.refresh()
         }
         if (kind === "peripherals")
             peripheralsData.refresh()
@@ -1851,6 +1859,63 @@ ShellRoot {
         }
     }
 
+    // The containers bar element's data (vitrail/containers.py): docker or
+    // podman, whichever the preference asks for or is installed. Polled faster
+    // while its popup is open, since a start or stop should show at once.
+    BarSnapshot {
+        id: containersData
+
+        module: "containers"
+        arguments: Containers.engineArguments(shell.prefs.containersEngine || "auto")
+        interval: shell.popupOpen && shell.popupKind === "containers" ? 4000 : 15000
+        active: shell.barShows("containers")
+    }
+
+    // The last start/stop failure: the popup shows it as a calm line.
+    property string containersError: ""
+
+    // One click's action: logs open the shell's terminal; start and stop run
+    // one engine process at a time, then refresh the snapshot.
+    function containersAct(action, id) {
+        var argv = Containers.command(Containers.engineOf(containersData.snapshot), action, id)
+        if (argv.length === 0)
+            return
+        if (action === "logs") {
+            Quickshell.execDetached(Commands.runInTerminal(argv))
+            shell.closePopup()
+            return
+        }
+        if (containersAction.running)
+            return
+        shell.containersError = ""
+        containersAction.verb = action
+        containersAction.failure = ""
+        containersAction.command = argv
+        containersAction.running = true
+    }
+
+    Process {
+        id: containersAction
+
+        property string verb: ""
+        property string failure: ""
+
+        stderr: StdioCollector {
+            onStreamFinished: containersAction.failure = this.text
+        }
+        onExited: function (exitCode) {
+            if (exitCode !== 0) {
+                var text = containersAction.failure.trim()
+                shell.containersError = text !== ""
+                    ? text
+                    : shell.t("bar.containers.actionFailed").replace("%1", containersAction.verb)
+                                                               .replace("%2", exitCode)
+            }
+            containersAction.failure = ""
+            containersData.refresh()
+        }
+    }
+
     // The peripherals battery bar element's data (vitrail/battery.py): UPower
     // answers at once, so the bar's own poll is slow; the open popup asks more
     // often to follow a device that is charging.
@@ -1860,6 +1925,8 @@ ShellRoot {
         module: "battery"
         interval: shell.popupOpen && shell.popupKind === "peripherals" ? 3000 : 30000
         active: shell.barShows("peripherals")
+    }
+
     // --- brightness: the OSD's monitors and the night light -----------------
     // One reader for both the OSD and this popup: `vitrail brightness list`
     // (brightnessctl for a laptop panel, ddcutil for external monitors) is
@@ -3668,6 +3735,7 @@ ShellRoot {
                     case "volume": return volumeWidget
                     case "updates": return updatesWidget
                     case "disks": return disksWidget
+                    case "containers": return containersWidget
                     case "peripherals": return peripheralsWidget
                     case "brightness": return brightnessWidget
                     case "health": return healthWidget
@@ -4081,6 +4149,26 @@ ShellRoot {
                 }
 
                 Component {
+                    id: containersWidget
+
+                    ContainersButton {
+                        id: containersButton
+
+                        strings: shell.strings
+                        snapshot: containersData.snapshot
+                        pinned: shell.prefs.containersPinned || ""
+                        showMode: Elements.showMode(shell.activeOnlyIds, "containers")
+                        opened: shell.popupOpen && shell.popupKind === "containers" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("containers", containersButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(containersButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("containers", containersButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
                     id: peripheralsWidget
 
                     BatteryPeripheralsButton {
@@ -4097,6 +4185,11 @@ ShellRoot {
                             tooltips.hover(peripheralsButton, hovered)
                             if (hovered)
                                 shell.hoverPopup("peripherals", peripheralsButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
                     id: brightnessWidget
 
                     BrightnessButton {
@@ -5174,6 +5267,13 @@ ShellRoot {
                             }
 
                             Popout {
+                                name: "containers"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: containersComponent
+                            }
+
+                            Popout {
                                 name: "peripherals"
                                 current: popouts.name
                                 handover: popouts.handover
@@ -5544,6 +5644,24 @@ ShellRoot {
                 }
 
                 Component {
+                    id: containersComponent
+
+                    ContainersPanel {
+                        strings: shell.strings
+                        snapshot: containersData.snapshot
+                        pinned: shell.prefs.containersPinned || ""
+                        busy: containersAction.running
+                        error: shell.containersError
+                        onActionRequested: function (action, id) { shell.containersAct(action, id) }
+                        onPinRequested: function (name, on) {
+                            shell.prefs.containersPinned =
+                                Containers.withPinned(shell.prefs.containersPinned, name, on)
+                        }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "containers")
+                    }
+                }
+
+                Component {
                     id: peripheralsComponent
 
                     PeripheralsPanel {
@@ -5551,6 +5669,10 @@ ShellRoot {
                         snapshot: peripheralsData.snapshot
                         hide: shell.prefs.peripheralsHide || ""
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "peripherals")
+                    }
+                }
+
+                Component {
                     id: brightnessComponent
 
                     BrightnessPanel {

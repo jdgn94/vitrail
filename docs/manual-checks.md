@@ -71,6 +71,21 @@ Código en `bar-disks-ui`. Con la barra corriendo y un lápiz USB desmontado (o 
 - [ ] "Montar las unidades nuevas automáticamente" está apagado por defecto. Encendido, enchufar una unidad desmontada la monta sola en un ciclo; no se vuelve a montar mientras siga conectada, y al desenchufarla y volver a enchufarla se monta otra vez.
 - [ ] Con el elemento fuera de la barra y el automontaje apagado no hay ningún proceso `python3 -m vitrail.disks` en `ps`; con el automontaje encendido sí hay uno, aunque el elemento no esté en la barra.
 
+## Containers bar element (2026-11-22)
+
+Código en `bar-containers-ui`. Con la barra corriendo y docker o podman instalado
+(`docker ps -a --format json` o `podman ps -a --format json` responde):
+
+- [ ] Mostrar `containers` desde el editor de la barra (está oculto por defecto): aparece el icono con el número de contenedores en marcha; el tooltip dice el motor y el número ("docker · 2 en marcha") y debajo los contenedores fijados que están parados, si hay alguno.
+- [ ] Clic abre el popup: una fila por contenedor con su nombre, su imagen recortada, su estado y salud y sus puertos cuando los publica. Los fijados van primero y su chincheta está encendida.
+- [ ] Un contenedor parado ofrece **Iniciar** y **Registros**; uno en marcha ofrece **Detener** y **Registros** (nunca los dos de estado a la vez). Pulsar **Iniciar** lo arranca y el recuento de la barra sube en el siguiente ciclo; pulsar **Detener** lo para y el recuento baja.
+- [ ] **Registros** abre `docker logs --tail 200 <id>` (o `podman logs --tail 200 <id>`) en la terminal de la barra (kitty), sin ejecutar nada más.
+- [ ] La chincheta de una fila la fija o la suelta; el popup la reordena al instante y el engranaje abre Ajustes → Bar elements ya desplazado al bloque "Containers".
+- [ ] Ajustes → Bar elements → Containers: el motor (`Automático`, `docker`, `podman`) cambia el que consulta el snapshot; con `docker` elegido en una máquina sin docker el popup muestra una línea tranquila con el motivo, no una lista vacía.
+- [ ] "Contenedores fijados": añadir un nombre lo pone primero; quitarlo lo devuelve al orden del motor. Un contenedor renombrado pierde su fijado (el nombre antiguo queda listado como parado); volver a fijar el nombre nuevo lo arregla.
+- [ ] Con el modo "Solo cuando está activo" (el valor por defecto de este elemento) el botón desaparece en una máquina sin docker ni podman: no hay motor que contar. El popup, si se abriera por IPC, dice que se buscaron docker y podman.
+- [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.containers` en `ps`.
+
 ## Peripherals battery bar element (2026-11-22)
 
 Código en `bar-battery-ui`. Con la barra corriendo y al menos un ratón, teclado,
