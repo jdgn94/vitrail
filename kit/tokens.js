@@ -27,6 +27,7 @@ var ranges = {
     peripheralLow: { min: 5, max: 50, step: 5, value: 20 },
     // The brightness bar element: the percent one wheel notch moves a display.
     brightnessStep: { min: 1, max: 20, step: 1, value: 5 },
+    healthDisk: { min: 1, max: 50, step: 1, value: 5 },
     // The dock's magnification: how many neighbouring icons the planet falloff
     // reaches, and the largest scale it gives the icon under the pointer.
     dockMagnifyRange: { min: 1, max: 5, step: 1, value: 2 },

@@ -102,6 +102,36 @@ Código en `bar-brightness-ui`. Con la barra corriendo, un portátil (panel inte
 - [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque "Brightness".
 - [ ] Con el elemento fuera de la barra y el interruptor apagado no hay ningún proceso `python3 -m vitrail.nightlight` en `ps` (el brillo de los monitores lo lee el OSD, que solo consulta `vitrail.cli brightness list` cuando hace falta); con el interruptor encendido solo corre el `apply` del horario una vez por minuto.
 
+## System health bar element (2026-11-22)
+
+Código en `bar-health-ui`. Para provocar los problemas sin romper nada, y deshacerlos:
+
+```sh
+# Un servicio de usuario fallido
+systemd-run --user --unit=vitrail-health-test /bin/false
+# deshacer
+systemctl --user reset-failed vitrail-health-test.service
+
+# Un disco lleno (imagen ext4 de 64 MB en un loop, casi llena)
+truncate -s 64M /tmp/health.img && mkfs.ext4 -q /tmp/health.img
+sudo mkdir -p /mnt/health && sudo mount -o loop /tmp/health.img /mnt/health
+sudo fallocate -l 60M /mnt/health/fill
+# deshacer
+sudo umount /mnt/health && rm /tmp/health.img && sudo rmdir /mnt/health
+```
+
+- [ ] Mostrar `health` desde el editor de la barra (está oculto por defecto): en una máquina sana el botón no se ve (modo "Solo cuando está activo"); con "Siempre" aparece el icono tranquilo y el tooltip dice «Todo está bien».
+- [ ] Lanzar el servicio fallido: en menos de un minuto (o al abrir el popup) aparece el icono de aviso; el tooltip dice «El servicio vitrail-health-test.service ha fallado». Con un solo problema no hay número.
+- [ ] El popup tiene una fila para ese servicio con su punto de severidad, el título, el detalle, **Registros** y **Arreglar**. **Registros** abre una terminal kitty con `journalctl --user -u vitrail-health-test.service`; **Arreglar** abre kitty con `systemctl --user restart …` (vuelve a fallar: sigue en la lista). Nada se ejecuta sin que se abra la terminal.
+- [ ] Montar la imagen casi llena: aparece una fila «Poco espacio en disco en /mnt/health» con el porcentaje libre y los tamaños, sin botones; el botón pasa a mostrar «2». Subir el umbral a 50 % en Ajustes → Bar elements → System health hace aparecer también `/`; bajarlo a 1 % quita la imagen casi llena si tiene más de 1 % libre.
+- [ ] Desactivar «Espacio en disco» en los ajustes quita sus filas en cuanto se refresca; desactivar los cuatro deja la barra sin icono aunque haya servicios fallidos, y el popup dice «Todo está bien».
+- [ ] Deshacer los dos casos: el icono desaparece en el siguiente ciclo (o al pulsar el botón de refrescar del popup) y el popup muestra la línea tranquila, no una tarjeta vacía.
+- [ ] Opcional: escribir un error en `~/.config/hypr/` y `hyprctl reload`: aparece «Errores en la configuración de Hyprland» con el texto de `hyprctl configerrors` y un botón **Arreglar** (`hyprctl reload`) y otro **Registros** (`hyprctl configerrors`); revertir el cambio y recargar lo quita.
+- [ ] Un servicio del sistema fallido (`sudo systemd-run --unit=vitrail-health-test /bin/false`, deshacer con `sudo systemctl reset-failed vitrail-health-test.service`) sale con el tono de error (el icono cambia de color frente al aviso).
+- [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque «System health».
+- [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.health` en `ps`.
+- [ ] Un elemento de la barra que no cargue (no se puede provocar sin tocar el código: un error de compilación aborta toda la barra; solo se detecta el fallo al crear el componente) aparecería como «Un elemento de la barra no se pudo cargar», con los ids en el detalle; la señal está cubierta por `tests/qml/tst_bar_entry.qml`.
+
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 
 Código en `master` (`5936834..36fab6a`). La automatización ya está verde

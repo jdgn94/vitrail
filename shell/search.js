@@ -79,6 +79,9 @@ var index = [
     { category: "bar-elements", tab: "brightness", key: "bar.widget.brightness", label: "Brightness",
       terms: ["brightness", "screen", "display", "sun", "night light", "temperature",
               "schedule", "sunset", "sunrise", "hyprsunset", "ddcutil", "brightnessctl"] },
+    { category: "bar-elements", tab: "health", key: "bar.widget.health", label: "System health",
+      terms: ["health", "problems", "failed", "services", "systemd", "disk space", "hyprland",
+              "config errors", "doctor", "warning"] },
 
     { category: "windows", tab: "", key: "section.windows", label: "Windows",
       terms: ["window", "tiling"] },

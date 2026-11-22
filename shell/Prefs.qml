@@ -87,6 +87,8 @@ QtObject {
     property alias peripheralsHide: barFile.peripheralsHide
     property alias peripheralsLow: barFile.peripheralsLow
     property alias brightnessStep: barFile.brightnessStep
+    property alias healthDiskThreshold: barFile.healthDiskThreshold
+    property alias healthChecks: barFile.healthChecks
     property alias nightLightEnabled: barFile.nightLightEnabled
     property alias nightLightTemperature: barFile.nightLightTemperature
     property alias nightLightSchedule: barFile.nightLightSchedule
@@ -276,7 +278,7 @@ QtObject {
         // array of ids (bar/elements.js). The updates, disks and peripherals
         // elements start here; an explicit value (even "[]") wins over the
         // built-in default.
-        property string barActiveOnly: "[\"updates\",\"disks\",\"peripherals\"]"
+        property string barActiveOnly: "[\"updates\",\"disks\",\"peripherals\",\"health\"]"
         // The keyboard layout chip, with its switcher and on-screen keyboard.
         property bool barKeyboard: true
         // The OSD: whether keys show it, how long a key's slider stays, how far
@@ -310,6 +312,11 @@ QtObject {
         // its colour temperature (kelvin) and its schedule (mode plus fixed
         // hours, one JSON document).
         property int brightnessStep: VitrailTokens.ranges.brightnessStep.value
+        // The system health bar element: the free space (percent) under which a
+        // disk is a problem, and the checks that are on (one JSON array of
+        // services, disk, hyprland, doctor).
+        property int healthDiskThreshold: VitrailTokens.ranges.healthDisk.value
+        property string healthChecks: "[\"services\",\"disk\",\"hyprland\",\"doctor\"]"
         property bool nightLightEnabled: false
         property int nightLightTemperature: 4000
         property string nightLightSchedule: '{"mode":"off","start":"20:00","end":"07:00"}'

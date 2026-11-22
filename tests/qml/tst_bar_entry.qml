@@ -168,4 +168,16 @@ TestCase {
         compare(row.implicitWidth, 40)
         compare(row.shownEntry.x, 0)
     }
+
+    function test_an_entry_whose_component_cannot_load_reports_it_as_failed() {
+        var entry = createTemporaryObject(entryComponent, testCase)
+        compare(entry.failed, false)
+        ignoreWarning(new RegExp(".*"))
+        entry.source = "does-not-exist.qml"
+        compare(entry.failed, true)
+        compare(entry.shown, false)
+        entry.source = ""
+        entry.sourceComponent = visibleContent
+        compare(entry.failed, false)
+    }
 }

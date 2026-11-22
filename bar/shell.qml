@@ -19,6 +19,7 @@ import "elements.js" as Elements
 import "updates/updates.js" as Updates
 import "disks/disks.js" as Disks
 import "brightness/brightness.js" as Brightness
+import "health/health.js" as Health
 import "popup.js" as Popup
 import "wallpapermonitors.js" as WallpaperMonitors
 import "kit/wallpaper.js" as WallpaperTransition
@@ -65,6 +66,7 @@ import "updates"
 import "disks"
 import "battery"
 import "brightness"
+import "health"
 
 // Vitrail desktop layer, per monitor: wallpaper, screen frame, system bar and
 // side panel. The preference files are watched, so the settings window applies live.
@@ -774,6 +776,8 @@ ShellRoot {
         // The list may be an hour old: the popup asks for today's answer.
         if (kind === "updates")
             updatesData.refresh()
+        if (kind === "health")
+            healthData.refresh()
         if (kind === "disks") {
             // A failure belongs to the action that caused it, not to a later
             // visit: start the popup with a clean line.
@@ -1717,6 +1721,48 @@ ShellRoot {
         target: updatesData
 
         function onSnapshotChanged() { shell.considerUpdates(updatesData.snapshot) }
+    }
+
+    // The system health bar element's data (vitrail/health.py), read once a
+    // minute and only while the element is in a bar; the popup asks for a fresh
+    // one when it opens. Its two preferences are read by the module itself, so
+    // a change of either asks for a new snapshot at once.
+    BarSnapshot {
+        id: healthData
+
+        module: "health"
+        interval: 60000
+        active: shell.barShows("health")
+    }
+
+    readonly property string healthKey: String(shell.prefs.healthChecks) + "|" + String(shell.prefs.healthDiskThreshold)
+
+    onHealthKeyChanged: healthData.refresh()
+
+    // The bar's own load failures, for the health list (bar/health/health.js,
+    // the documented `bar` problem): how many entries of each element id sit in
+    // `Loader.Error` right now. BarEntry.failed is the signal.
+    property var barFailures: ({})
+    readonly property var barFailedIds: Object.keys(shell.barFailures)
+
+    function noteBarFailure(entry, failed) {
+        var id = String(entry.id !== undefined ? entry.id : "chip")
+        var next = {}
+        for (var key in shell.barFailures)
+            next[key] = shell.barFailures[key]
+        next[id] = (next[id] || 0) + (failed ? 1 : -1)
+        if (next[id] <= 0)
+            delete next[id]
+        shell.barFailures = next
+    }
+
+    // The popup's Fix and Logs: the problem's argv in the user's terminal,
+    // where the user sees it run; the bar never fixes anything on its own.
+    function runHealth(argv) {
+        if (!Health.hasArgv(argv))
+            return
+        Quickshell.execDetached(Commands.runInTerminal(argv))
+        shell.closePopup()
     }
 
     // The disks bar element's data (vitrail/disks.py): polled faster while its
@@ -3624,6 +3670,7 @@ ShellRoot {
                     case "disks": return disksWidget
                     case "peripherals": return peripheralsWidget
                     case "brightness": return brightnessWidget
+                    case "health": return healthWidget
                     default: return null
                     }
                 }
@@ -4073,6 +4120,26 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: healthWidget
+
+                    HealthButton {
+                        id: healthButton
+
+                        strings: shell.strings
+                        snapshot: healthData.snapshot
+                        failed: shell.barFailedIds
+                        showMode: Elements.showMode(shell.activeOnlyIds, "health")
+                        opened: shell.popupOpen && shell.popupKind === "health" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("health", healthButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(healthButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("health", healthButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -4138,6 +4205,7 @@ ShellRoot {
                     case "disks": return monitor.loadedItem("disks")
                     case "peripherals": return monitor.loadedItem("peripherals")
                     case "brightness": return monitor.loadedItem("brightness")
+                    case "health": return monitor.loadedItem("health")
                     default: return null
                     }
                 }
@@ -4407,6 +4475,8 @@ ShellRoot {
                                         vertical: bar.vertical
                                         contentVisible: monitor.entryVisible(startEntry.modelData)
                                         sourceComponent: monitor.entryComponent(startEntry.modelData)
+                                        onFailedChanged: shell.noteBarFailure(startEntry.modelData, startEntry.failed)
+                                        Component.onDestruction: if (startEntry.failed) shell.noteBarFailure(startEntry.modelData, false)
                                         onLoaded: {
                                             if (startEntry.modelData.chip !== undefined)
                                                 item.ids = startEntry.modelData.ids
@@ -4441,6 +4511,8 @@ ShellRoot {
                                         vertical: bar.vertical
                                         contentVisible: monitor.entryVisible(centerEntry.modelData)
                                         sourceComponent: monitor.entryComponent(centerEntry.modelData)
+                                        onFailedChanged: shell.noteBarFailure(centerEntry.modelData, centerEntry.failed)
+                                        Component.onDestruction: if (centerEntry.failed) shell.noteBarFailure(centerEntry.modelData, false)
                                         onLoaded: {
                                             if (centerEntry.modelData.chip !== undefined)
                                                 item.ids = centerEntry.modelData.ids
@@ -4476,6 +4548,8 @@ ShellRoot {
                                         vertical: bar.vertical
                                         contentVisible: monitor.entryVisible(endEntry.modelData)
                                         sourceComponent: monitor.entryComponent(endEntry.modelData)
+                                        onFailedChanged: shell.noteBarFailure(endEntry.modelData, endEntry.failed)
+                                        Component.onDestruction: if (endEntry.failed) shell.noteBarFailure(endEntry.modelData, false)
                                         onLoaded: {
                                             if (endEntry.modelData.chip !== undefined)
                                                 item.ids = endEntry.modelData.ids
@@ -5113,6 +5187,13 @@ ShellRoot {
                                 sourceComponent: brightnessComponent
                             }
 
+                            Popout {
+                                name: "health"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: healthComponent
+                            }
+
                             Repeater {
                                 model: SystemTray.items
 
@@ -5494,6 +5575,20 @@ ShellRoot {
                             nightlightData.refresh()
                         }
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "brightness")
+                    }
+                }
+
+                Component {
+                    id: healthComponent
+
+                    HealthPanel {
+                        strings: shell.strings
+                        snapshot: healthData.snapshot
+                        failed: shell.barFailedIds
+                        onFixRequested: function (argv) { shell.runHealth(argv) }
+                        onLogsRequested: function (argv) { shell.runHealth(argv) }
+                        onRefreshRequested: healthData.refresh()
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "health")
                     }
                 }
 

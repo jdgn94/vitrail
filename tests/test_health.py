@@ -8,7 +8,7 @@ import subprocess
 import unittest
 from unittest import mock
 
-from vitrail import health
+from vitrail import health, prefs
 
 USER_FAILED = ("systemctl", "--failed", "--user", "--plain", "--no-legend")
 SYSTEM_FAILED = ("systemctl", "--failed", "--system", "--plain", "--no-legend")
@@ -265,13 +265,45 @@ class StateTests(unittest.TestCase):
         self.assertEqual(set(health.CHECKS), {"user_services", "system_services", "disk", "hyprland", "doctor"})
 
 
+class PreferenceTests(unittest.TestCase):
+    def test_every_check_is_on_when_the_key_was_never_written(self) -> None:
+        self.assertEqual(health.parse_checks(None), health.CHECKS)
+
+    def test_services_stands_for_both_service_checks(self) -> None:
+        self.assertEqual(health.parse_checks('["services","disk"]'), ("user_services", "system_services", "disk"))
+
+    def test_an_explicit_empty_array_turns_everything_off(self) -> None:
+        self.assertEqual(health.parse_checks("[]"), ())
+
+    def test_unknown_names_and_broken_text_are_ignored(self) -> None:
+        self.assertEqual(health.parse_checks('["doctor","nope",3]'), ("doctor",))
+        self.assertEqual(health.parse_checks("{not json"), health.CHECKS)
+        self.assertEqual(health.parse_checks('{"a": 1}'), health.CHECKS)
+
+    def test_the_threshold_is_clamped_to_one_to_fifty_with_five_as_default(self) -> None:
+        self.assertEqual(health.parse_threshold(None), 5.0)
+        self.assertEqual(health.parse_threshold("abc"), 5.0)
+        self.assertEqual(health.parse_threshold("0"), 1.0)
+        self.assertEqual(health.parse_threshold("99"), 50.0)
+        self.assertEqual(health.parse_threshold("12"), 12.0)
+
+
 class CommandTests(unittest.TestCase):
+    def test_state_reads_the_threshold_and_the_checks_from_the_preferences(self) -> None:
+        settings = {"healthDiskThreshold": "12", "healthChecks": '["disk"]'}
+        with mock.patch.object(prefs, "read_prefs", return_value=settings):
+            with mock.patch.object(health, "state", return_value={"problems": []}) as state:
+                with mock.patch("sys.stdout", new_callable=io.StringIO):
+                    health.main(["state"])
+        self.assertEqual(state.call_args.kwargs, {"checks": ("disk",), "threshold": 12.0})
+
     def test_state_prints_one_json_object(self) -> None:
         with mock.patch.object(
             health, "state", return_value={"problems": [], "count": 0, "checkedAt": "now", "error": None}
         ):
-            with mock.patch("sys.stdout", new_callable=io.StringIO) as out:
-                code = health.main(["state"])
+            with mock.patch.object(prefs, "read_prefs", return_value={}):
+                with mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+                    code = health.main(["state"])
         self.assertEqual(code, 0)
         self.assertEqual(json.loads(out.getvalue()), {"problems": [], "count": 0, "checkedAt": "now", "error": None})
 

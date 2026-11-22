@@ -18,7 +18,7 @@
       "error": null
     }
 
-Every check can be switched off by name (`checks`); all are on when it is None,
+Every check can be switched off by name (`checks`; the CLI reads `healthChecks` and `healthDiskThreshold`); all are on when it is None,
 and `CHECKS` lists the names. The checks are failed user services, failed system
 services, local filesystems below a free-space threshold (5 % by default), the
 errors `hyprctl configerrors` reports while Hyprland runs, and `vitrail doctor`'s
@@ -49,13 +49,21 @@ import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from . import doctor
+from . import doctor, prefs
 from .downloads import human_size
 
 CHECKS = ("user_services", "system_services", "disk", "hyprland", "doctor")
 # The shell appends its own problem under this id when its health read failed.
 BAR_ID = "bar"
 DISK_THRESHOLD = 5.0
+THRESHOLD_RANGE = (1.0, 50.0)
+# The names `healthChecks` holds; "services" covers both service checks.
+CHECK_GROUPS = {
+    "services": ("user_services", "system_services"),
+    "disk": ("disk",),
+    "hyprland": ("hyprland",),
+    "doctor": ("doctor",),
+}
 READ_TIMEOUT = 10
 MOUNTS = Path("/proc/mounts")
 # Local filesystems only: a network or FUSE mount can block a snapshot.
@@ -243,10 +251,38 @@ def state(
     return {"problems": problems, "count": len(problems), "checkedAt": checked_at, "error": None}
 
 
+def parse_checks(text: str | None) -> tuple[str, ...]:
+    """The checks `healthChecks` (a JSON array) turns on; unset or unreadable means all."""
+    if text is None:
+        return CHECKS
+    try:
+        names = json.loads(text)
+    except ValueError:
+        return CHECKS
+    if not isinstance(names, list):
+        return CHECKS
+    wanted = {check for name in names if isinstance(name, str) for check in CHECK_GROUPS.get(name, ())}
+    return tuple(check for check in CHECKS if check in wanted)
+
+
+def parse_threshold(text: str | None) -> float:
+    """`healthDiskThreshold` in percent, clamped to 1-50; unreadable means the default."""
+    try:
+        value = float(str(text).strip())
+    except ValueError:
+        return DISK_THRESHOLD
+    return min(max(value, THRESHOLD_RANGE[0]), THRESHOLD_RANGE[1])
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args == ["state"]:
-        print(json.dumps(state(), separators=(",", ":")))
+        settings = prefs.read_prefs(prefs.config_dir())
+        document = state(
+            checks=parse_checks(settings.get("healthChecks")),
+            threshold=parse_threshold(settings.get("healthDiskThreshold")),
+        )
+        print(json.dumps(document, separators=(",", ":")))
         return 0
     print("usage: health state", file=sys.stderr)
     return 2

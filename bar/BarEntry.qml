@@ -14,6 +14,9 @@ Loader {
     property bool contentVisible: true
 
     readonly property var content: root.item
+    // The element's component could not be created: the shell feeds this to the
+    // health list as the bar's own problem (bar/health/health.js).
+    readonly property bool failed: root.status === Loader.Error
 
     readonly property bool shown: root.content !== null && root.contentVisible
                                   && (root.content.shown === undefined || root.content.shown)

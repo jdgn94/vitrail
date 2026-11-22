@@ -108,6 +108,10 @@ bar brightnessStep
 bar nightLightEnabled
 bar nightLightTemperature
 bar nightLightSchedule
+# The system health bar element: the free space (percent) under which a disk
+# is a problem, and the checks that are on (one JSON array).
+bar healthDiskThreshold
+bar healthChecks
 # The dashboard clock widgets: the pomodoro's periods and rounds, and the
 # timer's default length, in minutes.
 bar pomodoroWork

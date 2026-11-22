@@ -6,6 +6,7 @@ import "../../bar/updates/updates.js" as Updates
 import "../../bar/disks/disks.js" as Disks
 import "../../bar/brightness/brightness.js" as Brightness
 import "../../bar/battery/battery.js" as Battery
+import "../../bar/health/health.js" as Health
 
 // Bar elements category: one block per new-style bar element, each with the
 // options every element shares (when it shows) and its own. A bar popup's gear
@@ -519,6 +520,66 @@ Item {
                     opacity: 0.7
                     wrapMode: Text.WordWrap
                     text: peripheralsSection.t("bar.peripherals.low.help")
+                }
+            }
+
+            BarElementSection {
+                id: healthSection
+
+                Layout.fillWidth: true
+                elementId: "health"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSlider {
+                    objectName: "healthDiskThreshold"
+
+                    Layout.fillWidth: true
+                    label: healthSection.t("bar.health.threshold")
+                    suffix: "%"
+                    from: VitrailTokens.ranges.healthDisk.min
+                    to: VitrailTokens.ranges.healthDisk.max
+                    stepSize: VitrailTokens.ranges.healthDisk.step
+                    value: Health.threshold(page.prefs.healthDiskThreshold)
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.healthDiskThreshold = value
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: healthSection.t("bar.health.threshold.help")
+                }
+
+                Repeater {
+                    model: Health.CHECKS
+
+                    delegate: VitrailSettingRow {
+                        id: checkRow
+
+                        required property string modelData
+
+                        Layout.fillWidth: true
+                        label: healthSection.t("bar.health.check." + checkRow.modelData)
+                        description: healthSection.t("bar.health.check." + checkRow.modelData + ".help")
+                        foreground: page.palette.foreground
+                        muted: page.palette.muted
+
+                        VitrailSwitch {
+                            objectName: "healthCheck-" + checkRow.modelData
+                            checked: Health.enabledChecks(page.prefs.healthChecks).indexOf(checkRow.modelData) >= 0
+                            foreground: page.palette.foreground
+                            accent: page.palette.primary
+                            onToggled: function (value) {
+                                page.prefs.healthChecks = Health.withCheck(page.prefs.healthChecks,
+                                                                           checkRow.modelData, value)
+                            }
+                        }
+                    }
                 }
             }
 

@@ -9,6 +9,7 @@ import "../bar/updates"
 import "../bar/disks"
 import "../bar/brightness"
 import "../bar/battery"
+import "../bar/health"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -1404,6 +1405,93 @@ Window {
                                    error: "hyprsunset is not installed (package hyprsunset)" })
                     schedule: ({ mode: "off", start: "20:00", end: "07:00" })
                     temperature: 4000
+                }
+            }
+        }
+
+
+        VitrailText {
+            variant: "title"
+            text: "HealthButton · clean × one warning × two problems × an error"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            HealthButton {
+                showMode: "always"
+                snapshot: ({ problems: [], count: 0, checkedAt: "2026-11-22T10:00:00Z", error: null })
+            }
+
+            HealthButton {
+                snapshot: ({ problems: [
+                    { id: "disk:/", severity: "warning", title: "Low disk space on /",
+                      detail: "3.1% free (12.0 GB of 400.0 GB)", fix: null, logs: null }
+                ], count: 1, checkedAt: "2026-11-22T10:00:00Z", error: null })
+            }
+
+            HealthButton {
+                snapshot: ({ problems: [
+                    { id: "service-user:vitrail-settings.service", severity: "warning",
+                      title: "vitrail-settings.service", detail: "user service failed: Vitrail settings",
+                      fix: ["systemctl", "--user", "restart", "vitrail-settings.service"], logs: null },
+                    { id: "hyprland:config", severity: "warning", title: "Hyprland config errors",
+                      detail: "line 12: unknown keyword", fix: ["hyprctl", "reload"], logs: null }
+                ], count: 2, checkedAt: "2026-11-22T10:00:00Z", error: null })
+            }
+
+            HealthButton {
+                opened: true
+                snapshot: ({ problems: [
+                    { id: "service-system:docker.service", severity: "error", title: "docker.service",
+                      detail: "system service failed", fix: null, logs: null }
+                ], count: 1, checkedAt: "2026-11-22T10:00:00Z", error: null })
+                failed: ["volume"]
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "HealthPanel · problems with Fix and Logs × the bar's own failure × a clean machine"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: healthFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: healthFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                HealthPanel {
+                    id: healthFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ problems: [
+                        { id: "service-user:vitrail-settings.service", severity: "warning",
+                          title: "vitrail-settings.service", detail: "user service failed: Vitrail settings",
+                          fix: ["systemctl", "--user", "restart", "vitrail-settings.service"],
+                          logs: ["journalctl", "--user", "-u", "vitrail-settings.service", "-n", "200"] },
+                        { id: "disk:/", severity: "warning", title: "Low disk space on /",
+                          detail: "3.1% free (12.0 GB of 400.0 GB)", fix: null, logs: null },
+                        { id: "hyprland:config", severity: "warning", title: "Hyprland config errors",
+                          detail: "line 12: unknown keyword", fix: ["hyprctl", "reload"],
+                          logs: ["hyprctl", "configerrors"] }
+                    ], count: 3, checkedAt: "2026-11-22T10:00:00Z", error: null })
+                    failed: ["volume", "updates"]
+                }
+            }
+
+            VitrailSurface {
+                width: healthClean.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: healthClean.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                HealthPanel {
+                    id: healthClean
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    snapshot: ({ problems: [], count: 0, checkedAt: "2026-11-22T10:00:00Z", error: null })
                 }
             }
         }
