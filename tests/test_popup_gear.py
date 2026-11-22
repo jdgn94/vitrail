@@ -29,6 +29,8 @@ POPUPS = {
     "bar/privacy/PrivacyPanel.qml": ("bar-elements", "privacy"),
     "bar/weather/WeatherPanel.qml": ("bar-elements", "weather"),
     "bar/market/MarketPanel.qml": ("bar-elements", "market"),
+    "bar/pomodoro/PomodoroPanel.qml": ("bar-elements", "pomodoro"),
+    "bar/notes/NotesPanel.qml": ("bar-elements", "notes"),
 }
 
 

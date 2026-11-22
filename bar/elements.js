@@ -13,8 +13,9 @@
 // for the bar. Updates, disks, containers, the peripheral batteries, health
 // and privacy start here; an explicit preference (even "[]") always wins. The
 // market element joins them: with no price in the snapshot (a cold cache and
-// no network) it has no number for the bar.
-var DEFAULT_ACTIVE_ONLY = ["updates", "disks", "containers", "peripherals", "health", "privacy", "market"]
+// no network) it has no number for the bar. The pomodoro joins them too: with
+// no session running or paused there is no countdown for the bar.
+var DEFAULT_ACTIVE_ONLY = ["updates", "disks", "containers", "peripherals", "health", "privacy", "market", "pomodoro"]
 
 // The ids that show only while active, from the preference's text.
 function parseActiveOnly(text) {

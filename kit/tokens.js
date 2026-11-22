@@ -47,6 +47,9 @@ var ranges = {
     pomodoroRest: { min: 1, max: 60, step: 1, value: 5 },
     pomodoroCycles: { min: 1, max: 12, step: 1, value: 4 },
     timerMinutes: { min: 1, max: 180, step: 1, value: 10 },
+    // The notes bar element: how many notes its popup lists (the store keeps
+    // up to 20).
+    notesPopupMax: { min: 1, max: 20, step: 1, value: 5 },
     // The audio visualiser's strip: how tall it is in the background.
     visualiserHeight: { min: 48, max: 320, step: 8, value: 120 },
     // The wallpaper's change animation: its length, in milliseconds. The

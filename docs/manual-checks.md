@@ -216,6 +216,30 @@ Código en `bar-market-ui`. Con la barra corriendo y conexión a internet:
 - [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque «Markets».
 - [ ] Con el elemento fuera de la barra no hay ningún proceso `python3 -m vitrail.market` en `ps`.
 
+## Pomodoro / timer bar element (2026-11-22)
+
+Código en `bar-pomodoro-ui`. Con la barra corriendo:
+
+- [ ] Mostrar `pomodoro` desde el editor de la barra (oculto por defecto): con «Solo cuando está activo» no ocupa sitio hasta que hay una sesión. Abrir el popup y pulsar **Start**: el botón aparece con el reloj `mm:ss` y el anillo de progreso, y el tooltip dice el tiempo restante y la fase («Trabajo», «Descanso» o «Temporizador rápido»); la segunda línea dice la ronda (`2/4`).
+- [ ] Pausar desde el popup: el botón se queda con el tiempo congelado y sigue visible (un temporizador pausado con tiempo restante está activo); **Reset** lo devuelve a «Solo cuando está activo» sin cuenta.
+- [ ] Arrancar un temporizador rápido de 5 min: el mismo botón pasa a `05:00 · Temporizador rápido`; el popup muestra su fila con pausa/reanudar y reset. Los botones de 5, 10 y 25 min arrancan un temporizador nuevo cada vez.
+- [ ] **Cerrar el popup con un temporizador de 5 min en marcha**: al volver a abrirlo el tiempo ha seguido bajando, y al llegar a cero el botón deja la barra y sale la notificación «Timer finished». La sesión del dashboard (pestaña Focus del reloj) muestra exactamente el mismo tiempo: es el mismo motor, no dos.
+- [ ] **Suspender el portátil a mitad de un temporizador y reanudarlo**: al volver, el motor se pone al día con las fases que pasaron (con el popup cerrado), el botón muestra el estado correcto y no hay dos cuentas atrás. Si el portátil estaba suspendido más tiempo que el pomodoro completo, la sesión queda terminada en lugar de girar en bucle.
+- [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque «Pomodoro», donde los cuatro valores existentes (trabajo, descanso, rondas y minutos del temporizador) siguen siendo los mismos que en Ajustes → Bar → Widgets; cambiarlos no crea claves nuevas.
+- [ ] Con una sesión en marcha, quitar el elemento de la barra: la sesión sigue contando (el motor vive en el shell) y vuelve al mostrarlo.
+
+## Notes bar element (2026-11-22)
+
+Código en `bar-pomodoro-ui`. Con la barra corriendo:
+
+- [ ] Mostrar `notes` desde el editor de la barra (oculto por defecto): con notas aparece el glifo y el número (la cuenta); sin notas, el tooltip dice «Aún no hay notas» y con «Solo cuando está activo» el botón no ocupa sitio.
+- [ ] El tooltip dice «N notas» y debajo la primera línea de la nota más nueva.
+- [ ] **Añadir una nota desde el popup**: escribir en el campo y pulsar Enter; la nota aparece arriba en la lista con su primera línea y «ahora mismo», y en la misma tarjeta de notas del panel de notificaciones (un solo store en `misc.ini`, `quickNotes`). Reabrir el popup la conserva.
+- [ ] Con más notas que `notesPopupMax` (5 por defecto), el popup lista solo las más nuevas; subir el valor en Ajustes → Bar elements → Notes hasta 20 las lista todas, y el store nunca guarda más de 20.
+- [ ] Pulsar una fila abre el panel de notificaciones con la tarjeta de notas completa (donde se pueden borrar); el popup se cierra al hacerlo.
+- [ ] El engranaje del popup abre Ajustes → Bar elements ya desplazado al bloque «Notes».
+- [ ] Añadir una nota desde el panel de notificaciones y desde el popup: las dos aparecen en los dos sitios en el mismo orden, con su edad; no hay dos listas ni dos ficheros.
+
 ## P2.2 — Fuentes, iconos y cursor (2026-11-04)
 
 Código en `master` (`5936834..36fab6a`). La automatización ya está verde

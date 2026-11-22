@@ -39,7 +39,9 @@ import "network"
 import "tray"
 import "notifications"
 import "notifications/notifications.js" as Notifications
+import "notes"
 import "notes/notes.js" as Notes
+import "pomodoro"
 import "clipboard"
 import "dashboard"
 import "desktop"
@@ -3823,6 +3825,8 @@ ShellRoot {
                     case "privacy": return privacyWidget
                     case "weather": return weatherWidget
                     case "market": return marketWidget
+                    case "pomodoro": return pomodoroWidget
+                    case "notes": return notesWidget
                     default: return null
                     }
                 }
@@ -4399,6 +4403,43 @@ ShellRoot {
                     }
                 }
 
+                Component {
+                    id: pomodoroWidget
+
+                    PomodoroButton {
+                        id: pomodoroButton
+
+                        strings: shell.strings
+                        engine: focusTimers
+                        showMode: Elements.showMode(shell.activeOnlyIds, "pomodoro")
+                        opened: shell.popupOpen && shell.popupKind === "pomodoro" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("pomodoro", pomodoroButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(pomodoroButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("pomodoro", pomodoroButton, monitor.modelData)
+                        }
+                    }
+                }
+
+                Component {
+                    id: notesWidget
+
+                    NotesButton {
+                        id: notesButton
+
+                        strings: shell.strings
+                        notes: shell.notes
+                        opened: shell.popupOpen && shell.popupKind === "notes" && shell.popupScreen === monitor.modelData
+                        onClicked: shell.togglePopup("notes", notesButton, monitor.modelData)
+                        onHoveredChanged: {
+                            tooltips.hover(notesButton, hovered)
+                            if (hovered)
+                                shell.hoverPopup("notes", notesButton, monitor.modelData)
+                        }
+                    }
+                }
+
                 // Neighbouring connection buttons share one pill, exactly as
                 // they did when the bar had a fixed chip; any chip the editor
                 // makes draws the same way (bar/BarChip.qml).
@@ -4469,6 +4510,8 @@ ShellRoot {
                     case "privacy": return monitor.loadedItem("privacy")
                     case "weather": return monitor.loadedItem("weather")
                     case "market": return monitor.loadedItem("market")
+                    case "pomodoro": return monitor.loadedItem("pomodoro")
+                    case "notes": return monitor.loadedItem("notes")
                     default: return null
                     }
                 }
@@ -4594,7 +4637,7 @@ ShellRoot {
                     imageSource: shell.wallpaperFor(monitor.modelData.name)
                     onPlayerChosen: function (index) { shell.mprisIndex = index }
                     onQuickToggled: function (key) { shell.toggleQuick(key) }
-                    onNoteAdded: function (note) { shell.notes = Notes.add(shell.notes, note) }
+                    onNoteAdded: function (note) { shell.notes = Notes.add(shell.notes, note, Date.now()) }
                     onNoteRemoved: function (index) { shell.notes = Notes.remove(shell.notes, index) }
                 }
 
@@ -5037,7 +5080,7 @@ ShellRoot {
                     }
                     onSessionRequested: function (key) { shell.runSession(key, monitor.modelData) }
                     onNoteAdded: function (note) {
-                        shell.notes = Notes.add(shell.notes, note)
+                        shell.notes = Notes.add(shell.notes, note, Date.now())
                         shell.setPref("quickNotes", shell.notes)
                     }
                     onNoteRemoved: function (index) {
@@ -5490,6 +5533,20 @@ ShellRoot {
                                 current: popouts.name
                                 handover: popouts.handover
                                 sourceComponent: marketComponent
+                            }
+
+                            Popout {
+                                name: "pomodoro"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: pomodoroComponent
+                            }
+
+                            Popout {
+                                name: "notes"
+                                current: popouts.name
+                                handover: popouts.handover
+                                sourceComponent: notesComponent
                             }
 
                             Repeater {
@@ -5967,6 +6024,35 @@ ShellRoot {
                         onCurrencyRequested: function (code) { shell.setPref("marketCurrency", code) }
                         onRefreshRequested: marketData.refresh()
                         onSettingsRequested: shell.openSettingsAt("bar-elements", "market")
+                    }
+                }
+
+                Component {
+                    id: pomodoroComponent
+
+                    PomodoroPanel {
+                        strings: shell.strings
+                        engine: focusTimers
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "pomodoro")
+                    }
+                }
+
+                Component {
+                    id: notesComponent
+
+                    NotesPanel {
+                        strings: shell.strings
+                        notes: shell.notes
+                        maxNotes: shell.prefNumber("notesPopupMax", VitrailTokens.ranges.notesPopupMax.value)
+                        onNoteAdded: function (note) {
+                            shell.notes = Notes.add(shell.notes, note, Date.now())
+                            shell.setPref("quickNotes", shell.notes)
+                        }
+                        onNoteOpenRequested: {
+                            shell.closePopup()
+                            shell.openNotifications(monitor.modelData)
+                        }
+                        onSettingsRequested: shell.openSettingsAt("bar-elements", "notes")
                     }
                 }
 

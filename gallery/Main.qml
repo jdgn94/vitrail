@@ -15,6 +15,8 @@ import "../bar/resources"
 import "../bar/privacy"
 import "../bar/weather"
 import "../bar/market"
+import "../bar/pomodoro"
+import "../bar/notes"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -37,6 +39,31 @@ Window {
     // Each preview is a full screen scaled down, so tokens keep real sizes.
     readonly property size screenSize: Qt.size(1280, 720)
     readonly property real scale: Number(Args.value("--scale", "0.24"))
+    // The pomodoro element's demo engine: the shape TimerEngine exposes, with
+    // a running session, a paused one and a fresh one.
+    readonly property var pomodoroRunning: ({
+        pomodoro: { kind: "pomodoro", phase: "work", running: true, end: 1240000, left: 1240,
+                    duration: 1500, completed: 1, work: 25, rest: 5, cycles: 4, done: false },
+        timer: { kind: "timer", running: false, end: 0, left: 600, duration: 600, minutes: 10, done: false },
+        now: 0, workMinutes: 25, restMinutes: 5, cycles: 4, timerMinutes: 10
+    })
+    readonly property var pomodoroPaused: ({
+        pomodoro: { kind: "pomodoro", phase: "rest", running: false, end: 0, left: 180,
+                    duration: 300, completed: 2, work: 25, rest: 5, cycles: 4, done: false },
+        timer: { kind: "timer", running: false, end: 0, left: 600, duration: 600, minutes: 10, done: false },
+        now: 0, workMinutes: 25, restMinutes: 5, cycles: 4, timerMinutes: 10
+    })
+    readonly property var pomodoroIdle: ({
+        pomodoro: { kind: "pomodoro", phase: "work", running: false, end: 0, left: 1500,
+                    duration: 1500, completed: 0, work: 25, rest: 5, cycles: 4, done: false },
+        timer: { kind: "timer", running: false, end: 0, left: 600, duration: 600, minutes: 10, done: false },
+        now: 0, workMinutes: 25, restMinutes: 5, cycles: 4, timerMinutes: 10
+    })
+    readonly property string notesDemo: JSON.stringify([
+        { text: "Call the plumber", at: Date.now() - 3600000 },
+        { text: "Buy milk", at: Date.now() - 86400000 },
+        { text: "Read the QML notes", at: 0 }
+    ])
     // A fixed spectrum for the visualiser previews: no audio in the gallery.
     readonly property var sampleLevels: {
         var out = []
@@ -2153,6 +2180,104 @@ Window {
                     x: VitrailTokens.gap("md")
                     y: VitrailTokens.gap("md")
                     snapshot: ({ error: "unreadable" })
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "PomodoroButton · running × paused break × idle"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            PomodoroButton {
+                showMode: "always"
+                engine: app.pomodoroRunning
+            }
+
+            PomodoroButton {
+                showMode: "always"
+                engine: app.pomodoroPaused
+            }
+
+            PomodoroButton {
+                showMode: "always"
+                engine: app.pomodoroIdle
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "PomodoroPanel · a running pomodoro"
+        }
+
+        VitrailSurface {
+            width: pomodoroDemoPanel.implicitWidth + 2 * VitrailTokens.gap("md")
+            height: pomodoroDemoPanel.implicitHeight + 2 * VitrailTokens.gap("md")
+
+            PomodoroPanel {
+                id: pomodoroDemoPanel
+
+                x: VitrailTokens.gap("md")
+                y: VitrailTokens.gap("md")
+                engine: app.pomodoroRunning
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "NotesButton · three notes × empty"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            NotesButton {
+                showMode: "always"
+                notes: app.notesDemo
+            }
+
+            NotesButton {
+                showMode: "always"
+                notes: ""
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "NotesPanel · three notes with ages × two kept"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: notesDemoPanel.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: notesDemoPanel.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                NotesPanel {
+                    id: notesDemoPanel
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    notes: app.notesDemo
+                    maxNotes: 3
+                }
+            }
+
+            VitrailSurface {
+                width: notesCappedPanel.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: notesCappedPanel.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                NotesPanel {
+                    id: notesCappedPanel
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    notes: app.notesDemo
+                    maxNotes: 2
                 }
             }
         }
