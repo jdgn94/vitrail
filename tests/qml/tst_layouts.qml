@@ -12,7 +12,7 @@ TestCase {
     readonly property var startIds: ["launcher", "workspaces", "notifications"]
     // Today's bar after the connection elements were folded into their chip.
     readonly property var endIds: ["capture", "recording", "tray", "@connections",
-                                   "battery", "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads",
+                                   "battery", "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads", "clipboardbar", "colorpicker",
                                    "keyboard", "power"]
     readonly property var connectionIds: ["network", "bluetooth", "vpn", "profile"]
 
@@ -21,7 +21,7 @@ TestCase {
         compare(doc.order.start, startIds)
         compare(doc.order.center, ["title", "media", "clock"])
         compare(doc.order.end, endIds)
-        compare(doc.hidden, ["capture", "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads"])
+        compare(doc.hidden, ["capture", "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads", "clipboardbar", "colorpicker"])
         compare(doc.chips.connections.members, connectionIds)
         compare(doc.density, "comfortable")
         compare(doc.hideFullscreen, true)
@@ -164,7 +164,7 @@ TestCase {
         result.hidden.push("ghost")
         result.chips.connections.members.push("ghost")
         compare(doc.order.start, startIds)
-        compare(doc.hidden, ["capture", "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads"])
+        compare(doc.hidden, ["capture", "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads", "clipboardbar", "colorpicker"])
         compare(doc.chips.connections.members, connectionIds)
     }
 
@@ -292,7 +292,7 @@ TestCase {
         compare(doc.chips.connections.members, connectionIds)
         // "sample" and "volume" were absent from the old document, so cleanOrder appends them last
         compare(doc.order.end, ["capture", "recording", "tray", "@connections",
-                                "battery", "keyboard", "power", "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads"])
+                                "battery", "keyboard", "power", "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads", "clipboardbar", "colorpicker"])
         var entries = Layouts.entries(doc.order.end, doc.hidden, "bar", doc.chips)
         compare(entries[2].ids, connectionIds)
     }
@@ -410,7 +410,7 @@ TestCase {
         compare(result.chips.connections, undefined)
         var end = result.order.end
         compare(end, ["capture", "recording", "tray", "network", "bluetooth",
-                      "vpn", "profile", "battery", "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads", "keyboard", "power"])
+                      "vpn", "profile", "battery", "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads", "clipboardbar", "colorpicker", "keyboard", "power"])
     }
 
     function test_a_removed_default_chip_does_not_come_back() {
@@ -497,7 +497,7 @@ TestCase {
     function test_write_records_a_monitor_override_and_keeps_the_rest() {
         var text = Layouts.write("", "DP-1", { hidden: ["tray"] })
         var doc = Layouts.sanitize(text)
-        compare(doc.hidden, ["capture", "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads"])
+        compare(doc.hidden, ["capture", "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads", "clipboardbar", "colorpicker"])
         compare(doc.monitors["DP-1"].hidden, ["tray"])
         text = Layouts.write(text, "DP-1", { order: Layouts.move(doc.order, "clock", -1) })
         doc = Layouts.sanitize(text)
@@ -518,7 +518,7 @@ TestCase {
         compare(Layouts.effective(text, "DP-1").order.start[0], "@connections")
         compare(Layouts.effective(text, "HDMI-A-1").order.end,
                 ["capture", "recording", "tray", "@connections", "battery",
-                 "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads", "keyboard", "power", "bluetooth", "profile"])
+                 "sample", "volume", "updates", "disks", "containers", "peripherals", "brightness", "resources", "health", "privacy", "weather", "market", "downloads", "clipboardbar", "colorpicker", "keyboard", "power", "bluetooth", "profile"])
     }
 
     function test_a_monitor_only_patch_is_not_a_global_change() {

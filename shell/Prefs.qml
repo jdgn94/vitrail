@@ -100,6 +100,9 @@ QtObject {
     property alias marketCurrency: barFile.marketCurrency
     property alias marketInterval: barFile.marketInterval
     property alias downloadsRecent: barFile.downloadsRecent
+    property alias clipboardbarRecent: barFile.clipboardbarRecent
+    property alias colorpickerColors: barFile.colorpickerColors
+    property alias colorpickerRecent: barFile.colorpickerRecent
     property alias nightLightEnabled: barFile.nightLightEnabled
     property alias nightLightTemperature: barFile.nightLightTemperature
     property alias nightLightSchedule: barFile.nightLightSchedule
@@ -352,6 +355,12 @@ QtObject {
         property int marketInterval: VitrailTokens.ranges.marketInterval.value
         // The downloads element: how many finished downloads its popup keeps.
         property int downloadsRecent: VitrailTokens.ranges.downloadsRecent.value
+        // The clipboard element: how many of the newest copies its popup lists.
+        property int clipboardbarRecent: VitrailTokens.ranges.clipboardbarRecent.value
+        // The colour picker: the recent colours it keeps (up to 24) and how
+        // many of them its popup lists.
+        property string colorpickerColors: ""
+        property int colorpickerRecent: VitrailTokens.ranges.colorpickerRecent.value
         property bool nightLightEnabled: false
         property int nightLightTemperature: 4000
         property string nightLightSchedule: '{"mode":"off","start":"20:00","end":"07:00"}'

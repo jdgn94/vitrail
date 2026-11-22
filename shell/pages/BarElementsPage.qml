@@ -1111,6 +1111,70 @@ Item {
                 }
             }
 
+            BarElementSection {
+                id: clipboardbarSection
+
+                Layout.fillWidth: true
+                elementId: "clipboardbar"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSlider {
+                    objectName: "clipboardbarRecent"
+
+                    Layout.fillWidth: true
+                    label: clipboardbarSection.t("bar.clipboardbar.recentOption")
+                    from: VitrailTokens.ranges.clipboardbarRecent.min
+                    to: VitrailTokens.ranges.clipboardbarRecent.max
+                    stepSize: VitrailTokens.ranges.clipboardbarRecent.step
+                    value: page.prefs.clipboardbarRecent
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.clipboardbarRecent = Math.round(value)
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: clipboardbarSection.t("bar.clipboardbar.recentOption.help")
+                }
+            }
+
+            BarElementSection {
+                id: colorpickerSection
+
+                Layout.fillWidth: true
+                elementId: "colorpicker"
+                palette: page.palette
+                prefs: page.prefs
+                strings: page.strings
+
+                VitrailSlider {
+                    objectName: "colorpickerRecent"
+
+                    Layout.fillWidth: true
+                    label: colorpickerSection.t("bar.colorpicker.recentOption")
+                    from: VitrailTokens.ranges.colorpickerRecent.min
+                    to: VitrailTokens.ranges.colorpickerRecent.max
+                    stepSize: VitrailTokens.ranges.colorpickerRecent.step
+                    value: page.prefs.colorpickerRecent
+                    foreground: page.palette.foreground
+                    accent: page.palette.primary
+                    onMoved: page.prefs.colorpickerRecent = Math.round(value)
+                }
+
+                VitrailText {
+                    Layout.fillWidth: true
+                    variant: "label"
+                    opacity: 0.7
+                    wrapMode: Text.WordWrap
+                    text: colorpickerSection.t("bar.colorpicker.recentOption.help")
+                }
+            }
+
             Item { Layout.preferredHeight: VitrailTokens.gap("xl") }
         }
     }

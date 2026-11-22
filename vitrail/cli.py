@@ -128,6 +128,8 @@ def _parser() -> argparse.ArgumentParser:
     clip_copy.add_argument("id")
     clip_copy.add_argument("--trim", action="store_true", help="plain, without trailing newlines")
     clip_actions.add_parser("forget", help="drop the variant of the text on stdin")
+    clip_forget_color = clip_actions.add_parser("forget-colour", help="drop a colour copy from the history")
+    clip_forget_color.add_argument("color")
     clip_actions.add_parser("prune", help="drop the variants the history no longer has")
     clip_actions.add_parser("clear", help="drop every variant")
 
@@ -364,6 +366,9 @@ def _clipboard(args: argparse.Namespace) -> int:
         return 0
     if action == "forget":
         richclip.forget(sys.stdin.buffer.read())
+        return 0
+    if action == "forget-colour":
+        clipboard.forget_color(args.color)
         return 0
     if action == "prune":
         richclip.prune(richclip.history_keys())

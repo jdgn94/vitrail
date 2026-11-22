@@ -35,6 +35,10 @@ var ranges = {
     resourcesInterval: { min: 1, max: 10, step: 1, value: 2 },
     // The downloads element: how many finished downloads its popup keeps.
     downloadsRecent: { min: 0, max: 20, step: 1, value: 5 },
+    // The clipboard bar element: how many of the newest copies its popup lists.
+    clipboardbarRecent: { min: 1, max: 10, step: 1, value: 5 },
+    // The colour picker element: how many recent colours its popup lists.
+    colorpickerRecent: { min: 4, max: 24, step: 1, value: 12 },
     // The dock's magnification: how many neighbouring icons the planet falloff
     // reaches, and the largest scale it gives the icon under the pointer.
     dockMagnifyRange: { min: 1, max: 5, step: 1, value: 2 },
@@ -355,9 +359,11 @@ var capture = {
 // (or its image) beside the hovered row. `width` and `height` bound the card,
 // `lines` the text it shows, `maxFont` the biggest font a copied style may use
 // (bigger ones are scaled down to it), `gap` px from the panel and `margin`
-// px kept from the screen's edge.
+// px kept from the screen's edge. `rowWidth`, `rowHeight` and `rowLines` bound
+// the same preview when the bar's clipboard popup draws it as a compact row.
 var clipboard = {
-    preview: { width: 420, height: 340, lines: 14, maxFont: 28, gap: 12, margin: 12, paper: 14 }
+    preview: { width: 420, height: 340, lines: 14, maxFont: 28, gap: 12, margin: 12, paper: 14,
+               rowWidth: 348, rowHeight: 96, rowLines: 2 }
 }
 
 // The media player (bar/media). Lengths are px, times ms.

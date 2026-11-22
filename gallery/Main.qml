@@ -16,6 +16,8 @@ import "../bar/privacy"
 import "../bar/weather"
 import "../bar/market"
 import "../bar/downloads"
+import "../bar/clipboardbar"
+import "../bar/colorpicker"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -45,6 +47,46 @@ Window {
             out.push(Math.max(0, Math.round(30 + 32 * Math.sin(i / 4.5) + 18 * Math.sin(i / 1.7))))
         return out
     }
+
+    // The clipboard element's gallery data: five copies, two with a styled
+    // source, and the words its button and popup ask for.
+    readonly property var demoStrings: ({
+        "bar.widget.clipboardbar": "Clipboard",
+        "bar.clipboardbar.none": "No copies",
+        "bar.clipboardbar.empty": "Nothing copied yet.",
+        "bar.clipboardbar.tooltip": "%1 copies · %2",
+        "bar.clipboardbar.tooltip.one": "1 copy · %1",
+        "bar.clipboardbar.open": "Open history",
+        "bar.clipboardbar.hint": "A click copies the entry again.",
+        "bar.widget.colorpicker": "Colour picker",
+        "bar.colorpicker.none": "No recent colours",
+        "bar.colorpicker.tooltip": "%1 colours · %2",
+        "bar.colorpicker.tooltip.one": "1 colour · %1",
+        "bar.colorpicker.oldest": "Oldest: %1",
+        "bar.colorpicker.pickHint": "A click picks a colour from the screen.",
+        "bar.colorpicker.empty": "No colours yet.",
+        "bar.colorpicker.recent": "Recent colours",
+        "bar.colorpicker.open": "Open palette"
+    })
+    readonly property var demoClip: ({
+        entries: [
+            { id: "5", preview: "git log --oneline --decorate" },
+            { id: "4", preview: "https://vitrail.example/docs/clipboard" },
+            { id: "3", preview: "Vitrail keeps the newest five copies here." },
+            { id: "2", preview: "/home/u/Pictures/Screenshots/vitrail.png" },
+            { id: "1", preview: "The palette is one right click away." }
+        ],
+        previews: {
+            "3": { kind: "text", text: "Vitrail keeps the newest five copies here.",
+                   html: "<p>Vitrail keeps the <b>newest five</b> copies here.</p>" },
+            "1": { kind: "text", text: "The palette is one right click away.",
+                   html: "<p style=\"color:#1a73e8\">The palette is one right click away.</p>" }
+        }
+    })
+    readonly property var demoColors: [
+        "#A8C7FA", "#F2B8B5", "#B7E1CD", "#FDE293", "#D7AEFB", "#AECBFA",
+        "#FBC8D9", "#CCE8CF", "#FFE0B2", "#B2DFDB", "#E1BEE7", "#C5CAE9"
+    ]
 
     width: content.implicitWidth + 2 * VitrailTokens.gap("xl")
     height: content.implicitHeight + 2 * VitrailTokens.gap("xl")
@@ -2349,6 +2391,132 @@ Window {
                     x: VitrailTokens.gap("md")
                     y: VitrailTokens.gap("md")
                     snapshot: ({ active: [], recent: [], updated: 1763730000 })
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "ClipboardBarButton · copies × one × none"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            ClipboardBarButton {
+                strings: demoStrings
+                entries: demoClip.entries
+                limit: 5
+            }
+
+            ClipboardBarButton {
+                strings: demoStrings
+                entries: [{ id: "1", preview: "una sola copia" }]
+                limit: 5
+            }
+
+            ClipboardBarButton {
+                strings: demoStrings
+                entries: []
+                limit: 5
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "ClipboardBarPanel · five rich previews × empty"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: clipFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: clipFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ClipboardBarPanel {
+                    id: clipFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    strings: demoStrings
+                    entries: demoClip.entries
+                    previews: demoClip.previews
+                    thumbs: ({})
+                    limit: 5
+                }
+            }
+
+            VitrailSurface {
+                width: clipEmpty.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: clipEmpty.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ClipboardBarPanel {
+                    id: clipEmpty
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    strings: demoStrings
+                    entries: []
+                    limit: 5
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "ColorPickerButton · two recent colours × none"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            ColorPickerButton {
+                strings: demoStrings
+                colors: ["#A8C7FA", "#F2B8B5"]
+            }
+
+            ColorPickerButton {
+                strings: demoStrings
+                colors: []
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "ColorPickerPanel · a dozen swatches × empty"
+        }
+
+        Row {
+            spacing: VitrailTokens.gap("lg")
+
+            VitrailSurface {
+                width: colorsFull.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: colorsFull.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ColorPickerPanel {
+                    id: colorsFull
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    strings: demoStrings
+                    colors: demoColors
+                    limit: 12
+                }
+            }
+
+            VitrailSurface {
+                width: colorsEmpty.implicitWidth + 2 * VitrailTokens.gap("md")
+                height: colorsEmpty.implicitHeight + 2 * VitrailTokens.gap("md")
+
+                ColorPickerPanel {
+                    id: colorsEmpty
+
+                    x: VitrailTokens.gap("md")
+                    y: VitrailTokens.gap("md")
+                    strings: demoStrings
+                    colors: []
+                    limit: 12
                 }
             }
         }
