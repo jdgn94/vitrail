@@ -28,7 +28,7 @@ var WIDGETS = [
     { id: "tray", surfaces: ["bar"], group: "end", fixed: true, labelKey: "bar.widget.tray", icon: "widgets", sizes: [], styles: [] },
     { id: "network", surfaces: ["bar"], group: "end", labelKey: "bar.widget.network", icon: "lan", sizes: [], styles: [] },
     { id: "bluetooth", surfaces: ["bar"], group: "end", labelKey: "bar.widget.bluetooth", icon: "bluetooth", sizes: [], styles: [] },
-    { id: "vpn", surfaces: ["bar"], group: "end", labelKey: "bar.widget.vpn", icon: "shield", sizes: [], styles: [] },
+    { id: "vpn", surfaces: ["bar"], group: "end", labelKey: "bar.widget.vpn", icon: "shield_lock", sizes: [], styles: [] },
     { id: "profile", surfaces: ["bar"], group: "end", labelKey: "bar.widget.profile", icon: "speed", sizes: [], styles: [] },
     { id: "battery", surfaces: ["bar"], group: "end", labelKey: "bar.widget.battery", icon: "battery_full", sizes: [], styles: [] },
     { id: "sample", surfaces: ["bar"], group: "end", labelKey: "bar.widget.sample", icon: "widgets", sizes: [], styles: [] },

@@ -640,6 +640,15 @@ var visualiser = {
     waves: { count: 48, lines: 3, amplitude: 0.34, spread: 0.16, fade: 0.55, thickness: 2 }
 }
 
+// The in-place editor's bar preview (bar/desktop/BarPreview.qml): `hidden` is
+// the opacity of an element the document hides (drawn, not left out), and
+// `target` the share of the primary tint behind the group or chip a drop
+// would land in.
+var barPreview = {
+    hidden: 0.35,
+    target: 0.3
+}
+
 var space = {
     xs: 0.35,
     sm: 0.6,

@@ -15,9 +15,13 @@ import "../../bar/weather/weather.js" as Weather
 import "../../bar/market/market.js" as Market
 import "../../bar/dnd/dnd.js" as Dnd
 import "../../bar/caffeine/caffeine.js" as Caffeine
+import "../../bar/elements.js" as Elements
 
 // Bar elements category: one block per new-style bar element, each with the
-// options every element shares (when it shows) and its own. A bar popup's gear
+// options every element shares (when it shows) and its own. The blocks sit in
+// a one-column grid under their group headings, in the order of
+// bar/elements.js PAGE_GROUPS (each block takes its row from there), so the
+// order the blocks are written in below does not matter. A bar popup's gear
 // lands on its element's block through `tab` (the element's id). A new
 // element adds its BarElementSection here (docs/bar-elements.md).
 Item {
@@ -53,11 +57,34 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         clip: true
 
-        ColumnLayout {
+        GridLayout {
             id: column
 
             width: parent.width
-            spacing: VitrailTokens.gap("xl")
+            columns: 1
+            rowSpacing: VitrailTokens.gap("xl")
+            columnSpacing: 0
+
+            // One heading per group, on the row before its elements.
+            Repeater {
+                model: Elements.PAGE_GROUPS
+
+                delegate: VitrailText {
+                    required property var modelData
+
+                    objectName: "barElementsGroup-" + modelData.key
+                    Layout.row: Elements.headingRow(modelData.key)
+                    Layout.fillWidth: true
+                    Layout.topMargin: VitrailTokens.gap("md")
+                    variant: "title"
+                    color: page.palette.primary
+                    text: {
+                        var key = "bar.elements.group." + modelData.key
+                        var value = page.strings[key]
+                        return value === undefined ? key : value
+                    }
+                }
+            }
 
             BarElementSection {
                 Layout.fillWidth: true
@@ -1430,7 +1457,10 @@ Item {
                 }
             }
 
-            Item { Layout.preferredHeight: VitrailTokens.gap("xl") }
+            Item {
+                Layout.row: Elements.pageRows()
+                Layout.preferredHeight: VitrailTokens.gap("xl")
+            }
         }
     }
 }

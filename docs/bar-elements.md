@@ -73,8 +73,10 @@ skips this part and keeps the rest.
    and the README's "Preference files" table. Name them for the area
    (`volumeStep`), not for the element's file.
 6. Settings: a `BarElementSection { elementId: "<id>" }` in
-   `shell/pages/BarElementsPage.qml` with its own rows inside; an entry in
-   `shell/search.js`; the gear in `tests/test_popup_gear.py` (`POPUPS`).
+   `shell/pages/BarElementsPage.qml` with its own rows inside; its id in one
+   group of `PAGE_GROUPS` (`bar/elements.js`) and in the table under "The
+   settings page"; an entry in `shell/search.js`; the gear in
+   `tests/test_popup_gear.py` (`POPUPS`).
 7. Words in all six `kit/i18n/*.json`: `bar.widget.<id>` (the label, also the
    section's title) and the tooltip's. Placeholders (`%1`) must match.
 8. Programs it runs: `packages/*.txt`, `tests/test_dependencies.py`, the
@@ -86,6 +88,42 @@ skips this part and keeps the rest.
 11. Docs: a line in `docs/features.md`, a checklist in `docs/manual-checks.md`.
 
 Run `uv run python -m unittest discover -s tests` and `bash tests/qml_smoke.sh`.
+
+## The settings page
+
+Settings → Bar elements lists the blocks by what they are about, not in the
+order they were written. `PAGE_GROUPS` in `bar/elements.js` is the order: a
+heading per group (`bar.elements.group.<key>`, in all six languages), then its
+elements, each block taking its row from there (`Elements.pageRow`). A block's
+glyph is the registry's (`Elements.icon`, from `bar/widgets.js`), the same one
+the editor's rows and preview strip draw. This order is the page's only; the
+bar's default document stays in `bar/layouts.js`.
+
+| Key | Heading | Elements |
+|-----|---------|----------|
+| `sound` | Sound and display | `volume`, `brightness` |
+| `system` | System | `resources`, `netusage`, `health`, `updates`, `disks`, `containers`, `peripherals` |
+| `focus` | Focus and privacy | `dnd`, `caffeine`, `privacy` |
+| `time` | Time and notes | `pomodoro`, `notes` |
+| `information` | Information | `weather`, `market`, `downloads` |
+| `clipboard` | Clipboard and colours | `clipboardbar`, `colorpicker` |
+| `example` | Example | `sample` |
+
+`tests/test_bar_elements.py` checks the table against `PAGE_GROUPS`, that every
+element sits in exactly one group and that every heading is translated.
+
+## The editor's preview strip
+
+The in-place editor's Bar tab draws the bar as it is on screen
+(`bar/desktop/BarPreview.qml`): only the strip, on the side of the list the bar
+sits on (above for `top`, under for `bottom`, beside for `left`/`right`), with
+the bar's style (docked: square and flush; floating: a rounded island; islands:
+one per group), opacity and the document's density. Every element is a
+`BarElementBase` with the registry glyph, a chip is the bar's own `BarChip`
+around its members and a divider is `BarDivider`. An element the document hides
+is drawn at `VitrailTokens.barPreview.hidden` opacity, with a note above the
+strip. During a drag the strip draws the proposed document and tints the group
+or chip the drop would land in. A strip longer than its box is scaled to fit.
 
 ## The sample
 

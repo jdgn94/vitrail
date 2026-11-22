@@ -3,6 +3,7 @@
 // snapshot reaches QML. Pure functions, used by the shell and the settings
 // window.
 .pragma library
+.import "widgets.js" as Widgets
 
 // The elements that show only while they have something to say when the
 // preference has never been written. The updates element is the case the plan
@@ -19,6 +20,58 @@ var DEFAULT_ACTIVE_ONLY = ["updates", "disks", "containers", "peripherals", "hea
 // The downloads element joins them: with nothing downloading there is no number.
 // no network) it has no number for the bar. The pomodoro joins them too: with
 // no session running or paused there is no countdown for the bar.
+
+// Settings → Bar elements, in reading order: what the element is about, then
+// the element. Each group is one heading (`bar.elements.group.<key>`, in every
+// kit/i18n file) over its elements' blocks; every element is in exactly one
+// group (tests/test_bar_elements.py). This is the page's order, not the bar's:
+// the bar's default document stays in bar/layouts.js.
+var PAGE_GROUPS = [
+    { key: "sound", ids: ["volume", "brightness"] },
+    { key: "system", ids: ["resources", "netusage", "health", "updates", "disks", "containers", "peripherals"] },
+    { key: "focus", ids: ["dnd", "caffeine", "privacy"] },
+    { key: "time", ids: ["pomodoro", "notes"] },
+    { key: "information", ids: ["weather", "market", "downloads"] },
+    { key: "clipboard", ids: ["clipboardbar", "colorpicker"] },
+    { key: "example", ids: ["sample"] }
+]
+
+// The page's grid rows: a group's heading, then one row per element.
+function headingRow(key) {
+    var row = 0
+    for (var i = 0; i < PAGE_GROUPS.length; i++) {
+        if (PAGE_GROUPS[i].key === key)
+            return row
+        row += 1 + PAGE_GROUPS[i].ids.length
+    }
+    return -1
+}
+
+// An element's row on the page; -1 for an id no group names.
+function pageRow(id) {
+    var row = 0
+    for (var i = 0; i < PAGE_GROUPS.length; i++) {
+        var at = PAGE_GROUPS[i].ids.indexOf(id)
+        if (at >= 0)
+            return row + 1 + at
+        row += 1 + PAGE_GROUPS[i].ids.length
+    }
+    return -1
+}
+
+// How many rows the groups take: the first free row after them.
+function pageRows() {
+    return PAGE_GROUPS.reduce(function (sum, group) {
+        return sum + 1 + group.ids.length
+    }, 0)
+}
+
+// A bar element's glyph: the registry's (bar/widgets.js), the one place an
+// element's icon is written. The settings page and the editor both ask here.
+function icon(id) {
+    var widget = Widgets.find(id, "bar")
+    return widget ? widget.icon : "widgets"
+}
 
 // The ids that show only while active, from the preference's text.
 function parseActiveOnly(text) {

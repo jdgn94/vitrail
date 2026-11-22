@@ -5,6 +5,7 @@ import "../kit/base"
 import "../layouts.js" as Layouts
 import "../barview.js" as BarView
 import "../dragdrop.js" as DragDrop
+import "../elements.js" as Elements
 
 // The bar tab of the in-place editor. It holds everything that used to live in
 // Settings → Bar: the bar's own look (edge, tray style, chips, style, screens,
@@ -76,16 +77,12 @@ Item {
         edge: { left: "left_panel_open", top: "top_panel_open",
                 right: "right_panel_open", bottom: "bottom_panel_open" },
         screens: { primary: "monitor", all: "devices" },
-        group: { start: "first_page", center: "filter_center_focus", end: "last_page" },
-        widget: {
-            launcher: "apps", workspaces: "view_column", notifications: "notifications",
-            title: "desktop_windows", media: "play_circle",
-            clock: "schedule", capture: "screenshot_monitor", recording: "stop_circle",
-            tray: "widgets", network: "lan", bluetooth: "bluetooth", vpn: "shield",
-            profile: "speed", battery: "battery_full", keyboard: "keyboard",
-            power: "power_settings_new", divider: "vertical_split"
-        }
+        group: { start: "first_page", center: "filter_center_focus", end: "last_page" }
     })
+    // What the bar on this monitor looks like: the global edge and style with
+    // this output's override, for the preview strip.
+    readonly property var placement: BarView.forMonitor(root.positions, root.positionMonitor,
+                                                         { edge: root.edge, style: root.style })
 
     function t(key) {
         var value = root.strings[key]
@@ -172,9 +169,7 @@ Item {
     function entryIcon(entry) {
         if (Layouts.isChipToken(entry))
             return "link"
-        if (Layouts.isDivider(entry))
-            return "vertical_split"
-        return root.icons.widget[entry] || "widgets"
+        return Elements.icon(entry)
     }
 
     function entryLabel(entry) {
@@ -398,50 +393,58 @@ Item {
         spacing: VitrailTokens.gap("md")
 
         // --- the live preview -------------------------------------------
-        VitrailSurface {
-            objectName: "editorBarPreviewCard"
-
+        // Only the strip, on the panel's own surface: no card behind it.
+        RowLayout {
             Layout.fillWidth: true
-            implicitHeight: previewColumn.implicitHeight + 2 * VitrailTokens.gap("md")
-            radius: VitrailTokens.radius
-            tint: VitrailTokens.color("surfaceHigh", "#282a2f")
-            opacityLevel: VitrailTokens.opacity * 0.83
+            spacing: VitrailTokens.gap("sm")
 
-            ColumnLayout {
-                id: previewColumn
+            VitrailText {
+                variant: "subtitle"
+                text: root.t("bar.editor.preview")
+            }
 
-                anchors.fill: parent
-                anchors.margins: VitrailTokens.gap("md")
-                spacing: VitrailTokens.gap("xs")
-
-                VitrailText {
-                    variant: "subtitle"
-                    text: root.t("bar.editor.preview")
-                }
-
-                VitrailText {
-                    variant: "label"
-                    color: VitrailTokens.color("muted", "#c4c6d0")
-                    text: root.t("bar.editor.preview.help")
-                }
-
-                BarPreview {
-                    objectName: "editorBarPreview"
-
-                    Layout.fillWidth: true
-                    doc: root.previewDoc
-                    strings: root.strings
-                    target: root.dragTarget
-                    iconOf: function (id) { return root.entryIcon(id) }
-                }
+            VitrailText {
+                Layout.fillWidth: true
+                variant: "label"
+                elide: Text.ElideRight
+                text: preview.anyHidden ? root.t("bar.editor.preview.hidden")
+                                        : root.t("bar.editor.preview.help")
             }
         }
+
+        // The strip sits on the side of the list the bar sits on the screen:
+        // above it for a top bar, under it for a bottom bar, beside it for a
+        // side bar.
+        GridLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            rowSpacing: VitrailTokens.gap("md")
+            columnSpacing: VitrailTokens.gap("md")
+
+            BarPreview {
+                id: preview
+
+                objectName: "editorBarPreview"
+
+                Layout.row: root.placement.edge === "bottom" ? 1 : 0
+                Layout.column: root.placement.edge === "right" ? 1 : 0
+                Layout.fillWidth: !preview.vertical
+                Layout.fillHeight: preview.vertical
+                doc: root.previewDoc
+                strings: root.strings
+                target: root.dragTarget
+                edge: root.placement.edge
+                variant: root.placement.style
+                opacityLevel: root.opacityFollow ? VitrailTokens.opacity : root.barOpacityValue
+            }
 
         Flickable {
             id: scroller
 
             objectName: "editorBarScroller"
 
+            Layout.row: root.placement.edge === "top" ? 1 : 0
+            Layout.column: root.placement.edge === "left" ? 1 : 0
             Layout.fillWidth: true
             Layout.fillHeight: true
             contentHeight: column.implicitHeight
@@ -996,6 +999,7 @@ Item {
                     }
                 }
             }
+        }
         }
         }
         }

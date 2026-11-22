@@ -82,3 +82,25 @@ registers it in `monitor.loaded`, which `monitor.anchorFor(kind)` uses for
 popups opened without a button. The settings window's Bar → Editor tab edits
 the document (`shell/pages/BarPage.qml`), with a monitor selector, per-group
 switches and arrows, density and the fullscreen switch.
+
+### The editor's preview strip
+
+`bar/desktop/BarPreview.qml` is the bar, not a schematic: only the strip (no
+card, no wallpaper), placed on the side of the Bar tab's list the bar sits on
+screen (a `GridLayout` with `Layout.row/column` from the edge). Geometry comes
+from `Frame.layout` (`bar.margin`, `bar.padding`) and `VitrailTokens.bar`;
+docked is square and flush, floating a rounded island, islands one per group.
+Faces are the bar's own types: `BarElementBase` (glyph from `Elements.icon`,
+the registry), `BarChip`, `BarDivider`. Hidden elements stay, at
+`VitrailTokens.barPreview.hidden`; the drop target is a primary tint at
+`barPreview.target`. A strip longer than its box is `scale`d, never clipped.
+
+- An inline `component` does not see the file's ids: pass the owner in
+  (`required property Item preview`).
+- A delegate that may be one of several faces is a `Loader` over per-kind
+  `Component`s, not every face with `visible` toggles (4× the objects).
+- `createTemporaryObject(c, parent, { doc: {...} })` turns nested JS arrays
+  into lists that fail `Array.isArray`: assign a document after creation.
+- `gallery/Main.qml`: everything after `component Preview` is inside that
+  component and is built once per frame × bar × edge tile (80×). New gallery
+  sections go in the main `ColumnLayout`, before it.

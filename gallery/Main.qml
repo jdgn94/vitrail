@@ -23,6 +23,7 @@ import "../bar/clipboardbar"
 import "../bar/notes"
 import "../bar/dnd"
 import "../bar/caffeine"
+import "../bar/desktop"
 import "../bar/kit" as BarKit
 import "../kit/args.js" as Args
 import "../kit/frame.js" as Frame
@@ -2462,6 +2463,44 @@ Window {
                     y: VitrailTokens.gap("md")
                     notes: app.notesDemo
                     maxNotes: 2
+                }
+            }
+        }
+
+        VitrailText {
+            variant: "title"
+            text: "BarPreview · edge × docked / floating · chip, divider, hidden (dimmed)"
+        }
+
+        Grid {
+            id: stripMatrix
+
+            // One small document: a chip, a divider and a hidden element.
+            readonly property var doc: ({
+                order: {
+                    start: ["launcher", "workspaces", "notifications"],
+                    center: ["clock", "divider", "weather"],
+                    end: ["@connections", "volume", "battery", "power"]
+                },
+                hidden: ["weather"],
+                chips: { connections: { members: ["network", "bluetooth", "vpn"] } },
+                density: "comfortable"
+            })
+
+            columns: 2
+            spacing: VitrailTokens.gap("lg")
+
+            Repeater {
+                model: ["top/docked", "top/floating", "left/docked", "left/floating"]
+
+                delegate: BarPreview {
+                    required property string modelData
+
+                    width: vertical ? implicitWidth : 640
+                    height: vertical ? 420 : implicitHeight
+                    doc: stripMatrix.doc
+                    edge: modelData.split("/")[0]
+                    variant: modelData.split("/")[1]
                 }
             }
         }
