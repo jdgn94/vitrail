@@ -34,6 +34,22 @@ DEFAULTS = {
 }
 
 
+class DockClickTests(unittest.TestCase):
+    """A dock click lands where the window (or the pointer) is."""
+
+    def setUp(self) -> None:
+        self.shell = (ROOT / "bar" / "shell.qml").read_text(encoding="utf-8")
+
+    def test_an_open_app_activates_its_workspace(self) -> None:
+        self.assertIn('Hyprland.dispatch("workspace " + Number(app.workspace))', self.shell)
+        self.assertIn("Number(app.workspace) > 0", self.shell)
+
+    def test_a_closed_app_opens_on_the_dock_s_output(self) -> None:
+        # The pointer is over the dock, so the dock's output is the one under
+        # the mouse; focusing it puts the new window on its active workspace.
+        self.assertIn('Hyprland.dispatch("focusmonitor " + screen.name)', self.shell)
+
+
 class DockMapTests(unittest.TestCase):
     def test_every_dock_key_lives_in_dock_ini(self) -> None:
         for key in DOCK_KEYS:

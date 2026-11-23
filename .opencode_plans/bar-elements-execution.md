@@ -295,3 +295,16 @@ data and UI halves are both green.
   debug line that indexed `Hyprland.workspaces.values[0]` while the sequence
   was still empty ("pure virtual method called"); the line is gone and the bar
   runs again. `listOf` only indexes up to `length`, so the fix is safe.
+- 2026-11-22: panel redesign merged (`7df600a` -> `b8ec849`): registry glyphs in
+  Settings, PAGE_GROUPS order with translated headings, and the editor preview
+  is the real strip (BarElementBase buttons, BarChip, BarDivider, dimmed hidden
+  ones, drag target). The clock section sits outside the groups (it is not a
+  BarElementBase button): `BarElementSection.row` names its row.
+- 2026-11-22: incident. During the merge's hot reload bar.ini ended with
+  `barLayout={}` (the editor opened on the built-in document, every element
+  hidden, and the next change wrote it back). Restored the owner's layout with
+  downloads in start and resources in center, hidden only capture/sample, and
+  added two guards: `startDesktopEdit` builds the built-in document when the
+  preference is empty, and `onLayoutChanged` refuses to persist `""`/`{}`.
+  `0d76827`. Still unknown which writer produced the first `{}`; the guards make
+  it impossible to persist one from the editor path.

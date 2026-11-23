@@ -2286,6 +2286,10 @@ ShellRoot {
     function launchDockApp(app, rect, screen) {
         if (!app)
             return
+        // The pointer is over the dock, so its output is the one under the
+        // mouse: focusing it opens the app on that output's workspace.
+        if (screen && screen.name)
+            Hyprland.dispatch("focusmonitor " + screen.name)
         var entries = DesktopEntries.applications.values
         var wanted = DockJS.keyOf(app.desktop || app.id)
         for (var i = 0; i < entries.length; i++) {
@@ -2518,10 +2522,14 @@ ShellRoot {
         shell.pumpClose()
     }
 
-    // An open app: focus the window the dock grouped under it.
+    // An open app: its workspace first (a window on another workspace is only
+    // reachable there), then the window the dock grouped under it.
     function focusDockApp(app) {
-        if (app && String(app.address || "") !== "")
-            Hyprland.dispatch("focuswindow address:0x" + String(app.address).replace(/^0x/, ""))
+        if (!app || String(app.address || "") === "")
+            return
+        if (Number(app.workspace) > 0)
+            Hyprland.dispatch("workspace " + Number(app.workspace))
+        Hyprland.dispatch("focuswindow address:0x" + String(app.address).replace(/^0x/, ""))
     }
 
     function setPrefPart(name, values) {

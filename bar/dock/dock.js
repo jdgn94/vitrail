@@ -164,6 +164,9 @@ function windowsOf(toplevels, activeAddress) {
             address: text(top.address),
             title: text(top.title || ipc.title),
             class: klass,
+            // The workspace the window sits on: a click focuses it before the
+            // window, so the app is brought to the front where it lives.
+            workspace: top && top.workspace ? Number(top.workspace.id) : 0,
             active: activeAddress !== undefined && text(top.address) === text(activeAddress)
         })
     }
@@ -190,6 +193,7 @@ function openApps(windows) {
                 open: true,
                 active: window.active === true,
                 address: text(window.address),
+                workspace: Number(window.workspace) || 0,
                 addresses: []
             })
         }
@@ -199,6 +203,7 @@ function openApps(windows) {
             group.active = true
             group.address = text(window.address)
             group.title = text(window.title)
+            group.workspace = Number(window.workspace) || group.workspace
         } else if (group.title === "" && window.title !== "") {
             group.title = text(window.title)
         }
@@ -241,6 +246,7 @@ function model(pinned, windows) {
             open: matches.length > 0,
             active: focused !== null && focused.active,
             address: focused !== null ? focused.address : "",
+            workspace: focused !== null ? Number(focused.workspace) || 0 : 0,
             title: focused !== null ? focused.title : "",
             windows: matches
         })
@@ -258,6 +264,7 @@ function model(pinned, windows) {
             open: true,
             active: apps[m].active === true,
             address: text(apps[m].address),
+            workspace: Number(apps[m].workspace) || 0,
             title: text(apps[m].title),
             windows: [apps[m]]
         })

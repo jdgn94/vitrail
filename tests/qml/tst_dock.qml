@@ -45,8 +45,9 @@ TestCase {
                 pin("code.desktop", "Code")]
     }
 
-    function windowOf(address, klass, title, active) {
-        return { address: address, class: klass, title: title || klass, active: active === true }
+    function windowOf(address, klass, title, active, workspace) {
+        return { address: address, class: klass, title: title || klass, active: active === true,
+                 workspace: workspace === undefined ? 0 : workspace }
     }
 
     Component {
@@ -175,6 +176,22 @@ TestCase {
         compare(model[3].kind, "open")
         compare(model[3].name, "nautilus")
         compare(model[3].open, true)
+    }
+
+    function test_a_window_keeps_the_workspace_it_sits_on() {
+        // Clicking an open app must land on its workspace, not only focus the
+        // window: the shell dispatches the workspace first.
+        var windows = DockJS.windowsOf([
+            { address: "0xabc", title: "Docs", lastIpcObject: { class: "firefox" }, workspace: { id: 3 } }
+        ], "")
+        compare(windows[0].workspace, 3)
+        var plain = DockJS.windowsOf([{ address: "0xdef", title: "Files",
+                                        lastIpcObject: { class: "nautilus" } }], "")
+        compare(plain[0].workspace, 0)
+        var apps = DockJS.openApps([windowOf("0x1", "firefox", "Docs", true, 3)])
+        compare(apps[0].workspace, 3)
+        var model = DockJS.model(pinnedList(), [windowOf("0x1", "firefox", "Docs", true, 3)])
+        compare(model[0].workspace, 3)
     }
 
     function test_click_launches_a_closed_app_and_focuses_an_open_one() {
